@@ -1,0 +1,272 @@
+use std::{fmt, time::Duration};
+use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorCode {
+    InvalidInput,
+    RuntimeClosed,
+    ConcurrentRead,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoreError {
+    pub code: ErrorCode,
+    pub message: String,
+}
+
+impl fmt::Display for CoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for CoreError {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskPhase {
+    Started,
+    Running,
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskEvent {
+    pub revision: u32,
+    pub phase: TaskPhase,
+    pub completed_steps: u32,
+    pub total_steps: u32,
+}
+
+#[derive(Default)]
+struct TaskState {
+    started: bool,
+    terminal: bool,
+    revision: u32,
+    completed: u32,
+}
+
+pub struct DiagnosticTask {
+    cancellation: CancellationToken,
+    state: Mutex<TaskState>,
+    steps: u32,
+    interval: Duration,
+}
+
+impl DiagnosticTask {
+    pub fn cancel(&self) {
+        self.cancellation.cancel();
+    }
+
+    /// 拉取提供背压：没有消费者就没有生产任务或累积队列。
+    /// 持锁等待还保证终态只交付一次，并明确拒绝两个消费者争抢事件。
+    pub async fn next_event(&self) -> Result<Option<TaskEvent>, CoreError> {
+        let mut state = self.state.try_lock().map_err(|_| CoreError {
+            code: ErrorCode::ConcurrentRead,
+            message: "A task supports only one pending event reader.".into(),
+        })?;
+        if state.terminal {
+            return Ok(None);
+        }
+        let phase = if self.cancellation.is_cancelled() {
+            TaskPhase::Cancelled
+        } else if !state.started {
+            state.started = true;
+            TaskPhase::Started
+        } else {
+            tokio::select! {
+                biased;
+                _ = self.cancellation.cancelled() => TaskPhase::Cancelled,
+                _ = tokio::time::sleep(self.interval) => {
+                    state.completed += 1;
+                    if state.completed == self.steps {
+                        TaskPhase::Completed
+                    } else {
+                        TaskPhase::Running
+                    }
+                }
+            }
+        };
+        let event = TaskEvent {
+            revision: state.revision,
+            phase,
+            completed_steps: state.completed,
+            total_steps: self.steps,
+        };
+        state.revision += 1;
+        state.terminal = matches!(phase, TaskPhase::Completed | TaskPhase::Cancelled);
+        Ok(Some(event))
+    }
+}
+
+pub struct Runtime {
+    cancellation: CancellationToken,
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Runtime {
+    pub fn new() -> Self {
+        Self {
+            cancellation: CancellationToken::new(),
+        }
+    }
+
+    pub fn ensure_open(&self) -> Result<(), CoreError> {
+        if self.cancellation.is_cancelled() {
+            Err(CoreError {
+                code: ErrorCode::RuntimeClosed,
+                message: "The runtime has been closed.".into(),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn host_platform(&self) -> Result<&'static str, CoreError> {
+        self.ensure_open()?;
+        Ok(std::env::consts::OS)
+    }
+
+    pub fn start_diagnostic(
+        &self,
+        steps: u32,
+        interval_ms: u32,
+    ) -> Result<DiagnosticTask, CoreError> {
+        self.ensure_open()?;
+        if !(1..=100).contains(&steps) || !(10..=1000).contains(&interval_ms) {
+            return Err(CoreError {
+                code: ErrorCode::InvalidInput,
+                message: "Expected 1..100 steps and a 10..1000 ms interval.".into(),
+            });
+        }
+        Ok(DiagnosticTask {
+            cancellation: self.cancellation.child_token(),
+            state: Mutex::new(TaskState::default()),
+            steps,
+            interval: Duration::from_millis(interval_ms.into()),
+        })
+    }
+
+    pub fn close(&self) {
+        self.cancellation.cancel();
+    }
+}
+
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        self.close();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn events_are_ordered_and_completion_is_delivered_once() {
+        let runtime = Runtime::new();
+        let task = runtime.start_diagnostic(2, 10).unwrap();
+        let mut events = vec![];
+        while let Some(event) = task.next_event().await.unwrap() {
+            events.push(event);
+        }
+        assert_eq!(
+            events.iter().map(|e| e.revision).collect::<Vec<_>>(),
+            vec![0, 1, 2]
+        );
+        assert_eq!(
+            events.iter().map(|e| e.phase).collect::<Vec<_>>(),
+            vec![TaskPhase::Started, TaskPhase::Running, TaskPhase::Completed]
+        );
+        assert_eq!(events.last().unwrap().completed_steps, 2);
+        task.cancel();
+        assert_eq!(task.next_event().await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn cancellation_before_first_read_has_one_terminal_event() {
+        let runtime = Runtime::new();
+        let task = runtime.start_diagnostic(2, 1000).unwrap();
+        task.cancel();
+        assert_eq!(
+            task.next_event().await.unwrap().unwrap().phase,
+            TaskPhase::Cancelled
+        );
+        assert_eq!(task.next_event().await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn close_wakes_pending_read_and_rejects_new_work() {
+        let runtime = Runtime::new();
+        let task = runtime.start_diagnostic(2, 1000).unwrap();
+        task.next_event().await.unwrap();
+        let read = task.next_event();
+        tokio::pin!(read);
+        tokio::select! {
+            result = &mut read => panic!("unexpected early result: {result:?}"),
+            _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+        }
+        runtime.close();
+        let event = tokio::time::timeout(Duration::from_millis(200), read)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert_eq!(event.phase, TaskPhase::Cancelled);
+        assert_eq!(
+            runtime.ensure_open().unwrap_err().code,
+            ErrorCode::RuntimeClosed
+        );
+        assert!(runtime.start_diagnostic(1, 10).is_err());
+        runtime.close();
+    }
+
+    #[tokio::test]
+    async fn concurrent_reader_is_rejected_without_consuming_events() {
+        let runtime = Runtime::new();
+        let task = Arc::new(runtime.start_diagnostic(2, 1000).unwrap());
+        task.next_event().await.unwrap();
+        let read = task.next_event();
+        tokio::pin!(read);
+        tokio::select! {
+            _ = &mut read => panic!("unexpected early completion"),
+            _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+        }
+        assert_eq!(
+            task.next_event().await.unwrap_err().code,
+            ErrorCode::ConcurrentRead
+        );
+        task.cancel();
+        assert_eq!(read.await.unwrap().unwrap().phase, TaskPhase::Cancelled);
+    }
+
+    #[test]
+    fn invalid_input_is_structured() {
+        let runtime = Runtime::new();
+        for (steps, interval) in [(0, 10), (101, 10), (1, 9), (1, 1001)] {
+            let error = runtime.start_diagnostic(steps, interval).err().unwrap();
+            assert_eq!(error.code, ErrorCode::InvalidInput);
+        }
+        assert!(runtime.start_diagnostic(100, 1000).is_ok());
+    }
+
+    #[tokio::test]
+    async fn dropping_runtime_cancels_children_but_sessions_are_isolated() {
+        let first = Runtime::new();
+        let second = Runtime::new();
+        let task = first.start_diagnostic(1, 10).unwrap();
+        drop(first);
+        assert_eq!(
+            task.next_event().await.unwrap().unwrap().phase,
+            TaskPhase::Cancelled
+        );
+        assert!(second.ensure_open().is_ok());
+    }
+}

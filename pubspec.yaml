@@ -1,0 +1,8 @@
+name: kiyori_workspace
+publish_to: none
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+workspace:
+  - apps/kiyori
+  - packages/kiyori_bridge
+  - packages/kiyori_ui

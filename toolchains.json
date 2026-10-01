@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-10-02",
+  "policy": "Latest compatible stable releases, pinned after verification; preview releases excluded.",
+  "flutter": {
+    "version": "3.47.6",
+    "dartVersion": "3.13.5",
+    "channel": "stable",
+    "windowsArchiveSha256": "a01bb0d26de91bc23c97cd9ccfaad281a612fb8304213fdd5df1119a09404796"
+  },
+  "rust": {
+    "version": "1.99.0",
+    "edition": "2024",
+    "targets": ["x86_64-pc-windows-msvc", "aarch64-linux-android", "x86_64-linux-android", "aarch64-apple-ios", "aarch64-apple-ios-sim"]
+  },
+  "flutterRustBridge": {
+    "version": "2.13.0",
+    "hooksVersion": "2.13.0",
+    "nativeToolchainRustLocked": "1.0.7",
+    "cargoExpand": "1.0.126",
+    "status": "integrated_windows_engine_and_android_packaging_verified"
+  },
+  "android": {
+    "agp": "9.4.1",
+    "gradle": "9.8.0",
+    "gradleDistributionSha256": "bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c",
+    "ndk": "30.0.16248370",
+    "compileSdk": 37,
+    "targetSdk": 37,
+    "minSdkCandidate": 24,
+    "buildTools": "37.0.0",
+    "jdk": "21.0.12.1+1",
+    "kotlinTemplate": "2.4.0",
+    "builtInKotlin": true,
+    "status": "kiyori_debug_arm64_packaging_verified_device_pending"
+  },
+  "windows": {
+    "visualStudioObserved": "18.10.1",
+    "msvcObserved": "14.51.36231",
+    "sdkObserved": "10.0.26100.0",
+    "target": "x64",
+    "status": "kiyori_debug_build_and_engine_integration_passed"
+  },
+  "ios": {
+    "minimumOsCandidate": "15.0",
+    "xcodeStableObserved": "27",
+    "swiftObserved": "6.4",
+    "sdkObserved": "27",
+    "status": "verification_pending_no_apple_host"
+  },
+  "extensions": {
+    "nodeLtsObserved": "24.21.0",
+    "nodeCurrentObserved": "26.10.0",
+    "pnpmObserved": "12.4.2",
+    "typescriptStableObserved": "7.0.2",
+    "status": "deferred_until_sdk_implementation"
+  },
+  "protocols": {
+    "mcpStableObserved": "2026-07-28",
+    "status": "design_only_negotiate_at_runtime"
+  }
+}

@@ -1,0 +1,6 @@
+rust_input: crate::api
+rust_root: ../../crates/kiyori_ffi/
+dart_output: lib/src/generated
+local: true
+web: false
+stop_on_error: true
