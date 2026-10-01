@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 export 'src/shell_action.dart';
+export 'src/primary_page.dart';
 
 abstract final class KiyoriTheme {
   static ThemeData light() => _create(Brightness.light);

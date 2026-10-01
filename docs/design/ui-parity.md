@@ -1,5 +1,34 @@
 # UI 复刻契约
 
+## 四个一级页面增量（2026-10-02）
+
+本次沿用旧 `D:\10_Project\Kiyori-Android` 的 `6b03b03aa082803bb279db5e78773583e2d91154`，
+从新仓库干净 `main` / `c0be83d` 开始，用户授权构建后全部提交推送。范围为底栏打开的
+浏览器、工具箱、文件管理、设置一级页面；不迁移旧偏好、文件或账号，不接入业务、安装设备
+或运行远端 CI。以下新契约覆盖后文历史中的“底栏目的地空点击”。
+
+| 旧源码（相对 `app/src/main/java`） | 当前迁移 |
+| --- | --- |
+| `com/kiyori/app/shell/KiyoriPrimaryNavigation.kt`、`KiyoriShellState.kt` | 唯一一级导航、选中动画、首页 Back；浏览器隐藏主底栏、顶栏退出恢复来源 |
+| `com/ai/assistance/operit/ui/main/shell/KiyoriCollapsingSettingsPage.kt` | 固定标题区 64，标题左 16 / 顶 20 / 20sp，操作区右 8 / 顶 8 / 高 48；卡片圆角 16 |
+| `ui/features/toolbox/ToolboxPage.kt`、`ToolboxCatalog.kt`、`ui/main/screens/ScreenRouteRegistry.kt`（同一 operit 根） | 原常用四项、内容七项、AI 四项、开发七项、设备两项；卡片外 16、上/间隔 14，内 12/8；48 触区与 38 胶囊，分组折叠 |
+| `ui/main/shell/KiyoriFileHomePage.kt`、`KiyoriFileManagementPage.kt`（同一 operit 根） | 六类四列网格、四个快捷项、五个存储位置；外 16、上/间隔 10，36/16 网格徽标、32/20 列表徽标；未统计和容量不可用沿用旧文案 |
+| `ui/main/shell/KiyoriSettingsHomePage.kt`（同一 operit 根） | 四组十二入口，原顺序和 15.5sp；外 15、间隔 14，行内 16/10/14/10，34/17 徽标，0.6 分割线；顶栏原 PNG 与 0.48 透明度 |
+| `ui/features/websession/browser/WebSessionBrowserTopBar.kt`、`chrome/WebSessionBrowserBottomBar.kt`（同一 operit 根） | 原 8/6 间距、42 高圆角 14 地址框、40 操作区；底部 44 触区、26 图标和 20 窗口计数框；复制原自有矢量路径 |
+| `core/tools/defaultTool/websession/browser/BrowserSessionRecoverySupport.kt`（同一 operit 根） | 默认启动创建 `about:blank` 的外观：空白正文与计数 1；仅展示该默认态，不构造假会话或原生视图 |
+| `com/kiyori/design/theme/KiyoriSettingsTheme.kt`、`KiyoriIconColors.kt` | 背景 #F6F7F9、白卡、正文 #20242A、副文 #6E747C；图标按原真实字形身份色，保留回收站专用色 |
+
+实现位于 `features/{browser,toolbox,files,settings}/presentation`；共享标题、卡片和语义色在
+`kiyori_ui`。首页三页仍由一个 PageController 持有；按访问创建一级页并保留轻量展示状态，
+没有领域 I/O、额外 Rust API 或依赖。搜索、设置子项、工具、文件、管理和主题按钮均空点击，
+不显示开发提示或额外灰态。浏览器前后按钮保留原初始 0.38 外观但同样空点击。
+
+自动验证覆盖 320/390/1280 宽度、正常/双倍字体、滚动末项、返回来源、空点击、折叠和
+AI 草稿保留。双倍字体测试同时发现首页既有两处横向溢出，改为仅约束文字宽度，默认几何
+保持原值。可选捕获输出四页实际 Flutter 渲染图，按上述源码检查布局；同设备旧新逐像素、
+真实触摸、系统字体渲染和 iOS 编译仍为 `verification_pending`。最终构建/交付证据见
+[当前状态](../status.md)，不能将参数对照与本地截图说成全平台像素验收。
+
 ## 目标与基线
 
 本文的版本、授权和产物记录是前轮 UI 复刻历史；2026-10-02 后续工程基础优化、

@@ -2,6 +2,9 @@
 
 本表描述目标模块，全部业务仍待实现。`core` 指 `crates/kiyori_core/src`；`feature` 指 `apps/kiyori/lib/features`；`native` 指 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
 
+当前已有 `feature/assistant/presentation` 及 browser、toolbox、files、settings 的一级 UI。
+四页只投影旧默认外观与本地展示状态，业务调用保留空点击；这不改变下表的业务待实现边界。
+
 ## 产品模块
 
 | 模块与代码位置 | 所有者与数据 | 依赖、输入输出 | 关键验收 |

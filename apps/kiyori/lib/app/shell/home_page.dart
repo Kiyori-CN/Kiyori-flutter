@@ -101,13 +101,17 @@ class _HomePageState extends State<HomePage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Kiyori',
-                        style: TextStyle(
-                          fontSize: 36,
-                          height: 44 / 36,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurface,
+                      Flexible(
+                        child: Text(
+                          'Kiyori',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 36,
+                            height: 44 / 36,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurface,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 3),
@@ -257,9 +261,13 @@ class _HomePageState extends State<HomePage>
               children: [
                 Icon(icon, size: 15, color: color),
                 const SizedBox(width: 2),
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 10, height: 1, color: color),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10, height: 1, color: color),
+                  ),
                 ),
               ],
             ),

@@ -46,6 +46,12 @@ void main() {
       expect(images.every((image) => image.image != null), isTrue);
       await tester.tapAt(tester.getCenter(find.byKey(const Key('nav-4'))));
       await tester.pumpAndSettle();
+      expect(find.text('我的账号'), findsOneWidget);
+      await tester.tap(find.text('我的账号'));
+      await tester.pumpAndSettle();
+      expect(find.text('我的账号'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('nav-0')));
+      await tester.pumpAndSettle();
       expect(find.text('搜索网页或输入网址'), findsOneWidget);
       await tester.tap(find.text('AI'));
       await tester.pumpAndSettle();

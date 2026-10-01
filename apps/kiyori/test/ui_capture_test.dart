@@ -60,6 +60,12 @@ void main() {
           const AssetImage('assets/branding/kiyori-app-icon.png'),
           context,
         );
+        for (final name in ['top_search', 'scan', 'top_refresh']) {
+          await precacheImage(
+            AssetImage('assets/chrome/settings_header_$name.png'),
+            context,
+          );
+        }
         for (final name in [
           'nav_home',
           'nav_globe',
@@ -80,6 +86,21 @@ void main() {
         }
       });
       await capture('home-phone');
+      for (final entry in [
+        (1, 'browser'),
+        (2, 'toolbox'),
+        (3, 'files'),
+        (4, 'settings'),
+      ]) {
+        await tester.tap(find.byKey(Key('nav-${entry.$1}')));
+        await capture('${entry.$2}-phone');
+        if (entry.$1 == 1) {
+          await tester.tap(find.bySemanticsLabel('退出浏览器'));
+          await tester.pumpAndSettle();
+        }
+      }
+      await tester.tap(find.byKey(const Key('nav-0')));
+      await tester.pumpAndSettle();
       await tester.drag(find.byType(PageView), const Offset(330, 0));
       await capture('minus-one-phone');
       await tester.tap(find.bySemanticsLabel('关闭负一屏'));

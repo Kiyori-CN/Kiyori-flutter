@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
 class HomeBottomNavigation extends StatefulWidget {
-  const HomeBottomNavigation({required this.onHome, super.key});
-  final VoidCallback onHome;
+  const HomeBottomNavigation({
+    required this.selected,
+    required this.onSelected,
+    super.key,
+  });
+  final int selected;
+  final ValueChanged<int> onSelected;
   @override
   State<HomeBottomNavigation> createState() => _HomeBottomNavigationState();
 }
 
 class _HomeBottomNavigationState extends State<HomeBottomNavigation> {
-  int selected = 0;
   int activation = 0;
   static const names = [
     'nav_home',
@@ -37,16 +41,15 @@ class _HomeBottomNavigationState extends State<HomeBottomNavigation> {
                   child: Semantics(
                     button: true,
                     label: labels[i],
-                    selected: selected == i,
+                    selected: widget.selected == i,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
-                        // 选择反馈属于界面；未接入目的地不执行导航或业务动作。
+                        // 导航由 Shell 唯一持有；本地只保留重复点击的动画序号。
                         setState(() {
-                          selected = i;
                           activation++;
                         });
-                        if (i == 0) widget.onHome();
+                        widget.onSelected(i);
                       },
                       child: SizedBox.square(
                         key: Key('nav-$i'),
@@ -55,8 +58,8 @@ class _HomeBottomNavigationState extends State<HomeBottomNavigation> {
                           child: _NavigationGlyph(
                             index: i,
                             name: names[i],
-                            selected: selected == i,
-                            activation: selected == i ? activation : 0,
+                            selected: widget.selected == i,
+                            activation: widget.selected == i ? activation : 0,
                           ),
                         ),
                       ),

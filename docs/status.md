@@ -2,7 +2,42 @@
 
 更新时间：2026-10-02（Asia/Shanghai）。此文件是实施进度唯一权威；[路线图](roadmap.md)维护阶段顺序，环境证据见[环境报告](development/environment-report.md)。
 
-## 当前任务：工程基础与输入性能治理
+## 当前任务：四个底栏一级页面复刻
+
+从干净 `main` / `c0be83d` 开始，只读对照旧 `Kiyori-Android` 的 `6b03b03a`，
+补齐浏览器、工具箱、文件管理、设置一级页面。用户授权完成构建后全部提交推送至既有
+`origin/main`。未接入业务保留空点击；不操作设备、旧数据、远端 CI 或发布服务。
+
+**当前状态：四页实现、本地验证与 Android/Windows Debug 构建通过；设备视觉/触摸
+及 iOS 保持 `verification_pending`。** 源码依据、默认外观和业务边界见
+[UI 复刻契约](design/ui-parity.md)。
+
+本轮真实交付包括一级导航与来源返回、按访问保留的展示状态、原页面几何和语义色、设置
+原 PNG、浏览器原自有矢量，以及工具分组折叠。首页原 pager/AI 草稿保留；2 倍字体下的
+既有品牌行/模式文字溢出已修复，未改变默认几何。
+
+| 验证 | 实际结果 |
+| --- | --- |
+| `tools/verify.ps1 -WindowsIntegration` | 6 Rust + 19 Flutter + 6 真实 FFI + 2 Windows 引擎测试通过；格式、Clippy、analyze 和基础检查通过；截图用例默认跳过 |
+| `ui_capture_test.dart` 显式捕获 | 1 项通过；四页最终 Flutter 渲染图已按源码检查，保存在忽略的 `work/four-pages/`；同时保留首页、负一屏、AI 回归图 |
+| `tools/build.ps1 -Platform android` | Debug arm64 APK 成功；普通产品入口，未安装设备 |
+| `tools/build.ps1 -Platform windows` | Debug 普通入口成功，集成测试后重新构建；DLL/data 与三张新增原图完整 |
+| APK 静态检查 | `com.kiyori` / `0.1.0+1` / API 24–37 / arm64-v8a；Rust SO、三张 chrome 资源、v2 签名、ZIP 16KB 对齐通过 |
+| 原资源 | 三张设置顶栏 PNG 的 SHA-256 与旧仓库逐一相同；浏览器底部与 AI 星形由原自有矢量路径投影 |
+
+最终 APK：`apps/kiyori/build/app/outputs/flutter-apk/app-debug.apk`，2026-10-02
+04:05:57（Asia/Shanghai），95,097,169 字节，SHA-256
+`448DA2D549933A5A20E535867FEBE77868C5AEBBBF33D4179355514F2B077B7A`。
+Windows：`apps/kiyori/build/windows/x64/runner/Debug/`，保留整个目录的 EXE、DLL 和 data。
+本轮未重建 Profile/Release，不应使用目录内前轮 Profile 产物验收新页面。
+
+无新增依赖、公共 Rust API 或平台通道变化；不要求重复桥接生成。回滚基线为上述起始提交。
+首次完整验证因新增代码一处 if 缺少花括号被 analyze 拦下，修复后完整重跑通过。
+Git 交付仅包含本轮源码、三张原图、测试和文档；构建、截图、日志、私有日记保持忽略。
+远端 fetch 后基线仍为 `c0be83d`；最终提交与推送以交付报告及 `git log` / `git ls-remote`
+核对，不在本文嵌入自身提交 SHA。没有远端 CI、设备或发布动作。
+
+## 前轮：工程基础与输入性能治理（历史）
 
 本轮目标为深度审查旧项目模块、完善新工程工具链/目录/命名/文档，并处理三页滑动的
 额外构建开销，全部审计后提交推送。范围是新仓库工程基础和已有 UI；不迁移旧数据、

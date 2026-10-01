@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../features/assistant/presentation/chat_page.dart';
+import '../../features/browser/presentation/browser_page.dart';
+import '../../features/files/presentation/files_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
+import '../../features/toolbox/presentation/toolbox_page.dart';
 import 'bottom_navigation.dart';
 import 'home_page.dart';
 import 'minus_one_page.dart';
@@ -19,6 +23,9 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   final pager = PageController(initialPage: 1);
   int settled = 1;
+  int destination = 0;
+  int browserReturn = 0;
+  final visitedPages = <int, Widget>{};
   bool preloadReady = false;
   late final pages = <Widget>[
     MinusOnePage(onClose: () => go(1)),
@@ -53,11 +60,41 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  void select(int value) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      if (value == 1) browserReturn = destination;
+      destination = value;
+      // 按访问创建轻量 UI，保留滚动与折叠；隐藏页不启动业务也不响应输入。
+      if (value > 1) {
+        visitedPages.putIfAbsent(
+          value,
+          () => switch (value) {
+            2 => const ToolboxPage(),
+            3 => const FilesPage(),
+            _ => const SettingsPage(),
+          },
+        );
+      }
+    });
+    if (value == 0) go(1);
+  }
+
+  void back() {
+    if (destination == 1) {
+      select(browserReturn);
+    } else if (destination != 0) {
+      select(0);
+    } else {
+      go(1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: settled == 1,
+    canPop: destination == 0 && settled == 1,
     onPopInvokedWithResult: (didPop, result) {
-      if (!didPop) go(1);
+      if (!didPop) back();
     },
     child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -71,24 +108,40 @@ class _HomeShellState extends State<HomeShell> {
       child: Scaffold(
         body: Stack(
           children: [
-            ScrollConfiguration(
-              behavior: const MaterialScrollBehavior().copyWith(
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.stylus,
-                  PointerDeviceKind.trackpad,
-                },
-              ),
-              child: PageView(
-                controller: pager,
-                // 保留系统手势仲裁阈值，但胜出后从按下点计算跟手位移。
-                dragStartBehavior: DragStartBehavior.down,
-                allowImplicitScrolling: preloadReady,
-                onPageChanged: (value) => setState(() => settled = value),
-                children: pages,
+            Offstage(
+              offstage: destination != 0,
+              child: TickerMode(
+                enabled: destination == 0,
+                child: ScrollConfiguration(
+                  behavior: const MaterialScrollBehavior().copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.stylus,
+                      PointerDeviceKind.trackpad,
+                    },
+                  ),
+                  child: PageView(
+                    controller: pager,
+                    // 保留系统手势仲裁阈值，但胜出后从按下点计算跟手位移。
+                    dragStartBehavior: DragStartBehavior.down,
+                    allowImplicitScrolling: preloadReady,
+                    onPageChanged: (value) => setState(() => settled = value),
+                    children: pages,
+                  ),
+                ),
               ),
             ),
+            if (destination == 1) BrowserPage(onBack: back),
+            for (final entry in visitedPages.entries)
+              Offstage(
+                key: ValueKey(entry.key),
+                offstage: destination != entry.key,
+                child: TickerMode(
+                  enabled: destination == entry.key,
+                  child: entry.value,
+                ),
+              ),
             Positioned(
               left: 0,
               right: 0,
@@ -96,11 +149,18 @@ class _HomeShellState extends State<HomeShell> {
               child: AnimatedBuilder(
                 animation: pager,
                 child: RepaintBoundary(
-                  child: HomeBottomNavigation(onHome: () => go(1)),
+                  child: HomeBottomNavigation(
+                    selected: destination,
+                    onSelected: select,
+                  ),
                 ),
                 builder: (context, child) {
                   final position = pager.hasClients ? pager.page ?? 1 : 1.0;
-                  final alpha = (1 - (position - 1).abs()).clamp(0.0, 1.0);
+                  final alpha = destination == 1
+                      ? 0.0
+                      : destination != 0
+                      ? 1.0
+                      : (1 - (position - 1).abs()).clamp(0.0, 1.0);
                   return IgnorePointer(
                     ignoring: alpha < .999,
                     child: ExcludeSemantics(

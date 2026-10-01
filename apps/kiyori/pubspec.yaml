@@ -25,3 +25,4 @@ flutter:
   assets:
     - assets/branding/
     - assets/navigation/
+    - assets/chrome/

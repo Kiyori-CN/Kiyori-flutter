@@ -73,8 +73,14 @@ void main() {
         expect(tester.getSize(find.byKey(Key('nav-$i'))), const Size(44, 44));
         await tester.tapAt(tester.getCenter(find.byKey(Key('nav-$i'))));
         await tester.pumpAndSettle();
-        expect(find.text('搜索网页或输入网址'), findsOneWidget);
+        if (i == 1) {
+          expect(find.text('about:blank'), findsOneWidget);
+          await tester.tap(find.bySemanticsLabel('退出浏览器'));
+          await tester.pumpAndSettle();
+        }
       }
+      await tester.tap(find.byKey(const Key('nav-0')));
+      await tester.pumpAndSettle();
       expect(
         tester.getSize(find.byKey(const Key('home-search-frame'))).height,
         114,
@@ -151,7 +157,7 @@ void main() {
     },
   );
 
-  testWidgets('all five icons replay selected animation without navigating', (
+  testWidgets('all five icons replay original selected animation', (
     tester,
   ) async {
     await tester.pumpWidget(KiyoriApp(connect: () async => FakeClient()));
@@ -181,7 +187,10 @@ void main() {
           .01,
         ),
       );
-      expect(find.text('搜索网页或输入网址'), findsOneWidget);
+      if (i == 1) {
+        await tester.tap(find.bySemanticsLabel('退出浏览器'));
+        await tester.pumpAndSettle();
+      }
     }
   });
 }
