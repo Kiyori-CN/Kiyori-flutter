@@ -50,6 +50,11 @@ void main() {
       await tester.tap(find.text('我的账号'));
       await tester.pumpAndSettle();
       expect(find.text('我的账号'), findsOneWidget);
+      // 账号入口已接入详情；先验证来源返回，不能在模态页面下点击壳层底栏。
+      expect(find.byKey(const Key('nav-0')), findsNothing);
+      await tester.tap(find.bySemanticsLabel('返回'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('nav-4')), findsOneWidget);
       await tester.tap(find.byKey(const Key('nav-0')));
       await tester.pumpAndSettle();
       expect(find.text('搜索网页或输入网址'), findsOneWidget);

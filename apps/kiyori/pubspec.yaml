@@ -10,8 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   kiyori_bridge: ^0.1.0
   kiyori_ui: ^0.1.0
+  markdown: 7.3.1
 
 dev_dependencies:
   integration_test:
@@ -26,3 +29,12 @@ flutter:
     - assets/branding/
     - assets/navigation/
     - assets/chrome/
+    - assets/emoji/happy/
+    - assets/emoji/sad/
+    - assets/emoji/angry/
+    - assets/emoji/surprised/
+    - assets/emoji/confused/
+    - assets/emoji/crying/
+    - assets/emoji/like_you/
+    - assets/emoji/miss_you/
+    - assets/emoji/speechless/

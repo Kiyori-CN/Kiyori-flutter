@@ -40,6 +40,12 @@ void main() {
             expect(find.text(entry.$2), findsWidgets);
             expect(client.starts, 0);
             expect(tester.takeException(), isNull);
+            if (entry.$1 == 4) {
+              // 账号入口已接入详情，返回设置列表后继续验证一级滚动。
+              expect(find.text('GitHub 账号'), findsOneWidget);
+              await tester.binding.handlePopRoute();
+              await tester.pumpAndSettle();
+            }
             await tester.drag(
               find.byType(ListView).first,
               const Offset(0, -1500),

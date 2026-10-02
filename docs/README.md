@@ -7,6 +7,7 @@
 - [产品范围](product/scope.md)：目标用户、能力范围和非目标。
 - [ADR 0001：语言与框架](decisions/0001-technology-stack.md)：候选方案、选择、成本与重新评估条件。
 - [ADR 0002：交互与边界](decisions/0002-interaction-and-module-boundaries.md)：分页性能、模块化单体与原生方案的取舍。
+- [ADR 0003：资料 Markdown](decisions/0003-profile-markdown-presentation.md)：编辑高亮、静态解析、展示与资源边界。
 
 ## 架构
 
@@ -18,6 +19,7 @@
 
 ## 领域设计
 
+- [全页面 UI 复刻方案](design/ui-replication-plan.md)：分层顺序、组件复用、页面保真与持续验收。
 - [UI 复刻契约](design/ui-parity.md)：原项目依据、首页三页、图标与底栏、空点击及验证范围。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。
 - [浏览器与网络](design/browser-and-network.md)：会话、广告拦截、应用代理与系统代理边界。
@@ -33,9 +35,11 @@
 - [本机环境报告](development/environment-report.md)：实际探测、安装、构建与剩余缺口。
 - [验证策略](development/testing.md)：哪些检查能证明什么，以及何时执行。
 - [代码与语言约定](development/coding-conventions.md)：真实目录、依赖方向和各语言职责。
+- [UI 复刻开发流程](development/ui-replication-workflow.md)：来源追踪、定向验证、截图与交付复用。
 - [输入响应与帧性能](development/performance.md)：滑动优化、Profile 入口、真机指标与未验证边界。
 - [路线图](roadmap.md)：各里程碑的输入、交付和完成信号。
 - [当前状态](status.md)：唯一实施进度与下一任务入口。
+- [历史实施记录](status-history.md)：保留历史批次证据，不代表当前授权或最新产物。
 - [资料来源](references.md)：官方资料与核验日期。
 
 ## 文档约定

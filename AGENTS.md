@@ -14,6 +14,7 @@
 - 遵循[仓库布局](docs/architecture/repository-layout.md)与[模块目录](docs/architecture/module-catalog.md)。功能按实际交付创建，不生成空实现、无用途 package 或重复 `common/utils/helpers` 层。
 - 实施功能前按[旧模块地图](docs/architecture/legacy-module-map.md)核对来源；遵循[语言与代码约定](docs/development/coding-conventions.md)。feature 不反向依赖 app，公共 UI 不依赖业务。
 - UI、流式内容与平台视图变更遵守[性能契约](docs/development/performance.md)：先消除主线程重复工作，Profile 真机测量；Debug 测试不能宣称触摸延迟或帧性能通过。
+- 复刻按[开发流程](docs/development/ui-replication-workflow.md)追踪宿主、默认值、资源和弹层；定向验证用 `tools/test-ui.ps1`，旧源索引用 `tools/inspect-legacy.ps1`，不能把文件数当页面覆盖率。
 - Dart 管界面投影和交互；Rust 管共享业务、持久化和策略；原生适配管理系统句柄与生命周期。不得为 AI 再建一套浏览器、下载器或文件数据库。
 - 平台不可用能力返回明确原因；不得静默回退、假成功或把未编译 iOS 代码称为已验证。
 - 官方协议、语言标准库与第三方依赖保留其准确名称和许可证；项目自有命名使用 Kiyori，不复制其它产品品牌或代码布局。

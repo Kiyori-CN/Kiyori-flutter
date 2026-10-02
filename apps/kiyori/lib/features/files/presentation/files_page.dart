@@ -4,7 +4,8 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 typedef _Entry = (String, IconData, IconTone, String);
 
 class FilesPage extends StatelessWidget {
-  const FilesPage({super.key});
+  const FilesPage({this.onSettings = emptyAction, super.key});
+  final VoidCallback onSettings;
   // 未接入扫描，使用旧页面未统计状态，不伪造文件数量或设备容量。
   static const types = <_Entry>[
     ('图片', Icons.image, IconTone.image, '待统计'),
@@ -31,12 +32,13 @@ class FilesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PrimaryPage(
     title: '文件管理',
-    actions: const [
+    actions: [
       SizedBox(
         width: 96,
         child: PrimaryHeaderActions(
           searchLabel: '搜索文件',
           settingsLabel: '文件管理器设置',
+          onSettings: onSettings,
         ),
       ),
     ],

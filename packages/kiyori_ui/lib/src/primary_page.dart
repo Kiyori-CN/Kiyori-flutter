@@ -15,6 +15,7 @@ abstract final class PrimaryColors {
 enum IconTone {
   account(0xFF34974E, 0xFFEDF6EF),
   ai(0xFF3D73D9, 0xFFEAF1FF),
+  memory(0xFF6255A5, 0xFFF0EFFA),
   tools(0xFFC76E2E, 0xFFFAF2EC),
   browser(0xFF2584E9, 0xFFEBF4FD),
   download(0xFF079770, 0xFFE9F6F2),
@@ -32,7 +33,12 @@ enum IconTone {
   code(0xFF168E96, 0xFFEAF5F6),
   automation(0xFF17768B, 0xFFE4F5F8),
   storage(0xFF7D7DAE, 0xFFF3F3F8),
-  recycle(0xFFBA3A42, 0xFFFDEAEA);
+  recycle(0xFFBA3A42, 0xFFFDEAEA),
+  neutral(0xFF607080, 0xFFF1F2F4),
+  warning(0xFFA77F10, 0xFFF7F3E9),
+  reading(0xFF40937D, 0xFFEEF5F3),
+  link(0xFF1491B0, 0xFFEAF5F8),
+  settings(0xFF6B7585, 0xFFF0F2F5);
 
   const IconTone(this.foreground, this.background);
   final int foreground, background;
@@ -184,15 +190,19 @@ class PrimaryHeaderActions extends StatelessWidget {
   const PrimaryHeaderActions({
     required this.searchLabel,
     required this.settingsLabel,
+    this.onSettings = emptyAction,
+    this.onSearch = emptyAction,
     super.key,
   });
   final String searchLabel, settingsLabel;
+  final VoidCallback onSettings, onSearch;
   @override
   Widget build(BuildContext context) => Row(
     children: [
       ShellAction(
         Icons.search,
         searchLabel,
+        onTap: onSearch,
         size: 48,
         iconSize: 24,
         color: IconTone.browser.icon,
@@ -200,6 +210,7 @@ class PrimaryHeaderActions extends StatelessWidget {
       ShellAction(
         Icons.settings_outlined,
         settingsLabel,
+        onTap: onSettings,
         size: 48,
         iconSize: 24,
         color: IconTone.ai.icon,

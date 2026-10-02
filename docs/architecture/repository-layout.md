@@ -2,6 +2,11 @@
 
 ## 设计原则
 
+当前详情装配集中在 `apps/kiyori/lib/app/shell/settings_navigation.dart`，只借用现有
+Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存生命周期。feature仅接收
+回调，不反向 import app。截图测试共享 `apps/kiyori/test/support/ui_capture.dart`；
+工具入口在 `tools/`，临时脚本、日志、图片在忽略的 `work/`，不形成第二正式工具目录。
+
 根目录表示工程角色，角色内部按语言生态和领域命名。初期采用模块化单体，不把每个页面拆成 package，也不预造几十个 crate。目录只有在承载真实实现、测试或文档时创建。
 
 下图是**目标布局**；M1 已建立 `apps/kiyori`、`kiyori_ui`、`kiyori_bridge`、`kiyori_core`、`kiyori_ffi` 与根 Pub/Cargo workspace。当前尚无原生系统能力，`kiyori_platform` 随首个真实 adapter 创建；业务 feature、SDK、extensions 和 CI 也按实际需求建立，不放空 `.gitkeep` 或假实现。

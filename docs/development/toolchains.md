@@ -75,4 +75,8 @@ Native Assets 依赖要求 `crates/kiyori_ffi/rust-toolchain.toml`，因此保�
 
 ## 本轮检查边界
 
+本地 Android task output cache 由 `org.gradle.caching=true` 启用；保留已验证的工具链
+组合，不因开发批次开始就升级。没有配置远端缓存或自动外发 build scan；configuration
+cache 必须等 Flutter/Native Assets 插件组合经过实际兼容验证后再启用。
+
 环境 doctor 证明基础工具可发现；最小构建证明工具能协同生成产物；它们都不能证明 Kiyori 业务完成、FFI 集成正确或设备体验通过。本轮实际命令与结果见[环境报告](environment-report.md)。

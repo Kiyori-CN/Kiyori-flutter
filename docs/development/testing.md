@@ -21,6 +21,10 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+页面迭代可从根目录运行 `tools/test-ui.ps1 -Test <name>_test.dart`；指定 `-Capture`
+复用真实 app 资源和本机字体捕获。脚本不会替代完整 verify，详见
+[复刻流程](ui-replication-workflow.md)。截图必须在可追溯源码版本上生成，不能在验证中修改输入。
+
 核心优先覆盖权限撤销、流取消、提交结果未知、任务恢复、数据库迁移、资源 URI/路径差异、规则切换、Range 续传和扩展输入边界。测试行为与契约，不为每个 getter、目录存在或低风险文本修改写镜像测试。
 
 UI 关注响应式布局、键盘/鼠标/触摸、大字体、可访问性和生命周期。原生能力采用真实平台集成测试，mock 只能验证调用约定，不能证明后台服务、权限弹窗、音频焦点或 WebView 行为。
@@ -31,8 +35,8 @@ UI 关注响应式布局、键盘/鼠标/触摸、大字体、可访问性和生
 
 ## CI 与发布
 
-本机脚本作为未来 CI 的共同入口；本轮已获提交推送授权，但没有远端计算资源/工作流运行授权，
-因此不创建会在 push 时自动触发的 workflow。Windows + Android CI 接线单独推进，Apple runner
+本机脚本作为未来 CI 的共同入口；Git 提交推送授权不自动包含远端计算资源/工作流运行，
+新增会在 push 时自动触发的 workflow 需对应授权。Windows + Android CI 接线单独推进，Apple runner
 仍需资源授权，不宣称本地脚本已在 CI 验证。
 
 产物保存在忽略的 `artifacts/` 或 CI artifacts，不提交 APK、EXE、DLL、SO、SDK 和私钥。记录源 revision、工具版本、目标 ABI、构建时间和 SHA-256。Debug 编译通过不表示 Release、签名、商店审核或用户设备验收完成。

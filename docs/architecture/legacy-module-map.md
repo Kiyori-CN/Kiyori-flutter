@@ -80,6 +80,16 @@ Gradle、terminal 子模块、包根和数据库布局套进新仓库。
 
 ## 每个领域实施前的源码核对
 
+工程治理复查再次核对同一旧revision的九模块声明、运行时契约索引与壳/浏览器/媒体/
+平台/AI/扩展边界。`tools/inspect-legacy.ps1 -Source <旧checkout> -Filter <路径片段>`
+生成只读JSON导航清单，包含revision与观察时间；不会读取未跟踪私密文件或修改旧源码。
+本轮跟踪文件4948个，UI/设计/壳层Kotlin文件1072个。数字是定位范围，不是页面覆盖率。
+
+对各模块的迁移结论保持：app转为按领域UI；terminal、showerclient属于平台能力；
+mnn/llama属于推理adapter；dragonbones/mmd/fbx属于avatar渲染adapter；quickjs属于
+扩展运行时。没有一个旧JNI模块可凭Android编译通过就算三端已支持；本批不复制这些
+二进制或旧数据。全模块逐行审计与真实能力实现必须随具体切片推进。
+
 先查旧仓库 `docs/doc-src/contracts/README.md` 和对应 `architecture/`，再追踪本表 owner
 的构造/调用、状态更新、取消/释放与测试；记录来源 commit。用真实用例列出尺寸/手势、
 成功/错误/取消、后台恢复、权限和大数据行为，划分已实现与未接入。平台特有能力先做

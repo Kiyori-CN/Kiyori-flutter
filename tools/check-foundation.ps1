@@ -49,6 +49,17 @@ foreach ($relative in $paths) {
   }
 }
 
+# 公共 UI 不能反向依赖应用/桥接。检查真实 import/export，不维护文件哈希快照。
+foreach ($file in Get-ChildItem (Join-Path $repositoryRoot 'packages/kiyori_ui/lib') -Filter '*.dart' -Recurse -File) {
+  $content = Get-Content -LiteralPath $file.FullName -Raw
+  foreach ($match in [regex]::Matches($content, '(?m)^\s*(?:import|export)\s+[''"]([^''"]+)[''"]')) {
+    $uri = $match.Groups[1].Value
+    if ($uri -match '^package:(kiyori|kiyori_bridge)/') {
+      $failures.Add("Shared UI imports business/composition: $($file.Name) -> $uri")
+    }
+  }
+}
+
 $baseline = Get-Content -LiteralPath (Join-Path $repositoryRoot 'toolchains.json') -Raw | ConvertFrom-Json
 $rustPin = Get-Content -LiteralPath (Join-Path $repositoryRoot 'rust-toolchain.toml') -Raw
 if ($rustPin -notmatch ('(?m)^channel = "' + [regex]::Escape($baseline.rust.version) + '"$')) { $failures.Add('Rust version differs between toolchains.json and rust-toolchain.toml') }

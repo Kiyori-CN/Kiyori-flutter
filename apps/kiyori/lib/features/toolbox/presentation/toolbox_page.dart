@@ -1,88 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-typedef _Tool = (String, IconData, IconTone);
+import 'toolbox_presentation.dart';
 
 /// ToolboxCatalog + ScreenRouteRegistry 的内置顺序；不读取旧数据或启动工具。
 class ToolboxPage extends StatefulWidget {
-  const ToolboxPage({super.key});
+  const ToolboxPage({
+    this.onSettings = emptyAction,
+    this.onSpeech = emptyAction,
+    super.key,
+  });
+  final VoidCallback onSettings;
+  final VoidCallback onSpeech;
   @override
   State<ToolboxPage> createState() => _ToolboxPageState();
 }
 
 class _ToolboxPageState extends State<ToolboxPage> {
   final collapsed = <int>{};
-  static const document = (
-    '文档工作台',
-    Icons.description_outlined,
-    IconTone.document,
-  );
-  static const speech = ('文本转语音', Icons.record_voice_over, IconTone.audio);
-  static const transcript = ('语音转文字', Icons.mic, IconTone.audio);
-  static const terminal = ('命令终端', Icons.terminal, IconTone.terminal);
-  static const List<(String, List<_Tool>)> groups = [
-    ('常用工具', [document, speech, transcript, terminal]),
-    (
-      '内容处理',
-      [
-        document,
-        ('音乐播放器', Icons.music_note_outlined, IconTone.audio),
-        speech,
-        transcript,
-        ('哔哩哔哩', Icons.video_library, IconTone.video),
-        ('音视频处理', Icons.video_settings, IconTone.video),
-        ('HTML 打包', Icons.html, IconTone.code),
-      ],
-    ),
-    (
-      'AI 助手',
-      [
-        ('默认助手设置', Icons.smart_toy, IconTone.ai),
-        ('API 密钥', Icons.token, IconTone.storage),
-        ('AutoGLM 配置', Icons.auto_mode, IconTone.automation),
-        ('AutoGLM 执行', Icons.auto_mode, IconTone.automation),
-      ],
-    ),
-    (
-      '开发调试',
-      [
-        ('工具测试', Icons.build, IconTone.tools),
-        terminal,
-        ('界面调试', Icons.device_hub, IconTone.network),
-        ('命令执行器', Icons.code, IconTone.code),
-        ('日志查看', Icons.data_object, IconTone.code),
-        ('性能诊断', Icons.data_object, IconTone.code),
-        ('数据库工具', Icons.table_view, IconTone.success),
-      ],
-    ),
-    (
-      '设备管理',
-      [
-        ('应用权限管理', Icons.security, IconTone.security),
-        ('幻象进程限制', Icons.lock_open, IconTone.security),
-      ],
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) => PrimaryPage(
     title: '工具箱',
-    actions: const [
+    actions: [
       SizedBox(
         width: 96,
         child: PrimaryHeaderActions(
           searchLabel: '搜索工具',
           settingsLabel: '工具箱设置',
+          onSettings: widget.onSettings,
         ),
       ),
     ],
     child: ListView.separated(
       key: const PageStorageKey('toolbox-list'),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 86),
-      itemCount: groups.length,
+      itemCount: ToolboxPresentation.groups.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
-        final group = groups[index];
+        final group = ToolboxPresentation.groups[index];
         final closed = collapsed.contains(index);
         return PrimaryCard(
           child: Padding(
@@ -125,7 +80,15 @@ class _ToolboxPageState extends State<ToolboxPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 2,
-                    children: [for (final tool in group.$2) _ToolChip(tool)],
+                    children: [
+                      for (final tool in group.$2)
+                        _ToolChip(
+                          tool,
+                          onTap: tool == ToolboxPresentation.speech
+                              ? widget.onSpeech
+                              : emptyAction,
+                        ),
+                    ],
                   ),
               ],
             ),
@@ -137,13 +100,14 @@ class _ToolboxPageState extends State<ToolboxPage> {
 }
 
 class _ToolChip extends StatelessWidget {
-  const _ToolChip(this.tool);
-  final _Tool tool;
+  const _ToolChip(this.tool, {required this.onTap});
+  final ToolPresentation tool;
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
     child: InkWell(
-      onTap: emptyAction,
+      onTap: onTap,
       onLongPress: emptyAction,
       borderRadius: BorderRadius.circular(100),
       child: ConstrainedBox(

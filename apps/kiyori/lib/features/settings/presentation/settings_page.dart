@@ -2,7 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    this.onOpenBrowser = emptyAction,
+    this.onOpenDownloads = emptyAction,
+    this.onOpenFiles = emptyAction,
+    this.onOpenPlayer = emptyAction,
+    this.onOpenToolbox = emptyAction,
+    this.onOpenMusic = emptyAction,
+    this.onOpenAdblock = emptyAction,
+    this.onOpenMore = emptyAction,
+    this.onOpenBackup = emptyAction,
+    this.onOpenAppearance = emptyAction,
+    this.onOpenAssistant = emptyAction,
+    this.onOpenAccount = emptyAction,
+    super.key,
+  });
+  final VoidCallback onOpenBrowser;
+  final VoidCallback onOpenDownloads;
+  final VoidCallback onOpenFiles;
+  final VoidCallback onOpenPlayer;
+  final VoidCallback onOpenToolbox;
+  final VoidCallback onOpenMusic;
+  final VoidCallback onOpenAdblock;
+  final VoidCallback onOpenMore;
+  final VoidCallback onOpenBackup;
+  final VoidCallback onOpenAppearance;
+  final VoidCallback onOpenAssistant;
+  final VoidCallback onOpenAccount;
 
   static const groups = [
     [
@@ -78,7 +104,34 @@ class SettingsPage extends StatelessWidget {
                   thickness: .6,
                   color: PrimaryColors.divider,
                 ),
-              _SettingsRow(groups[index][row]),
+              _SettingsRow(
+                groups[index][row],
+                onTap: groups[index][row].$1 == '网页浏览器'
+                    ? onOpenBrowser
+                    : groups[index][row].$1 == '文件下载器'
+                    ? onOpenDownloads
+                    : groups[index][row].$1 == '文件管理器'
+                    ? onOpenFiles
+                    : groups[index][row].$1 == '视频播放器'
+                    ? onOpenPlayer
+                    : groups[index][row].$1 == '工具箱'
+                    ? onOpenToolbox
+                    : groups[index][row].$1 == '音乐播放器'
+                    ? onOpenMusic
+                    : groups[index][row].$1 == '广告拦截器'
+                    ? onOpenAdblock
+                    : groups[index][row].$1 == '更多功能'
+                    ? onOpenMore
+                    : groups[index][row].$1 == '数据备份'
+                    ? onOpenBackup
+                    : groups[index][row].$1 == '界面定制'
+                    ? onOpenAppearance
+                    : groups[index][row].$1 == 'AI 助手'
+                    ? onOpenAssistant
+                    : groups[index][row].$1 == '我的账号'
+                    ? onOpenAccount
+                    : emptyAction,
+              ),
             ],
           ],
         ),
@@ -88,11 +141,12 @@ class SettingsPage extends StatelessWidget {
 }
 
 class _SettingsRow extends StatelessWidget {
-  const _SettingsRow(this.entry);
+  const _SettingsRow(this.entry, {this.onTap = emptyAction});
   final (String, IconData, IconTone) entry;
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: emptyAction,
+    onTap: onTap,
     child: Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 14, 10),
       child: Row(
@@ -101,10 +155,7 @@ class _SettingsRow extends StatelessWidget {
             entry.$2,
             entry.$3,
             glyph: entry.$1 == 'AI 助手'
-                ? CustomPaint(
-                    size: const Size.square(17),
-                    painter: _AiSparkle(entry.$3.icon),
-                  )
+                ? AiSparkleIcon(size: 17, color: entry.$3.icon)
                 : null,
           ),
           const SizedBox(width: 13),
@@ -128,27 +179,4 @@ class _SettingsRow extends StatelessWidget {
       ),
     ),
   );
-}
-
-/// 原 KiyoriActionIcons.aiAssistant 的 24 单位路径。
-class _AiSparkle extends CustomPainter {
-  const _AiSparkle(this.color);
-  final Color color;
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24, size.height / 24);
-    canvas.drawPath(
-      Path()
-        ..moveTo(12, 2)
-        ..cubicTo(13.3, 8.7, 15.3, 10.7, 22, 12)
-        ..cubicTo(15.3, 13.3, 13.3, 15.3, 12, 22)
-        ..cubicTo(10.7, 15.3, 8.7, 13.3, 2, 12)
-        ..cubicTo(8.7, 10.7, 10.7, 8.7, 12, 2)
-        ..close(),
-      Paint()..color = color,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_AiSparkle oldDelegate) => color != oldDelegate.color;
 }

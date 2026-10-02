@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 export 'src/shell_action.dart';
+export 'src/ai_sparkle_icon.dart';
 export 'src/primary_page.dart';
+export 'src/settings_components.dart';
+export 'src/settings_selection.dart';
+export 'src/modal_drawer.dart';
+export 'src/search_field.dart';
+export 'src/settings_workspace_page.dart';
 
 abstract final class KiyoriTheme {
   static ThemeData light() => _create(Brightness.light);
@@ -15,6 +21,23 @@ abstract final class KiyoriTheme {
           brightness: brightness,
         ).copyWith(
           primary: Color(dark ? 0xFF90CAF9 : 0xFF256DB0),
+          onPrimary: Color(dark ? 0xFF0A2638 : 0xFFFFFFFF),
+          primaryContainer: Color(dark ? 0xFF0B5F94 : 0xFFD8ECFF),
+          onPrimaryContainer: Color(dark ? 0xFFD8ECFF : 0xFF12324A),
+          inversePrimary: Color(dark ? 0xFF256DB0 : 0xFF90CAF9),
+          secondary: Color(dark ? 0xFFB9CBD4 : 0xFF536D79),
+          onSecondary: Color(dark ? 0xFF20343D : 0xFFFFFFFF),
+          secondaryContainer: Color(dark ? 0xFF374D57 : 0xFFE4EDF1),
+          onSecondaryContainer: Color(dark ? 0xFFE4EDF1 : 0xFF20343D),
+          tertiary: Color(dark ? 0xFF9AA0A6 : 0xFF3C4043),
+          onTertiary: Color(dark ? 0xFF202124 : 0xFFFFFFFF),
+          tertiaryContainer: Color(dark ? 0xFF282A2D : 0xFFF1F3F4),
+          onTertiaryContainer: Color(dark ? 0xFFE8EAED : 0xFF202124),
+          error: Color(dark ? 0xFFF2B8B5 : 0xFFB3261E),
+          onError: Color(dark ? 0xFF601410 : 0xFFFFFFFF),
+          errorContainer: Color(dark ? 0xFF8C1D18 : 0xFFF9DEDC),
+          onErrorContainer: Color(dark ? 0xFFF9DEDC : 0xFF410E0B),
+          surfaceTint: Colors.transparent,
           surface: Color(dark ? 0xFF121212 : 0xFFFFFFFF),
           onSurface: Color(dark ? 0xFFE8EAED : 0xFF202124),
           onSurfaceVariant: Color(dark ? 0xFFBDC1C6 : 0xFF5F6368),
@@ -39,6 +62,11 @@ abstract final class KiyoriTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: colors.surface,
         centerTitle: false,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       cardTheme: CardThemeData(
         elevation: 0,

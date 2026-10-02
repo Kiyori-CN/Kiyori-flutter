@@ -2,8 +2,51 @@
 
 本表描述目标模块，全部业务仍待实现。`core` 指 `crates/kiyori_core/src`；`feature` 指 `apps/kiyori/lib/features`；`native` 指 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
 
+详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
+目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实
+未来归media领域，不新建平行player状态。捕获测试辅助只在test/support，不进入产品依赖。
+
 当前已有 `feature/assistant/presentation` 及 browser、toolbox、files、settings 的一级 UI。
-四页只投影旧默认外观与本地展示状态，业务调用保留空点击；这不改变下表的业务待实现边界。
+已追加 browser 设置及子页、downloads 设置、files 设置、video 设置及字幕/声音/弹幕/控制栏子页，
+toolbox 设置与常用/分组/批量选择抽屉。工具箱入口展示目录共用，非领域工具注册表。
+documents 设置及说明弹窗、files 格式选择器、music 设置和音源导入/备份确认也已加入
+UI 投影；没有加载文档、播放、下载、调用系统选择器或实际导入导出。
+settings 追加更多功能、存储汇总、产物目录编辑和网络代理默认态，app 负责跨领域导航。
+工作台顶栏/固定底栏在 kiyori_ui，输入草稿仍局部持有；路径与代理外观校验不构成
+文件访问、授权或网络策略，未来领域 owner 必须重新验证并返回权威快照。
+settings 中的备份页面以 BackupPresentation 投影原始计数、配置和会话选择，
+不建立备份存储或扫描器；法律、开源阅读和权限分组同属展示层，系统事实由后续 adapter 注入。
+settings/presentation/appearance 按原五标签拆分，聊天面板持有样式草稿，编辑器与预览
+共享该草稿；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
+accounts/presentation 仅有未连接列表与方式选择 UI，不拥有凭据存储、登录控制器或
+WebView；assistant/presentation 的设置入口通过类型化回调交给 app 装配。
+appearance 的 global_display_page 与 layout_adjustment_page 只投影旧默认值和验证外观，
+不接 DisplayPreferencesManager、UserPreferencesManager、前台服务、Root 或截图管线。
+onboarding/presentation 保存引导导航和本次草稿，复用 settings 的法律正文及权限目录；
+app 用全屏模态路由装配重看入口，系统权限和首启完成均不在 UI 中写入。
+assistant/presentation/history 投影聊天概览、角色/群聊统计、批量归类和无绑定工作区，
+复用 settings 的卡片外观；只读快照由后续领域 owner 注入，不另建聊天库或文件扫描器。
+assistant/presentation/context 持有上下文/总结/历史媒体局部表单，字段与错误按局部
+监听更新；不复刻旧偏好存储与自动保存协程，真实写入后续统一交给模型配置 owner。
+assistant/presentation/models 目前投影11功能的模型分配卡片与配置/模型两层展开，
+共享摘要类型不包含凭据；管理配置由 app 接线，测试不构造客户端或发起网络请求。
+同目录模型/API页按连接配置、上下文/请求头/高级卡片、参数与标签编辑器拆分；每个已访问
+配置子树保留独立草稿，配置目录变化按 ID 对齐。供应商协议目录是只读展示常量，密钥仅随
+局部输入控制器存活，领域配置 owner 仍待接入，不复制旧自动保存或服务刷新流程。
+assistant/presentation/permissions 投影工具目录与授权草稿，允许/禁止例外共用一个映射；
+不建立权限裁决器。assistant/presentation/profile 包含资料编辑、语法颜色与静态 Markdown
+预览；AST 仅随正文变化解析，不加载外部媒体，不替代未来共享流式聊天 renderer。
+资料快照、旧档案与保存结果后续由领域 owner 注入，当前不接文件读写或剪贴板。
+assistant/presentation/server 投影 HTTP 配置、状态、地址与旧调用示例，不持有 socket、
+网卡探测或令牌生成器。replies 持有回复参数与自定义表情 UI；打包素材目录和类别选择是
+展示模型，未来角色范围、增删和资源引用由共享领域 owner 接入，不建第二角色数据库。
+assistant/presentation/usage 将已折算金额、请求/Token计数和模型价格映射成统计卡片与
+分布图；定价弹窗只保存控制器草稿，真实计价、汇率和重置仍归领域层。
+speech/presentation 已有语音配置选择/名称弹窗与 STT 三引擎表单；独立配置草稿随页面
+存活，不创建识别器、音频设备句柄或远程客户端。TTS 追加九引擎设置、清理规则、
+系统/远程目录选择及朗读工具页，复用同一展示快照边界；语音唤醒包含三组设置与
+个人录入、附件编辑/新建/删除弹窗，不建立监听器、录音器、上下文抓取器或偏好仓储。
+这些 UI 只投影旧默认外观与局部展示草稿，业务调用保留空点击；这不改变下表的业务待实现边界。
 
 ## 产品模块
 

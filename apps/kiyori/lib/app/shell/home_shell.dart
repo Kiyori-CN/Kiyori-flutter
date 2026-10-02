@@ -8,8 +8,8 @@ import 'package:flutter/services.dart';
 import '../../features/assistant/presentation/chat_page.dart';
 import '../../features/browser/presentation/browser_page.dart';
 import '../../features/files/presentation/files_page.dart';
-import '../../features/settings/presentation/settings_page.dart';
 import '../../features/toolbox/presentation/toolbox_page.dart';
+import 'settings_navigation.dart';
 import 'bottom_navigation.dart';
 import 'home_page.dart';
 import 'minus_one_page.dart';
@@ -21,6 +21,9 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  SettingsNavigation get navigation =>
+      SettingsNavigation(Navigator.of(context));
+
   final pager = PageController(initialPage: 1);
   int settled = 1;
   int destination = 0;
@@ -70,9 +73,12 @@ class _HomeShellState extends State<HomeShell> {
         visitedPages.putIfAbsent(
           value,
           () => switch (value) {
-            2 => const ToolboxPage(),
-            3 => const FilesPage(),
-            _ => const SettingsPage(),
+            2 => ToolboxPage(
+              onSettings: navigation.openToolboxSettings,
+              onSpeech: navigation.openSpeechTool,
+            ),
+            3 => FilesPage(onSettings: navigation.openFileSettings),
+            _ => navigation.buildSettingsPage(),
           },
         );
       }
