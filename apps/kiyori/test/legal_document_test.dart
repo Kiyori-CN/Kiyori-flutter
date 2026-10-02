@@ -4,7 +4,7 @@ import 'package:kiyori/features/settings/presentation/legal_document.dart';
 import 'package:kiyori/features/settings/presentation/legal_document_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'settings_detail_test.dart' show reveal;
+import 'support/ui_test_helpers.dart' show reveal;
 
 void main() {
   for (final document in LegalDocument.values) {

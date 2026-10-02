@@ -33,14 +33,14 @@ class BrowserPasswordPage extends StatelessWidget {
                     color: Theme.of(context).colorScheme.error,
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 4),
                   child: Text(
                     '本机凭据存储不可用',
                     style: TextStyle(
                       fontSize: 12,
                       height: 17 / 12,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                 ),

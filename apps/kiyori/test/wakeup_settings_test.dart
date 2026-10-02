@@ -4,7 +4,7 @@ import 'package:kiyori/features/speech/presentation/wakeup_settings_page.dart';
 import 'package:kiyori/features/speech/presentation/wakeup_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'stt_settings_test.dart' show revealStt;
+import 'support/ui_test_helpers.dart' show revealStt;
 
 void main() {
   for (final size in [

@@ -67,14 +67,14 @@ class _AdblockEditorState extends State<_AdblockEditor> {
               Text(
                 description,
                 style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(color: PrimaryColors.secondary),
+                    ?.copyWith(color: PrimaryColors.of(context).secondary),
               ),
               TextField(
                 controller: first,
                 onChanged: (_) => setState(() {}),
                 minLines: widget.kind == AdblockEditorKind.network ? 2 : 1,
                 maxLines: widget.kind == AdblockEditorKind.network ? 5 : 1,
-                decoration: settingsFieldDecoration(label: firstLabel),
+                decoration: settingsFieldDecoration(context, label: firstLabel),
               ),
               if (secondLabel != null)
                 TextField(
@@ -82,7 +82,10 @@ class _AdblockEditorState extends State<_AdblockEditor> {
                   onChanged: (_) => setState(() {}),
                   minLines: 2,
                   maxLines: widget.kind == AdblockEditorKind.element ? 5 : 4,
-                  decoration: settingsFieldDecoration(label: secondLabel),
+                  decoration: settingsFieldDecoration(
+                    context,
+                    label: secondLabel,
+                  ),
                 ),
             ],
           ),

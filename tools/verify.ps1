@@ -12,6 +12,7 @@ Push-Location $repositoryRoot
 try {
   & (Join-Path $PSScriptRoot 'check-foundation.ps1')
   & (Join-Path $PSScriptRoot 'check-toolchains.ps1')
+  & (Join-Path $PSScriptRoot 'test-tooling.ps1')
   Invoke-Checked cargo @('fmt', '--all', '--check')
   Invoke-Checked cargo @('clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings')
   Invoke-Checked cargo @('test', '--workspace', '--locked')

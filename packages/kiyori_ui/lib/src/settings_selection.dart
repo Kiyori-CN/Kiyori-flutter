@@ -53,16 +53,19 @@ class _SettingsSelection extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 14),
         child: Text(
           '当前：$current',
-          style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 12,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
       ),
-      const Divider(height: .6, color: PrimaryColors.divider),
+      Divider(height: .6, color: PrimaryColors.of(context).divider),
       Expanded(
         child: ListView.separated(
           padding: const EdgeInsets.only(bottom: 4),
           itemCount: options.length,
           separatorBuilder: (_, _) =>
-              const Divider(height: .6, color: PrimaryColors.divider),
+              Divider(height: .6, color: PrimaryColors.of(context).divider),
           itemBuilder: (context, index) {
             final option = options[index];
             return Semantics(
@@ -99,10 +102,11 @@ class _SettingsSelection extends StatelessWidget {
                                     padding: const EdgeInsets.only(top: 3),
                                     child: Text(
                                       option.description!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         height: 17 / 12,
-                                        color: PrimaryColors.secondary,
+                                        color: PrimaryColors.of(context)
+                                            .secondary,
                                       ),
                                     ),
                                   ),
@@ -111,9 +115,9 @@ class _SettingsSelection extends StatelessWidget {
                           ),
                         ),
                         if (option.selected)
-                          const Icon(
+                          Icon(
                             Icons.check,
-                            color: PrimaryColors.accent,
+                            color: PrimaryColors.of(context).accent,
                             size: 21,
                           ),
                       ],

@@ -23,7 +23,7 @@ class _BrowserTextSizePageState extends State<BrowserTextSizePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
               decoration: BoxDecoration(
-                color: PrimaryColors.background,
+                color: PrimaryColors.of(context).background,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(

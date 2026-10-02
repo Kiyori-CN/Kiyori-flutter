@@ -41,6 +41,13 @@ flutter doctor -v
 
 `activate.ps1` 与检查器使用 PowerShell 7。持久用户环境策略已登记 Flutter/Pub；其它终端需运行激活脚本或按环境管理器同步，不应依靠当前 Codex 进程的 PATH。不要对新仓库使用旧 `KiyoriAndroid` profile。
 
+激活只对当前 shell 生效，新 shell 的裸 flutter 仍可能解析到旧全局 current；正式
+test-ui/build/verify 的版本检查会拒绝不匹配SDK。不要在排错时绕过这个入口混用 SDK。
+本轮一次未激活的直接诊断构建使用了3.47.5/3.13.4，随后3.47.6/3.13.5复用该hook.dill
+报 `Invalid SDK hash`：hooks_runner记录旧SDK version文件路径，而旧并存SDK未变化。
+恢复时按失败日志定位单个不兼容hook目录，先保留副本再让pin重新生成；不全量clean、
+不修改全局current、不把未用pin的成功构建作为正式交付证据。
+
 ## 在另一台机器准备
 
 1. 安装 Git 与 PowerShell 7，按官方 archive 获取锁定 Flutter 稳定版并校验平台对应摘要。将 SDK 放版本化目录，缓存独立于源码。
@@ -55,7 +62,8 @@ Apple 主机按[平台设计](../design/platforms.md)准备，不能在 Windows 
 
 正式工程提交 Wrapper（含 `distributionSha256Sum`）、Cargo.lock、Pub workspace lock。FRB 各部分版本一致；`tools/generate-bridge.ps1` 生成桥接，`-Check` 核对再生成，`tools/build.ps1` 构建，`tools/verify.ps1` 执行相关静态与行为检查。编译器与原生依赖版本不能只记录在开发机 PATH。
 
-`tools/check-toolchains.ps1` 在 build/verify 前核对实际 Flutter channel/version、随附 Dart 和 rustc；
+`tools/check-toolchains.ps1` 在 build/verify 前核对实际 Flutter channel/version、随附 Dart、
+PATH 直接调用的 Dart 和 rustc，防止 format/test 使用另一套 Dart；
 基础检查核对 AGP/Gradle/摘要/SDK/NDK/FRB 的配置接线。其他机器可以手动配置同版本 PATH，
 不必创建本机 `D:\01_Environment`。`activate.ps1` 仅是这台受管理机器的便捷入口。
 
@@ -70,6 +78,12 @@ Google Maven 稳定版本列表和 9.4.1 POM 确认 AGP 补丁可用；官方聚
 不是追逐与 Gradle/插件组合尚未验证的新 major。VS stable 18.10.1 与本机一致。
 
 Native Assets 依赖要求 `crates/kiyori_ffi/rust-toolchain.toml`，因此保留一份 crate-local pin，基础检查器保证其与根 pin 一致；不是第二版本来源。Apple targets 安装标准库不代表具备 Apple linker 或 Xcode。
+
+Native Assets hook 显式登记根 Cargo 清单/lock/pin、core 与 ffi 两个 crate 清单及本地 pin。
+Cargo dep-info 自动记录源码，但不能代替这些配置输入；产物 hook output 中可核对最终依赖集。
+桥接 `-Check` 比较递归 Dart 输出和 Rust 输出的完整路径/摘要集合，新增或删除也会失败。
+生成后仅对生成 Rust 文件使用 pin 中的 edition 执行 rustfmt，不顺带格式化人工源码。
+检查会实际再生成；若失败，保留并审阅生成差异，不自动覆盖恢复。
 
 新增依赖时先确认三端支持、维护状态、许可证与稳定版本，再通过最小切片验证。每次升级在版本基线注明观察日期和实际证据，保留旧 side-by-side 工具以便恢复。未用到的播放器 SDK、脚本引擎、MCP server runtime 与大型 Android 模拟器不预装。
 

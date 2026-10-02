@@ -35,7 +35,7 @@ class PermissionsPage extends StatelessWidget {
           statuses: statuses,
           onAction: onAction,
         ),
-      const Padding(
+      Padding(
         padding: EdgeInsets.symmetric(horizontal: 31, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +50,7 @@ class PermissionsPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 height: 20 / 12,
-                color: PrimaryColors.secondary,
+                color: PrimaryColors.of(context).secondary,
               ),
             ),
             SizedBox(height: 6),
@@ -59,7 +59,7 @@ class PermissionsPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 height: 20 / 12,
-                color: PrimaryColors.secondary,
+                color: PrimaryColors.of(context).secondary,
               ),
             ),
           ],
@@ -105,12 +105,12 @@ class _Summary extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       '按功能开启，随时可以在系统中调整。无需全部授权。',
                       style: TextStyle(
                         fontSize: 12,
                         height: 17 / 12,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                   ],
@@ -120,10 +120,10 @@ class _Summary extends StatelessWidget {
               Flexible(
                 child: Text(
                   '$ready 项已授权',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: PrimaryColors.accent,
+                    color: PrimaryColors.of(context).accent,
                   ),
                 ),
               ),
@@ -154,7 +154,7 @@ class _Summary extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: PrimaryColors.background,
+                      color: PrimaryColors.of(context).background,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -170,9 +170,9 @@ class _Summary extends StatelessWidget {
                         Text(
                           item.$1,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: PrimaryColors.secondary,
+                            color: PrimaryColors.of(context).secondary,
                           ),
                         ),
                       ],
@@ -186,10 +186,10 @@ class _Summary extends StatelessWidget {
             known
                 ? '${count((status) => status == PermissionStatus.notApplicable)} 项在当前系统无需单独授权。下方分组可展开查看完整用途。'
                 : '权限状态未检查。下方分组可展开查看完整用途。',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 18 / 12,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
         ],
@@ -250,18 +250,18 @@ class _PermissionGroupState extends State<_PermissionGroup>
                             const SizedBox(height: 5),
                             Text(
                               group.$2,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 height: 19 / 12,
-                                color: PrimaryColors.secondary,
+                                color: PrimaryColors.of(context).secondary,
                               ),
                             ),
                             const SizedBox(height: 5),
                             Text(
                               '${group.$4 - group.$3} 项 · 按需开启',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: PrimaryColors.accent,
+                                color: PrimaryColors.of(context).accent,
                               ),
                             ),
                           ],
@@ -363,8 +363,8 @@ class _PermissionRow extends StatelessWidget {
         const Color(0xFFE4F5F8),
       ),
       PermissionStatus.unchecked => (
-        PrimaryColors.secondary,
-        PrimaryColors.divider,
+        PrimaryColors.of(context).secondary,
+        PrimaryColors.of(context).divider,
       ),
       _ => (const Color(0xFF256DB0), const Color(0xFFE8F3FE)),
     };
@@ -390,10 +390,10 @@ class _PermissionRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     entry.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 17 / 12,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                 ],
@@ -427,10 +427,10 @@ class _PermissionRow extends StatelessWidget {
                   if (action != null)
                     Text(
                       action,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: PrimaryColors.accent,
+                        color: PrimaryColors.of(context).accent,
                       ),
                     )
                   else

@@ -75,6 +75,9 @@ Android Debug 产物在 `apps/kiyori/build/app/outputs/flutter-apk/app-debug.apk
 性能排查使用 `-Mode profile`（Android 产物为同目录 `app-profile.apk`），不要据 Debug 判断
 真机手感。三页往返基准、真实触摸验收与高刷帧预算见[性能契约](docs/development/performance.md)。
 `build/verify` 会检查实际 Flutter/Dart/Rust 版本，当前 pin 为 Flutter 3.47.6 / Dart 3.13.5。
+每个新 PowerShell 会话都先运行 `tools/activate.ps1`。同一批验证中，依赖已经解析且
+manifest/lock 未变化时，`tools/test-ui.ps1` 与 `tools/build.ps1` 可追加 `-NoPub`，避免重复
+解析依赖；首次运行或依赖变化后仍使用默认入口。
 
 修改 Rust 公共 API 后运行 `tools/generate-bridge.ps1`。生成器安装、真实桥接测试和 iOS 限制见 [M1 开发指南](docs/development/m1-foundation.md)。
 

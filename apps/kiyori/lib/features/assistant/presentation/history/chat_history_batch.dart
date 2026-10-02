@@ -198,9 +198,10 @@ class _HistoryBatchState extends State<_HistoryBatch>
                                     subtitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: PrimaryColors.secondary,
+                                      color: PrimaryColors.of(context)
+                                          .secondary,
                                     ),
                                   ),
                                 ],

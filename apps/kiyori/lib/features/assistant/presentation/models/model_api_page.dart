@@ -64,20 +64,29 @@ class _ModelApiPageState extends State<ModelApiPage> {
     body: Column(
       children: [
         Expanded(
-          child: IndexedStack(
-            index: widget.configurations.isEmpty ? null : selected,
+          // Key 必须位于直接子节点；框架 IndexedStack 的位置包装层会在重排时
+          // 丢失内层实体状态，也会使仍打开的配置菜单失去原 State。
+          child: Stack(
+            fit: StackFit.expand,
             children: [
               for (var i = 0; i < widget.configurations.length; i++)
                 if (visited.contains(i))
-                  _ModelConfigBody(
+                  Offstage(
                     key: ValueKey(widget.configurations[i].id),
-                    selector: Builder(
-                      builder: (context) =>
-                          _selector(context, widget.configurations[i]),
+                    offstage: i != selected,
+                    child: ExcludeFocus(
+                      excluding: i != selected,
+                      child: TickerMode(
+                        enabled: i == selected,
+                        child: _ModelConfigBody(
+                          selector: Builder(
+                            builder: (context) =>
+                                _selector(context, widget.configurations[i]),
+                          ),
+                        ),
+                      ),
                     ),
-                  )
-                else
-                  const SizedBox.shrink(),
+                  ),
             ],
           ),
         ),
@@ -128,17 +137,25 @@ class _ModelApiPageState extends State<ModelApiPage> {
               ],
             ),
             const SizedBox(height: 8),
-            PopupMenuButton<int>(
+            PopupMenuButton<String>(
               tooltip: '选择配置',
               constraints: const BoxConstraints(maxWidth: 280),
-              onSelected: (index) => setState(() {
-                selected = index;
-                visited.add(index);
-              }),
+              onSelected: (id) {
+                // 弹层打开后目录仍可能更新；旧索引不能选择另一个实体或越界。
+                final index = widget.configurations.indexWhere(
+                  (c) => c.id == id,
+                );
+                if (index < 0) return;
+                FocusManager.instance.primaryFocus?.unfocus();
+                setState(() {
+                  selected = index;
+                  visited.add(index);
+                });
+              },
               itemBuilder: (_) => [
                 for (var i = 0; i < widget.configurations.length; i++)
                   PopupMenuItem(
-                    value: i,
+                    value: widget.configurations[i].id,
                     child: Row(
                       children: [
                         if (i == selected) ...[
@@ -247,7 +264,7 @@ class _ModelApiPageState extends State<ModelApiPage> {
 }
 
 class _ModelConfigBody extends StatelessWidget {
-  const _ModelConfigBody({required this.selector, super.key});
+  const _ModelConfigBody({required this.selector});
   final Widget selector;
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -298,9 +315,9 @@ class _ConfigNameDialogState extends State<_ConfigNameDialog> {
         children: [
           Text(
             widget.rename ? '修改模型配置的名称' : '创建新的模型配置，自定义API和参数设置',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
           const SizedBox(height: 8),

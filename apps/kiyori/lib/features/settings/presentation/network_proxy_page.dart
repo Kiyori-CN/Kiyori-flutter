@@ -106,14 +106,14 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(18, 4, 18, 0),
           child: Text(
             '规则按域名细分；全局让 Kiyori 请求统一进入当前策略组；直连不经过内嵌 Mihomo。',
             style: TextStyle(
               fontSize: 12,
               height: 17 / 12,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
         ),
@@ -126,8 +126,8 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
                 Expanded(
                   child: Material(
                     color: label == '直连'
-                        ? PrimaryColors.accent
-                        : PrimaryColors.background,
+                        ? PrimaryColors.of(context).accent
+                        : PrimaryColors.of(context).background,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       onTap: emptyAction,
@@ -139,8 +139,8 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
                             label,
                             style: TextStyle(
                               color: label == '直连'
-                                  ? Colors.white
-                                  : PrimaryColors.text,
+                                  ? PrimaryColors.of(context).accentContent
+                                  : PrimaryColors.of(context).text,
                               fontWeight: label == '直连'
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -359,7 +359,7 @@ class NetworkProxyNote extends StatelessWidget {
       style: TextStyle(
         fontSize: small ? 12 : 13,
         height: small ? 17 / 12 : 19 / 13,
-        color: PrimaryColors.secondary,
+        color: PrimaryColors.of(context).secondary,
       ),
     ),
   );

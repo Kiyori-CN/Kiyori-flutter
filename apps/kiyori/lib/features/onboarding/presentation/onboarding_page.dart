@@ -127,10 +127,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (!didPop) _back();
     },
     child: Scaffold(
-      backgroundColor: PrimaryColors.background,
+      backgroundColor: PrimaryColors.of(context).background,
       body: SafeArea(
         child: DefaultTextStyle.merge(
-          style: const TextStyle(color: PrimaryColors.text, letterSpacing: 0),
+          style: TextStyle(
+            color: PrimaryColors.of(context).text,
+            letterSpacing: 0,
+          ),
           child: Stack(
             children: [
               Offstage(

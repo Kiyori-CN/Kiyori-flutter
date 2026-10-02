@@ -171,9 +171,12 @@ class _NetworkRuleEditorState extends State<NetworkRuleEditor> {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               '规则类型',
-              style: TextStyle(fontSize: 13, color: PrimaryColors.secondary),
+              style: TextStyle(
+                fontSize: 13,
+                color: PrimaryColors.of(context).secondary,
+              ),
             ),
             const SizedBox(height: 10),
             PopupMenuButton<String>(
@@ -215,9 +218,12 @@ class _NetworkRuleEditorState extends State<NetworkRuleEditor> {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               '匹配动作',
-              style: TextStyle(fontSize: 13, color: PrimaryColors.secondary),
+              style: TextStyle(
+                fontSize: 13,
+                color: PrimaryColors.of(context).secondary,
+              ),
             ),
             Row(
               children: [
@@ -262,14 +268,16 @@ class _RuleActionLabel extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       if (selected) ...[
-        const Icon(Icons.check, size: 14, color: PrimaryColors.accent),
+        Icon(Icons.check, size: 14, color: PrimaryColors.of(context).accent),
         const SizedBox(width: 4),
       ],
       Flexible(
         child: Text(
           text,
           style: TextStyle(
-            color: selected ? PrimaryColors.accent : PrimaryColors.text,
+            color: selected
+                ? PrimaryColors.of(context).accent
+                : PrimaryColors.of(context).text,
           ),
         ),
       ),

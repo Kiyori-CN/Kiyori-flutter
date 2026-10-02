@@ -37,10 +37,10 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
                 children: [
                   Text(
                     widget.document.summary,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       height: 21 / 14,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -126,10 +126,10 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
                     const SizedBox(height: 10),
                     Text(
                       widget.document.sections[index].body,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 26 / 14,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -144,16 +144,19 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           '以上为当前完整中文正文 · 版本 ${LegalDocument.version}',
-          style: TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 12,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
       ],
     ),
   );
 
   Widget _onboarding(BuildContext context) => ColoredBox(
-    color: PrimaryColors.background,
+    color: PrimaryColors.of(context).background,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -178,11 +181,11 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
+                      Text(
                         '协议版本：${LegalDocument.version}',
                         style: TextStyle(
                           fontSize: 11,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ],
@@ -198,10 +201,10 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
               children: [
                 Text(
                   widget.document.summary,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 20 / 14,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -210,12 +213,12 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   '展开目录可定位章节；正文支持滚动与长按复制。',
                   style: TextStyle(
                     fontSize: 12,
                     height: 18 / 12,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ],

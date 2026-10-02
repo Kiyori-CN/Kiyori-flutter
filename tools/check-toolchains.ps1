@@ -19,5 +19,10 @@ try {
   if ($LASTEXITCODE -ne 0 -or $rust -notmatch ('^rustc ' + [regex]::Escape($baseline.rust.version) + ' ')) {
     throw "Expected Rust $($baseline.rust.version); found $rust"
   }
-  Write-Host "PASS: Flutter $($flutter.frameworkVersion), bundled Dart $($flutter.dartSdkVersion), $rust"
+  # format/test 直接调用 PATH 上的 dart，不能只相信 Flutter 报告的随附版本。
+  $dart = & dart --version 2>&1
+  if ($LASTEXITCODE -ne 0 -or "$dart" -notmatch ('^Dart SDK version: ' + [regex]::Escape($baseline.flutter.dartVersion) + ' ')) {
+    throw "Expected Dart $($baseline.flutter.dartVersion) on PATH; found $dart"
+  }
+  Write-Host "PASS: Flutter $($flutter.frameworkVersion), bundled and PATH Dart $($flutter.dartSdkVersion), $rust"
 } finally { Pop-Location }

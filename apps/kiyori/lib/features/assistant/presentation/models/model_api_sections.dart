@@ -347,7 +347,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                 onTap: () => setState(() => queue = !queue),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -363,7 +363,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                             '默认折叠。用于限制请求频率和并发，超限会排队等待。',
                             style: TextStyle(
                               fontSize: 12,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                           ),
                         ],
@@ -373,7 +373,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                       queue
                           ? Icons.keyboard_arrow_up
                           : Icons.keyboard_arrow_down,
-                      color: PrimaryColors.accent,
+                      color: PrimaryColors.of(context).accent,
                     ),
                   ],
                 ),
@@ -406,7 +406,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -415,7 +415,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                       '启用后可管理多个API密钥，系统将自动轮换使用',
                       style: TextStyle(
                         fontSize: 12,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                   ],
@@ -431,9 +431,12 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
       ),
       if (pool) ...[
         const Divider(height: 32),
-        const Text(
+        Text(
           'API密钥池为空，点击下方按钮添加密钥',
-          style: TextStyle(fontSize: 14, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 14,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
         OutlinedButton.icon(
           onPressed: () => showDialog<void>(
@@ -451,9 +454,12 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
             OutlinedButton(onPressed: () {}, child: const Text('导出密钥')),
           ],
         ),
-        const Text(
+        Text(
           '请选择包含API密钥的文本文件，每行一个密钥',
-          style: TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 12,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
       ],
     ],

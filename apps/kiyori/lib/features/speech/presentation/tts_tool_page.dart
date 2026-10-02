@@ -218,14 +218,16 @@ class _TtsToolPageState extends State<TtsToolPage> {
                 stateRow(
                   snapshot.initialized ? Icons.check_circle : Icons.error,
                   snapshot.initialized ? '语音引擎已初始化' : '语音引擎未初始化',
-                  snapshot.initialized ? IconTone.success.icon : colors.error,
+                  snapshot.initialized
+                      ? IconTone.success.iconFor(context)
+                      : colors.error,
                 ),
                 const SizedBox(height: 8),
                 stateRow(
                   snapshot.speaking ? Icons.volume_up : Icons.volume_off,
                   snapshot.speaking ? '正在播放中...' : '未播放',
                   snapshot.speaking
-                      ? IconTone.ai.icon
+                      ? IconTone.ai.iconFor(context)
                       : colors.onSecondaryContainer,
                 ),
               ],

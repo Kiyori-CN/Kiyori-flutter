@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 import 'package:kiyori/features/browser/presentation/adblock_settings_page.dart';
 
-import 'app_test.dart' show FakeClient;
-import 'settings_detail_test.dart' show reveal;
+import 'support/fake_runtime.dart' show FakeClient;
+import 'support/ui_test_helpers.dart' show reveal;
 
 void main() {
   for (final size in [

@@ -26,13 +26,15 @@ class _AppearanceBasicState extends State<AppearanceBasic> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F3FE),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF163044)
+                      : const Color(0xFFE8F3FE),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.palette,
                   size: 20,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
               const SizedBox(width: 12),

@@ -12,15 +12,19 @@ class AppearanceCharacterBinding extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: PrimaryColors.of(context).card,
       borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 20,
           backgroundColor: Color(0xFFEDF1F5),
-          child: Icon(Icons.person, size: 24, color: PrimaryColors.secondary),
+          child: Icon(
+            Icons.person,
+            size: 24,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -29,10 +33,10 @@ class AppearanceCharacterBinding extends StatelessWidget {
             children: [
               Text(
                 '当前角色: $name',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
               const AppearanceDescription('主题设置将自动绑定到此角色卡'),
@@ -40,7 +44,7 @@ class AppearanceCharacterBinding extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Icon(Icons.link, color: IconTone.link.icon, size: 20),
+        Icon(Icons.link, color: IconTone.link.iconFor(context), size: 20),
       ],
     ),
   );
@@ -71,7 +75,7 @@ class AppearanceColorSelection extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: PrimaryColors.muted),
+              border: Border.all(color: PrimaryColors.of(context).muted),
             ),
           ),
         ],

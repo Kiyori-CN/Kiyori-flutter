@@ -100,7 +100,7 @@ Native Assets hook 自动构建与打包 Rust，Android 无手工拷库步骤。
 
 ### 问题处理与环境记录
 
-- FRB 生成后直接 rustfmt 未使用 Cargo edition 上下文，导致生成结果和工作区格式检查漂移。生成脚本统一在结尾执行 `cargo fmt --all`，再生成一致性已通过；没有手工改生成文件。
+- M1 时 FRB 生成后直接 rustfmt 未使用 Cargo edition 上下文，导致格式漂移，当时以 `cargo fmt --all` 修复并验证。后续治理改为只格式化生成文件且显式指定 pin 中 edition，避免检查改写人工源码；当前行为见[工具链说明](toolchains.md)。没有手工改生成文件。
 - Native Assets 需要 crate 本地 Rust pin，因此 `crates/kiyori_ffi/rust-toolchain.toml` 与根文件同步，基础检查验证二者一致。hook 还声明根清单/锁文件和核心 crate 清单依赖，避免修改后错误复用缓存。
 - Dart Stream 未消费时关闭运行时也必须释放任务。桥接实现覆盖关闭与订阅的竞争，并以真实 FFI 测试验证后续订阅结束，不残留悬挂流。
 - `D:\01_Environment\manifest.json` 登记 FlutterRustBridge 与 CargoExpand；变更前备份为 `D:\01_Environment\Work\Kiyori\manifest-before-m1-20261002.json`。生成器目录通过 `current` junction 管理，环境 Validate 已通过。恢复时先核对后续改动，不整份覆盖配置。

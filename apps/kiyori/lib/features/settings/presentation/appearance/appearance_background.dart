@@ -66,13 +66,13 @@ class _AppearanceBackgroundState extends State<AppearanceBackground> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: const Color(0xFFEDF1F5),
-                border: Border.all(color: PrimaryColors.muted),
+                border: Border.all(color: PrimaryColors.of(context).muted),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
+              child: Text(
                 '点击选择按钮来添加背景',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: PrimaryColors.secondary),
+                style: TextStyle(color: PrimaryColors.of(context).secondary),
               ),
             ),
             const SizedBox(height: 16),

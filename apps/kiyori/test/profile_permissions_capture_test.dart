@@ -17,8 +17,8 @@ import 'package:kiyori/features/speech/presentation/tts_tool_page.dart';
 import 'package:kiyori/features/speech/presentation/wakeup_settings_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'usage_test.dart' show usageFixture;
-import 'stt_settings_test.dart' show revealStt;
+import 'support/assistant_fixtures.dart' show usageFixture;
+import 'support/ui_test_helpers.dart' show revealStt;
 
 void main() {
   const output = String.fromEnvironment('KIYORI_CAPTURE');

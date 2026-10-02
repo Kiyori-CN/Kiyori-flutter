@@ -59,11 +59,14 @@ class AdblockSubscriptionGroup extends StatelessWidget {
           ),
         ],
         if (visible.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(18),
             child: Text(
               '没有符合条件的内置订阅',
-              style: TextStyle(fontSize: 13, color: PrimaryColors.secondary),
+              style: TextStyle(
+                fontSize: 13,
+                color: PrimaryColors.of(context).secondary,
+              ),
             ),
           ),
       ],
@@ -105,14 +108,14 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 5),
                         child: Row(
                           children: [
                             Icon(
                               Icons.hourglass_empty,
                               size: 16,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                             SizedBox(width: 5),
                             Expanded(
@@ -123,7 +126,7 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   height: 16 / 12,
-                                  color: PrimaryColors.secondary,
+                                  color: PrimaryColors.of(context).secondary,
                                 ),
                               ),
                             ),
@@ -142,14 +145,14 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
             IconButton(
               onPressed: null,
               tooltip: '更新订阅',
-              icon: const Icon(Icons.refresh, color: PrimaryColors.muted),
+              icon: Icon(Icons.refresh, color: PrimaryColors.of(context).muted),
             ),
             IconButton(
               onPressed: () => setState(() => expanded = !expanded),
               tooltip: expanded ? '收起详情' : '展开详情',
               icon: Icon(
                 expanded ? Icons.expand_less : Icons.expand_more,
-                color: PrimaryColors.muted,
+                color: PrimaryColors.of(context).muted,
               ),
             ),
           ],
@@ -162,13 +165,13 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
                     child: Text(
                       '订阅地址',
                       style: TextStyle(
                         fontSize: 11,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                   ),
@@ -191,13 +194,13 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
                   const SettingsDivider(),
                   Row(children: [_stat('网址阻断'), _stat('网址例外')]),
                   Row(children: [_stat('元素隐藏'), _stat('元素例外')]),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Text(
                       '忽略 0 行 · 尚未成功更新',
                       style: TextStyle(
                         fontSize: 11,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                   ),
@@ -230,9 +233,9 @@ class _SubscriptionRowState extends State<_SubscriptionRow> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
           const Padding(

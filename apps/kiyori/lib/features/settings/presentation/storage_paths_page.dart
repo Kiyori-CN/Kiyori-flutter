@@ -147,9 +147,9 @@ class _PathRow extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
         ],

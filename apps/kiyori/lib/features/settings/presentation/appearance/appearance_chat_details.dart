@@ -54,14 +54,14 @@ class _AppearanceAvatarsState extends State<AppearanceAvatars> {
                             color: const Color(0xFFEDF1F5),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: PrimaryColors.accent,
+                              color: PrimaryColors.of(context).accent,
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.person,
                             size: 35,
-                            color: PrimaryColors.secondary,
+                            color: PrimaryColors.of(context).secondary,
                           ),
                         ),
                       ),

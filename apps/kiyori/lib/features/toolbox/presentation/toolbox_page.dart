@@ -59,9 +59,9 @@ class _ToolboxPageState extends State<ToolboxPage> {
                         if (closed)
                           Text(
                             '${group.$2.length}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                           ),
                         Padding(
@@ -69,7 +69,7 @@ class _ToolboxPageState extends State<ToolboxPage> {
                           child: Icon(
                             closed ? Icons.expand_more : Icons.expand_less,
                             size: 20,
-                            color: PrimaryColors.muted,
+                            color: PrimaryColors.of(context).muted,
                           ),
                         ),
                       ],
@@ -117,10 +117,10 @@ class _ToolChip extends StatelessWidget {
           heightFactor: 1,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: tool.$3.container,
+              color: tool.$3.containerFor(context),
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                color: tool.$3.icon.withValues(alpha: .16),
+                color: tool.$3.iconFor(context).withValues(alpha: .16),
                 width: .5,
               ),
             ),
@@ -129,7 +129,7 @@ class _ToolChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(tool.$2, size: 18, color: tool.$3.icon),
+                  Icon(tool.$2, size: 18, color: tool.$3.iconFor(context)),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(

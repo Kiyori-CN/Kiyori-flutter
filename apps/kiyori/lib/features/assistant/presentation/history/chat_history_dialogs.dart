@@ -114,13 +114,13 @@ class _AssignDialogState extends State<_AssignDialog> {
                       color: selected == entry.id
                           ? Theme.of(context).colorScheme.primaryContainer
                                 .withValues(alpha: .3)
-                          : Colors.white,
+                          : PrimaryColors.of(context).card,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                         side: BorderSide(
                           width: selected == entry.id ? 2 : 1,
                           color: selected == entry.id
-                              ? PrimaryColors.accent
+                              ? PrimaryColors.of(context).accent
                               : Theme.of(context).colorScheme.outlineVariant,
                         ),
                       ),

@@ -17,7 +17,7 @@ class _AgreementPage extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final VoidCallback onTerms, onPrivacy, onNext, onBack;
   @override
-  Widget build(BuildContext c) => Column(
+  Widget build(BuildContext context) => Column(
     children: [
       Expanded(
         child: SingleChildScrollView(
@@ -36,12 +36,12 @@ class _AgreementPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 '请阅读用户协议与隐私政策，确认后继续。以后也可在「设置 → 更多功能」查阅两份文档。',
                 style: TextStyle(
                   fontSize: 13.5,
                   height: 21 / 13.5,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -65,8 +65,10 @@ class _AgreementPage extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: PrimaryColors.divider),
+                    color: PrimaryColors.of(context).card,
+                    border: Border.all(
+                      color: PrimaryColors.of(context).divider,
+                    ),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
@@ -92,12 +94,12 @@ class _AgreementPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 7),
-              const Text(
+              Text(
                 '协议版本 2026-09-08-r1 · 更新时会再次征求同意',
                 style: TextStyle(
                   fontSize: 10.5,
                   height: 15 / 10.5,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
             ],
@@ -117,10 +119,10 @@ class _AgreementPage extends StatelessWidget {
 class _InfoBox extends StatelessWidget {
   const _InfoBox();
   @override
-  Widget build(BuildContext c) => Container(
+  Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(13, 4, 13, 11),
     decoration: BoxDecoration(
-      color: Theme.of(c).colorScheme.primaryContainer,
+      color: Theme.of(context).colorScheme.primaryContainer,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Column(
@@ -138,7 +140,7 @@ class _Info extends StatelessWidget {
   const _Info(this.title, this.body);
   final String title, body;
   @override
-  Widget build(BuildContext c) => Padding(
+  Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 9),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,10 +152,10 @@ class _Info extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           body,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11.5,
             height: 17 / 11.5,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -167,14 +169,14 @@ class _DocCard extends StatelessWidget {
   final bool read;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext c) => InkWell(
+  Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(14),
     child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: PrimaryColors.divider),
+        color: PrimaryColors.of(context).card,
+        border: Border.all(color: PrimaryColors.of(context).divider),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -201,10 +203,10 @@ class _DocCard extends StatelessWidget {
                 ),
                 Text(
                   desc,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     height: 15 / 11,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ],
@@ -212,7 +214,10 @@ class _DocCard extends StatelessWidget {
           ),
           Text(
             read ? '已读 ›' : '未读 ›',
-            style: const TextStyle(fontSize: 10.5, color: PrimaryColors.accent),
+            style: TextStyle(
+              fontSize: 10.5,
+              color: PrimaryColors.of(context).accent,
+            ),
           ),
         ],
       ),

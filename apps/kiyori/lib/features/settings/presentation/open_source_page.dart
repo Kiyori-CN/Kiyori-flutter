@@ -56,7 +56,7 @@ class _OpenSourcePageState extends State<OpenSourcePage> {
           children: [
             Row(
               children: [
-                Icon(Icons.code, color: IconTone.code.icon),
+                Icon(Icons.code, color: IconTone.code.iconFor(context)),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -67,18 +67,21 @@ class _OpenSourcePageState extends State<OpenSourcePage> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '本清单覆盖当前可由 Gradle、源码模块、native source lock、随包许可证或运行时装载证据确认的开源组件。具体权利义务以组件随附的许可证正文为准。',
               style: TextStyle(
                 fontSize: 12,
                 height: 18 / 12,
-                color: PrimaryColors.secondary,
+                color: PrimaryColors.of(context).secondary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               '当前清单 ${filtered.length} / ${openSourceEntries.length} 项 · 清单基线 $openSourceInventoryVersion',
-              style: const TextStyle(fontSize: 12, color: PrimaryColors.accent),
+              style: TextStyle(
+                fontSize: 12,
+                color: PrimaryColors.of(context).accent,
+              ),
             ),
             const SizedBox(height: 8),
             KiyoriSearchField(
@@ -106,11 +109,11 @@ class _OpenSourcePageState extends State<OpenSourcePage> {
             ],
           ),
       if (filtered.isEmpty)
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(32),
           child: Text(
             '没有匹配的开源组件',
-            style: TextStyle(color: PrimaryColors.secondary),
+            style: TextStyle(color: PrimaryColors.of(context).secondary),
           ),
         ),
     ],
@@ -141,17 +144,17 @@ class _LicenseRow extends StatelessWidget {
                 entry.summary,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
                 '许可证：${entry.license}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
               const SizedBox(height: 3),
@@ -161,9 +164,9 @@ class _LicenseRow extends StatelessWidget {
                   '项目地址：${entry.website}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ),
@@ -173,12 +176,15 @@ class _LicenseRow extends StatelessWidget {
         IconButton(
           onPressed: emptyAction,
           tooltip: '查看许可证正文',
-          icon: Icon(Icons.policy, color: IconTone.security.icon),
+          icon: Icon(Icons.policy, color: IconTone.security.iconFor(context)),
         ),
         IconButton(
           onPressed: emptyAction,
           tooltip: '打开项目主页',
-          icon: Icon(Icons.open_in_browser, color: IconTone.browser.icon),
+          icon: Icon(
+            Icons.open_in_browser,
+            color: IconTone.browser.iconFor(context),
+          ),
         ),
       ],
     ),

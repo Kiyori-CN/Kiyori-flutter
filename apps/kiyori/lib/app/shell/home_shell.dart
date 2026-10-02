@@ -116,24 +116,33 @@ class _HomeShellState extends State<HomeShell> {
           children: [
             Offstage(
               offstage: destination != 0,
-              child: TickerMode(
-                enabled: destination == 0,
-                child: ScrollConfiguration(
-                  behavior: const MaterialScrollBehavior().copyWith(
-                    dragDevices: {
-                      PointerDeviceKind.touch,
-                      PointerDeviceKind.mouse,
-                      PointerDeviceKind.stylus,
-                      PointerDeviceKind.trackpad,
-                    },
-                  ),
-                  child: PageView(
-                    controller: pager,
-                    // 保留系统手势仲裁阈值，但胜出后从按下点计算跟手位移。
-                    dragStartBehavior: DragStartBehavior.down,
-                    allowImplicitScrolling: preloadReady,
-                    onPageChanged: (value) => setState(() => settled = value),
-                    children: pages,
+              child: ExcludeFocus(
+                excluding: destination != 0,
+                child: TickerMode(
+                  enabled: destination == 0,
+                  child: ScrollConfiguration(
+                    behavior: const MaterialScrollBehavior().copyWith(
+                      dragDevices: {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.stylus,
+                        PointerDeviceKind.trackpad,
+                      },
+                    ),
+                    child: PageView(
+                      controller: pager,
+                      // 保留系统手势仲裁阈值，但胜出后从按下点计算跟手位移。
+                      dragStartBehavior: DragStartBehavior.down,
+                      allowImplicitScrolling: preloadReady,
+                      onPageChanged: (value) => setState(() => settled = value),
+                      children: [
+                        for (var index = 0; index < pages.length; index++)
+                          ExcludeFocus(
+                            excluding: settled != index,
+                            child: pages[index],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -143,9 +152,12 @@ class _HomeShellState extends State<HomeShell> {
               Offstage(
                 key: ValueKey(entry.key),
                 offstage: destination != entry.key,
-                child: TickerMode(
-                  enabled: destination == entry.key,
-                  child: entry.value,
+                child: ExcludeFocus(
+                  excluding: destination != entry.key,
+                  child: TickerMode(
+                    enabled: destination == entry.key,
+                    child: entry.value,
+                  ),
                 ),
               ),
             Positioned(

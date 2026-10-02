@@ -78,12 +78,12 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
                           Icon(
                             Icons.settings_outlined,
                             size: 24,
-                            color: PrimaryColors.accent,
+                            color: PrimaryColors.of(context).accent,
                           ),
                           SizedBox(width: 8),
                           Expanded(
@@ -112,7 +112,7 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
                       ),
                       InkWell(
                         onTap: widget.onManage,
-                        child: const Padding(
+                        child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
@@ -127,7 +127,7 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
                               ),
                               Icon(
                                 Icons.arrow_forward,
-                                color: PrimaryColors.accent,
+                                color: PrimaryColors.of(context).accent,
                               ),
                             ],
                           ),

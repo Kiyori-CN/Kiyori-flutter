@@ -104,9 +104,9 @@ class _FunctionModelCardState extends State<_FunctionModelCard>
                 ),
                 Text(
                   widget.function.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -136,9 +136,9 @@ class _FunctionModelCardState extends State<_FunctionModelCard>
                               if (widget.current != null)
                                 Text(
                                   '模型: ${model(widget.current!, widget.modelIndex)}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: PrimaryColors.secondary,
+                                    color: PrimaryColors.of(context).secondary,
                                   ),
                                 ),
                               if (warning != null)
@@ -352,10 +352,10 @@ class _FunctionModelCardState extends State<_FunctionModelCard>
                 child: Row(
                   children: [
                     if (selected && !multiple) ...[
-                      const Icon(
+                      Icon(
                         Icons.check,
                         size: 16,
-                        color: PrimaryColors.accent,
+                        color: PrimaryColors.of(context).accent,
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -379,9 +379,9 @@ class _FunctionModelCardState extends State<_FunctionModelCard>
                             multiple
                                 ? '${config.models.length}个模型'
                                 : model(config, 0),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                           ),
                         ],
@@ -434,10 +434,10 @@ class _FunctionModelCardState extends State<_FunctionModelCard>
                               if (selected &&
                                   model(config, widget.modelIndex) ==
                                       config.models[i]) ...[
-                                const Icon(
+                                Icon(
                                   Icons.check,
                                   size: 14,
-                                  color: PrimaryColors.accent,
+                                  color: PrimaryColors.of(context).accent,
                                 ),
                                 const SizedBox(width: 6),
                               ],

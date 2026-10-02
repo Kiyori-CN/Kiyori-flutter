@@ -165,7 +165,7 @@ class _FormatChoiceState extends State<_FormatChoice> {
               child: Text(
                 '.${widget.extension} 文件',
                 style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: PrimaryColors.secondary),
+                    ?.copyWith(color: PrimaryColors.of(context).secondary),
               ),
             ),
             for (final choice in choices)
@@ -207,7 +207,8 @@ class _FormatChoiceState extends State<_FormatChoice> {
                                         : choice.description,
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: PrimaryColors.secondary,
+                                          color: PrimaryColors.of(context)
+                                              .secondary,
                                         ),
                                   ),
                                 ],
@@ -220,8 +221,8 @@ class _FormatChoiceState extends State<_FormatChoice> {
                                   ? Icons.radio_button_checked
                                   : Icons.radio_button_unchecked,
                               color: selected == choice
-                                  ? PrimaryColors.accent
-                                  : PrimaryColors.secondary,
+                                  ? PrimaryColors.of(context).accent
+                                  : PrimaryColors.of(context).secondary,
                             ),
                           ),
                         ],

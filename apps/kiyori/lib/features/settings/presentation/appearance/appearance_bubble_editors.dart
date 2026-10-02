@@ -226,7 +226,7 @@ class AppearanceBubbleImage extends StatelessWidget {
         const AppearanceDescription('未选择图片'),
         for (final pair in [(0, 1), (2, 3), (4, 5), (6, 7)])
           _pair(pair.$1, pair.$2),
-        _slider(8),
+        _slider(context, 8),
         _pair(9, 10),
       ],
     ],
@@ -235,18 +235,18 @@ class AppearanceBubbleImage extends StatelessWidget {
     builder: (context, constraints) {
       if (constraints.maxWidth < 240 ||
           MediaQuery.textScalerOf(context).scale(12) > 18) {
-        return Column(children: [_slider(a), _slider(b)]);
+        return Column(children: [_slider(context, a), _slider(context, b)]);
       }
       return Row(
         children: [
-          Expanded(child: _slider(a)),
+          Expanded(child: _slider(context, a)),
           const SizedBox(width: 12),
-          Expanded(child: _slider(b)),
+          Expanded(child: _slider(context, b)),
         ],
       );
     },
   );
-  Widget _slider(int index) {
+  Widget _slider(BuildContext context, int index) {
     final min = index < 4 || index >= 9
         ? 0.0
         : index == 8
@@ -274,9 +274,9 @@ class AppearanceBubbleImage extends StatelessWidget {
                 index >= 9
                     ? '${values[index].round()}dp'
                     : '${(values[index] * 100).toInt()}%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
             ],

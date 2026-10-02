@@ -11,6 +11,7 @@ void main(List<String> args) async {
       '../../Cargo.lock',
       '../../rust-toolchain.toml',
       '../../crates/kiyori_core/Cargo.toml',
+      '../../crates/kiyori_ffi/Cargo.toml',
       '../../crates/kiyori_ffi/rust-toolchain.toml',
     ]) {
       final dependency = input.packageRoot.resolve(relative);

@@ -5,7 +5,7 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 class BrowserScriptPermissionsPage extends StatelessWidget {
   const BrowserScriptPermissionsPage({super.key});
   @override
-  Widget build(BuildContext context) => const SettingsDetailPage(
+  Widget build(BuildContext context) => SettingsDetailPage(
     title: '扩展权限与网站范围',
     children: [
       SettingsGroup(
@@ -28,7 +28,10 @@ class BrowserScriptPermissionsPage extends StatelessWidget {
             padding: EdgeInsets.all(18),
             child: Text(
               '暂无已安装脚本；可从扩展中心右上角加号通过 URL、本地文件或扩展库安装',
-              style: TextStyle(fontSize: 14, color: PrimaryColors.secondary),
+              style: TextStyle(
+                fontSize: 14,
+                color: PrimaryColors.of(context).secondary,
+              ),
             ),
           ),
         ],

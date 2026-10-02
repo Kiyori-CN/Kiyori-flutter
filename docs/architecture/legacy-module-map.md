@@ -63,7 +63,7 @@ Gradle、terminal 子模块、包根和数据库布局套进新仓库。
 支撑代码；迁移时按消费领域归属，不复制 `util` 杂物层。`com/k2fsa/sherpa` 等第三方绑定、
 兼容包名、JNI/AIDL 名称和许可证保留准确身份。
 
-## 本轮发现与设计修订
+## 第一轮发现与设计修订
 
 1. 新模块表此前遗漏 documents、knowledge、workflows、speech、avatar、accounts/content、
    backup/audit/automation/integrations；现已补到模块目录和里程碑依赖，不预建空模块。
@@ -77,6 +77,31 @@ Gradle、terminal 子模块、包根和数据库布局套进新仓库。
    必须同设备测量后再决定是否实现自定义 physics，不能声称本轮已逐帧一致。
 5. 旧文档/记忆/工作流的既有持久格式只是导入来源。新应用不读写旧私有数据库；迁移要有
    版本化导出包、校验、预览、冲突处理和凭据边界。
+
+## 第二轮源码复核与证据层级
+
+2026-10-02 第二轮仍以同一 `6b03b03a` 为只读基线。重新读取运行时契约索引，按领域
+核对 product_shell、browser、media_downloads、platform_storage、network_proxy、
+ai_execution、ai_interaction、extensions_workspace、artifact_storage 及 B站三个契约。
+九模块的构建声明及 buildSrc/web-chat/examples/辅助工具的用途已复查；以下深度各有边界。
+
+| 复核链路与实际代码证据 | 提取的不变量 | 新项目状态与尚未验证部分 |
+| --- | --- | --- |
+| `kiyori/app/shell`、首启契约、`kiyori/design/theme/KiyoriSettingsTheme.kt` / `KiyoriSemanticColors.kt`，设置/主题/引导消费者 | 来源返回、模态隔离、明暗角色色、初始草稿与持久主题分开 | 已有 Dart 壳/设置/引导；本轮修复共享色表和隐藏焦点，平台权限仍未接入 |
+| AI 执行/交互契约、模型配置与请求编译入口；新 `kiyori_core/src/runtime.rs` → FFI → `runtime_client.dart` → `runtime_controller.dart` | 任务身份、拉取背压、取消/关闭释放、错误脱敏 | M1 诊断运行时已实现并有真实 FFI 测试；provider/消息/角色持久业务仍计划，不宣称全 provider 逐行审完 |
+| `operit/core/tools/mcp/MCPToolExecutor.kt` 中 MCPManager 的注册代次、连接缓存与关闭路径，扩展契约 | 注册身份和工具变更必须隔离旧连接，权限不由扩展文本授予 | 工具授权 UI 已有；统一执行、Script/ToolPkg/Skill/MCP 真实运行时未接入，各执行后端仍需独立复核 |
+| 浏览器/媒体/产物契约；`StandardBrowserSessionTools.kt` 中 WebSession 及关闭路径；`DocumentOfficeEngine.kt` 的 generation/lane/render revision | AI 与手动入口共用会话、Profile/Cookie、资源；过期渲染不能发布到新文档 | 已有设置与空工作台投影，浏览/文档/下载真实 owner 仍计划；未逐条验证广告规则与密码恢复 |
+| `operit/core/player/PlayerSession.kt` 的生命周期、seek/surface 代次，媒体契约 | 队列/播放事实唯一，界面和原生纹理分别释放 | 只有设置 UI；音乐库、歌词/字幕、捕获/队列与音频焦点待真实 adapter |
+| `kiyori/platform/bilibili/BiliLibraryController.kt` 完整读取及账号/内容契约 | 活跃状态、账号 revision、游标、generation 与取消共同限制发布 | B站账号外观已迁移；五栏服务与播放未实现，旧服务端响应未重新请求 |
+| `kiyori/platform/network/KiyoriNetworkProxyManager.kt` mutationMutex/generation 和网络契约 | 路由变更串行、旧代次失效，失败不能无声直连 | 代理配置仅局部草稿；应用 HTTP/WebView/媒体三条链路都待接入 |
+| `SpeechProfileServiceOwner.kt` 完整读取，`SpeechServiceFactory.kt` / `VoiceServiceFactory.kt` 调用与 reset | 同步创建/配置替换，先清 owner 再 shutdown，防止复用已释放服务 | STT/TTS/唤醒展示已实现；不启动音频服务；实体移除时弹层回写有回归测试 |
+| `core/avatar/common/control/AvatarController.kt` 生命周期边界和模块构建声明 | 真实渲染句柄、暂停/销毁属 adapter，悬浮权限为平台事实 | 虚拟形象 UI 尚未迁移；未深审全部原生渲染引擎或声称三端可用 |
+| `MemoryRepository.kt` 空间/向量键，`WorkflowExecutor.kt` 执行/拓扑，`ExternalChatHttpServer.kt` 启停/认证 | 向量受空间与模型约束；工作流复用工具；外部入口认证不由 UI 草稿替代 | 只有相关设置快照；持久化、恢复、Intent/Tasker 的完整调用和实测仍待对应切片 |
+| 存储/产物契约、`ConversationAuditRepository.kt` 事务与 seal、备份边界 | 原始数据和派生索引分离，审计封存、恢复校验和凭据生命周期分别负责 | 存储/备份 UI 已有，数据库迁移、崩溃恢复、日志持久化未实现 |
+
+此表记录本轮实际读取的高价值链路，不等于所有领域都达到同一审计深度。
+现有模块职责和 Dart/Rust/native 分界仍适用，本轮没有引入平行 Manager、Router 或业务数据库。
+目录与协议命名保留生态标准；旧九模块的 JNI/AIDL/引擎只作为后续验证输入，不直接复制。
 
 ## 每个领域实施前的源码核对
 

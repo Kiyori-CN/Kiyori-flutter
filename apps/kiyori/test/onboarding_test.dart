@@ -4,21 +4,7 @@ import 'package:kiyori/features/onboarding/presentation/onboarding_page.dart';
 import 'package:kiyori/features/settings/presentation/permission_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> revealOnboarding(WidgetTester tester, Finder finder) async {
-  if (finder.evaluate().isEmpty) {
-    final list = find.byType(ListView).last;
-    for (var i = 0; i < 80 && finder.evaluate().isEmpty; i++) {
-      final rect = tester.getRect(list);
-      await tester.dragFrom(
-        Offset(rect.left + 5, rect.center.dy),
-        const Offset(0, -100),
-      );
-      await tester.pumpAndSettle();
-    }
-  }
-  await tester.ensureVisible(finder);
-  await tester.pumpAndSettle();
-}
+import 'support/ui_test_helpers.dart';
 
 void main() {
   testWidgets(

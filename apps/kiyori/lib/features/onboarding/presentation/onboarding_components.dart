@@ -49,9 +49,9 @@ class _Header extends StatelessWidget {
                       ),
                       Text(
                         '${page + 1}/6',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ],
@@ -77,8 +77,8 @@ class _Header extends StatelessWidget {
                     margin: EdgeInsets.only(right: i == 5 ? 0 : 6),
                     decoration: BoxDecoration(
                       color: i <= page
-                          ? PrimaryColors.accent
-                          : PrimaryColors.divider,
+                          ? PrimaryColors.of(context).accent
+                          : PrimaryColors.of(context).divider,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -95,7 +95,7 @@ class _Eyebrow extends StatelessWidget {
   const _Eyebrow(this.text);
   final String text;
   @override
-  Widget build(BuildContext c) => ConstrainedBox(
+  Widget build(BuildContext context) => ConstrainedBox(
     constraints: const BoxConstraints(minHeight: 22),
     child: Row(
       children: [
@@ -103,17 +103,17 @@ class _Eyebrow extends StatelessWidget {
           width: 16,
           height: 2,
           decoration: BoxDecoration(
-            color: PrimaryColors.accent,
+            color: PrimaryColors.of(context).accent,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 8),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             height: 18 / 13,
-            color: PrimaryColors.accent,
+            color: PrimaryColors.of(context).accent,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -136,16 +136,16 @@ class _BottomAction extends StatelessWidget {
   final VoidCallback? onSecondary;
   final double horizontalPadding;
   @override
-  Widget build(BuildContext c) => Container(
+  Widget build(BuildContext context) => Container(
     padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 16),
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0x00F6F7F9),
-          PrimaryColors.background,
-          PrimaryColors.background,
+          PrimaryColors.of(context).background.withValues(alpha: 0),
+          PrimaryColors.of(context).background,
+          PrimaryColors.of(context).background,
         ],
         stops: [0, .42, 1],
       ),
@@ -158,10 +158,10 @@ class _BottomAction extends StatelessWidget {
           style: FilledButton.styleFrom(
             minimumSize: const Size(0, 50),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            backgroundColor: PrimaryColors.accent,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: PrimaryColors.divider,
-            disabledForegroundColor: PrimaryColors.secondary,
+            backgroundColor: PrimaryColors.of(context).accent,
+            foregroundColor: PrimaryColors.of(context).accentContent,
+            disabledBackgroundColor: PrimaryColors.of(context).divider,
+            disabledForegroundColor: PrimaryColors.of(context).secondary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
@@ -181,7 +181,7 @@ class _BottomAction extends StatelessWidget {
             onPressed: onSecondary,
             style: TextButton.styleFrom(
               minimumSize: const Size(0, 48),
-              foregroundColor: PrimaryColors.secondary,
+              foregroundColor: PrimaryColors.of(context).secondary,
             ),
             child: Text(secondary!, style: const TextStyle(fontSize: 13.5)),
           ),

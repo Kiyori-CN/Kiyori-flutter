@@ -1,8 +1,26 @@
 # 历史实施记录
 
-本文是 2026-10-02 工程治理前的不可变批次证据归档。历史任务、授权、下一步和产物仅在当时有效；当前事实以 [当前状态](status.md) 为准。
+本文归档已结束批次的证据。历史任务、授权、下一步和产物仅在当时有效；当前事实以 [当前状态](status.md) 为准，归档中“当前”“下一步”均指当时。
 
-更新时间：2026-10-02（Asia/Shanghai）。此文件是实施进度唯一权威；[路线图](roadmap.md)维护阶段顺序，环境证据见[环境报告](development/environment-report.md)。
+归档日期：2026-10-02（Asia/Shanghai）；[路线图](roadmap.md)维护阶段顺序，环境证据见[环境报告](development/environment-report.md)。
+
+## 第一轮治理交付 ca8bf6f（历史快照）
+
+提交 `ca8bf6f2b6513c301a4e99952246d9df6dd7c426`，已推送 origin/main；第二轮开始时
+实时 fetch 核对无分歧且工作区干净。第一轮提取 SettingsNavigation，统一四套截图辅助，
+新增 test-ui/inspect-legacy 正式入口，启用 Android 本地 task cache，并修正 Windows
+引擎测试的账号详情返回。历史候选树396文件约5.90MB，未增加业务/FFI API。
+
+验证为6 Rust、238 Flutter、6真实FFI、2 Windows引擎测试；governance-verify.log 的
+Windows阶段首次失败，修正后通过记录在 governance-engine.log，不能把前者整体说成通过。
+四截图套件106张；Android/Windows普通Debug最终构建通过。产物固定在
+`artifacts/ui-preview/20261002-124054/Kiyori-ui-preview-arm64-debug.apk`，
+2026-10-02 12:40:54，97,970,173字节，SHA-256
+`9B16B11D596CE8EDD0CFAEF0F64175EEED8E9229FED7007462C0F36580277F67`。
+包名 com.kiyori / 0.1.0(1)，arm64-v8a、min24/target37、v2签名和16KB ZIP对齐通过。
+12:11包（97,970,244字节，SHA-256
+`4737B19CE28857BA927CFAB62B2D05B1042A8318AC7C30BA19DBB99FA6EF3070`）和11:23包均保留。
+这些历史包不含第二轮治理。未安装设备、未执行远端CI/Apple构建，kiyori-ui 为 PAUSED。
 
 ## 当前任务：全页面 UI 持续复刻
 

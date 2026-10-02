@@ -244,6 +244,7 @@ class _DurationDialogState extends State<_DurationDialog> {
           ],
           decoration:
               settingsFieldDecoration(
+                context,
                 label: '最小时长',
                 helper: value.text.isNotEmpty && !valid
                     ? '请输入 1–86400 秒'

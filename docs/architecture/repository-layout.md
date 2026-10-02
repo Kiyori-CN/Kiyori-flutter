@@ -4,7 +4,9 @@
 
 当前详情装配集中在 `apps/kiyori/lib/app/shell/settings_navigation.dart`，只借用现有
 Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存生命周期。feature仅接收
-回调，不反向 import app。截图测试共享 `apps/kiyori/test/support/ui_capture.dart`；
+回调，不反向 import app。测试辅助集中在 `apps/kiyori/test/support/`：`ui_capture.dart`
+管理渲染，`fake_runtime.dart`、`ui_test_helpers.dart`、`assistant_fixtures.dart` 提供已有
+测试的共用夹具；测试套件不再互相导入其它 `*_test.dart`。
 工具入口在 `tools/`，临时脚本、日志、图片在忽略的 `work/`，不形成第二正式工具目录。
 
 根目录表示工程角色，角色内部按语言生态和领域命名。初期采用模块化单体，不把每个页面拆成 package，也不预造几十个 crate。目录只有在承载真实实现、测试或文档时创建。
@@ -89,6 +91,11 @@ Kiyori/
 Dart feature 使用 `presentation/`、`application/`（交互控制）与局部 `widgets/`，按实际复杂度创建。不再放业务数据库、provider HTTP 客户端或第二套领域仓储。导入通过各包公共入口，禁止从外部导入别的 feature 私有实现。
 
 Rust 小模块可从一个 `mod.rs` 开始，再自然拆成 `model.rs`、`service.rs`、`ports.rs`。不要求每个领域机械建立多层 `domain/application/infrastructure`。跨模块协调放在上层用例，不制造循环依赖。
+
+现有跨 feature 的公开展示复用保持单向：聊天历史复用设置的 BackupCard/BackupText，
+引导复用协议正文/阅读组件和权限展示类型；均不访问领域状态或服务。它们是已有同源
+展示契约，不为消除路径差异复制一份数据。真实权限/协议持久能力接入时由 app 注入，
+不能让这些展示引用扩展成跨 feature 的业务状态所有权。
 
 原生代码主要在 `kiyori_platform` 内：浏览器、文件授权、后台传输、播放、凭据和终端各自拥有适配模块。runner 只做启动与注册。平台包膨胀后才按可独立构建/测试的能力拆成 federated packages。
 

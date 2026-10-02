@@ -115,7 +115,7 @@ class _ArtifactStoragePageState extends State<ArtifactStoragePage> {
                               icon: Icon(
                                 Icons.folder_open_outlined,
                                 size: 18,
-                                color: IconTone.folder.icon,
+                                color: IconTone.folder.iconFor(context),
                               ),
                               label: const Text('选择文件夹'),
                             ),
@@ -128,11 +128,11 @@ class _ArtifactStoragePageState extends State<ArtifactStoragePage> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '检查会创建此目录并读写一个临时文件，随后移除临时文件。选择文件夹不代表已获得直接存储权限。',
                           style: TextStyle(
                             fontSize: 12,
-                            color: PrimaryColors.secondary,
+                            color: PrimaryColors.of(context).secondary,
                           ),
                         ),
                         if (androidPath != null)
@@ -169,13 +169,13 @@ class _ArtifactStoragePageState extends State<ArtifactStoragePage> {
                   ),
                 ],
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Text(
                   '保存后用于新产物请求和新建的本地 AI 终端会话，不移动已有文件和会话。Android 与 Ubuntu 是独立文件系统，仍需对应存储权限。环境依赖保持原管理目录；外部工具需显式传入输出路径。',
                   style: TextStyle(
                     fontSize: 12,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ),
@@ -266,7 +266,10 @@ class _PathPreview extends StatelessWidget {
         const SizedBox(height: 8),
         SelectableText(
           paths,
-          style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 12,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
       ],
     ),

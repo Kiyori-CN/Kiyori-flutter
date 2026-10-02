@@ -3,6 +3,7 @@
 param(
   [string[]]$Test = @(),
   [switch]$Capture,
+  [switch]$NoPub,
   [string]$Output = 'work/ui-capture',
   [string]$Font
 )
@@ -12,6 +13,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $appRoot = Join-Path $repositoryRoot 'apps/kiyori'
 & (Join-Path $PSScriptRoot 'check-toolchains.ps1')
 $arguments = @('test', '--reporter', 'expanded')
+if ($NoPub) { $arguments += '--no-pub' }
 if ($Test.Count -eq 0 -and $Capture) {
   $Test = Get-ChildItem (Join-Path $appRoot 'test') -Filter '*capture_test.dart' -File | ForEach-Object Name
 }

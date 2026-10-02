@@ -87,7 +87,9 @@ class _ModeRow extends StatelessWidget {
             Icon(
               icon,
               size: 24,
-              color: selected ? PrimaryColors.accent : PrimaryColors.secondary,
+              color: selected
+                  ? PrimaryColors.of(context).accent
+                  : PrimaryColors.of(context).secondary,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -105,10 +107,10 @@ class _ModeRow extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         height: 17 / 12,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                   ),
@@ -123,7 +125,9 @@ class _ModeRow extends StatelessWidget {
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 size: 20,
-                color: selected ? PrimaryColors.accent : PrimaryColors.muted,
+                color: selected
+                    ? PrimaryColors.of(context).accent
+                    : PrimaryColors.of(context).muted,
               ),
             ),
           ],
@@ -159,6 +163,7 @@ class _HomeEditDialogState extends State<_HomeEditDialog> {
         controller: input,
         maxLines: 1,
         decoration: settingsFieldDecoration(
+          context,
           label: '网址',
           hint: '输入 HTTP/HTTPS 网址',
           helper: '可以输入完整网址、域名或搜索词；纯空白页请在上方选择对应模式。',

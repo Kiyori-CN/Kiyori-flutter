@@ -52,7 +52,10 @@ class ChatHistoryPage extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.history, color: PrimaryColors.accent),
+                      Icon(
+                        Icons.history,
+                        color: PrimaryColors.of(context).accent,
+                      ),
                       const SizedBox(width: 12),
                       Flexible(
                         child: Column(
@@ -112,10 +115,10 @@ class _HistoryHeader extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: PrimaryColors.accent.withValues(alpha: .12),
+          color: PrimaryColors.of(context).accent.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(icon, color: PrimaryColors.accent, size: 24),
+        child: Icon(icon, color: PrimaryColors.of(context).accent, size: 24),
       ),
       const SizedBox(width: 12),
       Expanded(
@@ -375,9 +378,9 @@ class _WorkspaceCardState extends State<_WorkspaceCard>
                                   children: [
                                     Text(
                                       entry.location,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: PrimaryColors.accent,
+                                        color: PrimaryColors.of(context).accent,
                                       ),
                                     ),
                                     const BackupText('• 未被任何对话使用', small: true),
@@ -390,7 +393,7 @@ class _WorkspaceCardState extends State<_WorkspaceCard>
                             entry.location == '内部存储'
                                 ? Icons.folder
                                 : Icons.folder_open,
-                            color: PrimaryColors.secondary,
+                            color: PrimaryColors.of(context).secondary,
                           ),
                         ],
                       ),

@@ -36,85 +36,90 @@ class _SettingsDetailPageState extends State<SettingsDetailPage> {
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
     final bottom = MediaQuery.paddingOf(context).bottom;
-    return Scaffold(
-      backgroundColor: PrimaryColors.background,
-      body: DefaultTextStyle.merge(
-        style: const TextStyle(color: PrimaryColors.text, letterSpacing: 0),
-        child: Stack(
-          children: [
-            ListView.separated(
-              controller: _scroll,
-              padding: EdgeInsets.zero,
-              itemCount: widget.children.length + 2,
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
-              itemBuilder: (_, index) {
-                if (index == 0) return SizedBox(height: top + 128);
-                if (index == widget.children.length + 1) {
-                  return SizedBox(height: 28 + bottom);
-                }
-                return widget.children[index - 1];
-              },
-            ),
-            AnimatedBuilder(
-              animation: _scroll,
-              builder: (context, _) {
-                final progress = _scroll.hasClients
-                    ? (_scroll.offset / 72).clamp(0.0, 1.0)
-                    : 0.0;
-                return Container(
-                  key: const Key('settings-detail-header'),
-                  height: top + 128 - 64 * progress,
-                  decoration: const BoxDecoration(
-                    color: PrimaryColors.background,
-                  ),
-                  clipBehavior: Clip.hardEdge,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: top + 8,
-                        left: 4,
-                        child: ShellAction(
-                          Icons.arrow_back,
-                          '返回',
-                          size: 48,
-                          iconSize: 21,
-                          color: PrimaryColors.text,
-                          onTap: () => Navigator.of(context).maybePop(),
+    return SettingsTheme(
+      child: Scaffold(
+        backgroundColor: PrimaryColors.of(context).background,
+        body: DefaultTextStyle.merge(
+          style: TextStyle(
+            color: PrimaryColors.of(context).text,
+            letterSpacing: 0,
+          ),
+          child: Stack(
+            children: [
+              ListView.separated(
+                controller: _scroll,
+                padding: EdgeInsets.zero,
+                itemCount: widget.children.length + 2,
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
+                itemBuilder: (_, index) {
+                  if (index == 0) return SizedBox(height: top + 128);
+                  if (index == widget.children.length + 1) {
+                    return SizedBox(height: 28 + bottom);
+                  }
+                  return widget.children[index - 1];
+                },
+              ),
+              AnimatedBuilder(
+                animation: _scroll,
+                builder: (context, _) {
+                  final progress = _scroll.hasClients
+                      ? (_scroll.offset / 72).clamp(0.0, 1.0)
+                      : 0.0;
+                  return Container(
+                    key: const Key('settings-detail-header'),
+                    height: top + 128 - 64 * progress,
+                    decoration: BoxDecoration(
+                      color: PrimaryColors.of(context).background,
+                    ),
+                    clipBehavior: Clip.hardEdge,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: top + 8,
+                          left: 4,
+                          child: ShellAction(
+                            Icons.arrow_back,
+                            '返回',
+                            size: 48,
+                            iconSize: 21,
+                            color: PrimaryColors.of(context).text,
+                            onTap: () => Navigator.of(context).maybePop(),
+                          ),
                         ),
-                      ),
-                      Positioned(
-                        top: top + 60 - 40 * progress,
-                        left: 32 + 22 * progress,
-                        right: widget.actions == null
-                            ? 16
-                            : widget.actionWidth + 16,
-                        child: Semantics(
-                          header: true,
-                          child: Text(
-                            widget.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 26 - 6 * progress,
-                              fontWeight: FontWeight.w600,
+                        Positioned(
+                          top: top + 60 - 40 * progress,
+                          left: 32 + 22 * progress,
+                          right: widget.actions == null
+                              ? 16
+                              : widget.actionWidth + 16,
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              widget.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 26 - 6 * progress,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (widget.actions != null)
-                        Positioned(
-                          top: top + 8,
-                          right: 8,
-                          width: widget.actionWidth,
-                          height: 48,
-                          child: widget.actions!,
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+                        if (widget.actions != null)
+                          Positioned(
+                            top: top + 8,
+                            right: 8,
+                            width: widget.actionWidth,
+                            height: 48,
+                            child: widget.actions!,
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -153,10 +158,10 @@ class SettingsGroup extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
           child: Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 17 / 12,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
         ),
@@ -177,8 +182,11 @@ class SettingsGroup extends StatelessWidget {
 class SettingsDivider extends StatelessWidget {
   const SettingsDivider({super.key});
   @override
-  Widget build(BuildContext context) =>
-      const Divider(height: .6, thickness: .6, color: PrimaryColors.divider);
+  Widget build(BuildContext context) => Divider(
+    height: .6,
+    thickness: .6,
+    color: PrimaryColors.of(context).divider,
+  );
 }
 
 /// 子页原样无 leading icon；开关由整行唯一点击与语义 owner 控制。
@@ -232,10 +240,10 @@ class SettingsRow extends StatelessWidget {
                         description,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           height: 17 / 12,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ),
@@ -250,11 +258,15 @@ class SettingsRow extends StatelessWidget {
                       child: Switch(
                         value: checked!,
                         onChanged: (_) {},
-                        thumbColor: const WidgetStatePropertyAll(Colors.white),
+                        thumbColor: WidgetStatePropertyAll(
+                          checked!
+                              ? PrimaryColors.of(context).accentContent
+                              : Colors.white,
+                        ),
                         trackColor: WidgetStatePropertyAll(
                           checked!
-                              ? PrimaryColors.accent
-                              : const Color(0xFFD5DAE1),
+                              ? PrimaryColors.of(context).accent
+                              : PrimaryColors.of(context).disabledTrack,
                         ),
                         trackOutlineColor: const WidgetStatePropertyAll(
                           Colors.transparent,
@@ -274,18 +286,18 @@ class SettingsRow extends StatelessWidget {
                         value!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ),
                   ),
                 const SizedBox(width: 5),
-                const Icon(
+                Icon(
                   Icons.keyboard_arrow_right,
                   size: 18,
-                  color: PrimaryColors.muted,
+                  color: PrimaryColors.of(context).muted,
                 ),
               ],
             ],
@@ -296,7 +308,8 @@ class SettingsRow extends StatelessWidget {
   );
 }
 
-InputDecoration settingsFieldDecoration({
+InputDecoration settingsFieldDecoration(
+  BuildContext context, {
   required String label,
   String? hint,
   String? helper,
@@ -306,14 +319,14 @@ InputDecoration settingsFieldDecoration({
   helperText: helper,
   helperMaxLines: 4,
   filled: true,
-  fillColor: PrimaryColors.background,
+  fillColor: PrimaryColors.of(context).background,
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(14),
-    borderSide: const BorderSide(color: PrimaryColors.divider),
+    borderSide: BorderSide(color: PrimaryColors.of(context).divider),
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(14),
-    borderSide: const BorderSide(color: PrimaryColors.accent),
+    borderSide: BorderSide(color: PrimaryColors.of(context).accent),
   ),
 );

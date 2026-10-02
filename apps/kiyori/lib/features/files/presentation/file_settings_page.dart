@@ -262,6 +262,7 @@ class _PathDialogState extends State<_PathDialog> {
             minLines: 1,
             maxLines: null,
             decoration: settingsFieldDecoration(
+              context,
               label: '绝对目录路径',
               hint: widget.title == 'Linux工作区'
                   ? '/workspace'
@@ -297,10 +298,13 @@ class _HiddenDialog extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: TextField(
-              decoration: settingsFieldDecoration(label: '筛选路径或名称'),
+              decoration: settingsFieldDecoration(context, label: '筛选路径或名称'),
             ),
           ),
-          const Text('暂无记录', style: TextStyle(color: PrimaryColors.secondary)),
+          Text(
+            '暂无记录',
+            style: TextStyle(color: PrimaryColors.of(context).secondary),
+          ),
         ],
       ),
     ),

@@ -75,7 +75,8 @@ class SettingsPage extends StatelessWidget {
                   'assets/chrome/settings_header_${entry.$1}.png',
                   width: 22,
                   height: 22,
-                  color: PrimaryColors.secondary.withValues(alpha: .48),
+                  color: PrimaryColors.of(context).secondary
+                      .withValues(alpha: .48),
                 ),
               ),
             ),
@@ -86,7 +87,7 @@ class SettingsPage extends StatelessWidget {
         '浅色主题',
         size: 40,
         iconSize: 22,
-        color: IconTone.appearance.icon,
+        color: IconTone.appearance.iconFor(context),
       ),
     ],
     child: ListView.separated(
@@ -99,10 +100,10 @@ class SettingsPage extends StatelessWidget {
           children: [
             for (var row = 0; row < groups[index].length; row++) ...[
               if (row > 0)
-                const Divider(
+                Divider(
                   height: .6,
                   thickness: .6,
-                  color: PrimaryColors.divider,
+                  color: PrimaryColors.of(context).divider,
                 ),
               _SettingsRow(
                 groups[index][row],
@@ -155,7 +156,7 @@ class _SettingsRow extends StatelessWidget {
             entry.$2,
             entry.$3,
             glyph: entry.$1 == 'AI 助手'
-                ? AiSparkleIcon(size: 17, color: entry.$3.icon)
+                ? AiSparkleIcon(size: 17, color: entry.$3.iconFor(context))
                 : null,
           ),
           const SizedBox(width: 13),
@@ -170,10 +171,10 @@ class _SettingsRow extends StatelessWidget {
               ),
             ),
           ),
-          const Icon(
+          Icon(
             Icons.keyboard_arrow_right,
             size: 18,
-            color: PrimaryColors.muted,
+            color: PrimaryColors.of(context).muted,
           ),
         ],
       ),

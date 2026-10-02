@@ -21,7 +21,7 @@ class _ContextDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+    style: TextStyle(fontSize: 12, color: PrimaryColors.of(context).secondary),
   );
 }
 
@@ -43,15 +43,15 @@ class _ContextTitle extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       children: [
-        Icon(icon, color: tone.icon, size: 20),
+        Icon(icon, color: tone.iconFor(context), size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: PrimaryColors.accent,
+              color: PrimaryColors.of(context).accent,
             ),
           ),
         ),
@@ -156,10 +156,10 @@ class _ContextNumber extends StatelessWidget {
                   ),
                   textInputAction: TextInputAction.done,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: PrimaryColors.accent,
+                    color: PrimaryColors.of(context).accent,
                   ),
                   decoration: InputDecoration(
                     filled: true,
@@ -183,10 +183,10 @@ class _ContextNumber extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 4),
                   child: Text(
                     unit!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: PrimaryColors.accent,
+                      color: PrimaryColors.of(context).accent,
                     ),
                   ),
                 ),

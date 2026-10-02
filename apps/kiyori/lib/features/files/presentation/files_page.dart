@@ -74,7 +74,7 @@ class _FileSection extends StatelessWidget {
               label: '管理$title',
               child: InkWell(
                 onTap: emptyAction,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.only(left: 12, top: 12, bottom: 12),
                   child: Row(
                     children: [
@@ -82,13 +82,13 @@ class _FileSection extends StatelessWidget {
                         '全部',
                         style: TextStyle(
                           fontSize: 12,
-                          color: PrimaryColors.accent,
+                          color: PrimaryColors.of(context).accent,
                         ),
                       ),
                       Icon(
                         Icons.keyboard_arrow_right,
                         size: 18,
-                        color: PrimaryColors.accent,
+                        color: PrimaryColors.of(context).accent,
                       ),
                     ],
                   ),
@@ -148,10 +148,10 @@ class _GridEntry extends StatelessWidget {
         ),
         Text(
           entry.$4,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             height: 16 / 11,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -199,17 +199,17 @@ class _LocationRow extends StatelessWidget {
                     textAlign: TextAlign.end,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                 ),
               ),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_right,
               size: 18,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ],
         ),

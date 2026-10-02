@@ -47,31 +47,31 @@ class _PermissionsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 '普通网页浏览无需授予下列权限。只选择你需要的能力，也可以暂不开启，之后在「设置 → 更多功能 → 权限管理」调整。',
                 style: TextStyle(
                   fontSize: 13.5,
                   height: 21 / 13.5,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: PrimaryColors.of(context).card,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: PrimaryColors.divider),
+                  border: Border.all(color: PrimaryColors.of(context).divider),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '已选 ${selected.length} 项待处理。点击下方按钮后发起授权；返回后由你选择继续或停止，不会自动进入下一项。',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         height: 19 / 12.5,
-                        color: PrimaryColors.secondary,
+                        color: PrimaryColors.of(context).secondary,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -127,7 +127,7 @@ class _PermissionsPage extends StatelessWidget {
                 null,
               ),
               const SizedBox(height: 12),
-              const Divider(color: PrimaryColors.divider),
+              Divider(color: PrimaryColors.of(context).divider),
               const SizedBox(height: 12),
               const Text(
                 '完整权限目录',
@@ -138,12 +138,12 @@ class _PermissionsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 3),
-              const Text(
+              Text(
                 '展开查看全部权限及当前状态。与上方条目共用同一选择，无需重复勾选。',
                 style: TextStyle(
                   fontSize: 11.5,
                   height: 16 / 11.5,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
               for (var i = 0; i < permissionGroups.length; i++)
@@ -154,21 +154,21 @@ class _PermissionsPage extends StatelessWidget {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 '联网、网络状态、前台服务、唤醒锁等由 Android 按声明管理，不需要逐项弹窗。照片和文档可通过系统选择器按次提供；屏幕捕获在使用时确认。网站授权与 AI 工具执行授权另行管理，不因同意协议而自动开启。',
                 style: TextStyle(
                   fontSize: 12,
                   height: 20 / 12,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 '拒绝可选权限不影响进入应用，对应功能可能不可用。已授予的访问可到系统设置或对应的 Shizuku、Root 管理器撤销。',
                 style: TextStyle(
                   fontSize: 12,
                   height: 20 / 12,
-                  color: PrimaryColors.secondary,
+                  color: PrimaryColors.of(context).secondary,
                 ),
               ),
             ],
@@ -216,10 +216,10 @@ class _PermissionsPage extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             group.$2,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               height: 19 / 12,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -227,9 +227,9 @@ class _PermissionsPage extends StatelessWidget {
                             count == 0
                                 ? '${entries.length} 项 · 按需开启'
                                 : '已选 $count 项',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: PrimaryColors.accent,
+                              color: PrimaryColors.of(context).accent,
                             ),
                           ),
                         ],
@@ -257,14 +257,13 @@ class _PermissionsPage extends StatelessWidget {
                           color: selected.contains(entry.id)
                               ? Theme.of(context).colorScheme.primaryContainer
                                     .withValues(alpha: .56)
-                              : Colors.white,
+                              : PrimaryColors.of(context).card,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                             side: selected.contains(entry.id)
                                 ? BorderSide(
-                                    color: PrimaryColors.accent.withValues(
-                                      alpha: .42,
-                                    ),
+                                    color: PrimaryColors.of(context).accent
+                                        .withValues(alpha: .42),
                                   )
                                 : BorderSide.none,
                           ),
@@ -292,7 +291,8 @@ class _PermissionsPage extends StatelessWidget {
                                           ? Icons.check_circle
                                           : Icons.visibility,
                                       size: 24,
-                                      color: PrimaryColors.secondary,
+                                      color: PrimaryColors.of(context)
+                                          .secondary,
                                     ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -310,18 +310,20 @@ class _PermissionsPage extends StatelessWidget {
                                         const SizedBox(height: 3),
                                         Text(
                                           status(entry.id).label,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
-                                            color: PrimaryColors.secondary,
+                                            color: PrimaryColors.of(context)
+                                                .secondary,
                                           ),
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
                                           entry.description,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             height: 18 / 12,
-                                            color: PrimaryColors.secondary,
+                                            color: PrimaryColors.of(context)
+                                                .secondary,
                                           ),
                                         ),
                                       ],
@@ -356,10 +358,10 @@ class _Choice extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       backgroundColor: emphasized
           ? Theme.of(context).colorScheme.primaryContainer
-          : Colors.white,
+          : PrimaryColors.of(context).card,
       side: emphasized
           ? BorderSide.none
-          : const BorderSide(color: PrimaryColors.divider),
+          : BorderSide(color: PrimaryColors.of(context).divider),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
     ),
     child: Text(label, style: const TextStyle(fontSize: 12)),
@@ -383,10 +385,10 @@ class _GroupTitle extends StatelessWidget {
         ),
         Text(
           hint,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11.5,
             height: 16 / 11.5,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -421,10 +423,10 @@ class _PreviewRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
-        color: Colors.white,
+        color: PrimaryColors.of(context).card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: PrimaryColors.divider),
+          side: BorderSide(color: PrimaryColors.of(context).divider),
         ),
         child: InkWell(
           onTap: onTap,
@@ -439,10 +441,14 @@ class _PreviewRow extends StatelessWidget {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: tone.container,
+                    color: tone.containerFor(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(entry.icon, color: tone.icon, size: 18),
+                  child: Icon(
+                    entry.icon,
+                    color: tone.iconFor(context),
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -460,10 +466,10 @@ class _PreviewRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           height: 16 / 11,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -471,7 +477,7 @@ class _PreviewRow extends StatelessWidget {
                         status.label,
                         style: TextStyle(
                           fontSize: 11,
-                          color: status.foreground,
+                          color: status.foreground(context),
                         ),
                       ),
                     ],
@@ -479,7 +485,7 @@ class _PreviewRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 if (id == 'all_files' || id == 'install')
-                  const Flexible(
+                  Flexible(
                     child: Padding(
                       padding: EdgeInsets.only(top: 2),
                       child: Text(
@@ -488,7 +494,7 @@ class _PreviewRow extends StatelessWidget {
                           fontSize: 10.5,
                           height: 15 / 10.5,
                           fontWeight: FontWeight.w600,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ),
@@ -505,8 +511,8 @@ class _PreviewRow extends StatelessWidget {
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: checked
-                              ? PrimaryColors.accent
-                              : PrimaryColors.divider,
+                              ? PrimaryColors.of(context).accent
+                              : PrimaryColors.of(context).divider,
                           borderRadius: BorderRadius.circular(11),
                         ),
                         child: AnimatedAlign(

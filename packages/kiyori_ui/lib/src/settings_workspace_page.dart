@@ -22,33 +22,9 @@ class SettingsWorkspacePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parent = Theme.of(context);
-    final dark = parent.brightness == Brightness.dark;
-    final background = dark
-        ? const Color(0xFF101215)
-        : PrimaryColors.background;
-    final colors = parent.colorScheme.copyWith(
-      surface: Color(dark ? 0xFF1B1F24 : 0xFFFFFFFF),
-      onSurface: Color(dark ? 0xFFF2F5F8 : 0xFF20242A),
-      onSurfaceVariant: Color(dark ? 0xFFAAB2BC : 0xFF6E747C),
-      outline: Color(dark ? 0xFF7F8995 : 0xFF9AA2AC),
-      outlineVariant: Color(dark ? 0xFF2A3037 : 0xFFE9EDF2),
-      surfaceContainerLowest: Color(dark ? 0xFF1B1F24 : 0xFFFFFFFF),
-      surfaceContainerLow: Color(dark ? 0xFF1B1F24 : 0xFFFFFFFF),
-      surfaceContainer: Color(dark ? 0xFF1B1F24 : 0xFFFFFFFF),
-      surfaceContainerHigh: Color(dark ? 0xFF22272D : 0xFFF2F4F7),
-      surfaceContainerHighest: Color(dark ? 0xFF2A3037 : 0xFFE9EDF2),
-    );
+    final background = PrimaryColors.of(context).background;
     // 旧工作台独立覆盖 KiyoriSettingsTheme，不能直接继承应用普通卡片色。
-    return Theme(
-      data: parent.copyWith(
-        colorScheme: colors,
-        textTheme: parent.textTheme.apply(
-          bodyColor: colors.onSurface,
-          displayColor: colors.onSurface,
-        ),
-        scaffoldBackgroundColor: background,
-      ),
+    return SettingsTheme(
       child: Builder(
         builder: (context) => Scaffold(
           backgroundColor: background,

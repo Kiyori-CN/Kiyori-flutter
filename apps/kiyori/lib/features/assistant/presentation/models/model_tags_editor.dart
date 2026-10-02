@@ -49,7 +49,7 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -61,7 +61,7 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                     '第一项用于连接测试；点击标签复制模型名，长按进入排序',
                     style: TextStyle(
                       fontSize: 12,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                 ],
@@ -98,7 +98,7 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
             ),
           ),
           child: widget.models.isEmpty
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                   child: Column(
                     children: [
@@ -114,7 +114,7 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                         '手动输入模型名称，或从上游搜索并添加',
                         style: TextStyle(
                           fontSize: 12,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ],
@@ -241,7 +241,8 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                                                 Icon(
                                                   Icons.check_circle,
                                                   size: 15,
-                                                  color: IconTone.success.icon,
+                                                  color: IconTone.success
+                                                      .iconFor(context),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
@@ -474,9 +475,12 @@ class _ModelAddDialogState extends State<_ModelAddDialog> {
       width: 360,
       child: Column(
         children: [
-          const Text(
+          Text(
             '输入一个模型名称；也可以使用逗号或换行一次粘贴多个模型',
-            style: TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: PrimaryColors.of(context).secondary,
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -534,11 +538,14 @@ class _ModelSortDrawerState extends State<_ModelSortDrawer> {
         const SizedBox(height: 12),
         Expanded(
           child: ReorderableListView.builder(
-            header: const Padding(
+            header: Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: Text(
                 '拖动右侧手柄调整顺序，完成后第一项作为连接测试模型',
-                style: TextStyle(fontSize: 14, color: PrimaryColors.secondary),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: PrimaryColors.of(context).secondary,
+                ),
               ),
             ),
             buildDefaultDragHandles: false,
@@ -594,11 +601,11 @@ class _ModelSortDrawerState extends State<_ModelSortDrawer> {
                               ),
                             ),
                             if (index == 0)
-                              const Text(
+                              Text(
                                 '测试模型',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: PrimaryColors.accent,
+                                  color: PrimaryColors.of(context).accent,
                                 ),
                               ),
                           ],
@@ -609,12 +616,12 @@ class _ModelSortDrawerState extends State<_ModelSortDrawer> {
                         index: index,
                         child: Semantics(
                           label: '拖动模型 ${ordered[index]}',
-                          child: const ColoredBox(
+                          child: ColoredBox(
                             color: Colors.transparent,
                             child: Icon(
                               Icons.drag_handle,
                               size: 28,
-                              color: PrimaryColors.secondary,
+                              color: PrimaryColors.of(context).secondary,
                             ),
                           ),
                         ),

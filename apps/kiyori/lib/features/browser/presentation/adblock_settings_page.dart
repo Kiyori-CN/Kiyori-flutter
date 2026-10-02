@@ -228,10 +228,10 @@ class AdblockMetric extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 17 / 12,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ),
@@ -242,7 +242,7 @@ class AdblockMetric extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: PrimaryColors.accent,
+            color: PrimaryColors.of(context).accent,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -259,7 +259,10 @@ class AdblockEmptyRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
     child: Text(
       message,
-      style: const TextStyle(fontSize: 13, color: PrimaryColors.secondary),
+      style: TextStyle(
+        fontSize: 13,
+        color: PrimaryColors.of(context).secondary,
+      ),
     ),
   );
 }

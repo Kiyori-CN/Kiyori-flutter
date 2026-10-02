@@ -3,27 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/context/context_summary_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> revealContext(
-  WidgetTester tester,
-  Finder target, {
-  bool up = false,
-}) async {
-  var towardTop = up;
-  for (var i = 0; i < 120; i++) {
-    if (target.hitTestable().evaluate().isNotEmpty) return;
-    final body = find.byKey(const PageStorageKey('context-summary'));
-    final rect = tester.getRect(body);
-    if (target.evaluate().isNotEmpty) {
-      towardTop = tester.getRect(target).center.dy < rect.center.dy;
-    }
-    await tester.dragFrom(
-      Offset(rect.left + 4, rect.center.dy),
-      Offset(0, towardTop ? 100 : -100),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail('Cannot reveal $target');
-}
+import 'support/ui_test_helpers.dart';
 
 void main() {
   for (final size in [

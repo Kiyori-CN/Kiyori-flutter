@@ -64,7 +64,7 @@ class _CustomEmojiPageState extends State<CustomEmojiPage> {
           ),
           child: Row(
             children: [
-              Icon(Icons.link, size: 20, color: IconTone.link.icon),
+              Icon(Icons.link, size: 20, color: IconTone.link.iconFor(context)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

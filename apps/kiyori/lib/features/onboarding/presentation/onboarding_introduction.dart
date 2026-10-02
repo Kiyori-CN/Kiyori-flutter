@@ -193,10 +193,10 @@ class _IntroPage extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             data.lede,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               height: 21 / 13.5,
-              color: PrimaryColors.secondary,
+              color: PrimaryColors.of(context).secondary,
             ),
           ),
         ],
@@ -245,10 +245,10 @@ class _IntroPage extends StatelessWidget {
                   const SizedBox(height: 11),
                   Text(
                     data.note,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 18 / 12,
-                      color: PrimaryColors.secondary,
+                      color: PrimaryColors.of(context).secondary,
                     ),
                   ),
                 ],
@@ -266,11 +266,11 @@ class _FeatureCard extends StatelessWidget {
   const _FeatureCard(this.card);
   final _CardData card;
   @override
-  Widget build(BuildContext c) => Container(
+  Widget build(BuildContext context) => Container(
     constraints: const BoxConstraints(minHeight: 122),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: PrimaryColors.divider),
+      color: PrimaryColors.of(context).card,
+      border: Border.all(color: PrimaryColors.of(context).divider),
       borderRadius: BorderRadius.circular(16),
       boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 2)],
     ),
@@ -282,13 +282,13 @@ class _FeatureCard extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: card.tone.container,
+            color: card.tone.containerFor(context),
             borderRadius: BorderRadius.circular(11),
           ),
           alignment: Alignment.center,
           child: card.title == 'AI 助手'
-              ? AiSparkleIcon(color: card.tone.icon, size: 20)
-              : Icon(card.icon, color: card.tone.icon, size: 20),
+              ? AiSparkleIcon(color: card.tone.iconFor(context), size: 20)
+              : Icon(card.icon, color: card.tone.iconFor(context), size: 20),
         ),
         const SizedBox(height: 9),
         Text(
@@ -304,15 +304,15 @@ class _FeatureCard extends StatelessWidget {
             margin: const EdgeInsets.only(top: 5),
             padding: const EdgeInsets.symmetric(horizontal: 5),
             decoration: BoxDecoration(
-              color: Theme.of(c).colorScheme.primaryContainer,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
               card.badge!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 height: 14 / 10,
-                color: PrimaryColors.accent,
+                color: PrimaryColors.of(context).accent,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -320,19 +320,19 @@ class _FeatureCard extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           card.lines.split('\n').first,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             height: 17 / 12,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           card.lines.split('\n').last,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             height: 17 / 12,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -345,12 +345,12 @@ class _Map extends StatelessWidget {
   final String label;
   final int page;
   @override
-  Widget build(BuildContext c) => Container(
+  Widget build(BuildContext context) => Container(
     height: 104,
     width: double.infinity,
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: PrimaryColors.divider),
+      color: PrimaryColors.of(context).card,
+      border: Border.all(color: PrimaryColors.of(context).divider),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Column(
@@ -373,7 +373,7 @@ class _Map extends StatelessWidget {
           height: 15,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            border: Border.all(color: PrimaryColors.divider),
+            border: Border.all(color: PrimaryColors.of(context).divider),
             borderRadius: BorderRadius.circular(5),
           ),
           child: Row(
@@ -387,8 +387,8 @@ class _Map extends StatelessWidget {
                           (page == 0 ||
                               (page == 1 && (i == 1 || i == 2)) ||
                               (page == 3 && i >= 2))
-                          ? PrimaryColors.accent
-                          : PrimaryColors.divider,
+                          ? PrimaryColors.of(context).accent
+                          : PrimaryColors.of(context).divider,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -399,10 +399,10 @@ class _Map extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9.5,
             height: 12 / 9.5,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -415,28 +415,34 @@ class _MapPanel extends StatelessWidget {
   final IconData icon;
   final bool active, large;
   @override
-  Widget build(BuildContext c) => Container(
+  Widget build(BuildContext context) => Container(
     width: large ? 104 : 74,
     height: large ? 56 : 50,
     decoration: BoxDecoration(
-      color: active ? Theme.of(c).colorScheme.primaryContainer : Colors.white,
+      color: active
+          ? Theme.of(context).colorScheme.primaryContainer
+          : PrimaryColors.of(context).card,
       borderRadius: BorderRadius.circular(9),
     ),
     child: CustomPaint(
-      foregroundPainter: _PanelOutline(active),
+      foregroundPainter: _PanelOutline(active, PrimaryColors.of(context)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon == Icons.auto_awesome)
             AiSparkleIcon(
               size: 16,
-              color: active ? PrimaryColors.accent : PrimaryColors.secondary,
+              color: active
+                  ? PrimaryColors.of(context).accent
+                  : PrimaryColors.of(context).secondary,
             )
           else
             Icon(
               icon,
               size: 16,
-              color: active ? PrimaryColors.accent : PrimaryColors.secondary,
+              color: active
+                  ? PrimaryColors.of(context).accent
+                  : PrimaryColors.of(context).secondary,
             ),
           const SizedBox(height: 4),
           Text(
@@ -445,8 +451,8 @@ class _MapPanel extends StatelessWidget {
               fontSize: 9,
               height: 11 / 9,
               color: active
-                  ? Theme.of(c).colorScheme.onPrimaryContainer
-                  : PrimaryColors.secondary,
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : PrimaryColors.of(context).secondary,
             ),
           ),
         ],
@@ -456,8 +462,9 @@ class _MapPanel extends StatelessWidget {
 }
 
 class _PanelOutline extends CustomPainter {
-  const _PanelOutline(this.active);
+  const _PanelOutline(this.active, this.colors);
   final bool active;
+  final PrimaryPalette colors;
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path()
@@ -467,7 +474,7 @@ class _PanelOutline extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = active ? PrimaryColors.accent : PrimaryColors.divider;
+      ..color = active ? colors.accent : colors.divider;
     if (active) {
       canvas.drawPath(path, paint);
       return;
@@ -483,5 +490,6 @@ class _PanelOutline extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PanelOutline oldDelegate) => active != oldDelegate.active;
+  bool shouldRepaint(_PanelOutline oldDelegate) =>
+      active != oldDelegate.active || colors != oldDelegate.colors;
 }

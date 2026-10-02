@@ -4,54 +4,8 @@ import 'package:kiyori/features/assistant/presentation/usage/usage_page.dart';
 import 'package:kiyori/features/assistant/presentation/usage/usage_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-const usageFixture = UsagePresentation(
-  chats: 12,
-  messages: 40,
-  input: 800,
-  output: 200,
-  cached: 80,
-  requests: 5,
-  costCny: 1.25,
-  hasUsdCost: true,
-  models: [
-    ModelUsagePresentation(
-      name: 'Model B',
-      input: 200,
-      output: 100,
-      requests: 2,
-      costCny: .5,
-      billing: UsageBillingMode.request,
-      requestPriceCny: .25,
-    ),
-    ModelUsagePresentation(
-      name: 'Model A',
-      input: 600,
-      output: 100,
-      cached: 80,
-      requests: 3,
-      costCny: .75,
-      inputPriceCny: 1.2,
-      cachedPriceCny: .1,
-      outputPriceCny: 2.4,
-    ),
-  ],
-);
-
-Future<void> revealUsage(WidgetTester tester, Finder target) async {
-  for (var i = 0; i < 100; i++) {
-    if (target.hitTestable().evaluate().isNotEmpty) return;
-    final rect = tester.getRect(find.byKey(const PageStorageKey('usage')));
-    final up =
-        target.evaluate().isNotEmpty &&
-        tester.getRect(target).center.dy < rect.center.dy;
-    await tester.dragFrom(
-      Offset(rect.left + 3, rect.center.dy),
-      Offset(0, up ? 100 : -100),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail('Cannot reveal $target');
-}
+import 'support/assistant_fixtures.dart';
+import 'support/ui_test_helpers.dart';
 
 void main() {
   for (final size in [

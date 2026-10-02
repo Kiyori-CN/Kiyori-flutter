@@ -263,7 +263,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
             ),
           ),
           const SizedBox(height: 10),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +272,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
                   '响应',
                   style: TextStyle(
                     fontSize: 11,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
                 SizedBox(height: 4),
@@ -320,10 +320,14 @@ class _AppearanceChatState extends State<AppearanceChat> {
         ),
       ),
     );
-    const avatar = CircleAvatar(
+    final avatar = CircleAvatar(
       radius: 15,
       backgroundColor: Color(0xFFEDF1F5),
-      child: Icon(Icons.person, size: 18, color: PrimaryColors.secondary),
+      child: Icon(
+        Icons.person,
+        size: 18,
+        color: PrimaryColors.of(context).secondary,
+      ),
     );
     if (wide) {
       return Column(
@@ -358,9 +362,8 @@ class _AppearanceChatState extends State<AppearanceChat> {
                           '示例模型 by 示例供应商',
                           style: TextStyle(
                             fontSize: 11,
-                            color: PrimaryColors.secondary.withValues(
-                              alpha: .75,
-                            ),
+                            color: PrimaryColors.of(context).secondary
+                                .withValues(alpha: .75),
                             fontFamily: fontFamily,
                           ),
                         ),

@@ -152,9 +152,12 @@ class _ModelParametersCardState extends State<ModelParametersCard>
         onTap: () => setState(() => expanded = !expanded),
       ),
       if (expanded) ...[
-        const Text(
+        Text(
           '启用参数时，该参数将被包含在API请求中。默认情况下，所有参数均处于关闭状态，使用模型的默认值。',
-          style: TextStyle(fontSize: 14, color: PrimaryColors.secondary),
+          style: TextStyle(
+            fontSize: 14,
+            color: PrimaryColors.of(context).secondary,
+          ),
         ),
         TabBar(
           controller: tabs,
@@ -192,10 +195,13 @@ class _ModelParametersCardState extends State<ModelParametersCard>
                   .withValues(alpha: .3),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text(
+            child: Text(
               '暂无自定义参数',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: PrimaryColors.secondary),
+              style: TextStyle(
+                fontSize: 14,
+                color: PrimaryColors.of(context).secondary,
+              ),
             ),
           )
         else
@@ -218,12 +224,12 @@ class _ModelParametersCardState extends State<ModelParametersCard>
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Text(
+                    child: Text(
                       '1.3',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: PrimaryColors.accent,
+                        color: PrimaryColors.of(context).accent,
                       ),
                     ),
                   ),
@@ -278,9 +284,9 @@ class _ModelParametersCardState extends State<ModelParametersCard>
                       ),
                       Text(
                         definition.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                       Text(

@@ -24,14 +24,18 @@ enum PermissionStatus {
 }
 
 extension PermissionStatusPresentation on PermissionStatus {
-  Color get foreground => switch (this) {
-    PermissionStatus.granted => const Color(0xFF16734F),
-    PermissionStatus.partial => const Color(0xFFA85A12),
-    PermissionStatus.setup => const Color(0xFF2B5FAF),
-    PermissionStatus.onDemand => const Color(0xFF17768B),
-    PermissionStatus.unchecked => PrimaryColors.secondary,
-    _ => PrimaryColors.accent,
-  };
+  Color foreground(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return switch (this) {
+      PermissionStatus.granted => Color(dark ? 0xFF67D7A5 : 0xFF16734F),
+      PermissionStatus.partial => Color(dark ? 0xFFFFB76A : 0xFFA85A12),
+      PermissionStatus.setup => Color(dark ? 0xFF8CB5FF : 0xFF2B5FAF),
+      PermissionStatus.onDemand => Color(dark ? 0xFF65D3E8 : 0xFF17768B),
+      PermissionStatus.unchecked => PrimaryColors.of(context).secondary,
+      _ => PrimaryColors.of(context).accent,
+    };
+  }
+
   String get label => switch (this) {
     PermissionStatus.unchecked => '未检查',
     PermissionStatus.granted => '已授权',

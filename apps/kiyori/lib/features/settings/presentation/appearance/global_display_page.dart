@@ -77,9 +77,9 @@ class _GlobalDisplayPageState extends State<GlobalDisplayPage> {
               const SizedBox(height: 8),
               Text(
                 collapseOptions[collapse],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
               Padding(
@@ -106,8 +106,8 @@ class _GlobalDisplayPageState extends State<GlobalDisplayPage> {
                             style: TextStyle(
                               fontSize: 11,
                               color: collapse == i
-                                  ? PrimaryColors.accent
-                                  : PrimaryColors.secondary,
+                                  ? PrimaryColors.of(context).accent
+                                  : PrimaryColors.of(context).secondary,
                             ),
                           ),
                         ),

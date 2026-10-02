@@ -5,8 +5,8 @@ import 'package:kiyori/features/video/presentation/player_experience_page.dart';
 import 'package:kiyori/features/video/presentation/player_settings_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'app_test.dart' show FakeClient;
-import 'settings_detail_test.dart' show reveal;
+import 'support/fake_runtime.dart' show FakeClient;
+import 'support/ui_test_helpers.dart' show reveal;
 
 void main() {
   for (final size in [

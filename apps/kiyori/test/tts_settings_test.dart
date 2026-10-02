@@ -7,9 +7,9 @@ import 'package:kiyori/features/speech/presentation/tts_tool_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 
-import 'app_test.dart' show FakeClient;
+import 'support/fake_runtime.dart' show FakeClient;
 
-import 'stt_settings_test.dart' show revealStt;
+import 'support/ui_test_helpers.dart' show revealStt;
 
 void main() {
   testWidgets(

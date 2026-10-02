@@ -11,7 +11,7 @@ class BackupCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     margin: EdgeInsets.zero,
     elevation: 1,
-    color: Colors.white,
+    color: PrimaryColors.of(context).card,
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     child: Padding(
@@ -47,10 +47,10 @@ class BackupHeader extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: tone.container,
+          color: tone.containerFor(context),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(icon, color: tone.icon, size: 24),
+        child: Icon(icon, color: tone.iconFor(context), size: 24),
       ),
       const SizedBox(width: 12),
       Expanded(
@@ -77,7 +77,10 @@ class BackupText extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: TextStyle(fontSize: small ? 12 : 14, color: PrimaryColors.secondary),
+    style: TextStyle(
+      fontSize: small ? 12 : 14,
+      color: PrimaryColors.of(context).secondary,
+    ),
   );
 }
 
@@ -148,7 +151,11 @@ class BackupStat extends StatelessWidget {
     decoration: BoxDecoration(
       color: file
           ? color.withValues(alpha: .1)
-          : const Color(0xFFEDF1F5).withValues(alpha: .6),
+          : Color(
+              Theme.of(context).brightness == Brightness.dark
+                  ? 0xFF242A31
+                  : 0xFFEDF1F5,
+            ).withValues(alpha: .6),
       borderRadius: BorderRadius.circular(file ? 14 : 12),
       border: file ? Border.all(color: color.withValues(alpha: .3)) : null,
     ),

@@ -10,29 +10,9 @@ import 'package:kiyori/features/files/presentation/file_settings_page.dart';
 import 'package:kiyori/features/files/presentation/files_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'app_test.dart' show FakeClient;
+import 'support/fake_runtime.dart' show FakeClient;
 
-Future<void> reveal(WidgetTester tester, Finder finder) async {
-  for (var attempt = 0; attempt < 60; attempt++) {
-    if (finder.evaluate().isNotEmpty) {
-      final center = tester.getCenter(finder);
-      final height =
-          tester.view.physicalSize.height / tester.view.devicePixelRatio;
-      if (center.dy > 90 &&
-          center.dy < height - 80 &&
-          finder.hitTestable().evaluate().isNotEmpty) {
-        return;
-      }
-    }
-    // 只滚动当前可命中的列表，避免路由过渡/遮罩时误拖底层页面。
-    final lists = find.byType(ListView).hitTestable();
-    if (lists.evaluate().isNotEmpty) {
-      await tester.drag(lists.last, const Offset(0, -140));
-    }
-    await tester.pumpAndSettle();
-  }
-  fail('Could not reveal $finder');
-}
+import 'support/ui_test_helpers.dart';
 
 void main() {
   testWidgets(

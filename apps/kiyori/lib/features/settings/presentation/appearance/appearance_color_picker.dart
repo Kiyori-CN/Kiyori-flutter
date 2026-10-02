@@ -148,7 +148,9 @@ class _AppearanceColorPickerState extends State<AppearanceColorPicker> {
                         decoration: BoxDecoration(
                           color: picked,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: PrimaryColors.muted),
+                          border: Border.all(
+                            color: PrimaryColors.of(context).muted,
+                          ),
                         ),
                       ),
                       Column(
@@ -265,13 +267,13 @@ class _AppearanceColorPickerState extends State<AppearanceColorPicker> {
                           ],
                         ),
                         if (mode == 'HSV')
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 4),
                             child: Text(
                               'H: 0-360°, S: 0-100%, V: 0-100%',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: PrimaryColors.secondary,
+                                color: PrimaryColors.of(context).secondary,
                               ),
                             ),
                           ),

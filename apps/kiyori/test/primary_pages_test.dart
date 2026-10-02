@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 import 'package:kiyori/app/shell/bottom_navigation.dart';
 
-import 'app_test.dart' show FakeClient;
+import 'support/fake_runtime.dart' show FakeClient;
 
 void main() {
   for (final size in [

@@ -74,7 +74,8 @@ driver 写入被忽略的 `build/integration_response_data.json`（执行目录�
 
 2026-10-02 已在 Windows Profile 执行首四次 + 热四十次分页并生成原始报告，
 实际显示器报告 240Hz。桌面数据只证明采集链可用；热滑栅格化曾出现 27.07ms 最差帧，
-不能称为零掉帧或 240Hz 达标。详细数据和后续要求见 [status](../status.md)。
+不能称为零掉帧或 240Hz 达标。历史测量见[历史记录](../status-history.md)，
+当前后续要求见[状态](../status.md)。
 
 ## 当前验收边界
 

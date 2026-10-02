@@ -96,7 +96,11 @@ class _ReplyPreferencesPageState extends State<ReplyPreferencesPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.face, size: 24, color: IconTone.account.icon),
+                    Icon(
+                      Icons.face,
+                      size: 24,
+                      color: IconTone.account.iconFor(context),
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -125,7 +129,11 @@ class _ReplyPreferencesPageState extends State<ReplyPreferencesPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.link, size: 20, color: IconTone.link.icon),
+                    Icon(
+                      Icons.link,
+                      size: 20,
+                      color: IconTone.link.iconFor(context),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

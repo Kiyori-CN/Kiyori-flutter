@@ -51,7 +51,7 @@ class BackupSettingsPage extends StatelessWidget {
       itemCount: 10,
       separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) => switch (index) {
-        0 => _overview(),
+        0 => _overview(context),
         1 => _fileStatistics(context),
         2 => _management(
           context,
@@ -145,7 +145,7 @@ class BackupSettingsPage extends StatelessWidget {
     ),
   );
 
-  Widget _overview() => BackupCard(
+  Widget _overview(BuildContext context) => BackupCard(
     spacing: 20,
     children: [
       Column(
@@ -164,25 +164,25 @@ class BackupSettingsPage extends StatelessWidget {
             '聊天记录',
             snapshot.chats.length,
             Icons.history,
-            IconTone.browser.icon,
+            IconTone.browser.iconFor(context),
           ),
           BackupStat(
             '角色卡',
             snapshot.characterCount,
             Icons.person,
-            IconTone.account.icon,
+            IconTone.account.iconFor(context),
           ),
           BackupStat(
             '记忆条目',
             snapshot.memoryCount,
             Icons.psychology,
-            IconTone.ai.icon,
+            IconTone.ai.iconFor(context),
           ),
           BackupStat(
             '记忆关联',
             snapshot.linkCount,
             Icons.link,
-            IconTone.link.icon,
+            IconTone.link.iconFor(context),
           ),
         ],
       ),
@@ -261,7 +261,11 @@ class BackupSettingsPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFEDF1F5).withValues(alpha: .5),
+            color: Color(
+              Theme.of(context).brightness == Brightness.dark
+                  ? 0xFF242A31
+                  : 0xFFEDF1F5,
+            ).withValues(alpha: .5),
             borderRadius: BorderRadius.circular(14),
           ),
           child: const BackupText(

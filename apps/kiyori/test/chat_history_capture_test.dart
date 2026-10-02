@@ -9,9 +9,11 @@ import 'package:kiyori/features/assistant/presentation/context/context_summary_p
 import 'package:kiyori/features/assistant/presentation/models/function_models_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_history_test.dart' show revealHistory, snapshot;
-import 'context_summary_test.dart' show revealContext;
-import 'function_models_test.dart' show functionSnapshot, revealFunction;
+import 'support/ui_test_helpers.dart' show revealHistory;
+import 'support/assistant_fixtures.dart' show snapshot;
+import 'support/ui_test_helpers.dart' show revealContext;
+import 'support/assistant_fixtures.dart' show functionSnapshot;
+import 'support/ui_test_helpers.dart' show revealFunction;
 
 void main() {
   const output = String.fromEnvironment('KIYORI_CAPTURE');

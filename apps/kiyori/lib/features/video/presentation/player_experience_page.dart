@@ -187,20 +187,20 @@ class _Section extends StatelessWidget {
           header: true,
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 18 / 13,
               fontWeight: FontWeight.w500,
-              color: PrimaryColors.accent,
+              color: PrimaryColors.of(context).accent,
             ),
           ),
         ),
         Text(
           detail,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             height: 15 / 11,
-            color: PrimaryColors.secondary,
+            color: PrimaryColors.of(context).secondary,
           ),
         ),
       ],
@@ -261,10 +261,10 @@ class _Toggle extends StatelessWidget {
                       ),
                       Text(
                         description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           height: 15 / 11,
-                          color: PrimaryColors.secondary,
+                          color: PrimaryColors.of(context).secondary,
                         ),
                       ),
                     ],
@@ -321,10 +321,10 @@ class _ValueSliderState extends State<_ValueSlider> {
           ),
           Text(
             '${draft.toInt()}${widget.unit}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 17 / 12,
-              color: PrimaryColors.accent,
+              color: PrimaryColors.of(context).accent,
             ),
           ),
         ],

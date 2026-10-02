@@ -1,56 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/history/chat_history_page.dart';
-import 'package:kiyori/features/assistant/presentation/history/chat_history_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> revealHistory(
-  WidgetTester tester,
-  Finder target, {
-  bool up = false,
-}) async {
-  var towardTop = up;
-  for (var i = 0; i < 100; i++) {
-    if (target.hitTestable().evaluate().isNotEmpty) return;
-    final list = find.byKey(const PageStorageKey('chat-history-management'));
-    final rect = tester.getRect(list);
-    if (target.evaluate().isNotEmpty) {
-      towardTop = tester.getRect(target).center.dy < rect.center.dy;
-    } else if (towardTop) {
-      final scrollable = find
-          .descendant(of: list, matching: find.byType(Scrollable))
-          .first;
-      if (tester.state<ScrollableState>(scrollable).position.pixels <= 0) {
-        towardTop = false;
-      }
-    }
-    await tester.dragFrom(
-      Offset(rect.left + 5, rect.center.dy),
-      Offset(0, towardTop ? 90 : -90),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail(
-    'Unable to reach $target; scrolls: ${tester.widgetList<Scrollable>(find.byType(Scrollable)).map((w) => '${w.axisDirection}: ${w.controller?.positions.map((p) => '${p.pixels}/${p.maxScrollExtent}')}')}',
-  );
-}
-
-const snapshot = ChatHistoryPresentation(
-  chats: [
-    ChatHistoryItem(id: 'a', title: '第一条记录', character: '林', group: '工作'),
-    ChatHistoryItem(
-      id: 'b',
-      title: '第二条记录',
-      characterGroupId: 'g',
-      group: '生活',
-    ),
-  ],
-  characters: [HistoryIdentity('c', '林')],
-  groups: [HistoryIdentity('g', '讨论组')],
-  characterStats: [HistoryStatistic('已删除角色', 1, 3)],
-  groupStats: [HistoryStatistic('lost', 1, 2)],
-  workspaces: [HistoryWorkspace('/preview/workspace', '草稿', '内部存储')],
-);
+import 'support/ui_test_helpers.dart';
+import 'support/assistant_fixtures.dart';
 
 void main() {
   testWidgets('history date range, clearing and missing group assignment', (

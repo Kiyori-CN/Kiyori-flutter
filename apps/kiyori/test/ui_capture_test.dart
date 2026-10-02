@@ -5,10 +5,10 @@ import 'support/ui_capture.dart';
 
 import 'package:kiyori/app/kiyori_app.dart';
 
-import 'app_test.dart' show FakeClient;
-import 'settings_detail_test.dart' show reveal;
-import 'backup_settings_test.dart' show revealBackup;
-import 'onboarding_test.dart' show revealOnboarding;
+import 'support/fake_runtime.dart' show FakeClient;
+import 'support/ui_test_helpers.dart' show reveal;
+import 'support/ui_test_helpers.dart' show revealBackup;
+import 'support/ui_test_helpers.dart' show revealOnboarding;
 
 // 可选人工视觉证据，字体只在本机加载，不分发系统字体或生成黄金图基线。
 void main() {

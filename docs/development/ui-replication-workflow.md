@@ -20,6 +20,7 @@
 5. 先默认态，再非空、选择、编辑、错误和嵌套模态。业务保存/系统/网络动作为空点击；
    不用假成功或开发提示替代按钮，不把只读外部事实改成可随点击变化的本地状态。
 6. 定向测试覆盖来源返回、草稿身份和释放、320宽/横屏/桌面、双倍文字与键盘；
+   动态目录覆盖弹层未关闭时的重排/删除，缓存页覆盖焦点与 ticker。
    真实问题修复应有行为证据，不写只检查文件存在的镜像测试。
 7. 捕获渲染、核对源参数，再执行完整验证和批次构建。设备并排视觉/触摸/Profile 与
    iOS 编译单列待验证；未取得证据不能把截图称为像素完全一致。
@@ -42,13 +43,25 @@
 把旧工程复制入新仓库，也不把文件数充当页面覆盖率。`-Filter` 是路径子串筛选。
 截图不传 `-Test` 时执行全部捕获套件；其它系统显式传 `-Font` 指向本机中文字库。
 字体只用于本机渲染，不分发。公共 `test/support/ui_capture.dart` 负责字体、PNG 释放和
-阴影状态恢复。不同宿主字体的截图只能用于布局审阅，不能替代 Android 字形比较。
+阴影状态恢复，并等待可见图片首帧，避免框架空闲但异步解码未完成时漏图标。
+不同宿主字体的截图只能用于布局审阅，不能替代 Android 字形比较。
+明暗表面与角色图标色由公共设置色表投影，颜色编辑器初始草稿与宿主渲染颜色分开核对；
+本机主题截图不等于全局偏好已生效。共用夹具放 `test/support/`，不导入另一测试套件。
+
+在依赖已解析且 pubspec/lock 未变化的同一批次，定向测试、截图和构建可使用 `-NoPub`；
+首次检出或依赖变化继续使用默认 pub 解析。参数只消除重复解析，不关闭分析或行为检查。
 
 小改先定向测试，批次结束运行完整 verify；命令失败检查具体阶段，不重复启动仍在运行的
 Gradle/Flutter 构建。不在测试运行中修改其输入。保留构建缓存，不常规执行 clean。
 Gradle 仅启用本地 task output cache；不配置远程缓存、build scan 或未验证的 configuration cache。
 缓存机制依据 [Gradle 官方文档](https://docs.gradle.org/current/userguide/build_cache.html)，
 字体证据边界依据 [Flutter 测试文档](https://api.flutter.dev/flutter/flutter_test/matchesGoldenFile.html)。
+
+缓存页面不能只使用 `Offstage`：它仍会保留焦点与动画，需结合焦点排除和 `TickerMode`，
+见 [Offstage](https://api.flutter.dev/flutter/widgets/Offstage-class.html) 与
+[TickerMode](https://api.flutter.dev/flutter/widgets/TickerMode-class.html)。当前 Flutter 的
+`Image` 会响应 TickerMode 停止监听图片流；惰性列表的缓存区仍可能保留图片，不能据此
+声称每个完全离开可视像素的 GIF 都已经暂停。需要设备剖析后再决定是否增加可见性策略。
 
 ## 证据与清理
 

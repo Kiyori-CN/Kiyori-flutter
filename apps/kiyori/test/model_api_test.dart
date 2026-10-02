@@ -6,22 +6,7 @@ import 'package:kiyori/features/assistant/presentation/models/model_api_page.dar
 import 'package:kiyori/features/assistant/presentation/models/function_model_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> revealModel(WidgetTester tester, Finder target) async {
-  final scroll = find.byType(SingleChildScrollView).first;
-  for (var i = 0; i < 160; i++) {
-    if (target.hitTestable().evaluate().isNotEmpty) return;
-    final rect = tester.getRect(scroll);
-    final up =
-        target.evaluate().isNotEmpty &&
-        tester.getRect(target).center.dy < rect.center.dy;
-    await tester.dragFrom(
-      Offset(rect.left + 4, rect.center.dy),
-      Offset(0, up ? 140 : -140),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail('Cannot reveal $target');
-}
+import 'support/ui_test_helpers.dart';
 
 void main() {
   testWidgets(

@@ -27,12 +27,12 @@ class _ToolIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: tool.$3.container,
+      color: tool.$3.containerFor(context),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Padding(
       padding: const EdgeInsets.all(7),
-      child: Icon(tool.$2, size: 18, color: tool.$3.icon),
+      child: Icon(tool.$2, size: 18, color: tool.$3.iconFor(context)),
     ),
   );
 }
@@ -86,7 +86,7 @@ class _GroupEditorState extends State<_GroupEditor> {
           child: Text(
             widget.favorites ? '长按工具拖动排序，点减号移出常用。' : '长按工具拖动排序，松手后自动保存。',
             style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: PrimaryColors.secondary),
+                ?.copyWith(color: PrimaryColors.of(context).secondary),
           ),
         ),
         Expanded(
@@ -146,11 +146,11 @@ class _GroupEditorState extends State<_GroupEditor> {
                                     ),
                                   ),
                                   const SizedBox(width: 10),
-                                  const Icon(
+                                  Icon(
                                     Icons.drag_handle,
                                     semanticLabel: '长按拖动排序',
                                     size: 20,
-                                    color: PrimaryColors.accent,
+                                    color: PrimaryColors.of(context).accent,
                                   ),
                                   if (widget.favorites)
                                     IconButton(
@@ -224,14 +224,14 @@ class _GroupEditorState extends State<_GroupEditor> {
                                       child: Text(tool.$1),
                                     ),
                                   ),
-                                  const Padding(
+                                  Padding(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 12,
                                     ),
                                     child: Icon(
                                       Icons.add_circle_outline,
                                       size: 20,
-                                      color: PrimaryColors.accent,
+                                      color: PrimaryColors.of(context).accent,
                                     ),
                                   ),
                                 ],
@@ -313,7 +313,7 @@ class _Groups extends StatelessWidget {
                   child: Text(
                     '分组只整理工具入口，不影响插件的安装与启停。',
                     style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: PrimaryColors.secondary),
+                        ?.copyWith(color: PrimaryColors.of(context).secondary),
                   ),
                 ),
               ],
@@ -342,7 +342,10 @@ class _Groups extends StatelessWidget {
                               Text(
                                 '${group.$2.length} 个可用工具',
                                 style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: PrimaryColors.secondary),
+                                    ?.copyWith(
+                                      color: PrimaryColors.of(context)
+                                          .secondary,
+                                    ),
                               ),
                             ],
                           ),
@@ -600,8 +603,8 @@ class _MoveToolsState extends State<_MoveTools> {
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_unchecked,
                             color: selected
-                                ? PrimaryColors.accent
-                                : PrimaryColors.secondary,
+                                ? PrimaryColors.of(context).accent
+                                : PrimaryColors.of(context).secondary,
                           ),
                         )
                       : Checkbox(value: selected, onChanged: (_) {}),

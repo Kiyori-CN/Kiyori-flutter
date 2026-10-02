@@ -73,18 +73,18 @@ Future<ModelApiProtocol?> showApiProtocolDrawer(
                                 const SizedBox(height: 3),
                                 Text(
                                   protocol.summary,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: PrimaryColors.secondary,
+                                    color: PrimaryColors.of(context).secondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           if (checked)
-                            const Icon(
+                            Icon(
                               Icons.check,
-                              color: PrimaryColors.accent,
+                              color: PrimaryColors.of(context).accent,
                             ),
                         ],
                       ),
@@ -179,10 +179,10 @@ class _ProviderDrawerState extends State<_ProviderDrawer> {
                   padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
                   child: Text(
                     row,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: PrimaryColors.accent,
+                      color: PrimaryColors.of(context).accent,
                     ),
                   ),
                 );
@@ -238,18 +238,18 @@ class _ProviderDrawerState extends State<_ProviderDrawer> {
                                 const SizedBox(height: 2),
                                 Text(
                                   provider.summary,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: PrimaryColors.secondary,
+                                    color: PrimaryColors.of(context).secondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           if (selected)
-                            const Icon(
+                            Icon(
                               Icons.check,
-                              color: PrimaryColors.accent,
+                              color: PrimaryColors.of(context).accent,
                             ),
                         ],
                       ),

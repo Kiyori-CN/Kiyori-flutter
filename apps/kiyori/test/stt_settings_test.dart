@@ -4,26 +4,7 @@ import 'package:kiyori/features/speech/presentation/stt_settings_page.dart';
 import 'package:kiyori/features/speech/presentation/stt_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> revealStt(
-  WidgetTester tester,
-  Finder target, {
-  bool reverse = false,
-}) async {
-  for (var i = 0; i < 100; i++) {
-    final hits = target.hitTestable();
-    if (hits.evaluate().isNotEmpty && tester.getCenter(hits).dy > 80) return;
-    final rect = tester.getRect(find.byType(ListView).first);
-    final up = target.evaluate().isEmpty
-        ? reverse
-        : tester.getRect(target).center.dy < rect.center.dy;
-    await tester.dragFrom(
-      Offset(rect.left + 3, rect.center.dy),
-      Offset(0, up ? 110 : -110),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail('Cannot reveal $target');
-}
+import 'support/ui_test_helpers.dart';
 
 void main() {
   testWidgets('STT handles removed selected profile and empty snapshots', (

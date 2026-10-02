@@ -49,7 +49,7 @@ class ModelSettingsHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 24, color: tone.icon),
+      Icon(icon, size: 24, color: tone.iconFor(context)),
       const SizedBox(width: 8),
       Expanded(
         child: Column(

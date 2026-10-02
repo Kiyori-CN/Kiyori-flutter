@@ -10,15 +10,15 @@ class DisplaySectionTitle extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       children: [
-        Icon(icon, size: 20, color: PrimaryColors.secondary),
+        Icon(icon, size: 20, color: PrimaryColors.of(context).secondary),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: PrimaryColors.accent,
+              color: PrimaryColors.of(context).accent,
             ),
           ),
         ),
@@ -35,7 +35,7 @@ class DisplayBlock extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 4),
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .5),
+      color: PrimaryColors.of(context).card.withValues(alpha: .5),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Column(
@@ -51,7 +51,7 @@ class DisplayDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+    style: TextStyle(fontSize: 12, color: PrimaryColors.of(context).secondary),
   );
 }
 

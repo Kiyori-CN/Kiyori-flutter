@@ -5,18 +5,8 @@ import 'package:kiyori/features/settings/presentation/backup_dialogs.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 // 审计未加载态有原始 spinner，使用有界 pump，不能等待永不结束的动画。
-Future<void> revealBackup(WidgetTester tester, Finder finder) async {
-  for (var i = 0; i < 100; i++) {
-    if (finder.hitTestable().evaluate().isNotEmpty) {
-      final y = tester.getCenter(finder).dy;
-      final height = tester.view.physicalSize.height;
-      if (y > 90 && y < height - 60) return;
-    }
-    await tester.drag(find.byType(ListView).first, const Offset(0, -180));
-    await tester.pump(const Duration(milliseconds: 300));
-  }
-  fail('Could not reveal $finder');
-}
+
+import 'support/ui_test_helpers.dart';
 
 void main() {
   for (final size in [

@@ -5,8 +5,8 @@ import 'package:kiyori/features/documents/presentation/document_settings_page.da
 import 'package:kiyori/features/files/presentation/file_settings_page.dart';
 import 'package:kiyori/features/toolbox/presentation/toolbox_settings_page.dart';
 
-import 'app_test.dart' show FakeClient;
-import 'settings_detail_test.dart' show reveal;
+import 'support/fake_runtime.dart' show FakeClient;
+import 'support/ui_test_helpers.dart' show reveal;
 
 void main() {
   for (final size in [

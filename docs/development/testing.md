@@ -25,9 +25,20 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 复用真实 app 资源和本机字体捕获。脚本不会替代完整 verify，详见
 [复刻流程](ui-replication-workflow.md)。截图必须在可追溯源码版本上生成，不能在验证中修改输入。
 
+同一批依赖已解析且 pubspec/lock 未变化时，`test-ui.ps1` 和 `build.ps1` 可加 `-NoPub`
+复用解析结果。新检出、依赖变更或解析缺失时保留默认行为。完整 verify 仍负责正式批次检查。
+`tools/test-tooling.ps1` 随 verify 执行，用临时夹具验证桥接输出集合不变、新增嵌套文件、
+内容修改和删除四种行为；实际生成一致性仍用 `generate-bridge.ps1 -Check` 核对。
+
 核心优先覆盖权限撤销、流取消、提交结果未知、任务恢复、数据库迁移、资源 URI/路径差异、规则切换、Range 续传和扩展输入边界。测试行为与契约，不为每个 getter、目录存在或低风险文本修改写镜像测试。
 
 UI 关注响应式布局、键盘/鼠标/触摸、大字体、可访问性和生命周期。原生能力采用真实平台集成测试，mock 只能验证调用约定，不能证明后台服务、权限弹窗、音频焦点或 WebView 行为。
+
+动态实体目录还需验证打开菜单后的重排/删除、保留实体的 controller 身份、移除后释放、
+离屏焦点/ticker 和待返回弹层。`governance_regression_test.dart` 覆盖这些现有失效路径；
+`settings_theme_capture_test.dart` 为设置、浏览器设置、TTS、主题、备份、权限和引导捕获明暗两态。
+暗色宿主注入验证组件适配，不代表全局主题偏好已经接入。Windows 引擎集成结束后，
+交付前重新构建普通 Windows 入口，不能把测试 runner 当用户检查包。
 
 ## 设备矩阵
 

@@ -57,6 +57,15 @@ Future<void> captureUi(
     } else {
       await tester.pumpAndSettle();
     }
+    // pumpAndSettle 只等待框架帧，不保证文件图片的异步解码完成。
+    // 等待实际可见 Image 的首帧，避免首次截图漏掉设置页的 PNG 图标。
+    final images = find.byType(Image).evaluate().toList();
+    await tester.runAsync(() async {
+      for (final element in images) {
+        await precacheImage((element.widget as Image).image, element);
+      }
+    });
+    await tester.pump();
     final boundary =
         boundaryKey.currentContext!.findRenderObject()!
             as RenderRepaintBoundary;

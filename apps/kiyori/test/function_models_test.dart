@@ -4,34 +4,8 @@ import 'package:kiyori/features/assistant/presentation/models/function_model_pre
 import 'package:kiyori/features/assistant/presentation/models/function_models_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-const functionSnapshot = FunctionModelsPresentation(
-  configs: [
-    ModelConfigPresentation(id: 'default', name: '默认配置', models: ['模型一']),
-    ModelConfigPresentation(id: 'multi', name: '多模型配置', models: ['模型二', '模型三']),
-  ],
-);
-
-Future<void> revealFunction(
-  WidgetTester tester,
-  Finder target, {
-  bool up = false,
-}) async {
-  var towardTop = up;
-  for (var i = 0; i < 160; i++) {
-    if (target.hitTestable().evaluate().isNotEmpty) return;
-    final body = find.byKey(const PageStorageKey('function-models'));
-    final rect = tester.getRect(body);
-    if (target.evaluate().isNotEmpty) {
-      towardTop = tester.getRect(target).center.dy < rect.center.dy;
-    }
-    await tester.dragFrom(
-      Offset(rect.left + 3, rect.center.dy),
-      Offset(0, towardTop ? 100 : -100),
-    );
-    await tester.pumpAndSettle();
-  }
-  fail('Cannot reveal $target');
-}
+import 'support/assistant_fixtures.dart';
+import 'support/ui_test_helpers.dart';
 
 void main() {
   testWidgets(

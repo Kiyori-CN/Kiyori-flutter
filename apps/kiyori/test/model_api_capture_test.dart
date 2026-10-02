@@ -6,7 +6,7 @@ import 'support/ui_capture.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_api_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'model_api_test.dart' show revealModel;
+import 'support/ui_test_helpers.dart' show revealModel;
 
 void main() {
   const output = String.fromEnvironment('KIYORI_CAPTURE');

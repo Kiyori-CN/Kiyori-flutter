@@ -9,7 +9,7 @@ class AppearanceCard extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: Material(
-      color: Colors.white,
+      color: PrimaryColors.of(context).card,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -34,22 +34,22 @@ class AppearanceSectionTitle extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, size: 24, color: tone.icon),
+            Icon(icon, size: 24, color: tone.iconFor(context)),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: PrimaryColors.accent,
+                  color: PrimaryColors.of(context).accent,
                 ),
               ),
             ),
           ],
         ),
       ),
-      const Divider(height: 1, color: PrimaryColors.divider),
+      Divider(height: 1, color: PrimaryColors.of(context).divider),
       const SizedBox(height: 8),
     ],
   );
@@ -61,7 +61,7 @@ class AppearanceDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+    style: TextStyle(fontSize: 12, color: PrimaryColors.of(context).secondary),
   );
 }
 
@@ -175,6 +175,6 @@ class AppearanceDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.symmetric(vertical: space),
-    child: const Divider(height: 1, color: PrimaryColors.divider),
+    child: Divider(height: 1, color: PrimaryColors.of(context).divider),
   );
 }

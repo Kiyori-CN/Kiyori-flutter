@@ -25,7 +25,7 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
   });
   Widget description(String text) => Text(
     text,
-    style: const TextStyle(fontSize: 12, color: PrimaryColors.secondary),
+    style: TextStyle(fontSize: 12, color: PrimaryColors.of(context).secondary),
   );
   @override
   Widget build(BuildContext context) => Dialog(
@@ -121,9 +121,9 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
             ],
             Text(
               qr ? '获取二维码后，使用哔哩哔哩客户端扫码' : 'Cookie 仅在本机加密保存，用于哔哩哔哩账号验证',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: PrimaryColors.secondary,
+                color: PrimaryColors.of(context).secondary,
               ),
             ),
             description('凭据仅发送给哔哩哔哩完成验证，不写入日志或备份。'),

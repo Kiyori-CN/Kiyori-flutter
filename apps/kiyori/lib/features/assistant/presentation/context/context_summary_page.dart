@@ -111,10 +111,10 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
               children: [
                 Text(
                   '当前绑定模型配置：${widget.snapshot.configName}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: PrimaryColors.accent,
+                    color: PrimaryColors.of(context).accent,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -208,15 +208,16 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
                       controller: rules,
                       enabled: summary,
                       maxLines: null,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: PrimaryColors.accent,
+                        color: PrimaryColors.of(context).accent,
                       ),
                       decoration: InputDecoration(
                         hintText: '总结对话时发送的额外规则，留空为不添加',
                         hintStyle: TextStyle(
                           fontSize: 12,
-                          color: PrimaryColors.secondary.withValues(alpha: .5),
+                          color: PrimaryColors.of(context).secondary
+                              .withValues(alpha: .5),
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(

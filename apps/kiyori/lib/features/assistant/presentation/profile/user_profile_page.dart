@@ -165,7 +165,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   children: [
                     Icon(
                       Icons.description,
-                      color: IconTone.document.icon,
+                      color: IconTone.document.iconFor(context),
                       size: 20,
                     ),
                     const SizedBox(width: 10),

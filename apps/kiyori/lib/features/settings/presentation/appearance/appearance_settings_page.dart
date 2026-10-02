@@ -24,12 +24,13 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
     AppearanceInput(),
     AppearanceInterface(),
   ];
+  // 旧 ThemeSettingsTabs 使用语义色，区别于设置目录的 IconTone 角色色。
   static const tabs = [
-    ('主题', Icons.brightness_6, Color(0xFF256DB0)),
-    ('背景', Icons.wallpaper, Color(0xFFAE3B6D)),
-    ('聊天', Icons.chat_bubble, Color(0xFF2B5FAF)),
-    ('输入栏', Icons.keyboard, Color(0xFF17768B)),
-    ('AI 界面', Icons.tune, Color(0xFFA85A12)),
+    ('主题', Icons.brightness_6, Color(0xFF256DB0), Color(0xFF90CAF9)),
+    ('背景', Icons.wallpaper, Color(0xFFAE3B6D), Color(0xFFF49AC0)),
+    ('聊天', Icons.chat_bubble, Color(0xFF2B5FAF), Color(0xFF8CB5FF)),
+    ('输入栏', Icons.keyboard, Color(0xFF17768B), Color(0xFF65D3E8)),
+    ('AI 界面', Icons.tune, Color(0xFFA85A12), Color(0xFFFFB76A)),
   ];
   @override
   Widget build(BuildContext context) => SettingsWorkspacePage(
@@ -70,8 +71,8 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
                                 bottom: BorderSide(
                                   width: selected == i ? 2 : 1,
                                   color: selected == i
-                                      ? PrimaryColors.accent
-                                      : PrimaryColors.divider,
+                                      ? PrimaryColors.of(context).accent
+                                      : PrimaryColors.of(context).divider,
                                 ),
                               ),
                             ),
@@ -81,15 +82,23 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
                                   : Axis.vertical,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(tabs[i].$2, size: 24, color: tabs[i].$3),
+                                Icon(
+                                  tabs[i].$2,
+                                  size: 24,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? tabs[i].$4
+                                      : tabs[i].$3,
+                                ),
                                 if (compact) const SizedBox(width: 8),
                                 Text(
                                   tabs[i].$1,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: i == selected
-                                        ? PrimaryColors.text
-                                        : PrimaryColors.secondary,
+                                        ? PrimaryColors.of(context).text
+                                        : PrimaryColors.of(context).secondary,
                                   ),
                                 ),
                               ],

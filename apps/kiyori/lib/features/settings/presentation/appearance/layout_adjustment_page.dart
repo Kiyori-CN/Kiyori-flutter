@@ -66,15 +66,15 @@ class _SectionTitle extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 2),
     child: Row(
       children: [
-        Icon(icon, color: PrimaryColors.secondary),
+        Icon(icon, color: PrimaryColors.of(context).secondary),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: PrimaryColors.accent,
+              color: PrimaryColors.of(context).accent,
             ),
           ),
         ),
@@ -161,9 +161,9 @@ class _FloatItemState extends State<_FloatItem> {
                 ),
                 Text(
                   widget.entry.$2,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: PrimaryColors.secondary,
+                    color: PrimaryColors.of(context).secondary,
                   ),
                 ),
               ],
@@ -176,10 +176,10 @@ class _FloatItemState extends State<_FloatItem> {
                   child: TextField(
                     controller: input,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: PrimaryColors.accent,
+                      color: PrimaryColors.of(context).accent,
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -195,7 +195,7 @@ class _FloatItemState extends State<_FloatItem> {
                       fillColor: error
                           ? Theme.of(context).colorScheme.errorContainer
                                 .withValues(alpha: .65)
-                          : Colors.white,
+                          : PrimaryColors.of(context).card,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 6,
                         vertical: 5,
@@ -211,10 +211,10 @@ class _FloatItemState extends State<_FloatItem> {
                   padding: const EdgeInsets.only(left: 4),
                   child: Text(
                     widget.entry.$6,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: PrimaryColors.accent,
+                      color: PrimaryColors.of(context).accent,
                     ),
                   ),
                 ),
@@ -273,10 +273,10 @@ class _Preview extends StatelessWidget {
   const _Preview();
   @override
   Widget build(BuildContext context) => DefaultTextStyle.merge(
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 14,
       height: 20 / 14,
-      color: PrimaryColors.text,
+      color: PrimaryColors.of(context).text,
     ),
     child: const Column(
       crossAxisAlignment: CrossAxisAlignment.start,

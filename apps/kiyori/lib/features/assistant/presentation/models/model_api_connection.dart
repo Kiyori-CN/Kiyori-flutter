@@ -211,9 +211,10 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
                                       if (option.$2 != option.$1)
                                         Text(
                                           option.$2,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
-                                            color: PrimaryColors.secondary,
+                                            color: PrimaryColors.of(context)
+                                                .secondary,
                                           ),
                                         ),
                                     ],
@@ -243,16 +244,16 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
                           children: [
                             Text(
                               '实际请求地址: $completed',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: PrimaryColors.accent,
+                                color: PrimaryColors.of(context).accent,
                               ),
                             ),
-                            const Text(
+                            Text(
                               '提示: 如果您输入的是基础URL，系统将自动补全路径。如需禁用，请在URL末尾添加#号。',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: PrimaryColors.secondary,
+                                color: PrimaryColors.of(context).secondary,
                               ),
                             ),
                           ],

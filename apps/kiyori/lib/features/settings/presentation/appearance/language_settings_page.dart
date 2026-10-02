@@ -37,7 +37,10 @@ class LanguageSettingsPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               child: Row(
                 children: [
-                  Icon(Icons.language, color: IconTone.browser.icon),
+                  Icon(
+                    Icons.language,
+                    color: IconTone.browser.iconFor(context),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -46,16 +49,16 @@ class LanguageSettingsPage extends StatelessWidget {
                         Text(language.$2, style: const TextStyle(fontSize: 16)),
                         Text(
                           language.$3,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: PrimaryColors.secondary,
+                            color: PrimaryColors.of(context).secondary,
                           ),
                         ),
                       ],
                     ),
                   ),
                   if (language.$1 == selected)
-                    const Icon(Icons.check, color: PrimaryColors.accent),
+                    Icon(Icons.check, color: PrimaryColors.of(context).accent),
                 ],
               ),
             ),
@@ -63,7 +66,7 @@ class LanguageSettingsPage extends StatelessWidget {
           Divider(
             height: .5,
             thickness: .5,
-            color: PrimaryColors.text.withValues(alpha: .1),
+            color: PrimaryColors.of(context).text.withValues(alpha: .1),
           ),
         ],
         const SizedBox(height: 16),
