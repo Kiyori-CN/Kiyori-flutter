@@ -149,6 +149,21 @@ Windows82文件118694020字节。身份/ARM64/v2/ZIP16K/ELF、x64/DLL pin/native
 人设空目录八字段/消息尾部定位及模型下载目的地核对，尚不宣布设置全树完成。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
+第八批已交付d46ad85e0505c53de29a11f3fcff9866dadec9ae，本地/远端一致0/0，manifest
+已补sourceCommit。第九批继续补设置边界：本地模型下载目的地、目录加载/失败/空态、
+六种下载状态、搜索和删除确认已投影；设置及功能模型管理入口共享同一路由并准确返回。
+人设空目录仍显示八字段，未绑定草稿不回填新角色；首次和切卡定位历史末尾，尺寸变更
+继续校准惰性列表估算，用户上翻后停止跟随。真实下载、模型执行和人设业务仍未接入。
+本批22项联合检查通过，90张捕获位于work/settings-local-models-capture-v2；模型配置
+既有回归在regression-v1通过，唯一失败为新测试将RawTooltip强转IconButton，已修复
+为按真实控件属性定位，失败日志保留。完整verify-v2通过：51文档/4脚本、Rust6与fmt/
+Clippy、253 Dart格式/analyze、Flutter423（10捕获跳过）及真实FFI6；初轮三处测试
+花括号lint已补齐。串行双端Debug通过，固定artifacts/ui-preview/20261003-045532：
+APK105141756字节，SHA256 E4629904CD71940BEEF32019D6B4DE45E00E4D02890F84165A854BED6474E44D；
+Windows82文件118717244字节。APK身份/签名/16K/ELF及Windows架构/DLL pin/native资产/
+复制哈希通过，无Rust API或依赖变化。下一批补浏览器密码/脚本授权和文件隐藏/格式目录
+非空分支；仍未宣布设置全树闭环。
+
 ## 最近已交付：第四轮群组卡草稿垂直切片
 
 基线为 main / b2ded4b0f7b60e82acc0a6e452e48611699ed556，原任务开始时干净、与

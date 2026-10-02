@@ -37,6 +37,8 @@ accounts/presentation 由 AccountPresentation 投影未连接、已连接、读�
 GitHubLoginDialog和BilibiliQrPresentation只投影内嵌壳、加载/完成/二维码状态，不创建
 WebView、OAuth客户端或二维码请求。
 assistant/presentation 的设置入口通过类型化回调交给 app 装配。
+models/local_models_page展示LocalModelsPresentation目录和下载状态，搜索在输入或目录
+变更时计算，删除确认随目录/权限状态释放；页面不访问网络、文件或复制下载管理器。
 prompts/tag_export_dialog管理标签选择与目录代次；tag_market_page及presets展示旧本地
 13项预设，不执行提示词、HTML或外链。persona_generation_page复用角色目录，按实体
 持有侧栏字段/输入草稿并投影消息/生成阶段；没有Dart角色仓库或独立工具执行器。

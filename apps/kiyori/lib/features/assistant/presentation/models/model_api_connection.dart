@@ -8,7 +8,8 @@ import 'model_settings_components.dart';
 import 'model_tags_editor.dart';
 
 class ModelApiConnection extends StatefulWidget {
-  const ModelApiConnection({super.key});
+  const ModelApiConnection({this.onOpenLocalModels = emptyAction, super.key});
+  final VoidCallback onOpenLocalModels;
   @override
   State<ModelApiConnection> createState() => _ModelApiConnectionState();
 }
@@ -121,7 +122,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
       if (provider.id == 'MNN') ...[
         const ModelSettingsBanner('本地运行模型理解能力较差，建议关闭记忆链接、开启禁用工具进行对话'),
         OutlinedButton.icon(
-          onPressed: () {},
+          onPressed: widget.onOpenLocalModels,
           icon: const Icon(Icons.download),
           label: const Text('本地模型下载'),
         ),

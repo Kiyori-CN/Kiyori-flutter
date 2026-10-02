@@ -140,3 +140,16 @@ TagMarketScreen与TagMarketBilingualData全文核对市场四分类13预设/添�
 八字段、角色切换/新建/删除、消息/40条上限、清空；180–309核对角色与历史加载边界。
 tag_market_test/persona_generation_test覆盖目录重排/删除/重入、controller释放、来源
 返回、多视口和160px键盘。真实模型、消息历史、自动保存、工具执行/导出不属于UI完成证据。
+
+人设空目录依旧显示八字段，空草稿在角色切换时清理；首次历史和切卡定位实际末条，
+尺寸通知修正惰性列表范围，用户拖动后停止跟随。长短混排历史与空实体回归在同一测试。
+
+## 本地模型下载目的地
+
+旧OperitScreens:954/1030与ModelApiSettingsSection:1790确认模型配置→MnnModelDownload。
+MnnModelDownloadScreen全文及strings.xml:3478–3498定义加载/错误/空目录、搜索、卡片
+16圆角/10内距/6间隔、六种下载阶段和删除确认。旧Completed重复分支实际首分支生效，
+完成标签以已下载事实为准；新local_models_page保留此判定，不把事件当文件存在证明。
+新LocalModelsPresentation只消费共享下载事实，刷新/下载/暂停/继续/删除均不伪造状态；
+目录删除或转入不可删除阶段会撤销旧确认。local_models_test覆盖路由返回、草稿保留、
+非有限进度、移除/重入、宿主退出与明暗/窄屏/大字/键盘；下载执行仍待共享Transfer。

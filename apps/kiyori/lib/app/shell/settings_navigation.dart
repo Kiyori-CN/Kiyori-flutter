@@ -33,6 +33,7 @@ import '../../features/assistant/presentation/history/chat_history_page.dart';
 import '../../features/assistant/presentation/context/context_summary_page.dart';
 import '../../features/assistant/presentation/models/function_models_page.dart';
 import '../../features/assistant/presentation/models/model_api_page.dart';
+import '../../features/assistant/presentation/models/local_models_page.dart';
 import '../../features/assistant/presentation/permissions/tool_permissions_page.dart';
 import '../../features/assistant/presentation/profile/user_profile_page.dart';
 import '../../features/assistant/presentation/server/lan_automation_page.dart';
@@ -59,6 +60,10 @@ class SettingsNavigation {
   SettingsNavigation(this.navigator);
   final NavigatorState navigator;
 
+  void openModels() => openPage(
+    ModelApiPage(onOpenLocalModels: () => openPage(const LocalModelsPage())),
+  );
+
   Widget buildSettingsPage() => SettingsPage(
     onOpenAssistant: () => openPage(
       AssistantSettingsPage(
@@ -68,13 +73,9 @@ class SettingsNavigation {
           } else if (section == AssistantSettingsSection.context) {
             openPage(const ContextSummaryPage());
           } else if (section == AssistantSettingsSection.functions) {
-            openPage(
-              FunctionModelsPage(
-                onManage: () => openPage(const ModelApiPage()),
-              ),
-            );
+            openPage(FunctionModelsPage(onManage: openModels));
           } else if (section == AssistantSettingsSection.models) {
-            openPage(const ModelApiPage());
+            openModels();
           } else if (section == AssistantSettingsSection.roles) {
             openPage(
               ModelPromptsPage(

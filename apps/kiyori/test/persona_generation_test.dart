@@ -55,6 +55,93 @@ void main() {
   }
 
   testWidgets(
+    'empty persona fields stay editable without leaking into a later card',
+    (tester) async {
+      const empty = PersonaPresentation(
+        catalog: PromptsPresentation(cards: [], activeCardId: ''),
+      );
+      await mount(tester, empty);
+      await open(tester, '无角色卡');
+      expect(find.byType(TextField), findsNWidgets(9));
+      await tester.enterText(
+        find.byKey(const ValueKey('persona-field-0')),
+        '未绑定名称',
+      );
+      await mount(
+        tester,
+        const PersonaPresentation(
+          catalog: PromptsPresentation(cards: cards, activeCardId: 'a'),
+        ),
+      );
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('persona-field-0')))
+            .controller!
+            .text,
+        '角色A',
+      );
+      await mount(tester, empty);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('persona-field-0')))
+            .controller!
+            .text,
+        '',
+      );
+      final field = find.byKey(const ValueKey('persona-field-7'));
+      await tester.ensureVisible(field);
+      await tester.pumpAndSettle();
+      expect(field.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'long histories reach the actual tail on initial load and card change',
+    (tester) async {
+      final histories = {
+        for (final id in ['a', 'b'])
+          id: [
+            for (var i = 0; i < 35; i++)
+              PersonaMessage(
+                id: '$id-$i',
+                content: i == 34
+                    ? '$id末条消息'
+                    : List.filled(i % 5 + 1, '长消息测试' * 30).join('\n'),
+                time: '12:00:00',
+              ),
+          ],
+      };
+      await mount(
+        tester,
+        PersonaPresentation(
+          catalog: const PromptsPresentation(cards: cards, activeCardId: 'a'),
+          messages: histories,
+        ),
+      );
+      expect(find.text('a末条消息').hitTestable(), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, 400));
+      await tester.pumpAndSettle();
+      final controller = tester
+          .widget<ListView>(find.byType(ListView))
+          .controller!;
+      final readingOffset = controller.offset;
+      await mount(
+        tester,
+        PersonaPresentation(
+          catalog: const PromptsPresentation(cards: cards, activeCardId: 'a'),
+          messages: histories,
+        ),
+      );
+      expect(controller.offset, readingOffset);
+      await open(tester, '角色A');
+      await choose(tester, '角色B');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('b末条消息').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'persona card switching keeps drafts isolated and removed cards release controllers',
     (tester) async {
       await mount(

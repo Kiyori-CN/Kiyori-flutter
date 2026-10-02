@@ -9,12 +9,14 @@ import 'function_model_presentation.dart';
 /// 配置目录仅由快照注入。新建、保存、删除和连接测试不产生业务事实。
 class ModelApiPage extends StatefulWidget {
   const ModelApiPage({
+    this.onOpenLocalModels = emptyAction,
     this.configurations = const [
       ModelConfigPresentation(id: 'default', name: '默认配置'),
     ],
     super.key,
   });
   final List<ModelConfigPresentation> configurations;
+  final VoidCallback onOpenLocalModels;
   @override
   State<ModelApiPage> createState() => _ModelApiPageState();
 }
@@ -79,6 +81,7 @@ class _ModelApiPageState extends State<ModelApiPage> {
                       child: TickerMode(
                         enabled: i == selected,
                         child: _ModelConfigBody(
+                          onOpenLocalModels: widget.onOpenLocalModels,
                           selector: Builder(
                             builder: (context) =>
                                 _selector(context, widget.configurations[i]),
@@ -264,8 +267,12 @@ class _ModelApiPageState extends State<ModelApiPage> {
 }
 
 class _ModelConfigBody extends StatelessWidget {
-  const _ModelConfigBody({required this.selector});
+  const _ModelConfigBody({
+    required this.selector,
+    required this.onOpenLocalModels,
+  });
   final Widget selector;
+  final VoidCallback onOpenLocalModels;
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -274,7 +281,7 @@ class _ModelConfigBody extends StatelessWidget {
       children: [
         selector,
         const SizedBox(height: 8),
-        const ModelApiConnection(),
+        ModelApiConnection(onOpenLocalModels: onOpenLocalModels),
         const ModelApiContextCards(),
         const ModelParametersCard(),
         const ModelHeadersCard(),

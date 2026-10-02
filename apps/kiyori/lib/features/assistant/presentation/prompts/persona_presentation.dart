@@ -60,4 +60,11 @@ class PersonaCardDraft {
     }
     input.dispose();
   }
+
+  void clear() {
+    for (final field in fields) {
+      field.clear();
+    }
+    input.clear();
+  }
 }

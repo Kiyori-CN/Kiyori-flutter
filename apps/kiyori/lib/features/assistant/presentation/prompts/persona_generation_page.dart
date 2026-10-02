@@ -21,8 +21,12 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
   final _drafts = <String, PersonaCardDraft>{};
   final _identities = <String, Object>{};
   final _routes = <ModalRoute<dynamic>, String?>{};
-  final _emptyInput = TextEditingController();
+  final _emptyDraft = PersonaCardDraft(
+    const CharacterPresentation(id: '', name: ''),
+  );
   final messagesScroll = ScrollController();
+  bool _followTail = true;
+  bool _tailScheduled = false;
   String? selectedId;
   String? _limitPrompt;
   List<CharacterPresentation> get cards => widget.snapshot.catalog.cards;
@@ -36,6 +40,7 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
     selectedId = widget.snapshot.catalog.activeCardId;
     _reconcile();
     _showLimit();
+    _scheduleTail();
   }
 
   void _reconcile() {
@@ -73,17 +78,31 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
       selectedId = widget.snapshot.catalog.activeCardId;
     }
     _reconcile();
+    if (before != selectedId) _emptyDraft.clear();
     if (before != selectedId) _removeRoutes(_routes.keys);
     final oldCount = oldWidget.snapshot.messages[selectedId]?.length ?? 0;
     final nextCount = widget.snapshot.messages[selectedId]?.length ?? 0;
     if (oldCount != nextCount || before != selectedId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && messagesScroll.hasClients) {
-          messagesScroll.jumpTo(messagesScroll.position.maxScrollExtent);
-        }
-      });
+      _followTail = true;
+      _scheduleTail();
     }
     _showLimit();
+  }
+
+  // 惰性列表的末端范围会随长消息布局修正；跟随尺寸通知直到末条真正可见。
+  // 用户主动滚动后停止跟随，不把历史阅读位置强行拉回底部。
+  void _scheduleTail() {
+    if (!_followTail || _tailScheduled) return;
+    _tailScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tailScheduled = false;
+      if (!mounted || !_followTail || !messagesScroll.hasClients) return;
+      final position = messagesScroll.position;
+      if ((position.maxScrollExtent - position.pixels).abs() > .5) {
+        messagesScroll.jumpTo(position.maxScrollExtent);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   void _removeRoutes(Iterable<ModalRoute<dynamic>> routes) {
@@ -212,7 +231,9 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
       selectedId = choice.id;
       _reconcile();
     });
-    if (messagesScroll.hasClients) messagesScroll.jumpTo(0);
+    _emptyDraft.clear();
+    _followTail = true;
+    _scheduleTail();
   }
 
   @override
@@ -221,7 +242,7 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
     for (final draft in _drafts.values) {
       draft.dispose();
     }
-    _emptyInput.dispose();
+    _emptyDraft.dispose();
     messagesScroll.dispose();
     super.dispose();
   }
@@ -324,29 +345,28 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (draft != null)
-                      for (var i = 0; i < 8; i++) ...[
-                        TextField(
-                          key: ValueKey('persona-field-$i'),
-                          controller: draft!.fields[i],
-                          minLines: 1,
-                          maxLines: [1, 3, 6, 4, 6, 6, 6, 4][i],
-                          decoration: InputDecoration(
-                            labelText: [
-                              '角色名称',
-                              '角色描述',
-                              '角色设定',
-                              '开场白',
-                              '其他内容（聊天）',
-                              '其他内容（语音）',
-                              '高级自定义提示词',
-                              '备注信息（不会被拼接到提示词）',
-                            ][i],
-                            border: const OutlineInputBorder(),
-                          ),
+                    for (var i = 0; i < 8; i++) ...[
+                      TextField(
+                        key: ValueKey('persona-field-$i'),
+                        controller: (draft ?? _emptyDraft).fields[i],
+                        minLines: 1,
+                        maxLines: [1, 3, 6, 4, 6, 6, 6, 4][i],
+                        decoration: InputDecoration(
+                          labelText: [
+                            '角色名称',
+                            '角色描述',
+                            '角色设定',
+                            '开场白',
+                            '其他内容（聊天）',
+                            '其他内容（语音）',
+                            '高级自定义提示词',
+                            '备注信息（不会被拼接到提示词）',
+                          ][i],
+                          border: const OutlineInputBorder(),
                         ),
-                        if (i < 7) const SizedBox(height: 8),
-                      ],
+                      ),
+                      if (i < 7) const SizedBox(height: 8),
+                    ],
                   ],
                 ),
               ),
@@ -377,54 +397,66 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  controller: messagesScroll,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: messages.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == messages.length) {
-                      return const SizedBox(height: 80);
-                    }
-                    final message = messages[index];
-                    return Align(
-                      alignment: message.user
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Card(
-                        key: ValueKey(message.id),
-                        color: message.user
-                            ? colors.primaryContainer
-                            : colors.surfaceContainerHighest,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SelectableText(
-                                message.content,
-                                style: TextStyle(
-                                  color: message.user
-                                      ? colors.onPrimaryContainer
-                                      : colors.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              if (message.time.isNotEmpty)
-                                Text(
-                                  message.time,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: colors.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: (_) {
+                    _scheduleTail();
+                    return false;
                   },
+                  child: NotificationListener<ScrollStartNotification>(
+                    onNotification: (notification) {
+                      if (notification.dragDetails != null) _followTail = false;
+                      return false;
+                    },
+                    child: ListView.builder(
+                      controller: messagesScroll,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: messages.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == messages.length) {
+                          return const SizedBox(height: 80);
+                        }
+                        final message = messages[index];
+                        return Align(
+                          alignment: message.user
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Card(
+                            key: ValueKey(message.id),
+                            color: message.user
+                                ? colors.primaryContainer
+                                : colors.surfaceContainerHighest,
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SelectableText(
+                                    message.content,
+                                    style: TextStyle(
+                                      color: message.user
+                                          ? colors.onPrimaryContainer
+                                          : colors.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (message.time.isNotEmpty)
+                                    Text(
+                                      message.time,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
               Padding(
@@ -439,7 +471,7 @@ class _PersonaGenerationPageState extends State<PersonaGenerationPage> {
                         children: [
                           TextField(
                             key: const ValueKey('persona-input'),
-                            controller: draft?.input ?? _emptyInput,
+                            controller: (draft ?? _emptyDraft).input,
                             enabled: enabled,
                             minLines: 1,
                             maxLines: 4,
