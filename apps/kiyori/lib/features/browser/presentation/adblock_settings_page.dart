@@ -3,6 +3,8 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'adblock_subscription_group.dart';
 import 'adblock_editor_dialog.dart';
+import 'adblock_managed_rules.dart';
+import 'adblock_presentation.dart';
 
 enum AdblockSection {
   overview('广告拦截器'),
@@ -15,29 +17,70 @@ enum AdblockSection {
   final String title;
 }
 
-/// 原 BrowserAdBlockStore 尚未加载时的初始快照：5 个内置订阅、零本地规则。
-/// 这里只复刻初始 UI，不发布“已就绪”或虚构拦截/同步结果。
+/// 默认是尚未加载的快照；目录与运行结果由 owner 注入，不执行过滤或同步。
 class AdblockSettingsPage extends StatefulWidget {
   const AdblockSettingsPage({
     required this.section,
     required this.onOpen,
+    this.snapshot = const AdblockPresentation(),
     super.key,
   });
   final AdblockSection section;
   final ValueChanged<AdblockSection> onOpen;
+  final AdblockPresentation snapshot;
   @override
   State<AdblockSettingsPage> createState() => _AdblockSettingsPageState();
 }
 
 class _AdblockSettingsPageState extends State<AdblockSettingsPage> {
+  AdblockPresentation get snapshot => widget.snapshot;
   final search = TextEditingController();
+  final editorRoutes = <DialogRoute<void>>{};
+
+  void removeEditors() {
+    final routes = editorRoutes.toList();
+    editorRoutes.clear();
+    if (routes.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> addSubscription() async {
+    final route = DialogRoute<void>(
+      context: context,
+      builder: (_) => const SettingsTheme(
+        child: AdblockEditor(kind: AdblockEditorKind.subscription),
+      ),
+    );
+    editorRoutes.add(route);
+    await Navigator.of(context).push(route);
+    editorRoutes.remove(route);
+  }
+
+  @override
+  void didUpdateWidget(covariant AdblockSettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.section != widget.section) {
+      search.clear();
+      removeEditors();
+    }
+  }
+
   @override
   void dispose() {
+    removeEditors();
     search.dispose();
     super.dispose();
   }
 
-  static const reading = '正在后台读取广告拦截设置，页面和浏览器请求不会等待';
+  String summary(AdblockSubscriptionGroupKind group) {
+    final items = snapshot.subscriptions.where((s) => s.group == group);
+    return '${items.where((s) => s.hasLocalRules).length}/${items.length} 就绪';
+  }
 
   Widget _group(String title, String description, List<Widget> rows) =>
       SettingsGroup(
@@ -78,7 +121,9 @@ class _AdblockSettingsPageState extends State<AdblockSettingsPage> {
             ),
             const SizedBox(width: 8),
             TextButton(
-              onPressed: () => showAdblockEditor(context, kind),
+              onPressed: kind == AdblockEditorKind.subscription
+                  ? addSubscription
+                  : () => showAdblockEditor(context, kind),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -99,86 +144,136 @@ class _AdblockSettingsPageState extends State<AdblockSettingsPage> {
     children: switch (widget.section) {
       AdblockSection.overview => [
         _group('拦截状态', '用于 Kiyori 内置浏览器的网页广告过滤，不影响其他应用；网址过滤与元素隐藏共用此开关', [
-          const SettingsRow(
+          SettingsRow(
             title: '启用广告拦截',
-            description: reading,
-            checked: true,
-            enabled: false,
+            description: !snapshot.ready
+                ? snapshot.description
+                : !snapshot.enabled
+                ? '规则与订阅仍会保留，但不执行拦截'
+                : snapshot.networkCount + snapshot.elementCount > 0
+                ? '规则引擎已就绪，请求线程直接读取不可变快照'
+                : '拦截已开启，等待已启用订阅完成同步',
+            checked: snapshot.enabled,
+            enabled: snapshot.ready,
+            onTap: emptyAction,
           ),
-          const AdblockMetric('本地规则引擎', '读取中', reading),
-          const AdblockMetric('当前进程已拦截', '0', '从本次应用进程启动后累计的请求数量'),
-          const AdblockMetric('已启用的网址规则', '0', '阻断 0 条，例外 0 条；总开关关闭时不执行'),
-          const AdblockMetric('已启用的元素规则', '0', '隐藏 0 条，例外 0 条；总开关关闭时不执行'),
-          const AdblockMetric('内置订阅就绪', '0/5', '已完成本地同步；是否参与拦截仍由各组与单条开关决定'),
+          AdblockMetric('本地规则引擎', snapshot.status, snapshot.description),
+          AdblockMetric(
+            '当前进程已拦截',
+            '${snapshot.blockedRequests}',
+            '从本次应用进程启动后累计的请求数量',
+          ),
+          AdblockMetric(
+            '已启用的网址规则',
+            '${snapshot.networkCount}',
+            '阻断 ${snapshot.networkCount} 条，例外 ${snapshot.networkExceptions} 条；总开关关闭时不执行',
+          ),
+          AdblockMetric(
+            '已启用的元素规则',
+            '${snapshot.elementCount}',
+            '隐藏 ${snapshot.elementCount} 条，例外 ${snapshot.elementExceptions} 条；总开关关闭时不执行',
+          ),
+          AdblockMetric(
+            '内置订阅就绪',
+            '${snapshot.readyBuiltIn}/5',
+            '已完成本地同步；是否参与拦截仍由各组与单条开关决定',
+          ),
         ]),
         _group('规则与站点', '所有入口共同使用同一份规则；修改后会立即应用到现有浏览器窗口', [
-          _nav(AdblockSection.network, '拦截广告脚本、图片、接口和其他请求地址', '0'),
-          _nav(AdblockSection.elements, '按站点隐藏广告容器、浮层和干扰组件', '0'),
-          _nav(AdblockSection.allowlist, '白名单站点不会执行请求拦截或元素隐藏', '0'),
+          _nav(
+            AdblockSection.network,
+            '拦截广告脚本、图片、接口和其他请求地址',
+            '${snapshot.networkRules.length}',
+          ),
+          _nav(
+            AdblockSection.elements,
+            '按站点隐藏广告容器、浮层和干扰组件',
+            '${snapshot.elementRules.length}',
+          ),
+          _nav(
+            AdblockSection.allowlist,
+            '白名单站点不会执行请求拦截或元素隐藏',
+            '${snapshot.allowlist.length}',
+          ),
         ]),
         _group('内置拦截方案', '两组规则共用同一运行时；已开启不等于已就绪，首次缺少本地规则时会立即同步', [
           _nav(
             AdblockSection.subscriptions,
             'My AdFilters、AdGuard 中文过滤器、AdRules Lite',
-            '0/3 就绪',
+            summary(AdblockSubscriptionGroupKind.pro),
             title: '广告拦截器 Pro',
           ),
           _nav(
             AdblockSection.subscriptions,
             'EasyList China + EasyList 与可接受广告例外规则',
-            '0/2 就绪',
+            summary(AdblockSubscriptionGroupKind.plus),
             title: 'Adblock Plus',
           ),
           _nav(
             AdblockSection.subscriptions,
             '自动更新、全部刷新、逐条状态和自定义订阅',
-            '5',
+            '${snapshot.subscriptions.length}',
             title: '订阅与更新',
           ),
         ]),
       ],
       AdblockSection.network => [
-        _search(
-          '普通文本为包含匹配，也支持 ||host^、|prefix、suffix|、*、^、正则和 @@ 例外规则',
-          AdblockEditorKind.network,
+        AdblockManagedRules(
+          snapshot: widget.snapshot,
+          kind: AdblockEditorKind.network,
         ),
-        _group('自定义规则', '共 0 条，已启用 0 条', const [
-          AdblockEmptyRow('没有符合条件的网址过滤规则'),
-        ]),
       ],
       AdblockSection.elements => [
-        _search(
-          '每条规则由站点域名和 CSS selector 组成；浏览器“标记广告”也会写入这里',
-          AdblockEditorKind.element,
+        AdblockManagedRules(
+          snapshot: widget.snapshot,
+          kind: AdblockEditorKind.element,
         ),
-        _group('按域名整理', '共 0 个域名、0 条规则', const [
-          AdblockEmptyRow('没有符合条件的网页元素规则'),
-        ]),
       ],
       AdblockSection.allowlist => [
-        _search(
-          '填写主机名，例如 example.com；其子域名会一并跳过广告拦截',
-          AdblockEditorKind.allowlist,
+        AdblockManagedRules(
+          snapshot: widget.snapshot,
+          kind: AdblockEditorKind.allowlist,
         ),
-        _group('已允许站点', '共 0 个站点', const [AdblockEmptyRow('没有符合条件的白名单站点')]),
       ],
       AdblockSection.subscriptions => [
-        _group('订阅状态', '先看规则是否已就绪，再决定是否启用；开关开启但未同步时不会产生拦截效果', const [
-          AdblockMetric('运行时状态', '读取中', reading),
-          AdblockMetric('已启用订阅', '5/5', '参与统一广告拦截运行时的订阅数量'),
-          AdblockMetric('已就绪订阅', '0/5', '已经完成下载、解析并拥有本地规则载荷'),
-          AdblockMetric('当前生效规则', '0', '已启用订阅的阻断、例外和网页元素规则总数'),
+        _group('订阅状态', '先看规则是否已就绪，再决定是否启用；开关开启但未同步时不会产生拦截效果', [
+          AdblockMetric('运行时状态', snapshot.status, snapshot.description),
+          AdblockMetric(
+            '已启用订阅',
+            '${snapshot.subscriptions.where((s) => s.enabled).length}/${snapshot.subscriptions.length}',
+            '参与统一广告拦截运行时的订阅数量',
+          ),
+          AdblockMetric(
+            '已就绪订阅',
+            '${snapshot.subscriptions.where((s) => s.hasLocalRules).length}/${snapshot.subscriptions.length}',
+            '已经完成下载、解析并拥有本地规则载荷',
+          ),
+          AdblockMetric(
+            '当前生效规则',
+            '${snapshot.subscriptions.where((s) => s.enabled).fold(0, (n, s) => n + s.count)}',
+            '已启用订阅的阻断、例外和网页元素规则总数',
+          ),
+          if (snapshot.refreshProgress case final progress?)
+            AdblockMetric(
+              progress.title,
+              '${progress.completed}/${progress.total}',
+              '成功 ${progress.succeeded} · 失败 ${progress.failed} · 正在处理 ${snapshot.subscriptions.where((s) => s.id == progress.currentId).firstOrNull?.name ?? '准备中'}',
+            ),
         ]),
-        _group('订阅更新', '首次缺少本地规则时自动同步；手动更新只在完整下载并解析后替换当前版本', const [
+        _group('订阅更新', '首次缺少本地规则时自动同步；手动更新只在完整下载并解析后替换当前版本', [
           SettingsRow(
             title: '自动更新内置订阅',
             description: '应用启动时检查已启用且到期的内置订阅，开启新订阅时立即同步',
-            checked: true,
+            checked: snapshot.autoUpdate,
+            onTap: emptyAction,
           ),
           SettingsRow(
-            title: '更新已启用订阅',
-            description: '按顺序下载并验证当前已启用的内置与自定义订阅',
-            enabled: false,
+            title: snapshot.refreshProgress?.title ?? '更新已启用订阅',
+            description: snapshot.refreshProgress == null
+                ? '按顺序下载并验证当前已启用的内置与自定义订阅'
+                : '已完成 ${snapshot.refreshProgress!.completed}/${snapshot.refreshProgress!.total}，成功 ${snapshot.refreshProgress!.succeeded}，失败 ${snapshot.refreshProgress!.failed}',
+            enabled: snapshot.subscriptionActions,
+            onTap: emptyAction,
           ),
         ]),
         _search(
@@ -189,17 +284,23 @@ class _AdblockSettingsPageState extends State<AdblockSettingsPage> {
           title: '广告拦截器 Pro',
           description: '三条高覆盖中文与通用过滤列表',
           query: search.text,
-          pro: true,
+          group: AdblockSubscriptionGroupKind.pro,
+          snapshot: snapshot,
         ),
         AdblockSubscriptionGroup(
           title: 'Adblock Plus',
           description: 'EasyList 中国规则与可接受广告例外规则',
           query: search.text,
-          pro: false,
+          group: AdblockSubscriptionGroupKind.plus,
+          snapshot: snapshot,
         ),
-        _group('自定义订阅', '可添加、改名、换址、启停、刷新或删除', const [
-          AdblockEmptyRow('没有符合条件的自定义订阅'),
-        ]),
+        AdblockSubscriptionGroup(
+          title: '自定义订阅',
+          description: '可添加、改名、换址、启停、刷新或删除',
+          query: search.text,
+          group: AdblockSubscriptionGroupKind.custom,
+          snapshot: snapshot,
+        ),
       ],
     },
   );

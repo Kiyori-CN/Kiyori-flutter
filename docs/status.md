@@ -35,14 +35,27 @@ Flutter298项（8捕获套件按默认入口跳过）、真实FFI6项；日志
 0.1.0/1、min24/target37、ARM64、v2签名、ZIP16K与ELF LOAD对齐通过。
 Windows x64完整82文件117533806字节，Flutter DLL与pin一致，含kiyori_ffi.dll；逐文件
 SHA256及来源状态在manifest，审计在`work/settings-tree-artifacts-20261003-001934/`。
-本批按精确允许清单交付main，实际提交/远端ref以Git为准；交付后继续下一组设置缺口。
+第一批已交付`c738090d49cfc96182ee7352ba33c58b55093e2a`，推送后本地/远端一致，左右0/0。
 
-这不是完整设置验收：其余非默认态、GitHub嵌入登录、有效二维码、广告/代理已有目录、
-音乐音源/备份和外观媒体等仍需继续；形象导入/渲染和真实AI业务尚未实现。设备视觉、
+第二批补入GitHub方式选择→全屏内嵌登录壳、B站已生成二维码/刷新/确认/过期投影；补入广告
+拦截运行时五阶段、URL/元素/白名单目录、按域折叠、内置5条订阅、自定义订阅状态/编辑/删除。
+账号登录6项测试与12张状态截图、广告规则/订阅18项测试与16张截图通过；分析无源码问题，
+过程中的一次Dart线程创建错误仅保留日志，未作为成功证据。WebView/OAuth、二维码生成、广告
+Store下载/编译执行仍为空操作，真实业务 owner 未接入。
+
+第二批完整`tools/verify.ps1`通过：50文档、4脚本、Rust fmt/Clippy/6测试、Dart格式/analyze、
+Flutter316项（10捕获套件跳过）、真实FFI6项。日志`work/settings-login-adblock-verify.log`，
+最终截图28张在`work/settings-login-adblock-capture-final/`。未改变公共Rust API/桥或依赖。
+串行Android/Windows Debug构建通过，固定`artifacts/ui-preview/20261003-011013/`：APK
+104702293字节，SHA256`A47555DDF31EBBBD00E31EA8AC0C77D96E96413F8DB4AC3CA19B5B960C592FA4`，
+ARM64/身份/v2签名/ZIP16K/ELF LOAD对齐通过；Windows x64共82文件117595494字节，DLL
+与pin一致、native资产和复制哈希一致，逐文件manifest保留。本批按精确清单交付后继续代理。
+
+这不是完整设置验收：其余非默认态、有效二维码服务、代理已有节点/错误、音乐音源/备份和外观媒体等仍需继续；形象导入/渲染和真实AI业务尚未实现。设备视觉、
 触摸/Profile、真实账号/供应商、Apple构建没有执行，不能由本机Debug结果外推。
 
 恢复入口：读取[设置映射](design/settings-replication-map.md)、当前Git差异和本机日记
-`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续账号嵌入登录与二维码状态及其真实旧源调用链。
+`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续网络代理已有订阅/节点/规则/日志和运行状态。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
 ## 最近已交付：第四轮群组卡草稿垂直切片

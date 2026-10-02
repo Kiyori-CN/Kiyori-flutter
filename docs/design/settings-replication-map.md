@@ -54,6 +54,16 @@
 GitHub连接后无userInfo显示读取中，B站读取/busy禁用操作、失效保留账号、错误无账号时
 可清理确认；取消/退出/移除不在展示层伪造事实。测试account_states_test.dart及截图套件。
 
+GitHub登录方式已接入独立GitHubLoginDialog：方式选择切换全屏内嵌登录壳，加载/完成时保留
+关闭、刷新和Back边界；WebView、OAuth状态和外部浏览器仍由共享owner注入，不伪造网页。
+B站二维码状态以BilibiliQrPresentation注入已生成图像，扫码中允许刷新/打开确认，过期清除
+图像并保留原账号；Cookie切换释放局部输入。有效二维码和真实验证仍未调用。
+
+广告拦截实际核对KiyoriAdBlockSettingsPage及BrowserAdBlockSubscriptionCatalog：
+AdblockPresentation投影运行时读取/加载/编译/就绪/失败、规则计数和同步进度；URL规则按ID、
+元素规则按域折叠、白名单、内置5条订阅和自定义订阅编辑/删除均可达。订阅状态保留旧规则
+错误分支，更新期间禁用动作；不下载、编译或执行规则，真实Store owner仍待接入。
+
 形象实际核对KiyoriAssistantExperienceSettingsPages.kt:84–253、AvatarConfigSection全文、
 AvatarPreviewSection/HowToImportSection、AssistantConfigViewModel初始化、AvatarRepository
 默认设置、AvatarMoodType和strings资源。预览220高/16圆角/.8描边，配置18×14内边距；

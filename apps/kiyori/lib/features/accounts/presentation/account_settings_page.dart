@@ -3,6 +3,7 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'bilibili_login_dialog.dart';
 import 'account_presentation.dart';
+import 'github_login_dialog.dart';
 
 /// 账号目录的展示快照；不查询凭据或启动 OAuth。
 class AccountSettingsPage extends StatelessWidget {
@@ -63,7 +64,7 @@ class AccountSettingsPage extends StatelessWidget {
                   ? confirm(context, github: true)
                   : showDialog<void>(
                       context: context,
-                      builder: (_) => const _GitHubMethodDialog(),
+                      builder: (_) => const GitHubLoginDialog(),
                     ),
             ),
           ],
@@ -143,37 +144,4 @@ class AccountSettingsPage extends StatelessWidget {
       ],
     );
   }
-}
-
-class _GitHubMethodDialog extends StatelessWidget {
-  const _GitHubMethodDialog();
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('登录 GitHub'),
-    scrollable: true,
-    content: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text('请选择 GitHub 登录方式。内嵌模式适合无法调起外部浏览器的设备，外部浏览器模式兼容性更好。'),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: emptyAction,
-          icon: const Icon(Icons.language),
-          label: const Text('使用内嵌页面登录'),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: emptyAction,
-          icon: const Icon(Icons.open_in_browser),
-          label: const Text('使用外部浏览器登录'),
-        ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('取消'),
-      ),
-    ],
-  );
 }

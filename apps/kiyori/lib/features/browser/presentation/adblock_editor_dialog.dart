@@ -6,19 +6,27 @@ enum AdblockEditorKind { network, element, allowlist, subscription }
 Future<void> showAdblockEditor(BuildContext context, AdblockEditorKind kind) =>
     showDialog<void>(
       context: context,
-      builder: (_) => _AdblockEditor(kind: kind),
+      builder: (_) => AdblockEditor(kind: kind),
     );
 
-class _AdblockEditor extends StatefulWidget {
-  const _AdblockEditor({required this.kind});
+class AdblockEditor extends StatefulWidget {
+  const AdblockEditor({
+    required this.kind,
+    this.editing = false,
+    this.initialFirst = '',
+    this.initialSecond = '',
+    super.key,
+  });
   final AdblockEditorKind kind;
+  final bool editing;
+  final String initialFirst, initialSecond;
   @override
-  State<_AdblockEditor> createState() => _AdblockEditorState();
+  State<AdblockEditor> createState() => _AdblockEditorState();
 }
 
-class _AdblockEditorState extends State<_AdblockEditor> {
-  final first = TextEditingController();
-  final second = TextEditingController();
+class _AdblockEditorState extends State<AdblockEditor> {
+  late final first = TextEditingController(text: widget.initialFirst);
+  late final second = TextEditingController(text: widget.initialSecond);
   @override
   void dispose() {
     first.dispose();
@@ -30,13 +38,13 @@ class _AdblockEditorState extends State<_AdblockEditor> {
   Widget build(BuildContext context) {
     final (title, description, firstLabel, secondLabel) = switch (widget.kind) {
       AdblockEditorKind.network => (
-        '新增网址过滤规则',
+        widget.editing ? '编辑网址过滤规则' : '新增网址过滤规则',
         '输入请求地址匹配规则。例外规则以 @@ 开头。',
         '规则',
         null,
       ),
       AdblockEditorKind.element => (
-        '新增网页元素规则',
+        widget.editing ? '编辑网页元素规则' : '新增网页元素规则',
         '域名决定规则作用范围，CSS selector 决定隐藏的页面节点。',
         '站点域名',
         'CSS selector',
@@ -48,7 +56,7 @@ class _AdblockEditorState extends State<_AdblockEditor> {
         null,
       ),
       AdblockEditorKind.subscription => (
-        '新增广告拦截订阅',
+        widget.editing ? '编辑广告拦截订阅' : '新增广告拦截订阅',
         '保存只记录订阅地址；返回列表后点击刷新才会下载自定义规则。',
         '订阅名称',
         'HTTP(S) 订阅地址',

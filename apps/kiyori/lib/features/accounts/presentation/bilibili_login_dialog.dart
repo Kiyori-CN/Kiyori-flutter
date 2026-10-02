@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
+/// 已取得的挑战与可选解码图像；不包含凭据，不在build生成或下载二维码。
+class BilibiliQrPresentation {
+  const BilibiliQrPresentation({this.image});
+  final ImageProvider? image;
+}
+
 /// 登录方式切换只改变展示。二维码、导入、验证和系统跳转为空动作。
 class BilibiliLoginDialog extends StatefulWidget {
   const BilibiliLoginDialog({
@@ -9,17 +15,26 @@ class BilibiliLoginDialog extends StatefulWidget {
     this.busy = false,
     this.message,
     this.error = false,
+    this.qrCode,
     super.key,
   });
   final String? accountName, message;
   final bool busy, error;
+  final BilibiliQrPresentation? qrCode;
   @override
   State<BilibiliLoginDialog> createState() => _BilibiliLoginDialogState();
 }
 
 class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
   bool qr = true;
+  late BilibiliQrPresentation? qrCode = widget.qrCode;
   final cookie = TextEditingController();
+  @override
+  void didUpdateWidget(covariant BilibiliLoginDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.qrCode != widget.qrCode) qrCode = widget.qrCode;
+  }
+
   @override
   void dispose() {
     cookie.clear();
@@ -28,6 +43,7 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
   }
 
   void select(bool next) => setState(() {
+    qrCode = null;
     qr = next;
     cookie.clear();
   });
@@ -78,21 +94,33 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Text(
-                    '登录二维码',
-                    style: TextStyle(color: Color(0xFF444444)),
-                  ),
+                  child: switch (qrCode?.image) {
+                    final image? => Image(
+                      image: image,
+                      width: 220,
+                      height: 220,
+                      semanticLabel: '哔哩哔哩登录二维码',
+                      filterQuality: FilterQuality.none,
+                    ),
+                    null => const Text(
+                      '登录二维码',
+                      style: TextStyle(color: Color(0xFF444444)),
+                    ),
+                  },
                 ),
               ),
               description('使用哔哩哔哩官方客户端扫码并确认；同一手机可点击下方按钮打开确认页。国际版客户端可能不支持。'),
               FilledButton(
-                onPressed: widget.busy ? null : emptyAction,
-                child: const Text('获取二维码'),
+                onPressed: !widget.busy || qrCode != null ? emptyAction : null,
+                child: Text(qrCode == null ? '获取二维码' : '刷新二维码'),
               ),
-              const OutlinedButton(onPressed: null, child: Text('打开哔哩哔哩确认')),
+              OutlinedButton(
+                onPressed: qrCode == null ? null : emptyAction,
+                child: const Text('打开哔哩哔哩确认', textAlign: TextAlign.center),
+              ),
             ] else ...[
               OutlinedButton(
-                onPressed: widget.busy ? null : emptyAction,
+                onPressed: widget.busy ? null : cookie.clear,
                 child: const Text(
                   '从 Kiyori 浏览器获取并登录',
                   textAlign: TextAlign.center,

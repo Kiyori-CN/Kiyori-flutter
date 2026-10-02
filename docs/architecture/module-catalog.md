@@ -9,6 +9,8 @@
 当前已有 `feature/assistant/presentation` 及 browser、toolbox、files、settings 的一级 UI。
 已追加 browser 设置及子页、downloads 设置、files 设置、video 设置及字幕/声音/弹幕/控制栏子页，
 toolbox 设置与常用/分组/批量选择抽屉。工具箱入口展示目录共用，非领域工具注册表。
+browser/presentation/adblock 由 AdblockPresentation 投影运行时和规则/订阅目录；按ID维护
+编辑弹层、域名折叠和状态快照，更新/删除保留空动作边界，不下载、解析或执行过滤规则。
 documents 设置及说明弹窗、files 格式选择器、music 设置和音源导入/备份确认也已加入
 UI 投影；没有加载文档、播放、下载、调用系统选择器或实际导入导出。
 settings 追加更多功能、存储汇总、产物目录编辑和网络代理默认态，app 负责跨领域导航。
@@ -20,6 +22,8 @@ settings/presentation/appearance 按原五标签拆分，聊天面板持有样�
 共享该草稿；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
 accounts/presentation 由 AccountPresentation 投影未连接、已连接、读取、失效及错误，
 包含方式选择与退出/移除确认；不拥有凭据存储、登录控制器或 WebView。
+GitHubLoginDialog和BilibiliQrPresentation只投影内嵌壳、加载/完成/二维码状态，不创建
+WebView、OAuth客户端或二维码请求。
 assistant/presentation 的设置入口通过类型化回调交给 app 装配。
 assistant/presentation/avatar 投影模型目录、预览、六类型参数、Mood绑定与导入指南；
 参数草稿按模型ID及存在期隔离，菜单/编辑路由随宿主释放。当前没有资源导入、持久化或
