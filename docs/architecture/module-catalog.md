@@ -13,6 +13,8 @@ browser/presentation/adblock 由 AdblockPresentation 投影运行时和规则/�
 编辑弹层、域名折叠和状态快照，更新/删除保留空动作边界，不下载、解析或执行过滤规则。
 documents 设置及说明弹窗、files 格式选择器、music 设置和音源导入/备份确认也已加入
 UI 投影；没有加载文档、播放、下载、调用系统选择器或实际导入导出。
+music/presentation以MusicSettingsPresentation投影音源目录、偏好、播放速度/历史和
+LX列表预览；source/backup组件拥有模态会话，原始脚本/解析/存储仍待Rust与native owner。
 settings 追加更多功能、存储汇总、产物目录编辑和网络代理六层状态投影，app 负责跨领域导航。
 NetworkProxyPresentation提供运行事实与订阅/节点/规则/脚本/日志目录；nodes和editors
 只管理筛选/排序/输入，page管理实体存在期与所属模态，不接管network领域业务。

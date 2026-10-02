@@ -63,11 +63,24 @@ Rust6/FFI6/脚本4、50文档和221 Dart格式/analyze通过。首次lint两处�
 Windows82文件117708422字节。APK身份/ARM64/v2/ZIP16K/ELF对齐、Windows x64/DLL pin/
 native资产及逐文件复制哈希通过；无Rust API或依赖变动。本批精确提交推送后继续音乐。
 
+代理已交付672333735d148b5f080d8900ad046a9f25db156c，本地/远端核对0/0、当时干净。
+第四批音乐正在实施：音源详情/链接修改/切换/移除、LX备份预览与导出/撤销状态已接入
+可注入快照；偏好依赖、历史清理、播放速度与桌面歌词非默认投影已补入。音源/备份模态
+随实体/页面释放，取消过的预览离屏不重弹。取消身份保存在页面会话，不保活离屏进度条，
+修复忙碌组件持续请求帧。音乐19项状态/偏好/视口回归和36张捕获通过，证据在
+work/settings-music-regression-v4.log及work/settings-music-capture-v4。完整verify通过：
+Flutter345项（10捕获跳过）、Rust6/FFI6/脚本4、50文档及229 Dart格式/analyze。
+日志work/settings-music-verify.log；未改变Rust API、桥和依赖。串行双端Debug成功，固定
+artifacts/ui-preview/20261003-022730：APK104778774字节，SHA256
+A0A390ED8123612717E7492ADA0756098E1C342B5C8396D18C9A612EA61957AD；Windows82文件117771694字节。
+身份/ARM64/v2/ZIP16K/ELF、Windows x64/DLL pin/native资产与逐文件哈希通过。本批按精确
+清单提交推送后继续工具箱自定义组/保存状态；设备与真实音乐服务未运行。
+
 这不是完整设置验收：其余非默认态、有效二维码服务、音乐音源/备份和外观媒体等仍需继续；形象导入/渲染和真实AI业务尚未实现。设备视觉、
 触摸/Profile、真实账号/供应商、Apple构建没有执行，不能由本机Debug结果外推。
 
 恢复入口：读取[设置映射](design/settings-replication-map.md)、当前Git差异和本机日记
-`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续音乐音源详情/导入更新/切换/移除与备份预览/撤销。
+`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续工具箱自定义组、重命名删除与保存/错误状态。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
 ## 最近已交付：第四轮群组卡草稿垂直切片

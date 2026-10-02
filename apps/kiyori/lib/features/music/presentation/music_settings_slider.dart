@@ -9,17 +9,26 @@ class MusicSettingsSlider extends StatefulWidget {
     required this.max,
     required this.unit,
     this.decimals = 0,
+    this.enabled = true,
     super.key,
   });
   final String title, unit;
   final double value, min, max;
   final int decimals;
+  final bool enabled;
   @override
   State<MusicSettingsSlider> createState() => _MusicSettingsSliderState();
 }
 
 class _MusicSettingsSliderState extends State<MusicSettingsSlider> {
-  late double draft = widget.value;
+  double? draft;
+  double get shown => (draft ?? widget.value).clamp(widget.min, widget.max);
+  @override
+  void didUpdateWidget(covariant MusicSettingsSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value || !widget.enabled) draft = null;
+  }
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -27,7 +36,7 @@ class _MusicSettingsSliderState extends State<MusicSettingsSlider> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '${widget.title} · ${draft.toStringAsFixed(widget.decimals)}${widget.unit}',
+          '${widget.title} · ${shown.toStringAsFixed(widget.decimals)}${widget.unit}',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         SliderTheme(
@@ -44,12 +53,17 @@ class _MusicSettingsSliderState extends State<MusicSettingsSlider> {
                 .withValues(alpha: .14),
           ),
           child: Slider(
-            value: draft,
+            value: shown,
             min: widget.min,
             max: widget.max,
             semanticFormatterCallback: (value) =>
                 '${value.toStringAsFixed(widget.decimals)}${widget.unit}',
-            onChanged: (value) => setState(() => draft = value),
+            onChanged: widget.enabled
+                ? (value) => setState(() => draft = value)
+                : null,
+            onChangeEnd: widget.enabled
+                ? (_) => setState(() => draft = null)
+                : null,
           ),
         ),
       ],

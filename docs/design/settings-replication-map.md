@@ -102,3 +102,18 @@ DragonBones缺省scale=.5，其余1；位移±500，MMD俯仰±90、glTF/FBX±89
 active订阅切换、嵌套菜单、脚本抽屉、busy更新、时钟回退日志和节点选择事实不变；
 network_settings_test.dart保留空态，network_proxy_capture_test.dart覆盖六层非空、明暗、
 320/844/1280视口、大字与键盘弹层。失败证据和捕获路径由status记录。
+
+## 音乐设置目录、偏好与备份
+
+旧ui/features/toolbox/MusicSourceSettings.kt、MusicBackupSettings.kt全文定义音源切换/
+详情/链接更新/移除、列表预览/合并/同ID替换/撤销/导出；MusicSettingsPage与
+MusicDownloadSettings定义canEdit/importing/播放状态依赖、历史确认和下载依赖项。
+MusicDesktopLyricSettings及core/player/MusicDesktopLyricStyle的read定义字体、颜色、
+位置、范围与默认值，MusicWorkspace定义loaded/writable/restoring/committing编辑边界。
+
+新music_settings_presentation.dart只提供摘要和类型化快照；music_source_settings/
+music_source_dialogs管理实体草稿与路由，music_backup_settings管理单次解析预览身份。
+page持有历史确认/偏好选择路由，desktop_lyric_settings只投影同一快照，不启动悬浮窗。
+music_states_test、music_preferences_test及music_states_capture_test覆盖实体更新/删除、
+链接遮蔽、busy错误、备份取消/重入、滑块权威值、下载依赖和明暗/小屏/横屏/键盘。
+真实脚本执行、网络更新、文件选择/备份编解码、播放与桌面歌词服务仍未接入。

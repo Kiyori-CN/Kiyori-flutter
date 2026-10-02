@@ -136,7 +136,11 @@ URL/元素/白名单搜索与编辑、域名折叠、自定义订阅与删除确
 MusicDesktopLyricSettings、MusicBackupSettings 与对应 MusicWorkspace 默认值。
 共 10 分组；ThinSlider 的轨道 2px、圆点 10px，局部预览；默认未启用音源、320k、
 顺序播放、音量 100%、桌面歌词关闭。音源/备份资料为空，真实选择器与网络为空点击；
-导入后详情、备份预览等非默认数据分支尚未接入，未用假资料代替。
+MusicSettingsPresentation另投影音源目录/详情、链接更新、切换/移除、忙碌/错误与LX
+备份预览、合并/替换同ID、撤销及导出确认。所有确认保留空业务动作；脚本正文不进入UI。
+音乐偏好与桌面歌词接收类型化快照；下载别名依赖标签，罗马音依赖歌词文件或内嵌歌词。
+滑块拖动结束回到权威快照，不把空操作伪装为已保存。详情和编辑随实体存在期释放；
+备份预览取消后不会因列表离屏回收再弹出，新的解析ID才建立新会话。
 
 播放器来源为旧 KiyoriPlayerSettingsPage、PlayerModels、PlayerExperienceSettings、
 PlayerExperienceSettingsContent 与 PlayerPanels。主设置 6 组 28 项；四个体验子页使用
