@@ -4,15 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 class NetworkSubscriptionEditor extends StatefulWidget {
-  const NetworkSubscriptionEditor({super.key});
+  const NetworkSubscriptionEditor({
+    this.editing = false,
+    this.localFile = false,
+    this.initialName = '',
+    this.initialUrl = '',
+    this.busy = false,
+    this.error,
+    super.key,
+  });
+  final bool editing, localFile, busy;
+  final String initialName, initialUrl;
+  final String? error;
   @override
   State<NetworkSubscriptionEditor> createState() =>
       _NetworkSubscriptionEditorState();
 }
 
 class _NetworkSubscriptionEditorState extends State<NetworkSubscriptionEditor> {
-  final name = TextEditingController();
-  final url = TextEditingController();
+  late final name = TextEditingController(text: widget.initialName);
+  late final url = TextEditingController(text: widget.initialUrl);
   bool visible = false;
   @override
   void dispose() {
@@ -24,67 +35,142 @@ class _NetworkSubscriptionEditorState extends State<NetworkSubscriptionEditor> {
   @override
   Widget build(BuildContext context) {
     final nameValid = name.text.trim().length <= 80;
-    final urlValid = url.text.trim().startsWith('https://');
-    return AlertDialog(
-      title: const Text('添加订阅地址'),
-      content: SingleChildScrollView(
-        child: Column(
+    final urlValid = widget.localFile || url.text.trim().startsWith('https://');
+    return PopScope(
+      canPop: !widget.busy,
+      child: AlertDialog(
+        scrollable: true,
+        title: Text(
+          !widget.editing
+              ? '添加订阅地址'
+              : widget.localFile
+              ? '重命名订阅'
+              : '编辑订阅',
+        ),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: name,
+              enabled: !widget.busy,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: '名称（可选）',
+                labelText: widget.editing ? '名称' : '名称（可选）',
                 border: const OutlineInputBorder(),
                 errorText: nameValid ? null : '名称不能超过 80 个字符',
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: url,
-              onChanged: (_) => setState(() {}),
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              obscureText: !visible,
-              decoration: InputDecoration(
-                labelText: 'HTTPS 订阅 URL',
-                border: const OutlineInputBorder(),
-                errorText: url.text.trim().isNotEmpty && !urlValid ? '' : null,
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => visible = !visible),
-                  tooltip: visible ? '隐藏订阅地址' : '显示订阅地址',
-                  icon: Icon(visible ? Icons.visibility_off : Icons.visibility),
+            if (!widget.localFile) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: url,
+                enabled: !widget.busy,
+                onChanged: (_) => setState(() {}),
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                obscureText: !visible,
+                decoration: InputDecoration(
+                  labelText: 'HTTPS 订阅 URL',
+                  border: const OutlineInputBorder(),
+                  errorText: url.text.trim().isNotEmpty && !urlValid
+                      ? ''
+                      : null,
+                  suffixIcon: IconButton(
+                    onPressed: widget.busy
+                        ? null
+                        : () => setState(() => visible = !visible),
+                    tooltip: visible ? '隐藏订阅地址' : '显示订阅地址',
+                    icon: Icon(
+                      visible ? Icons.visibility_off : Icons.visibility,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
+            if (widget.busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '正在下载、清洗、校验并加密保存',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (widget.error case final error?)
+              Text(
+                error,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: widget.busy ? null : () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: !widget.busy && nameValid && urlValid
+                ? emptyAction
+                : null,
+            child: Text(widget.editing ? '保存' : '导入'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: nameValid && urlValid ? emptyAction : null,
-          child: const Text('导入'),
-        ),
-      ],
     );
   }
 }
 
 class NetworkRuleEditor extends StatefulWidget {
-  const NetworkRuleEditor({super.key});
+  const NetworkRuleEditor({
+    this.editing = false,
+    this.initialPattern = '',
+    this.initialType = 'DOMAIN',
+    this.initialProxy = true,
+    this.busy = false,
+    super.key,
+  });
+  final bool editing, initialProxy, busy;
+  final String initialPattern, initialType;
   @override
   State<NetworkRuleEditor> createState() => _NetworkRuleEditorState();
 }
 
 class _NetworkRuleEditorState extends State<NetworkRuleEditor> {
-  final pattern = TextEditingController();
-  String type = 'DOMAIN';
-  bool proxy = true;
+  final menus = <ModalRoute<dynamic>>{};
+
+  Widget menuText(BuildContext context, String text) {
+    final route = ModalRoute.of(context);
+    if (route != null && !menus.contains(route)) {
+      if (mounted) {
+        menus.add(route);
+        route.popped.whenComplete(() => menus.remove(route));
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (route.isActive) route.navigator?.removeRoute(route);
+        });
+        WidgetsBinding.instance.ensureVisualUpdate();
+      }
+    }
+    return Text(text);
+  }
+
+  late final pattern = TextEditingController(text: widget.initialPattern);
+  late String type = widget.initialType;
+  late bool proxy = widget.initialProxy;
   static const types = [
     'DOMAIN',
     'DOMAIN-SUFFIX',
@@ -142,6 +228,13 @@ class _NetworkRuleEditorState extends State<NetworkRuleEditor> {
   @override
   void dispose() {
     pattern.dispose();
+    final owned = menus.toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in owned) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
     super.dispose();
   }
 
@@ -149,109 +242,106 @@ class _NetworkRuleEditorState extends State<NetworkRuleEditor> {
   Widget build(BuildContext context) {
     final valid = _validPattern(pattern.text, type);
     return AlertDialog(
-      title: const Text('添加自定义规则'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: pattern,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: '匹配内容',
-                hintText: example,
-                border: const OutlineInputBorder(),
-                helperText: description,
-                helperMaxLines: 4,
-                errorText: pattern.text.trim().isNotEmpty && !valid
-                    ? description
-                    : null,
-                errorMaxLines: 4,
-              ),
+      scrollable: true,
+      title: Text(widget.editing ? '编辑自定义规则' : '添加自定义规则'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: pattern,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: '匹配内容',
+              hintText: example,
+              border: const OutlineInputBorder(),
+              helperText: description,
+              helperMaxLines: 4,
+              errorText: pattern.text.trim().isNotEmpty && !valid
+                  ? description
+                  : null,
+              errorMaxLines: 4,
             ),
-            const SizedBox(height: 10),
-            Text(
-              '规则类型',
-              style: TextStyle(
-                fontSize: 13,
-                color: PrimaryColors.of(context).secondary,
-              ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '规则类型',
+            style: TextStyle(
+              fontSize: 13,
+              color: PrimaryColors.of(context).secondary,
             ),
-            const SizedBox(height: 10),
-            PopupMenuButton<String>(
-              initialValue: type,
-              onSelected: (value) => setState(() => type = value),
-              itemBuilder: (_) => [
-                for (final item in types)
-                  PopupMenuItem(
-                    value: item,
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(label(item))),
-                        if (item == type)
-                          const Icon(Icons.check, semanticLabel: '当前类型'),
-                      ],
-                    ),
-                  ),
-              ],
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(label(type))),
-                    const Icon(
-                      Icons.more_vert_outlined,
-                      semanticLabel: '选择规则类型',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '匹配动作',
-              style: TextStyle(
-                fontSize: 13,
-                color: PrimaryColors.of(context).secondary,
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => setState(() => proxy = true),
-                    child: _RuleActionLabel('代理', selected: proxy),
+          ),
+          const SizedBox(height: 10),
+          PopupMenuButton<String>(
+            initialValue: type,
+            onSelected: (value) => setState(() => type = value),
+            itemBuilder: (_) => [
+              for (final item in types)
+                PopupMenuItem(
+                  value: item,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Builder(
+                          builder: (context) => menuText(context, label(item)),
+                        ),
+                      ),
+                      if (item == type)
+                        const Icon(Icons.check, semanticLabel: '当前类型'),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => setState(() => proxy = false),
-                    child: _RuleActionLabel('直连', selected: !proxy),
-                  ),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
                 ),
-              ],
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(label(type))),
+                  const Icon(Icons.more_vert_outlined, semanticLabel: '选择规则类型'),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '匹配动作',
+            style: TextStyle(
+              fontSize: 13,
+              color: PrimaryColors.of(context).secondary,
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => setState(() => proxy = true),
+                  child: _RuleActionLabel('代理', selected: proxy),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => setState(() => proxy = false),
+                  child: _RuleActionLabel('直连', selected: !proxy),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.busy ? null : () => Navigator.pop(context),
           child: const Text('取消'),
         ),
         TextButton(
-          onPressed: valid ? emptyAction : null,
+          onPressed: valid && !widget.busy ? emptyAction : null,
           child: const Text('保存'),
         ),
       ],

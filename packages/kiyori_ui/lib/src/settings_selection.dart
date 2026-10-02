@@ -16,14 +16,20 @@ Future<int?> showSettingsSelection(
   required String title,
   required String current,
   required List<SettingsOption> options,
+  void Function(ModalRoute<dynamic> route)? onRoute,
 }) => showKiyoriModalDrawer<int>(
   context,
-  builder: (context, dismiss) => _SettingsSelection(
-    title: title,
-    current: current,
-    options: options,
-    dismiss: dismiss,
-  ),
+  builder: (context, dismiss) {
+    // 宿主可登记真正的抽屉路由；数据实体移除时只撤销自己的弹层。
+    final route = ModalRoute.of(context);
+    if (route != null) onRoute?.call(route);
+    return _SettingsSelection(
+      title: title,
+      current: current,
+      options: options,
+      dismiss: dismiss,
+    );
+  },
 );
 
 class _SettingsSelection extends StatelessWidget {

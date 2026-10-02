@@ -88,3 +88,17 @@ DragonBones缺省scale=.5，其余1；位移±500，MMD俯仰±90、glTF/FBX±89
 
 设备明暗/字形/触摸/Profile、真实账号/供应商、Apple构建独立验收；本机PNG只证明渲染
 布局。每批固定产物和准确命令见status，历史包及失败证据保留。
+
+## 网络代理状态与模态映射
+
+旧KiyoriNetworkProxySettingsPage.kt:500–1415提供六层正文与菜单/编辑器，1434–1614
+提供删除/重置/清日志与订阅输入，1644–1980提供策略组、排序、运行描述与日志顺序，
+2020–2380提供480列表、44菜单、组下划线和模式几何；模型来自KiyoriNetworkProxyModels。
+新settings/presentation/network_proxy_presentation.dart只承载不可变展示快照，默认不注入
+目录。network_proxy_nodes.dart投影搜索/排序；两个editor文件持有临时输入；page负责
+六层装配和实体所属路由，公共showSettingsSelection的onRoute供宿主精确释放抽屉。
+
+验收入口network_proxy_states_test.dart覆盖同ID更新/重排、删除释放、规则版本变化、
+active订阅切换、嵌套菜单、脚本抽屉、busy更新、时钟回退日志和节点选择事实不变；
+network_settings_test.dart保留空态，network_proxy_capture_test.dart覆盖六层非空、明暗、
+320/844/1280视口、大字与键盘弹层。失败证据和捕获路径由status记录。

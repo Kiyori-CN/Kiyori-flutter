@@ -1,7 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'network_proxy_editors.dart';
+import 'network_proxy_nodes.dart';
+import 'network_proxy_presentation.dart';
+import 'network_subscription_rule_editor.dart';
 
 enum NetworkProxySection { overview, node, subscriptions, rules, scripts, logs }
 
@@ -10,10 +14,12 @@ class NetworkProxyPage extends StatefulWidget {
   const NetworkProxyPage({
     this.section = NetworkProxySection.overview,
     required this.onOpen,
+    this.snapshot = const NetworkProxyPresentation(),
     super.key,
   });
   final NetworkProxySection section;
   final ValueChanged<NetworkProxySection> onOpen;
+  final NetworkProxyPresentation snapshot;
   @override
   State<NetworkProxyPage> createState() => _NetworkProxyPageState();
 }
@@ -21,9 +27,158 @@ class NetworkProxyPage extends StatefulWidget {
 class _NetworkProxyPageState extends State<NetworkProxyPage> {
   final search = TextEditingController();
   int filter = 0;
+  int nodeOrder = 0;
+  NetworkProxyPresentation get snapshot => widget.snapshot;
+  ProxySubscriptionPresentation? get active => snapshot.active;
+  final routes = <ModalRoute<dynamic>, String?>{};
+  final identities = <String, Object>{};
+  final dialogRevision = ValueNotifier(0);
+  Object sectionIdentity = Object();
+
+  @override
+  void initState() {
+    super.initState();
+    projectIdentities();
+  }
+
+  void projectIdentities() {
+    final ids = {
+      for (final s in snapshot.subscriptions) 'subscription:${s.id}',
+      for (final r in snapshot.rules) 'rule:${r.id}',
+      for (final s in snapshot.scripts) 'script:${s.id}',
+      if (active != null) ...['active-rules', 'active-node'],
+    };
+    identities.removeWhere((id, _) => !ids.contains(id));
+    for (final id in ids) {
+      identities.putIfAbsent(id, Object.new);
+    }
+  }
+
+  void registerRoute(
+    ModalRoute<dynamic> route,
+    String? id,
+    Object? token,
+    Object section,
+  ) {
+    if (!mounted ||
+        !identical(section, sectionIdentity) ||
+        (id != null && !identical(identities[id], token))) {
+      removeRoutes([route]);
+      return;
+    }
+    if (routes.containsKey(route)) return;
+    routes[route] = id;
+    route.popped.whenComplete(() => routes.remove(route));
+  }
+
+  Widget menuLabel(
+    BuildContext context,
+    String label,
+    String? id,
+    Object? token,
+    Object section,
+  ) {
+    final route = ModalRoute.of(context);
+    if (route != null) registerRoute(route, id, token, section);
+    return Text(label);
+  }
+
+  void removeRoutes(List<ModalRoute<dynamic>> removed) {
+    if (removed.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in removed.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void didUpdateWidget(covariant NetworkProxyPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final changed = oldWidget.section != widget.section;
+    final activeChanged = oldWidget.snapshot.activeId != snapshot.activeId;
+    final rulesChanged =
+        activeChanged ||
+        !listEquals(oldWidget.snapshot.active?.rules, active?.rules);
+    final invalidated = {
+      if (activeChanged) 'active-node',
+      if (rulesChanged) 'active-rules',
+    };
+    for (final id in invalidated) {
+      identities.remove(id);
+    }
+    projectIdentities();
+    if (changed) sectionIdentity = Object();
+    final removed = routes.keys
+        .where(
+          (r) =>
+              changed ||
+              invalidated.contains(routes[r]) ||
+              (routes[r] != null && !identities.containsKey(routes[r])),
+        )
+        .toList();
+    for (final route in removed) {
+      routes.remove(route);
+    }
+    removeRoutes(removed);
+    // 模态路由不随页面重建；只通知展示更新，不持有第二份业务快照。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) dialogRevision.value++;
+    });
+    if (changed) {
+      search.clear();
+      filter = 0;
+    }
+  }
+
+  Future<void> openDialog(WidgetBuilder builder, [String? identity]) async {
+    final route = DialogRoute<void>(
+      context: context,
+      builder: (context) => ValueListenableBuilder<int>(
+        valueListenable: dialogRevision,
+        builder: (context, _, _) => PopScope(
+          canPop: !snapshot.busy,
+          child: SettingsTheme(child: builder(context)),
+        ),
+      ),
+    );
+    routes[route] = identity;
+    await Navigator.of(context).push(route);
+    routes.remove(route);
+  }
+
+  void confirm(
+    String title,
+    String message,
+    String action, {
+    String? identity,
+  }) {
+    openDialog(
+      (context) => AlertDialog(
+        scrollable: true,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: snapshot.busy ? null : () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: snapshot.busy ? null : emptyAction,
+            child: Text(action),
+          ),
+        ],
+      ),
+      identity,
+    );
+  }
+
   @override
   void dispose() {
+    removeRoutes(routes.keys.toList());
     search.dispose();
+    dialogRevision.dispose();
     super.dispose();
   }
 
@@ -41,50 +196,210 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
     title: title,
     actionWidth: 96,
     actions: widget.section == NetworkProxySection.logs
-        ? const Row(
+        ? Row(
             children: [
               IconButton(
-                onPressed: null,
+                onPressed: snapshot.logs.isNotEmpty && !snapshot.busy
+                    ? emptyAction
+                    : null,
                 tooltip: '复制全部代理日志',
                 icon: Icon(Icons.content_copy_outlined),
               ),
               IconButton(
-                onPressed: null,
+                onPressed: snapshot.logs.isNotEmpty && !snapshot.busy
+                    ? emptyAction
+                    : null,
                 tooltip: '导出全部代理日志',
                 icon: Icon(Icons.save_alt_outlined),
               ),
             ],
           )
         : widget.section == NetworkProxySection.scripts
-        ? const Align(
+        ? Align(
             alignment: Alignment.centerRight,
             child: IconButton(
-              onPressed: emptyAction,
+              onPressed: snapshot.controlsEnabled ? emptyAction : null,
               tooltip: '刷新脚本',
               icon: Icon(Icons.refresh_outlined),
             ),
           )
+        : widget.section == NetworkProxySection.node && active != null
+        ? Row(
+            children: [
+              IconButton(
+                onPressed: snapshot.controlsEnabled ? emptyAction : null,
+                tooltip: '测速当前分组',
+                icon: const Icon(Icons.speed),
+              ),
+              PopupMenuButton<(int, Object?, Object)>(
+                tooltip: '节点排序',
+                enabled: snapshot.controlsEnabled,
+                icon: const Icon(Icons.sort),
+                onSelected: (v) {
+                  if (mounted &&
+                      snapshot.controlsEnabled &&
+                      identical(v.$2, identities['active-node']) &&
+                      identical(v.$3, sectionIdentity)) {
+                    setState(() => nodeOrder = v.$1);
+                  }
+                },
+                itemBuilder: (_) {
+                  final section = sectionIdentity;
+                  final token = identities['active-node'];
+                  return [
+                    for (var i = 0; i < 3; i++)
+                      PopupMenuItem(
+                        value: (i, token, section),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Builder(
+                                builder: (context) => menuLabel(
+                                  context,
+                                  ['默认', '名称', '延迟'][i],
+                                  'active-node',
+                                  token,
+                                  section,
+                                ),
+                              ),
+                            ),
+                            if (nodeOrder == i)
+                              const Icon(Icons.check, semanticLabel: '当前排序'),
+                          ],
+                        ),
+                      ),
+                  ];
+                },
+              ),
+            ],
+          )
         : null,
-    children: switch (widget.section) {
-      NetworkProxySection.overview => _overview(),
-      NetworkProxySection.node => const [
-        SettingsGroup(
-          title: '节点选择',
-          description: '请先在订阅管理中导入并切换一份 Clash / Mihomo 订阅。',
-          children: [NetworkProxyNote('当前没有可用订阅。')],
+    children: [
+      ...switch (widget.section) {
+        NetworkProxySection.overview => _overview(),
+        NetworkProxySection.node => [
+          if (active != null)
+            NetworkProxyNodes(
+              subscription: active!,
+              enabled: snapshot.controlsEnabled,
+              order: nodeOrder,
+            )
+          else
+            const SettingsGroup(
+              title: '节点选择',
+              description: '请先在订阅管理中导入并切换一份 Clash / Mihomo 订阅。',
+              children: [NetworkProxyNote('当前没有可用订阅。')],
+            ),
+        ],
+        NetworkProxySection.subscriptions => [_subscriptions()],
+        NetworkProxySection.rules => _rules(),
+        NetworkProxySection.scripts => [
+          if (snapshot.scripts.isEmpty)
+            const SettingsGroup(
+              title: '脚本规则',
+              description:
+                  '只显示已安装的传统 JsEngine 脚本，启用状态不影响识别；ToolPkg 统一归入 AI 工具。',
+              children: [NetworkProxyNote('当前没有已安装的传统脚本。')],
+            ),
+          for (final category
+              in snapshot.scripts.map((s) => s.category).toSet())
+            SettingsGroup(
+              title: category,
+              description:
+                  '${snapshot.scripts.where((s) => s.category == category).length} 个已安装脚本；未启用脚本也可预先配置规则。',
+              children: [
+                for (final script in snapshot.scripts.where(
+                  (s) => s.category == category,
+                ))
+                  SettingsRow(
+                    title: script.name,
+                    description:
+                        '${script.enabled ? '已启用' : '未启用'} · ${script.id}${script.description.isEmpty ? '' : ' · ${script.description}'}',
+                    value: script.mode,
+                    enabled: snapshot.controlsEnabled,
+                    onTap: () {
+                      final token = identities['script:${script.id}'];
+                      final section = sectionIdentity;
+                      showSettingsSelection(
+                        context,
+                        title: '${script.name}脚本规则',
+                        current: script.mode,
+                        onRoute: (route) => registerRoute(
+                          route,
+                          'script:${script.id}',
+                          token,
+                          section,
+                        ),
+                        options: [
+                          SettingsOption(
+                            '跟随模式',
+                            description: '移除此脚本的单独规则，跟随代理模式',
+                            selected: script.mode == '跟随模式',
+                          ),
+                          SettingsOption(
+                            '直连',
+                            description: '绕过 Kiyori 内嵌 Mihomo；仍受系统 VPN 影响',
+                            selected: script.mode == '直连',
+                          ),
+                          SettingsOption(
+                            '代理',
+                            description: '经过内嵌 Mihomo，并使用上方代理模式',
+                            selected: script.mode == '代理',
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+              ],
+            ),
+        ],
+        NetworkProxySection.logs => [_logs()],
+      },
+      if (snapshot.feedbackSection == widget.section.name &&
+          (snapshot.operation != null ||
+              snapshot.feedback != null ||
+              snapshot.phase == ProxyRuntimePhase.error))
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              if (snapshot.operation != null)
+                const SizedBox(
+                  width: 19,
+                  height: 19,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(
+                  snapshot.feedbackError ||
+                          snapshot.phase == ProxyRuntimePhase.error
+                      ? Icons.error
+                      : Icons.check_circle,
+                  color:
+                      snapshot.feedbackError ||
+                          snapshot.phase == ProxyRuntimePhase.error
+                      ? Theme.of(context).colorScheme.error
+                      : PrimaryColors.of(context).accent,
+                ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  snapshot.operation ??
+                      snapshot.feedback ??
+                      'Mihomo 运行异常，请检查当前订阅与 VPN 设置。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 17 / 12,
+                    color: snapshot.feedbackError
+                        ? Theme.of(context).colorScheme.error
+                        : PrimaryColors.of(context).secondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
-      NetworkProxySection.subscriptions => [_subscriptions()],
-      NetworkProxySection.rules => _rules(),
-      NetworkProxySection.scripts => const [
-        SettingsGroup(
-          title: '脚本规则',
-          description: '只显示已安装的传统 JsEngine 脚本，启用状态不影响识别；ToolPkg 统一归入 AI 工具。',
-          children: [NetworkProxyNote('当前没有已安装的传统脚本。')],
-        ),
-      ],
-      NetworkProxySection.logs => [_logs()],
-    },
+    ],
   );
 
   List<Widget> _overview() => [
@@ -92,11 +407,14 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
       title: '应用内代理',
       description: '只影响 Kiyori 进程内已接入模块；不会改变其他应用的网络。',
       children: [
-        const SettingsRow(
+        SettingsRow(
           title: '启用应用内代理',
-          description: '请先导入并选择有效订阅，才能启用应用内代理',
-          checked: false,
-          enabled: false,
+          description: snapshot.runtimeDescription,
+          checked: snapshot.enabled,
+          enabled:
+              snapshot.controlsEnabled &&
+              (snapshot.enabled || snapshot.canEnable),
+          onTap: emptyAction,
         ),
         const SettingsDivider(),
         const Padding(
@@ -125,12 +443,12 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
                 if (label != '规则') const SizedBox(width: 8),
                 Expanded(
                   child: Material(
-                    color: label == '直连'
+                    color: label == snapshot.mode.label
                         ? PrimaryColors.of(context).accent
                         : PrimaryColors.of(context).background,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
-                      onTap: emptyAction,
+                      onTap: snapshot.controlsEnabled ? emptyAction : null,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -138,10 +456,10 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
                           child: Text(
                             label,
                             style: TextStyle(
-                              color: label == '直连'
+                              color: label == snapshot.mode.label
                                   ? PrimaryColors.of(context).accentContent
                                   : PrimaryColors.of(context).text,
-                              fontWeight: label == '直连'
+                              fontWeight: label == snapshot.mode.label
                                   ? FontWeight.w600
                                   : FontWeight.normal,
                             ),
@@ -165,25 +483,45 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
         const SettingsDivider(),
         _nav(
           '订阅管理',
-          '尚未导入 Clash / Mihomo 订阅',
+          active?.description ?? '尚未导入 Clash / Mihomo 订阅',
           NetworkProxySection.subscriptions,
         ),
         const SettingsDivider(),
-        _nav('规则管理', '自定义规则 0 条；导入订阅后读取订阅规则', NetworkProxySection.rules),
+        _nav(
+          '规则管理',
+          active == null
+              ? '自定义规则 ${snapshot.rules.length} 条；导入订阅后读取订阅规则'
+              : '订阅规则 ${active!.rules.length} 条 · 自定义规则 ${snapshot.rules.length} 条',
+          NetworkProxySection.rules,
+        ),
         const SettingsDivider(),
-        _nav('脚本规则', '当前没有已安装的传统脚本', NetworkProxySection.scripts),
+        _nav(
+          '脚本规则',
+          snapshot.scripts.isEmpty
+              ? '当前没有已安装的传统脚本'
+              : '已发现 ${snapshot.scripts.length} 个脚本，已配置 ${snapshot.scripts.where((s) => s.mode != '跟随模式').length} 个规则',
+          NetworkProxySection.scripts,
+        ),
       ],
     ),
     SettingsGroup(
       title: '网络选项',
       description: '系统 VPN 或 Android HTTP/PAC 代理接管时暂停内嵌代理；外部路由关闭后自动恢复。',
       children: [
-        _nav('代理日志', '当前进程暂无代理日志', NetworkProxySection.logs),
+        _nav(
+          '代理日志',
+          snapshot.logs.isEmpty
+              ? '当前进程暂无代理日志'
+              : '当前进程 ${snapshot.logs.length} 条日志',
+          NetworkProxySection.logs,
+        ),
         const SettingsDivider(),
-        const SettingsRow(
+        SettingsRow(
           title: '代理局域网地址',
           description: '私有地址不再直连，交由内嵌核心按当前模式处理',
-          checked: false,
+          checked: snapshot.lan,
+          enabled: snapshot.controlsEnabled,
+          onTap: emptyAction,
         ),
         const SettingsDivider(),
         const NetworkProxyNote(
@@ -193,20 +531,12 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
         const SettingsDivider(),
         SettingsRow(
           title: '重置网络代理',
+          enabled: !snapshot.busy,
           description: '停止核心并删除订阅、模块规则和加密配置',
-          onTap: () => showDialog<void>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('重置网络代理？'),
-              content: const Text('这会停止内嵌 Mihomo，并删除全部订阅、脚本规则、自定义规则和加密代理配置。'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('取消'),
-                ),
-                const FilledButton(onPressed: emptyAction, child: Text('重置')),
-              ],
-            ),
+          onTap: () => confirm(
+            '重置网络代理？',
+            '这会停止内嵌 Mihomo，并删除全部订阅、脚本规则、自定义规则和加密代理配置。',
+            '重置',
           ),
         ),
       ],
@@ -223,15 +553,16 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
           builder: (context, constraints) {
             final buttons = [
               OutlinedButton.icon(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => const NetworkSubscriptionEditor(),
-                ),
+                onPressed: snapshot.controlsEnabled
+                    ? () => openDialog(
+                        (_) => NetworkSubscriptionEditor(busy: snapshot.busy),
+                      )
+                    : null,
                 icon: const Icon(Icons.add_outlined, size: 18),
                 label: const Text('添加订阅地址', style: TextStyle(fontSize: 12)),
               ),
               OutlinedButton.icon(
-                onPressed: emptyAction,
+                onPressed: snapshot.controlsEnabled ? emptyAction : null,
                 icon: const Icon(Icons.upload, size: 18),
                 label: const Text('导入订阅文件', style: TextStyle(fontSize: 12)),
               ),
@@ -257,9 +588,124 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
           },
         ),
       ),
-      const NetworkProxyNote(
-        '还没有订阅。支持 Clash/Mihomo YAML、Base64 和 URI 节点列表；请添加地址或导入本地文件。',
-      ),
+      if (snapshot.subscriptions.isEmpty)
+        const NetworkProxyNote(
+          '还没有订阅。支持 Clash/Mihomo YAML、Base64 和 URI 节点列表；请添加地址或导入本地文件。',
+        ),
+      for (final item in snapshot.subscriptions) ...[
+        const SettingsDivider(),
+        InkWell(
+          key: ValueKey('subscription:${item.id}'),
+          onTap: snapshot.controlsEnabled ? emptyAction : null,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 6, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: item.id == snapshot.activeId
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 17 / 12,
+                          color: PrimaryColors.of(context).secondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (item.id == snapshot.activeId)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '使用中',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: PrimaryColors.of(context).accent,
+                      ),
+                    ),
+                  ),
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: PopupMenuButton<(String, Object?, Object)>(
+                    enabled: snapshot.controlsEnabled,
+                    tooltip: '管理 ${item.name}',
+                    itemBuilder: (_) {
+                      final id = 'subscription:${item.id}';
+                      final token = identities[id];
+                      final section = sectionIdentity;
+                      return [
+                        for (final label in ['更新', '编辑', '复制', '删除'])
+                          PopupMenuItem(
+                            value: (label, token, section),
+                            child: Builder(
+                              builder: (context) =>
+                                  menuLabel(context, label, id, token, section),
+                            ),
+                          ),
+                      ];
+                    },
+                    onSelected: (result) {
+                      if (!mounted ||
+                          !snapshot.controlsEnabled ||
+                          !identical(
+                            result.$2,
+                            identities['subscription:${item.id}'],
+                          ) ||
+                          !identical(result.$3, sectionIdentity)) {
+                        return;
+                      }
+                      final value = result.$1;
+                      final current = snapshot.subscriptions
+                          .where((s) => s.id == item.id)
+                          .firstOrNull;
+                      if (current == null) return;
+                      if (value == '编辑') {
+                        openDialog(
+                          (_) => NetworkSubscriptionEditor(
+                            editing: true,
+                            busy: snapshot.busy,
+                            localFile: current.localFile,
+                            initialName: current.name,
+                            initialUrl: current.editUrl,
+                          ),
+                          'subscription:${item.id}',
+                        );
+                      }
+                      if (value == '删除') {
+                        confirm(
+                          '删除 ${current.name}？',
+                          '将删除该订阅的加密 YAML、策略选择和测速记录。正在使用时必须先切换或关闭代理。',
+                          '删除',
+                          identity: 'subscription:${item.id}',
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     ],
   );
 
@@ -275,6 +721,7 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
             hint: '搜索规则类型、匹配内容或目标',
             showSearchIcon: true,
             showClear: true,
+            onChanged: (_) => setState(() {}),
           ),
         ),
       ],
@@ -286,55 +733,226 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: OutlinedButton.icon(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => const NetworkRuleEditor(),
-            ),
+            onPressed: snapshot.controlsEnabled
+                ? () =>
+                      openDialog((_) => NetworkRuleEditor(busy: snapshot.busy))
+                : null,
             icon: const Icon(Icons.add_outlined, size: 18),
             label: const Text('添加自定义规则', style: TextStyle(fontSize: 12)),
           ),
         ),
-        const NetworkProxyNote('暂无自定义规则。'),
+        if (!snapshot.rules.any(ruleMatches))
+          NetworkProxyNote(snapshot.rules.isEmpty ? '暂无自定义规则。' : '没有匹配的自定义规则。'),
+        for (final item in snapshot.rules.where(ruleMatches))
+          InkWell(
+            key: ValueKey('rule:${item.id}'),
+            onTap: snapshot.controlsEnabled
+                ? () => openDialog(
+                    (_) => NetworkRuleEditor(
+                      editing: true,
+                      busy: snapshot.busy,
+                      initialPattern: item.pattern,
+                      initialType: item.type,
+                      initialProxy: item.proxy,
+                    ),
+                    'rule:${item.id}',
+                  )
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 6, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          item.pattern,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${item.proxy ? '代理' : '直连'} · ${item.type}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: PrimaryColors.of(context).secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: item.enabled,
+                    onChanged: snapshot.controlsEnabled ? (_) {} : null,
+                  ),
+                  TextButton(
+                    onPressed: snapshot.controlsEnabled
+                        ? () => confirm(
+                            '删除自定义规则？',
+                            item.pattern,
+                            '删除',
+                            identity: 'rule:${item.id}',
+                          )
+                        : null,
+                    child: const Text('删除'),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     ),
-    const SettingsGroup(
+    SettingsGroup(
       title: '当前订阅规则',
-      description: '尚未选择订阅。',
-      children: [NetworkProxyNote('当前订阅没有可执行规则。')],
+      description: active == null
+          ? '尚未选择订阅。'
+          : '${active!.name} · ${active!.rules.length} 条；点击规则可编辑，更新订阅时覆盖。',
+      children: [
+        if (active?.rules.any(textMatches) != true)
+          NetworkProxyNote(
+            active?.rules.isEmpty != false ? '当前订阅没有可执行规则。' : '没有匹配的订阅规则。',
+          ),
+        for (final entry in (active?.rules ?? <String>[]).indexed.where(
+          (e) => textMatches(e.$2),
+        ))
+          InkWell(
+            onTap: snapshot.controlsEnabled
+                ? () => openDialog(
+                    (_) => NetworkSubscriptionRuleEditor(
+                      name: active!.name,
+                      index: entry.$1,
+                      rule: entry.$2,
+                      busy: snapshot.busy,
+                    ),
+                    'active-rules',
+                  )
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    entry.$2,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 18 / 13,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${entry.$2.split(',').first.trim()} · 目标 ${entry.$2.split(',').last.trim()} · 点击编辑',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: PrimaryColors.of(context).secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     ),
   ];
 
-  Widget _logs() => SettingsGroup(
-    title: '当前进程日志',
-    description: '显示 0/0 条，最新记录在前；已淘汰 0 条旧记录。最多保留 1000 条，核心重复输出按一秒窗口合并，请求失败逐条保留。顶部复制和导出包含全部记录，按发生顺序排列，不受筛选影响。凭据、私有路径和订阅地址已遮蔽。',
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        child: KiyoriSearchField(
-          controller: search,
-          hint: '搜索日志',
-          showSearchIcon: true,
-          showClear: true,
+  bool textMatches(String value) =>
+      value.toLowerCase().contains(search.text.trim().toLowerCase());
+  bool ruleMatches(ProxyRulePresentation rule) =>
+      textMatches('${rule.pattern} ${rule.type} ${rule.proxy ? '代理' : '直连'}');
+
+  List<ProxyLogPresentation> get visibleLogs => snapshot.logs.reversed
+      .where(
+        (log) =>
+            (filter == 0 ||
+                (filter == 1 && log.level != ProxyLogLevel.info) ||
+                (filter == 2 && log.level == ProxyLogLevel.error)) &&
+            textMatches(
+              '${log.displayText} ${log.searchText} ${log.level.name}',
+            ),
+      )
+      .toList();
+
+  Widget _logs() {
+    final visibleLogs = this.visibleLogs;
+    return SettingsGroup(
+      title: '当前进程日志',
+      description:
+          '显示 ${visibleLogs.length}/${snapshot.logs.length} 条，最新记录在前；已淘汰 ${snapshot.droppedLogs} 条旧记录。最多保留 1000 条，核心重复输出按一秒窗口合并，请求失败逐条保留。顶部复制和导出包含全部记录，按发生顺序排列，不受筛选影响。凭据、私有路径和订阅地址已遮蔽。',
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          child: KiyoriSearchField(
+            controller: search,
+            hint: '搜索日志',
+            showSearchIcon: true,
+            showClear: true,
+            onChanged: (_) => setState(() {}),
+          ),
         ),
-      ),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Row(
-          spacing: 8,
-          children: [
-            for (var index = 0; index < 3; index++)
-              FilterChip(
-                selected: filter == index,
-                onSelected: (_) => setState(() => filter = index),
-                label: Text(['全部', '警告与错误', '仅错误'][index]),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Row(
+            spacing: 8,
+            children: [
+              for (var index = 0; index < 3; index++)
+                FilterChip(
+                  selected: filter == index,
+                  onSelected: (_) => setState(() => filter = index),
+                  label: Text(['全部', '警告与错误', '仅错误'][index]),
+                ),
+            ],
+          ),
+        ),
+        if (snapshot.logs.isEmpty)
+          const NetworkProxyNote('暂无日志。导入、启用代理、切换节点或测速后，相关状态会显示在这里。')
+        else if (visibleLogs.isEmpty)
+          const NetworkProxyNote('没有匹配的日志。可清除搜索或切换为全部级别。')
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 480),
+            child: ListView.builder(
+              shrinkWrap: true,
+              primary: false,
+              itemCount: visibleLogs.length,
+              itemBuilder: (context, i) => Padding(
+                key: ValueKey(visibleLogs[i].id),
+                padding: const EdgeInsets.all(18),
+                child: SelectableText(
+                  visibleLogs[i].displayText,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 18 / 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
               ),
-          ],
-        ),
-      ),
-      const NetworkProxyNote('暂无日志。导入、启用代理、切换节点或测速后，相关状态会显示在这里。'),
-    ],
-  );
+            ),
+          ),
+        if (snapshot.logs.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: snapshot.busy
+                  ? null
+                  : () => confirm(
+                      '清空代理日志？',
+                      '这会删除当前进程内的全部代理日志，不会修改订阅、节点或连接模式。',
+                      '清空',
+                    ),
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: const Text('清空日志'),
+            ),
+          ),
+      ],
+    );
+  }
 
   SettingsRow _nav(
     String title,
@@ -343,6 +961,9 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
   ) => SettingsRow(
     title: title,
     description: description,
+    enabled: section == NetworkProxySection.logs
+        ? !snapshot.busy
+        : snapshot.controlsEnabled,
     onTap: () => widget.onOpen(section),
   );
 }
