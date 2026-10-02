@@ -1,8 +1,9 @@
 # UI 复刻契约
 
 角色卡/提示词本轮契约见[角色卡与提示词](character-prompts.md)：三标签、默认角色、
-八字段编辑、标签与模型/记忆/工具绑定、嵌套编辑和目录身份；业务 CRUD 与群组非默认
-编辑仍未接入。局部嵌套保存不能被描述为真实角色保存。
+八字段编辑、标签与模型/记忆/工具绑定、群组列表/名称/描述/成员下拉及目录身份；业务
+CRUD 仍未接入。局部选择和添加不能被描述为真实群组保存；旧群组没有规划参数、默认
+徽章或手动排序，不能补造控制项。
 
 模型与 API 默认页来自 ModelConfigScreen、ModelApiSettingsSection、ModelParametersSection、
 AdvancedSettingsSection 和 ModelNameTagEditor。保留配置选择16px圆角、API/折叠卡12px圆角、

@@ -10,21 +10,67 @@ class PromptDialog extends StatefulWidget {
     required this.catalog,
     required this.exists,
     required this.builder,
+    this.identityToken,
     super.key,
   });
   final ValueNotifier<PromptsPresentation> catalog;
   final bool Function(PromptsPresentation) exists;
   final Widget Function(BuildContext, PromptDialogState) builder;
+  final Object? Function(String)? identityToken;
   @override
   State<PromptDialog> createState() => PromptDialogState();
 }
 
 class PromptDialogState extends State<PromptDialog> {
-  final _children = <DialogRoute<Object?>>[];
+  final _children = <ModalRoute<dynamic>>[];
   bool _invalidated = false;
   bool get valid =>
       mounted && !_invalidated && widget.exists(widget.catalog.value);
   PromptsPresentation get snapshot => widget.catalog.value;
+  Object? identity(String id) => widget.identityToken?.call(id);
+
+  /// 下拉菜单同样属于本编辑会话；由菜单内容取得真实路由后登记，避免猜测栈顶。
+  Future<T?> showPopup<T>(
+    RelativeRect position,
+    List<(T, String)> options,
+  ) async {
+    if (!valid) return null;
+    FocusManager.instance.primaryFocus?.unfocus();
+    ModalRoute<dynamic>? owned;
+    try {
+      final result = await showMenu<T>(
+        context: context,
+        position: position,
+        items: [
+          for (final option in options)
+            PopupMenuItem<T>(
+              value: option.$1,
+              child: Builder(
+                builder: (context) {
+                  final route = ModalRoute.of(context);
+                  if (route != null && owned == null) {
+                    owned = route;
+                    if (valid) {
+                      _children.add(route);
+                    } else {
+                      // 菜单首帧前宿主就可能被替换，此时 dispose 已经取走旧路由清单。
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (route.isActive) route.navigator?.removeRoute(route);
+                      });
+                      WidgetsBinding.instance.ensureVisualUpdate();
+                    }
+                  }
+                  return Text(option.$2, style: const TextStyle(fontSize: 12));
+                },
+              ),
+            ),
+        ],
+      );
+      return valid ? result : null;
+    } finally {
+      _children.remove(owned);
+    }
+  }
 
   @override
   void initState() {
@@ -47,6 +93,8 @@ class PromptDialogState extends State<PromptDialog> {
         setState(() {});
       }
     });
+    // 目录本身在帧尾发布；若之后没有输入/动画，仍必须触发下一帧执行失效清理。
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   Future<T?> showChild<T>(WidgetBuilder builder) async {

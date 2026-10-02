@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'character_card_editor.dart';
+import 'group_card_editor.dart';
+import 'group_card_tile.dart';
 import 'prompt_dialog.dart';
 import 'prompt_presentation.dart';
 
@@ -23,6 +25,8 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
   final _identities = <String, Object>{};
   late List<CharacterPresentation> sortedCards;
   late List<PromptTagPresentation> sortedTags;
+  late List<GroupPresentation> sortedGroups;
+  late Map<String, String> cardNames;
   int tab = 0, sort = 0;
 
   @override
@@ -47,6 +51,7 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
     final ids = {
       ...widget.snapshot.cards.map((e) => 'card:${e.id}'),
       ...widget.snapshot.tags.map((e) => 'tag:${e.id}'),
+      ...widget.snapshot.groups.map((e) => 'group:${e.id}'),
     };
     _identities.removeWhere((id, _) => !ids.contains(id));
     for (final id in ids) {
@@ -63,6 +68,9 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
     }
     sortedTags = widget.snapshot.tags.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    sortedGroups = widget.snapshot.groups.toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    cardNames = {for (final card in widget.snapshot.cards) card.id: card.name};
   }
 
   @override
@@ -87,6 +95,7 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
       context: context,
       builder: (_) => PromptDialog(
         catalog: catalog,
+        identityToken: (id) => _identities[id],
         exists: (_) =>
             mounted &&
             (identity == null || identical(_identities[identity], token)),
@@ -136,6 +145,30 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
       ],
     ),
   );
+
+  void _groupAction(String id, Object token, String action) {
+    final identity = 'group:$id';
+    if (!mounted || !identical(_identities[identity], token)) return;
+    final group = widget.snapshot.group(id);
+    if (group == null) return;
+    if (action == '编辑') {
+      _dialog(
+        identity: identity,
+        token: token,
+        builder: (_, session) =>
+            GroupCardEditor(key: ValueKey(id), group: group, session: session),
+      );
+    } else if (action == '删除') {
+      _confirmation(
+        '删除群组',
+        '确定删除群组「${group.name}」吗？',
+        '删除',
+        identity: identity,
+        token: token,
+      );
+    }
+    // 创建、复制、激活与最终删除等待业务 owner，不修改展示目录。
+  }
 
   void _cardAction(String id, Object token, String action) {
     if (!mounted || !identical(_identities['card:$id'], token)) return;
@@ -291,7 +324,9 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                       key: ValueKey(card.id),
                       card: card,
                       tags: widget.snapshot.tags,
-                      active: widget.snapshot.activeCardId == card.id,
+                      active:
+                          widget.snapshot.activeGroupId == null &&
+                          widget.snapshot.activeCardId == card.id,
                       onAction: (action) => _cardAction(card.id, token, action),
                     );
                   },
@@ -436,12 +471,46 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                         ],
                       ),
                       Expanded(
-                        child: Center(
-                          child: Text(
-                            '暂无群组',
-                            style: TextStyle(color: colors.onSurfaceVariant),
-                          ),
-                        ),
+                        child: sortedGroups.isEmpty
+                            ? Center(
+                                child: Text(
+                                  '暂无群组',
+                                  style: TextStyle(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                key: const PageStorageKey('groups'),
+                                padding: const EdgeInsets.only(top: 8),
+                                itemCount: sortedGroups.length,
+                                findItemIndexCallback: (key) {
+                                  final index = sortedGroups.indexWhere(
+                                    (group) => ValueKey(group.id) == key,
+                                  );
+                                  return index < 0 ? null : index;
+                                },
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (_, index) {
+                                  final group = sortedGroups[index];
+                                  final token =
+                                      _identities['group:${group.id}']!;
+                                  return GroupCardTile(
+                                    key: ValueKey(group.id),
+                                    group: group,
+                                    active:
+                                        widget.snapshot.activeGroupId ==
+                                        group.id,
+                                    memberNames: [
+                                      for (final member in group.members)
+                                        ?cardNames[member.characterId],
+                                    ],
+                                    onAction: (action) =>
+                                        _groupAction(group.id, token, action),
+                                  );
+                                },
+                              ),
                       ),
                     ],
                   ),

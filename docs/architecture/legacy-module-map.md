@@ -105,6 +105,13 @@ ai_execution、ai_interaction、extensions_workspace、artifact_storage 及 B站
 
 ## 每个领域实施前的源码核对
 
+第四轮完整读取同 revision 的 `GroupCardTab` / `GroupCardItem` / `GroupCardDialog`、
+`CharacterGroupCard.kt`、`CharacterGroupCardManager.kt`、`ActivePromptManager.kt`；按
+相关分支复核 settings 宿主保存/复制/删除/头像与中文资源、CharacterCard 字段及聊天绑定
+调用。旧群组无规划参数、默认标记、手动排序或重置；成员为角色 ID + orderIndex，选择
+使用下拉菜单后添加。新投影复用 prompts 的身份代次与模态 owner，真实业务尚未接入；
+群组执行器、完整会话历史服务未逐行审计，见[角色卡契约](../design/character-prompts.md)。
+
 第三轮新增角色/提示词切片：实际读取 `ModelPromptsSettingsScreen.kt` 的宿主、三标签、
 初始化与角色/标签操作、排序、确认及导出层级；完整读取 `CharacterCardDialog.kt` 的
 编辑、嵌套选择与紧凑组件，以及 `CharacterCardBilingualData.kt`。读取角色模型、

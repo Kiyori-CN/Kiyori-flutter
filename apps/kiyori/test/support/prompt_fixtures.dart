@@ -14,6 +14,27 @@ const promptCardB = CharacterPresentation(
   setting: '乙的设定',
   updatedAt: 2,
 );
+const promptCardC = CharacterPresentation(id: 'c', name: '角色丙');
+const promptGroupA = GroupPresentation(
+  id: 'g1',
+  name: '讨论组甲',
+  description: '讨论与协作',
+  updatedAt: 2,
+  members: [GroupMemberPresentation('a')],
+);
+const promptGroupB = GroupPresentation(id: 'g2', name: '讨论组乙', updatedAt: 1);
+const groupFixture = PromptsPresentation(
+  cards: [promptCardA, promptCardB, promptCardC],
+  groups: [promptGroupA, promptGroupB],
+  activeGroupId: 'g1',
+);
+
+Future<void> openGroup(WidgetTester tester, [String name = '讨论组甲']) async {
+  await tester.tap(find.text('群组').first);
+  await tester.pumpAndSettle();
+  await openCharacter(tester, name);
+}
+
 const promptFixture = PromptsPresentation(
   cards: [promptCardA, promptCardB],
   tags: [PromptTagPresentation(id: 't1', name: '测试标签', content: '完整提示词内容')],

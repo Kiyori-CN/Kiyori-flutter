@@ -6,6 +6,8 @@ import 'package:kiyori/features/assistant/presentation/prompts/prompt_presentati
 import 'package:kiyori/features/assistant/presentation/prompts/character_card_editor.dart';
 import 'package:kiyori/features/assistant/presentation/prompts/prompt_dialog.dart';
 import 'package:kiyori/features/assistant/presentation/prompts/character_defaults.dart';
+import 'package:kiyori/features/assistant/presentation/prompts/group_card_editor.dart';
+import 'package:kiyori/features/assistant/presentation/prompts/group_card_tile.dart';
 import 'package:kiyori/features/assistant/presentation/models/function_model_presentation.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
@@ -39,6 +41,7 @@ Future<void> showPrompts(
 }
 
 void main() {
+  groupTests();
   testWidgets(
     'settings entry and Back restore exact source after modal dismissal',
     (tester) async {
@@ -540,4 +543,470 @@ void main() {
       },
     );
   }
+}
+
+void groupTests() {
+  final selector = find.byKey(const ValueKey('group-member-selector'));
+  final add = find.byKey(const ValueKey('group-add-member'));
+  final name = find.byKey(const ValueKey('group-name'));
+  Future<void> choose(WidgetTester tester, String label) async {
+    await revealPrompt(tester, selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label).last);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> addMember(WidgetTester tester) async {
+    await revealPrompt(tester, add);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('group tab top Back restores assistant settings source', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: KiyoriTheme.light(), home: const HomeShell()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-4')));
+    await tester.pumpAndSettle();
+    await reveal(tester, find.text('AI 助手'));
+    await tester.tap(find.text('AI 助手'));
+    await tester.pumpAndSettle();
+    await reveal(tester, find.text('角色卡和提示词'));
+    await tester.tap(find.text('角色卡和提示词'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) => widget is ShellAction && widget.label == '返回',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('模型与生成'), findsOneWidget);
+    expect(find.byType(ModelPromptsPage), findsNothing);
+  });
+
+  testWidgets('group menu from an old incarnation cannot edit reinserted ID', (
+    tester,
+  ) async {
+    final source = ValueNotifier(groupFixture);
+    addTearDown(source.dispose);
+    await showPrompts(tester, source: source);
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('讨论组甲菜单'));
+    await tester.pumpAndSettle();
+    source.value = const PromptsPresentation(groups: [promptGroupB]);
+    await tester.pumpAndSettle();
+    source.value = groupFixture;
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('编辑'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GroupCardEditor), findsNothing);
+  });
+
+  for (final beforeFirstFrame in [false, true]) {
+    testWidgets(
+      'removing group host with dropdown releases resources beforeFirstFrame=$beforeFirstFrame',
+      (tester) async {
+        final visible = ValueNotifier(true);
+        addTearDown(visible.dispose);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: ValueListenableBuilder(
+              valueListenable: visible,
+              builder: (_, value, _) => value
+                  ? const ModelPromptsPage(snapshot: groupFixture)
+                  : const Scaffold(body: Text('替换宿主')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await openGroup(tester);
+        final controller = tester.widget<TextField>(name).controller!;
+        await tester.enterText(name, '释放焦点');
+        await tester.tap(selector);
+        if (!beforeFirstFrame) await tester.pumpAndSettle();
+        visible.value = false;
+        await tester.pumpAndSettle();
+        expect(find.byType(GroupCardEditor), findsNothing);
+        expect(find.byType(PopupMenuItem<String>), findsNothing);
+        expect(find.byType(EditableText), findsNothing);
+        expect(find.text('替换宿主'), findsOneWidget);
+        expect(() => controller.addListener(() {}), throwsFlutterError);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'member dropdown uses IDs after role reorder and blank name has no fabricated error',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await openGroup(tester);
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      source.value = const PromptsPresentation(
+        cards: [promptCardC, promptCardB, promptCardA],
+        groups: [promptGroupA],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('角色丙').last);
+      await tester.pumpAndSettle();
+      await addMember(tester);
+      expect(find.byTooltip('移除角色丙'), findsOneWidget);
+      expect(find.byTooltip('移除角色乙'), findsNothing);
+      await tester.enterText(name, '   ');
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupCardEditor), findsOneWidget);
+      expect(tester.widget<TextField>(name).decoration!.errorText, isNull);
+    },
+  );
+
+  testWidgets(
+    'group empty creation and active snapshots never invent business facts',
+    (tester) async {
+      await showPrompts(tester);
+      await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('创建群组'));
+      await tester.pumpAndSettle();
+      expect(find.text('暂无群组'), findsOneWidget);
+      expect(find.byType(GroupCardEditor), findsNothing);
+      await showPrompts(tester, snapshot: groupFixture);
+      expect(find.byType(GroupCardTile), findsNWidgets(2));
+      expect(find.text('当前激活'), findsOneWidget);
+      for (final action in ['复制', '设为活跃']) {
+        await tester.tap(find.byTooltip('讨论组乙菜单'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(action));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<GroupCardTile>(find.byKey(const ValueKey('g1'))).active,
+          isTrue,
+        );
+        expect(
+          tester.widget<GroupCardTile>(find.byKey(const ValueKey('g2'))).active,
+          isFalse,
+        );
+        expect(find.byType(GroupCardTile), findsNWidgets(2));
+      }
+      await tester.tap(find.byKey(const ValueKey('prompt-tab-0')));
+      await tester.pumpAndSettle();
+      expect(find.text('当前激活'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'group name description save remains draft and cancellation releases controllers',
+    (tester) async {
+      await showPrompts(tester, snapshot: groupFixture);
+      await openGroup(tester);
+      final controller = tester.widget<TextField>(name).controller!;
+      await tester.enterText(name, '临时名称');
+      await tester.enterText(
+        find.byKey(const ValueKey('group-description')),
+        '临时描述',
+      );
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupCardEditor), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(() => controller.addListener(() {}), throwsFlutterError);
+      await openGroup(tester, '讨论组乙');
+      expect(tester.widget<TextField>(name).controller!.text, '讨论组乙');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await openGroup(tester);
+      expect(tester.widget<TextField>(name).controller!.text, '讨论组甲');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'group dropdown Back cancels selection then selection and add update only parent draft',
+    (tester) async {
+      await showPrompts(tester, snapshot: groupFixture);
+      await openGroup(tester);
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupCardEditor), findsOneWidget);
+      expect(
+        find.descendant(of: selector, matching: find.text('角色乙')),
+        findsOneWidget,
+      );
+      await choose(tester, '角色丙');
+      expect(find.byTooltip('移除角色丙'), findsNothing);
+      await addMember(tester);
+      expect(find.byTooltip('移除角色丙'), findsOneWidget);
+      await revealPrompt(tester, find.byTooltip('移除角色甲'));
+      await tester.tap(find.byTooltip('移除角色甲'));
+      await tester.pumpAndSettle();
+      await choose(tester, '角色甲');
+      await addMember(tester);
+      expect(
+        tester.getTopLeft(find.byTooltip('移除角色丙')).dy,
+        lessThan(tester.getTopLeft(find.byTooltip('移除角色甲')).dy),
+      );
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      await openGroup(tester);
+      expect(find.byTooltip('移除角色甲'), findsOneWidget);
+      expect(find.byTooltip('移除角色丙'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'group orderIndex and duplicate occurrence removal follow old storage',
+    (tester) async {
+      await showPrompts(
+        tester,
+        snapshot: const PromptsPresentation(
+          cards: [promptCardA, promptCardB],
+          groups: [
+            GroupPresentation(
+              id: 'g1',
+              name: '讨论组甲',
+              members: [
+                GroupMemberPresentation('a', orderIndex: 2),
+                GroupMemberPresentation('b', orderIndex: 0),
+                GroupMemberPresentation('a', orderIndex: 1),
+              ],
+            ),
+          ],
+        ),
+      );
+      await openGroup(tester);
+      expect(
+        tester.getTopLeft(find.byTooltip('移除角色乙')).dy,
+        lessThan(tester.getTopLeft(find.byTooltip('移除角色甲').first).dy),
+      );
+      await tester.tap(find.byTooltip('移除角色甲').first);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('移除角色甲'), findsOneWidget);
+      expect(selector, findsNothing); // 已加入角色不可重复添加；旧数据中的重复项仍可逐项删除。
+    },
+  );
+
+  testWidgets('open group menu survives reorder with the correct entity host', (
+    tester,
+  ) async {
+    final source = ValueNotifier(groupFixture);
+    addTearDown(source.dispose);
+    await showPrompts(tester, source: source);
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('讨论组甲菜单'));
+    await tester.pumpAndSettle();
+    source.value = const PromptsPresentation(
+      cards: [promptCardA],
+      groups: [
+        GroupPresentation(id: 'g2', name: '讨论组乙', updatedAt: 9),
+        promptGroupA,
+      ],
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('编辑'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(name).controller!.text, '讨论组甲');
+    await tester.enterText(name, '保留草稿');
+    source.value = groupFixture;
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(name).controller!.text, '保留草稿');
+  });
+
+  testWidgets(
+    'removed group closes owned dropdown and reincarnation cannot revive drafts',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await openGroup(tester);
+      final controller = tester.widget<TextField>(name).controller!;
+      await tester.enterText(name, '旧草稿');
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      source.value = const PromptsPresentation(groups: [promptGroupB]);
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupCardEditor), findsNothing);
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
+      expect(find.byType(ModelPromptsPage), findsOneWidget);
+      expect(() => controller.addListener(() {}), throwsFlutterError);
+      source.value = groupFixture;
+      await tester.pumpAndSettle();
+      await openGroup(tester);
+      expect(tester.widget<TextField>(name).controller!.text, '讨论组甲');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'stale role dropdown rejects removed ID even if a new entity reuses it',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await openGroup(tester);
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      source.value = const PromptsPresentation(
+        cards: [promptCardA, promptCardC],
+        groups: [promptGroupA],
+      );
+      await tester.pumpAndSettle();
+      source.value = const PromptsPresentation(
+        cards: [
+          promptCardA,
+          CharacterPresentation(id: 'b', name: '重入乙'),
+          promptCardC,
+        ],
+        groups: [promptGroupA],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('角色乙').last);
+      await tester.pumpAndSettle();
+      await addMember(tester);
+      expect(find.byTooltip('移除角色丙'), findsOneWidget);
+      expect(find.byTooltip('移除重入乙'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'role removal prunes draft members and same ID reentry does not restore them',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await openGroup(tester);
+      source.value = const PromptsPresentation(
+        cards: [promptCardB, promptCardC],
+        groups: [promptGroupA],
+      );
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('移除角色甲'), findsNothing);
+      source.value = groupFixture;
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('移除角色甲'), findsNothing);
+      expect(find.text('请先添加至少一个角色卡成员'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'group deletion confirmation preserves snapshot and closes on catalog removal',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('讨论组甲菜单'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      expect(find.text('确定删除群组「讨论组甲」吗？'), findsOneWidget);
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      source.value = const PromptsPresentation(groups: [promptGroupB]);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(ModelPromptsPage), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'unrelated route stays open when group session and its menu are removed',
+    (tester) async {
+      final source = ValueNotifier(groupFixture);
+      addTearDown(source.dispose);
+      await showPrompts(tester, source: source);
+      await openGroup(tester);
+      final context = tester.element(find.byType(GroupCardEditor));
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      final navigator = Navigator.of(context);
+      navigator.push<void>(
+        MaterialPageRoute(builder: (_) => const Scaffold(body: Text('独立页面'))),
+      );
+      await tester.pumpAndSettle();
+      source.value = const PromptsPresentation(groups: [promptGroupB]);
+      await tester.pumpAndSettle();
+      expect(find.text('独立页面'), findsOneWidget);
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupCardEditor), findsNothing);
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
+      expect(find.byType(ModelPromptsPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final dark in [false, true]) {
+    testWidgets(
+      'group small large-text keyboard ${dark ? 'dark' : 'light'} reachability and release',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 600);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await showPrompts(tester, snapshot: groupFixture, scale: 2, dark: dark);
+        await openGroup(tester);
+        tester.view.viewInsets = const FakeViewPadding(bottom: 180);
+        await tester.pumpAndSettle();
+        await revealPrompt(tester, name);
+        await tester.enterText(name, '大字群组');
+        await choose(tester, '角色丙');
+        await addMember(tester);
+        await revealPrompt(tester, find.byTooltip('移除角色丙'));
+        expect(find.text('保存').hitTestable(), findsOneWidget);
+        expect(find.text('取消').hitTestable(), findsOneWidget);
+        expect(
+          Theme.of(tester.element(find.byType(GroupCardEditor))).brightness,
+          dark ? Brightness.dark : Brightness.light,
+        );
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(GroupCardEditor), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'group landscape scrolling and initial missing reference keep old semantics',
+    (tester) async {
+      tester.view.physicalSize = const Size(844, 320);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await showPrompts(
+        tester,
+        snapshot: const PromptsPresentation(
+          groups: [
+            GroupPresentation(
+              id: 'g1',
+              name: '讨论组甲',
+              members: [GroupMemberPresentation('missing')],
+            ),
+          ],
+        ),
+      );
+      await openGroup(tester);
+      await revealPrompt(tester, find.byTooltip('移除missing'));
+      await tester.tap(find.byTooltip('移除missing'));
+      await tester.pumpAndSettle();
+      expect(find.text('请先添加至少一个角色卡成员'), findsOneWidget);
+      expect(find.text('取消').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

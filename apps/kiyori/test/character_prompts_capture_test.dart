@@ -143,5 +143,54 @@ void main() {
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await capture('characters-return-assistant-settings');
+
+    for (final dark in [false, true]) {
+      final suffix = dark ? 'dark' : 'light';
+      await show(const ModelPromptsPage(snapshot: groupFixture), dark: dark);
+      await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+      await capture('groups-phone-$suffix');
+      await openGroup(tester);
+      await capture('group-editor-phone-$suffix');
+      await tester.tap(find.byKey(const ValueKey('group-member-selector')));
+      await capture('group-member-menu-$suffix');
+      await tester.tap(find.text('角色丙').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('group-add-member')));
+      await capture('group-member-added-$suffix');
+    }
+    await show(const ModelPromptsPage(snapshot: groupFixture));
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('讨论组甲菜单'));
+    await capture('group-actions-phone');
+    await tester.tap(find.text('删除'));
+    await capture('group-delete-confirm');
+    tester.view.physicalSize = const Size(1200, 800);
+    await show(const ModelPromptsPage(snapshot: groupFixture), dark: true);
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await capture('groups-desktop-dark');
+    await openGroup(tester);
+    await capture('group-editor-desktop-dark');
+    tester.view.physicalSize = const Size(844, 320);
+    await show(const ModelPromptsPage(snapshot: groupFixture));
+    await openGroup(tester);
+    await capture('group-editor-landscape');
+    tester.view.physicalSize = const Size(320, 600);
+    await show(const ModelPromptsPage(snapshot: groupFixture), scale: 2);
+    await openGroup(tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 180);
+    await tester.pumpAndSettle();
+    await revealPrompt(
+      tester,
+      find.byKey(const ValueKey('group-member-selector')),
+    );
+    await capture('group-editor-large-keyboard');
+    tester.view.viewInsets = const FakeViewPadding();
+    tester.view.physicalSize = const Size(390, 844);
+    await show(const ModelPromptsPage(snapshot: groupFixture));
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('prompt-tab-0')));
+    await capture('groups-return-characters');
   });
 }

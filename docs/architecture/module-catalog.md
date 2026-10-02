@@ -35,7 +35,8 @@ assistant/presentation/models 目前投影11功能的模型分配卡片与配置
 局部输入控制器存活，领域配置 owner 仍待接入，不复制旧自动保存或服务刷新流程。
 assistant/presentation/prompts 包含角色/标签目录快照、中文默认角色、编辑与嵌套绑定弹层。
 复用 models 的配置摘要，不持有角色、标签、群组或活跃目标的业务存储；弹层仅有局部
-草稿与自己的路由释放责任。群组非默认内容与真实 CRUD 待后续领域接入。
+草稿与自己的路由释放责任。group_card_tile/editor 投影群组列表、成员下拉与编辑草稿；
+群组无独立模型/记忆/工具配置，成员引用角色 ID。真实 CRUD 仍待后续领域接入。
 assistant/presentation/permissions 投影工具目录与授权草稿，允许/禁止例外共用一个映射；
 不建立权限裁决器。assistant/presentation/profile 包含资料编辑、语法颜色与静态 Markdown
 预览；AST 仅随正文变化解析，不加载外部媒体，不替代未来共享流式聊天 renderer。

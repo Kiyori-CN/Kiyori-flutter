@@ -6,20 +6,49 @@ class PromptsPresentation {
   const PromptsPresentation({
     this.cards = const [CharacterPresentation.defaultCard],
     this.tags = const [],
+    this.groups = const [],
     this.models = const [],
     this.memories = const [],
     this.tools = const [],
     this.activeCardId = 'default_character',
+    this.activeGroupId,
   });
   final List<CharacterPresentation> cards;
   final List<PromptTagPresentation> tags;
+  final List<GroupPresentation> groups;
   final List<ModelConfigPresentation> models;
   final List<PromptOption> memories;
   final List<CharacterToolOption> tools;
   final String? activeCardId;
+  final String? activeGroupId;
 
   CharacterPresentation? card(String id) =>
       cards.where((e) => e.id == id).firstOrNull;
+
+  GroupPresentation? group(String id) =>
+      groups.where((e) => e.id == id).firstOrNull;
+}
+
+/// 旧群组没有默认标记或规划参数，模型/记忆/工具绑定仍属于成员角色。
+class GroupPresentation {
+  const GroupPresentation({
+    required this.id,
+    required this.name,
+    this.description = '',
+    this.members = const [],
+    this.updatedAt = 0,
+    this.avatarAsset,
+  });
+  final String id, name, description;
+  final List<GroupMemberPresentation> members;
+  final int updatedAt;
+  final String? avatarAsset;
+}
+
+class GroupMemberPresentation {
+  const GroupMemberPresentation(this.characterId, {this.orderIndex = 0});
+  final String characterId;
+  final int orderIndex;
 }
 
 class CharacterPresentation {

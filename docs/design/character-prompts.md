@@ -4,7 +4,7 @@
 
 来源固定为只读 `Kiyori-Android` / `6b03b03aa082803bb279db5e78773583e2d91154`。
 下文 `operit/` 表示旧 `app/src/main/java/com/ai/assistance/operit/`，不是新目录建议。
-本契约覆盖第一条角色编辑 UI 切片；业务创建、保存、删除、激活与文件读写尚未接入。
+本契约覆盖角色及群组编辑 UI 草稿切片；业务创建、保存、删除、激活与文件读写尚未接入。
 实际验证和交付信息只在[当前状态](../status.md)维护。
 
 | 旧源与读取深度 | 已确认事实 | 本轮投影或边界 |
@@ -16,10 +16,43 @@
 | `data/model/CharacterCard.kt` 字段/绑定/工具配置；`PromptTagManager.kt` 目录/字段/写入；`CharacterGroupCardManager.kt` 目录及创建；`ActivePromptManager.kt` 全文 | 角色、标签、群组分别由 DataStore `character_cards`、`prompt_tags`、`character_groups` 持久化；群组引用角色 ID；活跃目标互斥，缺省回默认角色 | Rust 尚无这些 owner；Dart 只接收 `PromptsPresentation`，不复制旧 Manager/DataStore 链 |
 | `ai_interaction`、`ai_execution`、`product_shell` 契约；模型/记忆绑定入口与旧数据字段 | 会话遗留角色名与群组 ID 引用不同；切换活跃目标有串行/有效性检查；错误、取消、未知执行结果不能伪造成功 | 会话写入/改名后的历史处理和模型/记忆/工具执行不在本 UI 切片闭环内 |
 
-未逐行审计整个 3600 行页面的 PNG 编码/二维码算法、全部 Tavern 导入格式、所有群组
-成员编辑与调度分支；也未深审全部角色服务、会话调用方或原生形象引擎。不能把本表
-解读为全模块已审计。群组非默认列表与编辑、标签批量导出选择和市场、人设生成、形象
-入口是明确后续工作，不用空数据声称功能完成。
+上表保留首轮角色切片的读取范围；第四轮群组证据见下节。未逐行审计整个 3600 行页面的
+PNG 编码/二维码算法、全部 Tavern 导入格式或群聊执行器，也未深审全部角色服务、会话
+调用方或原生形象引擎。标签批量导出选择和市场、人设生成、形象入口仍是后续工作。
+
+## 群组切片的实际旧源与边界
+
+固定 revision 下完整读取 `ModelPromptsSettingsScreen.kt:2703–3254` 的 GroupCardTab、
+GroupCardItem、GroupCardDialog；宿主按相关分支读取状态、初始化、772–825 保存/复制/
+删除、997–1026 入口、1310–1395 弹层/头像/删除确认，未声称整个页面逐行审计。
+完整读取 `data/model/CharacterGroupCard.kt`、`data/preferences/CharacterGroupCardManager.kt`
+和 `ActivePromptManager.kt`，核对 CharacterCard 字段及 `values/strings.xml` 中文资源。
+`CharacterCardDialog.kt` 的 CompactAvatarPicker/紧凑输入为复用视觉来源；
+`ChatViewModel.kt` 仅定向核对 createNewChat、活跃目标切换和角色/群组历史绑定调用。
+
+| 项目 | 旧源事实 | 新实现与不适用项 |
+| --- | --- | --- |
+| 默认/活跃 | initializeIfNeeded 只建立空集合，没有默认群组；ActivePrompt 群组优先，切换时清另一个目标 | 默认空列表；activeGroupId 注入徽章，并抑制角色徽章；不伪造默认徽章 |
+| 目录 | Manager 按 updatedAt 降序；卡片头像40、标题16、描述最多2行、成员数及姓名摘要；正文12、间隔8、卡片圆角8/边0.5 | 同样顺序和展示；惰性实体节点 Key + 新位置映射；无列表拖排、额外搜索 |
+| 菜单 | 非活跃项可激活；编辑、复制、删除；没有重置或导出 | 编辑/删除确认真实打开，复制/激活/最终删除为空动作；创建按钮继续为空操作 |
+| 编辑 | 95%宽、16内边距、头像48/边1.5，下方添加或重置按钮；名称、可选描述、成员正文最大320高 | 复用 PromptFormDialog；小屏/键盘/大字让正文整体可滚、底部按钮可达；名称/描述展开原回调为空，继续空点击 |
+| 成员 | characterCardId + orderIndex，没有名称快照；打开按 orderIndex 排序，选项排除已加入 ID，默认第一个可选项；下拉选定后按添加才追加，删除后重编号 | 局部有序草稿；无上下移动、拖排、默认成员、数量上限或额外确认弹窗；菜单 Back/遮罩取消不改变选择 |
+| 重复/缺失引用 | UI 不新添重复；Manager normalize 不去重，只去空 ID、按顺序重编号；已有缺失角色编辑显示原 ID，列表姓名摘要跳过缺失 | 保留初始重复出现项和缺失 ID 展示；每个出现项有独立 Key，移除一项不误删其它；已存在角色被目录移除则过滤草稿，同 ID 新代次不复活旧项 |
+| 规划与绑定 | 群组只有 id/name/description/members/createdAt/updatedAt；没有规划参数、模型/记忆/工具字段；这些绑定属于 CharacterCard | 不新增参数编辑/校验或群组绑定弹层；模型目录更新不改变群组草稿，角色目录以 ID 和代次过滤 |
+| 保存/错误 | trim 名称，空白直接返回，无错误提示或禁用；允许空成员，提示只是文案；保存协程写 Manager 及标题后才关闭，没有专用保存失败 UI | 最外层保存始终空动作，保留外观；空白/长文本不截断、不补造校验提示或成功消息 |
+| 返回 | 编辑 Dialog 的 onDismiss 清宿主状态；成员下拉先消费 Back/遮罩，无未保存确认 | 同样逐层取消；控制器关闭释放，不跨群组共享草稿 |
+
+旧持久化位置为 DataStore `character_groups`，目录键 `character_group_list`，实体键
+`character_group_<id>_data`，活跃键 `active_character_group_id`。创建会派生 UUID、复制
+主题/形象/表情、生成头像；更新可重建托管头像；删除清主题/形象/表情，宿主把被删活跃
+目标回默认角色。克隆也复制这些绑定。它们全部是未来 Rust owner/adapter 的业务工作，
+新 Dart 不读写 DataStore 或旧私有目录。群组不直接挂标签，成员角色引用标签；会话群组
+按 ID 引用，而遗留角色绑定按名称解析。未深审所有会话删除、执行调度和失败恢复路径。
+
+群组编辑会话复用页面身份代次与 PromptDialog。成员菜单登记自身真实 PopupRoute，
+群组删除或宿主卸载时精确移除，不误 pop 无关页面。选择返回同时验证会话有效、当前
+角色 ID 与打开时存在代次。目录在帧尾发布，弹层主动请求下一帧进行清理，不依赖额外
+输入。名称/描述 controller 随编辑会话释放；没有服务订阅、异步 I/O 或持久状态仓储。
 
 ## 几何与交互
 
