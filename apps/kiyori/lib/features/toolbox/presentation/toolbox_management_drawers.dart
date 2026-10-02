@@ -3,23 +3,29 @@ import 'package:flutter/semantics.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'toolbox_presentation.dart';
+import 'toolbox_settings_presentation.dart';
+import 'toolbox_settings_session.dart';
 
-Future<void> showToolboxFavorites(BuildContext context) =>
-    showKiyoriModalDrawer<void>(
-      context,
-      builder: (_, dismiss) => _GroupEditor(
-        title: '常用工具',
-        tools: ToolboxPresentation.groups.first.$2,
-        favorites: true,
-        dismiss: dismiss,
-      ),
-    );
+Future<void> showToolboxFavorites(
+  BuildContext context,
+  ToolboxSettingsSession session,
+) => session.drawer(
+  context,
+  (_, dismiss) => _GroupEditor(
+    title: '常用工具',
+    session: session,
+    favorites: true,
+    dismiss: dismiss,
+  ),
+);
 
-Future<void> showToolboxGroups(BuildContext context) =>
-    showKiyoriModalDrawer<void>(
-      context,
-      builder: (_, dismiss) => _Groups(dismiss: dismiss),
-    );
+Future<void> showToolboxGroups(
+  BuildContext context,
+  ToolboxSettingsSession session,
+) => session.drawer(
+  context,
+  (_, dismiss) => _Groups(session: session, dismiss: dismiss),
+);
 
 class _ToolIcon extends StatelessWidget {
   const _ToolIcon(this.tool);
@@ -40,12 +46,14 @@ class _ToolIcon extends StatelessWidget {
 class _GroupEditor extends StatefulWidget {
   const _GroupEditor({
     required this.title,
-    required this.tools,
+    required this.session,
+    this.groupId,
     required this.dismiss,
     this.favorites = false,
   });
   final String title;
-  final List<ToolPresentation> tools;
+  final ToolboxSettingsSession session;
+  final String? groupId;
   final bool favorites;
   final VoidCallback dismiss;
   @override
@@ -53,14 +61,24 @@ class _GroupEditor extends StatefulWidget {
 }
 
 class _GroupEditorState extends State<_GroupEditor> {
-  // 拖动顺序只是本次抽屉的展示草稿；没有替代领域布局存储。
-  late final ordered = [...widget.tools];
-  late final available = ToolboxPresentation.all
-      .where((tool) => !widget.tools.contains(tool))
+  ToolboxSettingsPresentation get snapshot => widget.session.snapshot;
+  List<ToolboxToolPresentation> get ordered => widget.favorites
+      ? snapshot.favoriteTools
+      : snapshot.group(widget.groupId!)?.tools ?? [];
+  List<ToolboxToolPresentation> get available => snapshot.tools
+      .where((tool) => !ordered.any((item) => item.id == tool.id))
       .toList();
-  void move(int from, int to) => setState(() {
-    ordered.insert(to, ordered.removeAt(from));
-  });
+  // 排序提交仍由领域 owner 接入；不把拖动结果伪造成已保存布局。
+  void move(int from, int to) {
+    if (!snapshot.enabled) return;
+  }
+
+  @override
+  void dispose() {
+    widget.session.dragging = false;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -77,7 +95,10 @@ class _GroupEditorState extends State<_GroupEditor> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              TextButton(onPressed: widget.dismiss, child: const Text('完成')),
+              TextButton(
+                onPressed: widget.session.canDismiss ? widget.dismiss : null,
+                child: const Text('完成'),
+              ),
             ],
           ),
         ),
@@ -92,7 +113,8 @@ class _GroupEditorState extends State<_GroupEditor> {
         Expanded(
           child: CustomScrollView(
             slivers: [
-              if (ordered.isEmpty)
+              SliverToBoxAdapter(child: ToolboxPreferenceNotice(snapshot)),
+              if (ordered.isEmpty && snapshot.loaded)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -104,18 +126,23 @@ class _GroupEditorState extends State<_GroupEditor> {
               SliverReorderableList(
                 itemCount: ordered.length,
                 onReorderItem: move,
+                onReorderStart: (_) =>
+                    setState(() => widget.session.dragging = true),
+                onReorderEnd: (_) =>
+                    setState(() => widget.session.dragging = false),
                 itemBuilder: (context, index) {
                   final tool = ordered[index];
                   return ReorderableDelayedDragStartListener(
-                    key: ValueKey(tool.$1),
+                    key: ValueKey(tool.id),
+                    enabled: snapshot.enabled && ordered.length > 1,
                     index: index,
                     child: Semantics(
                       value: '第 ${index + 1} 项，共 ${ordered.length} 项',
                       customSemanticsActions: {
-                        if (index > 0)
+                        if (snapshot.enabled && index > 0)
                           const CustomSemanticsAction(label: '上移'): () =>
                               move(index, index - 1),
-                        if (index < ordered.length - 1)
+                        if (snapshot.enabled && index < ordered.length - 1)
                           const CustomSemanticsAction(label: '下移'): () =>
                               move(index, index + 1),
                       },
@@ -130,7 +157,7 @@ class _GroupEditorState extends State<_GroupEditor> {
                               padding: const EdgeInsets.only(left: 8),
                               child: Row(
                                 children: [
-                                  _ToolIcon(tool),
+                                  _ToolIcon(tool.visual),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Padding(
@@ -138,7 +165,7 @@ class _GroupEditorState extends State<_GroupEditor> {
                                         vertical: 8,
                                       ),
                                       child: Text(
-                                        tool.$1,
+                                        tool.visual.$1,
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium,
@@ -154,8 +181,10 @@ class _GroupEditorState extends State<_GroupEditor> {
                                   ),
                                   if (widget.favorites)
                                     IconButton(
-                                      onPressed: emptyAction,
-                                      tooltip: '移出常用：${tool.$1}',
+                                      onPressed: snapshot.enabled
+                                          ? emptyAction
+                                          : null,
+                                      tooltip: '移出常用：${tool.visual.$1}',
                                       icon: Icon(
                                         Icons.remove_circle_outline,
                                         size: 20,
@@ -195,6 +224,8 @@ class _GroupEditorState extends State<_GroupEditor> {
                     ],
                   ),
                 ),
+                if (available.isEmpty && snapshot.loaded)
+                  const SliverToBoxAdapter(child: Text('所有可用工具都已添加。')),
                 SliverList.builder(
                   itemCount: available.length,
                   itemBuilder: (context, index) {
@@ -205,7 +236,7 @@ class _GroupEditorState extends State<_GroupEditor> {
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         child: InkWell(
-                          onTap: emptyAction,
+                          onTap: snapshot.enabled ? emptyAction : null,
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: 48),
                             child: Padding(
@@ -214,14 +245,14 @@ class _GroupEditorState extends State<_GroupEditor> {
                               ),
                               child: Row(
                                 children: [
-                                  _ToolIcon(tool),
+                                  _ToolIcon(tool.visual),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 8,
                                       ),
-                                      child: Text(tool.$1),
+                                      child: Text(tool.visual.$1),
                                     ),
                                   ),
                                   Padding(
@@ -262,7 +293,7 @@ class _DrawerScaffold extends StatelessWidget {
     required this.footer,
   });
   final String title;
-  final VoidCallback dismiss;
+  final VoidCallback? dismiss;
   final Widget body, footer;
   @override
   Widget build(BuildContext context) => Column(
@@ -292,22 +323,26 @@ class _DrawerScaffold extends StatelessWidget {
 }
 
 class _Groups extends StatelessWidget {
-  const _Groups({required this.dismiss});
+  const _Groups({required this.dismiss, required this.session});
   final VoidCallback dismiss;
+  final ToolboxSettingsSession session;
   @override
   Widget build(BuildContext context) {
-    final groups = ToolboxPresentation.categories;
+    final snapshot = session.snapshot;
+    final groups = snapshot.orderedGroups;
     return _DrawerScaffold(
       title: '管理分组',
-      dismiss: dismiss,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
+      dismiss: session.canDismiss ? dismiss : null,
+      body: ListView.builder(
+        itemCount: groups.length + 1,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
+                    horizontal: 4,
                     vertical: 8,
                   ),
                   child: Text(
@@ -316,96 +351,137 @@ class _Groups extends StatelessWidget {
                         ?.copyWith(color: PrimaryColors.of(context).secondary),
                   ),
                 ),
+                ToolboxPreferenceNotice(snapshot),
               ],
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.builder(
-              itemCount: groups.length,
-              itemBuilder: (context, index) {
-                final group = groups[index];
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 56),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                group.$1,
-                                style: Theme.of(context).textTheme.bodyLarge,
+            );
+          }
+          final group = groups[index - 1];
+          final identity = session.identity(group.id);
+          return ConstrainedBox(
+            key: ValueKey(group.id),
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          group.title,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        Text(
+                          '${group.tools.length} 个可用工具',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: PrimaryColors.of(context).secondary,
                               ),
-                              Text(
-                                '${group.$2.length} 个可用工具',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: PrimaryColors.of(context)
-                                          .secondary,
-                                    ),
-                              ),
-                            ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  enabled: snapshot.enabled,
+                  tooltip: '管理${group.title}',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (action) {
+                    final current = session.snapshot.group(group.id);
+                    if (!session.snapshot.enabled ||
+                        current == null ||
+                        !identical(identity, session.identity(group.id))) {
+                      return;
+                    }
+                    if (action == 'edit') {
+                      session.drawer(
+                        context,
+                        (_, close) => _GroupEditor(
+                          title: session.snapshot.group(group.id)?.title ?? '',
+                          groupId: group.id,
+                          session: session,
+                          dismiss: close,
+                        ),
+                        id: group.id,
+                      );
+                    } else if (action == 'rename') {
+                      session.dialog(
+                        context,
+                        (_) => _NameDialog(
+                          session: session,
+                          id: group.id,
+                          initialName: current.title,
+                        ),
+                        id: group.id,
+                      );
+                    } else if (action == 'delete') {
+                      session.dialog(
+                        context,
+                        (context) =>
+                            _DeleteGroup(session: session, id: group.id),
+                        id: group.id,
+                      );
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Builder(
+                        builder: (context) {
+                          session.registerMenu(context, group.id);
+                          return const Text('整理组内顺序');
+                        },
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'up',
+                      enabled: index > 1,
+                      child: const Text('上移'),
+                    ),
+                    PopupMenuItem(
+                      value: 'down',
+                      enabled: index < groups.length,
+                      child: const Text('下移'),
+                    ),
+                    if (group.custom) ...[
+                      const PopupMenuItem(value: 'rename', child: Text('重命名')),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          '删除分组',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        tooltip: '管理${group.$1}',
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            showKiyoriModalDrawer<void>(
-                              context,
-                              builder: (_, close) => _GroupEditor(
-                                title: group.$1,
-                                tools: group.$2,
-                                dismiss: close,
-                              ),
-                            );
-                          }
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('整理组内顺序'),
-                          ),
-                          PopupMenuItem(
-                            value: 'up',
-                            enabled: index > 0,
-                            child: const Text('上移'),
-                          ),
-                          PopupMenuItem(
-                            value: 'down',
-                            enabled: index < groups.length - 1,
-                            child: const Text('下移'),
-                          ),
-                        ],
-                      ),
                     ],
-                  ),
-                );
-              },
+                  ],
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
       footer: Wrap(
         alignment: WrapAlignment.spaceBetween,
         children: [
           TextButton(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => const _NameDialog(),
-            ),
+            onPressed: snapshot.enabled
+                ? () => session.dialog(
+                    context,
+                    (_) => _NameDialog(session: session),
+                  )
+                : null,
             child: const Text('新建分组'),
           ),
           TextButton(
-            onPressed: () => showKiyoriModalDrawer<void>(
-              context,
-              builder: (_, close) => _MoveTools(dismiss: close),
-            ),
+            onPressed: snapshot.enabled && snapshot.tools.isNotEmpty
+                ? () => session.drawer(
+                    context,
+                    (_, close) => _MoveTools(session: session, dismiss: close),
+                  )
+                : null,
             child: const Text('批量移动工具'),
           ),
         ],
@@ -415,13 +491,16 @@ class _Groups extends StatelessWidget {
 }
 
 class _NameDialog extends StatefulWidget {
-  const _NameDialog();
+  const _NameDialog({required this.session, this.id, this.initialName = ''});
+  final ToolboxSettingsSession session;
+  final String? id;
+  final String initialName;
   @override
   State<_NameDialog> createState() => _NameDialogState();
 }
 
 class _NameDialogState extends State<_NameDialog> {
-  final controller = TextEditingController();
+  late final controller = TextEditingController(text: widget.initialName);
   @override
   void dispose() {
     controller.dispose();
@@ -432,38 +511,42 @@ class _NameDialogState extends State<_NameDialog> {
   Widget build(BuildContext context) => ValueListenableBuilder(
     valueListenable: controller,
     builder: (context, value, _) {
-      final name = value.text.trim().replaceAll(RegExp(r'\s+'), ' ');
-      final error = name.isEmpty
-          ? '请输入分组名称'
-          : name.length > 40
-          ? '分组名称不能超过 40 个字符'
-          : name.contains(RegExp(r'[\x00-\x1f\x7f-\x9f]'))
-          ? '分组名称不能包含控制字符'
-          : [
-              '常用工具',
-              ...ToolboxPresentation.categories.map((group) => group.$1),
-            ].contains(name)
-          ? '已存在同名分组'
-          : null;
+      final snapshot = widget.session.snapshot;
+      final error = toolboxGroupNameError(
+        value.text,
+        snapshot.orderedGroups.where((g) => g.id != widget.id),
+      );
       return AlertDialog(
-        title: const Text('新建分组'),
-        content: TextField(
-          controller: controller,
-          maxLines: 1,
-          decoration: InputDecoration(
-            labelText: '分组名称',
-            border: const OutlineInputBorder(),
-            errorText: value.text.isNotEmpty ? error : null,
-            helperText: error ?? '最多 40 个字符',
-          ),
+        scrollable: true,
+        title: Text(widget.id == null ? '新建分组' : '重命名分组'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              enabled: snapshot.enabled,
+              maxLines: 1,
+              decoration: InputDecoration(
+                labelText: '分组名称',
+                border: const OutlineInputBorder(),
+                errorText: value.text.isNotEmpty ? error : null,
+                helperText: error ?? '最多 40 个字符',
+              ),
+            ),
+            if (snapshot.error != null)
+              Text(
+                snapshot.error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: snapshot.enabled ? () => Navigator.pop(context) : null,
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: error == null ? emptyAction : null,
+            onPressed: snapshot.enabled && error == null ? emptyAction : null,
             child: const Text('保存'),
           ),
         ],
@@ -472,9 +555,45 @@ class _NameDialogState extends State<_NameDialog> {
   );
 }
 
+class _DeleteGroup extends StatelessWidget {
+  const _DeleteGroup({required this.session, required this.id});
+  final ToolboxSettingsSession session;
+  final String id;
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = session.snapshot;
+    return AlertDialog(
+      scrollable: true,
+      title: Text('删除${snapshot.group(id)?.title ?? ''}？'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('该组的工具（包括暂时停用的工具）会移入未分组，不会卸载插件。'),
+          if (snapshot.error != null)
+            Text(
+              snapshot.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: snapshot.enabled ? () => Navigator.pop(context) : null,
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: snapshot.enabled ? emptyAction : null,
+          child: const Text('删除分组'),
+        ),
+      ],
+    );
+  }
+}
+
 class _MoveTools extends StatefulWidget {
-  const _MoveTools({required this.dismiss});
+  const _MoveTools({required this.dismiss, required this.session});
   final VoidCallback dismiss;
+  final ToolboxSettingsSession session;
   @override
   State<_MoveTools> createState() => _MoveToolsState();
 }
@@ -482,7 +601,15 @@ class _MoveTools extends StatefulWidget {
 class _MoveToolsState extends State<_MoveTools> {
   final selected = <String>{};
   final search = TextEditingController();
-  final tools = ToolboxPresentation.all;
+  ToolboxSettingsPresentation get snapshot => widget.session.snapshot;
+  List<ToolboxToolPresentation> get tools => snapshot.tools;
+  @override
+  void didUpdateWidget(covariant _MoveTools oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    selected.retainAll(tools.map((tool) => tool.id));
+    if (snapshot.group(target ?? '') == null) target = null;
+  }
+
   bool choosing = false;
   String? target;
   @override
@@ -494,22 +621,27 @@ class _MoveToolsState extends State<_MoveTools> {
   @override
   Widget build(BuildContext context) => _DrawerScaffold(
     title: choosing ? '移动到分组' : '选择工具',
-    dismiss: widget.dismiss,
+    dismiss: widget.session.canDismiss ? widget.dismiss : null,
     footer: Wrap(
       alignment: WrapAlignment.spaceBetween,
       children: [
         TextButton(
-          onPressed: () {
-            if (choosing) {
-              setState(() => choosing = false);
-            } else {
-              widget.dismiss();
-            }
-          },
+          onPressed: !snapshot.enabled
+              ? null
+              : () {
+                  if (choosing) {
+                    setState(() => choosing = false);
+                  } else {
+                    widget.dismiss();
+                  }
+                },
           child: Text(choosing ? '上一步' : '取消'),
         ),
         FilledButton(
-          onPressed: selected.isEmpty || (choosing && target == null)
+          onPressed:
+              !snapshot.enabled ||
+                  selected.isEmpty ||
+                  (choosing && target == null)
               ? null
               : () {
                   if (!choosing) setState(() => choosing = true);
@@ -522,6 +654,7 @@ class _MoveToolsState extends State<_MoveTools> {
     ),
     body: ListView(
       children: [
+        ToolboxPreferenceNotice(snapshot),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: choosing
@@ -530,6 +663,7 @@ class _MoveToolsState extends State<_MoveTools> {
                   style: Theme.of(context).textTheme.bodySmall,
                 )
               : KiyoriSearchField(
+                  enabled: snapshot.enabled,
                   controller: search,
                   hint: '搜索工具',
                   onChanged: (_) => setState(() {}),
@@ -537,12 +671,12 @@ class _MoveToolsState extends State<_MoveTools> {
         ),
         ...(choosing
             ? [
-                for (final group in ToolboxPresentation.categories)
+                for (final group in snapshot.orderedGroups)
                   _selectionRow(
-                    label: group.$1,
-                    selected: target == group.$1,
+                    label: group.title,
+                    selected: target == group.id,
                     radio: true,
-                    onTap: () => setState(() => target = group.$1),
+                    onTap: () => setState(() => target = group.id),
                   ),
               ]
             : [
@@ -553,40 +687,42 @@ class _MoveToolsState extends State<_MoveTools> {
                   ),
                 for (final tool in tools.where(_matches))
                   _selectionRow(
-                    label: tool.$1,
-                    selected: selected.contains(tool.$1),
+                    label: tool.visual.$1,
+                    selected: selected.contains(tool.id),
                     tool: tool,
                     onTap: () => setState(
-                      () => selected.contains(tool.$1)
-                          ? selected.remove(tool.$1)
-                          : selected.add(tool.$1),
+                      () => selected.contains(tool.id)
+                          ? selected.remove(tool.id)
+                          : selected.add(tool.id),
                     ),
                   ),
               ]),
       ],
     ),
   );
-  bool _matches(ToolPresentation tool) =>
-      tool.$1.toLowerCase().contains(search.text.trim().toLowerCase());
+  bool _matches(ToolboxToolPresentation tool) => tool.matches(search.text);
   Widget _selectionRow({
     required String label,
     required bool selected,
     required VoidCallback onTap,
     bool radio = false,
-    ToolPresentation? tool,
+    ToolboxToolPresentation? tool,
   }) => Semantics(
     selected: radio ? selected : null,
     checked: radio ? null : selected,
     inMutuallyExclusiveGroup: radio,
     child: InkWell(
-      onTap: onTap,
+      onTap: snapshot.enabled ? onTap : null,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 52),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
-              if (tool != null) ...[_ToolIcon(tool), const SizedBox(width: 10)],
+              if (tool != null) ...[
+                _ToolIcon(tool.visual),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),

@@ -9,12 +9,14 @@ class KiyoriSearchField extends StatelessWidget {
     this.onChanged,
     this.showSearchIcon = false,
     this.showClear = false,
+    this.enabled = true,
     super.key,
   });
   final TextEditingController controller;
   final String hint;
   final ValueChanged<String>? onChanged;
   final bool showSearchIcon, showClear;
+  final bool enabled;
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -25,6 +27,7 @@ class KiyoriSearchField extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 42),
       child: TextField(
+        enabled: enabled,
         controller: controller,
         onChanged: onChanged,
         maxLines: 1,
@@ -39,10 +42,12 @@ class KiyoriSearchField extends StatelessWidget {
                       ? const SizedBox.shrink()
                       : IconButton(
                           tooltip: '清除搜索',
-                          onPressed: () {
-                            controller.clear();
-                            onChanged?.call('');
-                          },
+                          onPressed: !enabled
+                              ? null
+                              : () {
+                                  controller.clear();
+                                  onChanged?.call('');
+                                },
                           icon: const Icon(Icons.clear),
                         ),
                 )

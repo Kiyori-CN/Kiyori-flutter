@@ -12,17 +12,23 @@ typedef KiyoriDrawerBuilder<T> = Widget Function(
 Future<T?> showKiyoriModalDrawer<T>(
   BuildContext context, {
   required KiyoriDrawerBuilder<T> builder,
+  bool Function()? canDismiss,
+  ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) => showGeneralDialog<T>(
   context: context,
   barrierColor: Colors.transparent,
   barrierDismissible: false,
   transitionDuration: Duration.zero,
-  pageBuilder: (_, _, _) => _ModalDrawer<T>(builder: builder),
+  pageBuilder: (context, _, _) {
+    onRoute?.call(ModalRoute.of(context)!);
+    return _ModalDrawer<T>(builder: builder, canDismiss: canDismiss);
+  },
 );
 
 class _ModalDrawer<T> extends StatefulWidget {
-  const _ModalDrawer({required this.builder});
+  const _ModalDrawer({required this.builder, this.canDismiss});
   final KiyoriDrawerBuilder<T> builder;
+  final bool Function()? canDismiss;
   @override
   State<_ModalDrawer<T>> createState() => _ModalDrawerState<T>();
 }
@@ -69,6 +75,10 @@ class _ModalDrawerState<T> extends State<_ModalDrawer<T>>
 
   Future<void> _dismiss([T? choice]) async {
     if (_closing) return;
+    if (!(widget.canDismiss?.call() ?? true)) {
+      await _animate(_expanded ? 1 : _partial);
+      return;
+    }
     _closing = true;
     await _animate(0);
     if (!mounted) return;
@@ -163,17 +173,24 @@ class _ModalDrawerState<T> extends State<_ModalDrawer<T>>
                               GestureDetector(
                                 behavior: HitTestBehavior.opaque,
                                 onVerticalDragStart: (_) {
+                                  if (!(widget.canDismiss?.call() ?? true)) {
+                                    return;
+                                  }
                                   _extent.stop();
                                   _dragging = true;
                                   _dragStart = extent;
                                 },
                                 onVerticalDragUpdate: (details) {
+                                  if (!_dragging) {
+                                    return;
+                                  }
                                   _extent.value =
                                       (_extent.value -
                                               details.delta.dy / _height)
                                           .clamp(0, 1);
                                 },
                                 onVerticalDragEnd: (details) {
+                                  if (!_dragging) return;
                                   _dragging = false;
                                   final velocity = details.primaryVelocity ?? 0;
                                   final expanding = velocity.abs() >= 900

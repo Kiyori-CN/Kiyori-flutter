@@ -9,6 +9,9 @@
 当前已有 `feature/assistant/presentation` 及 browser、toolbox、files、settings 的一级 UI。
 已追加 browser 设置及子页、downloads 设置、files 设置、video 设置及字幕/声音/弹幕/控制栏子页，
 toolbox 设置与常用/分组/批量选择抽屉。工具箱入口展示目录共用，非领域工具注册表。
+toolbox 的 ToolboxSettingsPresentation 提供稳定目录/加载/保存/错误只读快照，
+ToolboxSettingsSession 只管理页面弹层生命周期；名称校验使用unorm_dart的完整NFKC，
+不建立Dart布局数据库或工具执行器。
 browser/presentation/adblock 由 AdblockPresentation 投影运行时和规则/订阅目录；按ID维护
 编辑弹层、域名折叠和状态快照，更新/删除保留空动作边界，不下载、解析或执行过滤规则。
 documents 设置及说明弹窗、files 格式选择器、music 设置和音源导入/备份确认也已加入

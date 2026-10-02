@@ -8,6 +8,7 @@
 - [ADR 0001：语言与框架](decisions/0001-technology-stack.md)：候选方案、选择、成本与重新评估条件。
 - [ADR 0002：交互与边界](decisions/0002-interaction-and-module-boundaries.md)：分页性能、模块化单体与原生方案的取舍。
 - [ADR 0003：资料 Markdown](decisions/0003-profile-markdown-presentation.md)：编辑高亮、静态解析、展示与资源边界。
+- [ADR 0004：Unicode输入校验](decisions/0004-unicode-input-normalization.md)：工具箱名称NFKC依赖与业务边界。
 
 ## 架构
 
