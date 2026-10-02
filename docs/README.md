@@ -21,6 +21,7 @@
 
 - [全页面 UI 复刻方案](design/ui-replication-plan.md)：分层顺序、组件复用、页面保真与持续验收。
 - [UI 复刻契约](design/ui-parity.md)：原项目依据、首页三页、图标与底栏、空点击及验证范围。
+- [角色卡与提示词](design/character-prompts.md)：旧源码深度、角色编辑草稿、目录身份、嵌套弹层与业务接入边界。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。
 - [浏览器与网络](design/browser-and-network.md)：会话、广告拦截、应用代理与系统代理边界。
 - [文件、下载与媒体](design/files-downloads-and-media.md)：资源引用、后台任务、音视频与终端。

@@ -105,6 +105,14 @@ ai_execution、ai_interaction、extensions_workspace、artifact_storage 及 B站
 
 ## 每个领域实施前的源码核对
 
+第三轮新增角色/提示词切片：实际读取 `ModelPromptsSettingsScreen.kt` 的宿主、三标签、
+初始化与角色/标签操作、排序、确认及导出层级；完整读取 `CharacterCardDialog.kt` 的
+编辑、嵌套选择与紧凑组件，以及 `CharacterCardBilingualData.kt`。读取角色模型、
+CharacterCardManager 默认初始化/CRUD 关键段、PromptTagManager 与群组目录/创建、
+ActivePromptManager 活跃切换与会话引用。新 Rust/FFI 仍只有 M1 runtime，没有对应业务 owner。
+新实现是 UI 草稿垂直切片，不声明完整群组、全部 Tavern 编解码或形象引擎已审。
+精确证据深度、尺寸、生命周期与未实现项见[角色卡契约](../design/character-prompts.md)。
+
 工程治理复查再次核对同一旧revision的九模块声明、运行时契约索引与壳/浏览器/媒体/
 平台/AI/扩展边界。`tools/inspect-legacy.ps1 -Source <旧checkout> -Filter <路径片段>`
 生成只读JSON导航清单，包含revision与观察时间；不会读取未跟踪私密文件或修改旧源码。
