@@ -91,12 +91,27 @@ artifacts/ui-preview/20261003-025918：APK105036647字节，SHA256
 C321A5E45E92DC5B8D8D48E5B0ABBE3ABAE4C31BF5D1170FC0820807C4D2B9CC；Windows82文件118469988字节。
 APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/DLL pin/native资产及复制哈希通过；审计457文件、
 230 Dart、93资产，无warning/大文件/import循环。本批精确交付后进入外观媒体/九宫格状态。
+工具箱已交付1de816a5b73db18632ee0b1b55716df64e3eb338，远端一致0/0，固定manifest已补提交。
+
+第六批外观媒体已实现背景图/视频已选态、裁剪入口/静音/循环草稿、用户/AI源图九宫格
+与`.9`拉伸/平铺渲染。图像从共享资源owner借用，界面不读取路径、不创建播放器；局部
+切片按源图/裁剪区缓存并释放，着色器处理平铺，保持旧物理像素缩放与窄目标角区压缩。
+同ID等值快照重建保留草稿，参数变更/媒体移除重置；气泡卡与预览暗色底色改为旧主题语义。
+既有12项外观测试通过，新增5项像素/状态与6视口通过，30张最终捕获在
+work/settings-appearance-capture-v5，日志work/settings-appearance-regression-v5.log。
+已审阅明暗/横屏/双倍字背景、源图网格和两种预览。过程中的测试颜色常量误判及const长度
+断言编译失败已修，失败日志保留。完整verify通过：51文档/4脚本、Rust fmt/Clippy/6测试、
+238 Dart格式/analyze、Flutter370项（10捕获跳过）、真实FFI6项；日志work/settings-appearance-verify.log。
+双端串行Debug通过，固定artifacts/ui-preview/20261003-032327：APK105052267字节，SHA256
+E11324CC8530F649686CE1CCA4DCDC906CD3FE5F0A5B67670D3A815D2A4782CD；Windows82文件118503628字节。
+身份/ARM64/v2/ZIP16K/ELF、Windows x64/DLL pin/native资产与复制哈希通过；无依赖/Rust API/桥变动。
+审计461文件234 Dart93资产，无warning/大文件/import循环。自定义字体/头像非空态继续下一批。
 
 这不是完整设置验收：其余非默认态、有效二维码服务、音乐音源/备份和外观媒体等仍需继续；形象导入/渲染和真实AI业务尚未实现。设备视觉、
 触摸/Profile、真实账号/供应商、Apple构建没有执行，不能由本机Debug结果外推。
 
 恢复入口：读取[设置映射](design/settings-replication-map.md)、当前Git差异和本机日记
-`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续外观已选背景媒体、气泡九宫格预览与状态生命周期。
+`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续外观自定义字体/头像非空态，再进入备份恢复运行状态。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
 ## 最近已交付：第四轮群组卡草稿垂直切片

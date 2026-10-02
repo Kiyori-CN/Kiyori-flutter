@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'appearance_components.dart';
+import 'appearance_media_presentation.dart';
 
-/// 无媒体默认态及展开草稿。不创建播放器、读取图片或打开系统选择器。
+/// 已解码媒体快照与展开草稿。不创建播放器、读取路径或打开系统选择器。
 class AppearanceBackground extends StatefulWidget {
-  const AppearanceBackground({super.key});
+  const AppearanceBackground({
+    this.snapshot = const AppearanceBackgroundPresentation(),
+    super.key,
+  });
+  final AppearanceBackgroundPresentation snapshot;
   @override
   State<AppearanceBackground> createState() => _AppearanceBackgroundState();
 }
@@ -13,6 +18,30 @@ class AppearanceBackground extends StatefulWidget {
 class _AppearanceBackgroundState extends State<AppearanceBackground> {
   bool enabled = false, video = false, blur = false;
   double opacity = .3, radius = 10;
+  bool muted = true, loop = true;
+  void readSnapshot() {
+    final value = widget.snapshot;
+    enabled = value.enabled;
+    video = value.video;
+    blur = value.blur;
+    opacity = value.opacity.clamp(.1, 1);
+    radius = value.blurRadius.clamp(1, 30);
+    muted = value.muted;
+    loop = value.loop;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    readSnapshot();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppearanceBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.snapshot.sameSettings(widget.snapshot)) readSnapshot();
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -61,19 +90,68 @@ class _AppearanceBackgroundState extends State<AppearanceBackground> {
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
-              height: 134,
+              height: widget.snapshot.media == null ? 134 : 184,
               alignment: Alignment.center,
-              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEDF1F5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: Border.all(color: PrimaryColors.of(context).muted),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                '点击选择按钮来添加背景',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: PrimaryColors.of(context).secondary),
-              ),
+              child: widget.snapshot.media != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (widget.snapshot.media!.image != null)
+                            RawImage(
+                              image: widget.snapshot.media!.image,
+                              fit: BoxFit.cover,
+                            ),
+                          if (video)
+                            ColoredBox(
+                              color: Theme.of(context).colorScheme.surface
+                                  .withValues(alpha: 1 - opacity),
+                            ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Row(
+                              children: [
+                                if (!video)
+                                  _mediaButton(Icons.crop, '重新裁剪', emptyAction)
+                                else ...[
+                                  _mediaButton(
+                                    muted
+                                        ? Icons.volume_off_outlined
+                                        : Icons.volume_up,
+                                    muted ? '取消静音' : '静音',
+                                    () => setState(() => muted = !muted),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _mediaButton(
+                                    Icons.loop,
+                                    loop ? '关闭循环' : '开启循环',
+                                    () => setState(() => loop = !loop),
+                                    active: loop,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(
+                        '点击选择按钮来添加背景',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: PrimaryColors.of(context).secondary,
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -127,5 +205,28 @@ class _AppearanceBackgroundState extends State<AppearanceBackground> {
         ],
       ),
     ],
+  );
+  Widget _mediaButton(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool active = false,
+  }) => DecoratedBox(
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: active
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: .3)
+          : Theme.of(context).colorScheme.surface.withValues(alpha: .7),
+    ),
+    child: IconButton(
+      onPressed: onTap,
+      tooltip: label,
+      icon: Icon(
+        icon,
+        color: active
+            ? Theme.of(context).colorScheme.onPrimary
+            : Theme.of(context).colorScheme.primary,
+      ),
+    ),
   );
 }

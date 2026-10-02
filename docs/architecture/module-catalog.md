@@ -26,7 +26,9 @@ NetworkProxyPresentation提供运行事实与订阅/节点/规则/脚本/日志�
 settings 中的备份页面以 BackupPresentation 投影原始计数、配置和会话选择，
 不建立备份存储或扫描器；法律、开源阅读和权限分组同属展示层，系统事实由后续 adapter 注入。
 settings/presentation/appearance 按原五标签拆分，聊天面板持有样式草稿，编辑器与预览
-共享该草稿；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
+共享该草稿；AppearanceMediaPresentation借用资源owner的已解码图像，背景/九宫格预览
+不读路径、不解码或创建播放器。AppearanceNineSlice拥有局部纹理并随组件释放，模式/缩放
+复用切片；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
 accounts/presentation 由 AccountPresentation 投影未连接、已连接、读取、失效及错误，
 包含方式选择与退出/移除确认；不拥有凭据存储、登录控制器或 WebView。
 GitHubLoginDialog和BilibiliQrPresentation只投影内嵌壳、加载/完成/二维码状态，不创建

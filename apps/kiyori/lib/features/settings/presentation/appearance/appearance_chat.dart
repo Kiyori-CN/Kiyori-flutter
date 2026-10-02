@@ -6,9 +6,15 @@ import 'appearance_chat_details.dart';
 import 'appearance_color_picker.dart';
 import 'appearance_components.dart';
 import 'appearance_interface.dart';
+import 'appearance_media_presentation.dart';
+import 'appearance_nine_slice.dart';
 
 class AppearanceChat extends StatefulWidget {
-  const AppearanceChat({super.key});
+  const AppearanceChat({
+    this.snapshot = const AppearanceMediaPresentation(),
+    super.key,
+  });
+  final AppearanceMediaPresentation snapshot;
   @override
   State<AppearanceChat> createState() => _AppearanceChatState();
 }
@@ -23,6 +29,34 @@ class _AppearanceChatState extends State<AppearanceChat> {
   final rounded = [true, true];
   final fonts = [BubbleFontDraft(), BubbleFontDraft()];
   final images = [BubbleImageDraft(), BubbleImageDraft()];
+  @override
+  void initState() {
+    super.initState();
+    bubble = widget.snapshot.bubble;
+    tiled = widget.snapshot.tiled;
+    images[0].read(widget.snapshot.userBubble);
+    images[1].read(widget.snapshot.aiBubble);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppearanceChat oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.snapshot;
+    final next = widget.snapshot;
+    if (!old.userBubble.sameSettings(next.userBubble)) {
+      images[0].read(next.userBubble);
+    } else {
+      images[0].media = next.userBubble.media;
+    }
+    if (!old.aiBubble.sameSettings(next.aiBubble)) {
+      images[1].read(next.aiBubble);
+    } else {
+      images[1].media = next.aiBubble.media;
+    }
+    if (old.bubble != next.bubble) bubble = next.bubble;
+    if (old.tiled != next.tiled) tiled = next.tiled;
+  }
+
   void refreshDraft() => setState(() {});
   final colors = [
     const Color(0xFFD8ECFF),
@@ -206,13 +240,23 @@ class _AppearanceChatState extends State<AppearanceChat> {
                 draft: fonts[i],
                 onChanged: refreshDraft,
               ),
-            for (var i = 0; i < 2; i++)
+            for (var i = 0; i < 2; i++) ...[
               AppearanceBubbleImage(
                 i == 0 ? '用户气泡图片' : 'AI气泡图片',
                 available: !glass[2 + i * 2] && !glass[3 + i * 2],
                 draft: images[i],
                 onChanged: refreshDraft,
               ),
+              if (images[i].enabled &&
+                  images[i].media != null &&
+                  !glass[2 + i * 2] &&
+                  !glass[3 + i * 2])
+                AppearanceSourceGrid(
+                  title: i == 0 ? '用户原图九宫格预览' : 'AI原图九宫格预览',
+                  image: images[i].media!.image,
+                  values: images[i].values,
+                ),
+            ],
           ],
           const AppearanceDivider(),
           _preview(),
@@ -242,7 +286,8 @@ class _AppearanceChatState extends State<AppearanceChat> {
     margin: const EdgeInsets.only(top: 8),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: const Color(0xFFEDF1F5).withValues(alpha: .25),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest
+          .withValues(alpha: .25),
       borderRadius: BorderRadius.circular(14),
     ),
     child: Column(
@@ -291,33 +336,49 @@ class _AppearanceChatState extends State<AppearanceChat> {
   Widget _bubblePreview(bool user) {
     final fontFamily = fonts[user ? 0 : 1].family(Theme.of(context).platform);
     final imageDraft = images[user ? 0 : 1];
-    final message = Container(
-      key: ValueKey(user ? 'appearance-user-preview' : 'appearance-ai-preview'),
-      constraints: BoxConstraints(maxWidth: wide ? 280 : 240, minHeight: 44),
-      padding: EdgeInsets.fromLTRB(
-        imageDraft.values[9],
-        12,
-        imageDraft.values[10],
-        12,
+    final image =
+        imageDraft.enabled && !glass[user ? 2 : 4] && !glass[user ? 3 : 5]
+        ? imageDraft.media?.image
+        : null;
+    final shape = rounded[user ? 0 : 1]
+        ? BorderRadius.only(
+            topLeft: Radius.circular(user ? 20 : 4),
+            topRight: Radius.circular(user ? 4 : 20),
+            bottomLeft: const Radius.circular(20),
+            bottomRight: const Radius.circular(20),
+          )
+        : BorderRadius.zero;
+    final text = Text(
+      user ? '这是用户消息预览' : '这是AI消息预览',
+      style: TextStyle(
+        fontSize: 14,
+        color: colors[user ? 3 : 4],
+        fontFamily: fontFamily,
       ),
-      decoration: BoxDecoration(
-        color: colors[user ? 1 : 2],
-        borderRadius: rounded[user ? 0 : 1]
-            ? BorderRadius.only(
-                topLeft: Radius.circular(user ? 20 : 4),
-                topRight: Radius.circular(user ? 4 : 20),
-                bottomLeft: const Radius.circular(20),
-                bottomRight: const Radius.circular(20),
-              )
-            : BorderRadius.zero,
-      ),
-      child: Text(
-        user ? '这是用户消息预览' : '这是AI消息预览',
-        style: TextStyle(
-          fontSize: 14,
-          color: colors[user ? 3 : 4],
-          fontFamily: fontFamily,
+    );
+    final padding = EdgeInsets.fromLTRB(
+      imageDraft.values[9],
+      12,
+      imageDraft.values[10],
+      12,
+    );
+    final message = ClipRRect(
+      borderRadius: shape,
+      child: Container(
+        key: ValueKey(
+          user ? 'appearance-user-preview' : 'appearance-ai-preview',
         ),
+        constraints: BoxConstraints(maxWidth: wide ? 280 : 240, minHeight: 44),
+        color: image == null ? colors[user ? 1 : 2] : null,
+        padding: image == null ? padding : null,
+        child: image == null
+            ? text
+            : AppearanceNineSlice(
+                image: image,
+                values: List.of(imageDraft.values),
+                tiled: tiled,
+                child: Padding(padding: padding, child: text),
+              ),
       ),
     );
     final avatar = CircleAvatar(

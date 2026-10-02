@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'appearance_components.dart';
+import 'appearance_media_presentation.dart';
 
 class AppearanceInsetCard extends StatelessWidget {
   const AppearanceInsetCard({required this.children, super.key});
@@ -12,7 +13,8 @@ class AppearanceInsetCard extends StatelessWidget {
     margin: const EdgeInsets.only(top: 12),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: const Color(0xFFEDF1F5).withValues(alpha: .35),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest
+          .withValues(alpha: .35),
       borderRadius: BorderRadius.circular(14),
     ),
     child: Column(
@@ -143,7 +145,31 @@ class AppearanceBubbleFont extends StatelessWidget {
 
 class BubbleImageDraft {
   bool enabled = false;
+  AppearanceImagePresentation? media;
   final values = <double>[0, 0, 0, 0, .35, .65, .35, .65, 1, 12, 12];
+  void read(AppearanceBubblePresentation snapshot) {
+    if (snapshot.values.length != 11 ||
+        snapshot.values.any((value) => !value.isFinite)) {
+      throw ArgumentError.value(
+        snapshot.values,
+        'values',
+        'Expected 11 finite bubble parameters',
+      );
+    }
+    enabled = snapshot.enabled;
+    media = snapshot.media;
+    values.setAll(0, snapshot.values);
+    for (var i = 0; i < 4; i++) {
+      values[i] = values[i].clamp(0, .45);
+    }
+    for (final i in [4, 6]) {
+      values[i] = values[i].clamp(.05, .9);
+      values[i + 1] = values[i + 1].clamp(values[i] + .01, .95);
+    }
+    values[8] = values[8].clamp(.2, 3);
+    values[9] = values[9].clamp(0, 32);
+    values[10] = values[10].clamp(0, 32);
+  }
 }
 
 class AppearanceBubbleImage extends StatelessWidget {
@@ -223,7 +249,7 @@ class AppearanceBubbleImage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        const AppearanceDescription('未选择图片'),
+        AppearanceDescription(draft.media == null ? '未选择图片' : '已选择图片'),
         for (final pair in [(0, 1), (2, 3), (4, 5), (6, 7)])
           _pair(pair.$1, pair.$2),
         _slider(context, 8),

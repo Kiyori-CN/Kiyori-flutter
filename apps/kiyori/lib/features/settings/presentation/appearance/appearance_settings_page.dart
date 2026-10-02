@@ -6,10 +6,15 @@ import 'appearance_basic.dart';
 import 'appearance_chat.dart';
 import 'appearance_input.dart';
 import 'appearance_interface.dart';
+import 'appearance_media_presentation.dart';
 
 /// 五标签的局部草稿均由各面板持有；不改变全局主题或角色卡事实。
 class AppearanceSettingsPage extends StatefulWidget {
-  const AppearanceSettingsPage({super.key});
+  const AppearanceSettingsPage({
+    this.media = const AppearanceMediaPresentation(),
+    super.key,
+  });
+  final AppearanceMediaPresentation media;
   @override
   State<AppearanceSettingsPage> createState() => _AppearanceSettingsPageState();
 }
@@ -17,12 +22,12 @@ class AppearanceSettingsPage extends StatefulWidget {
 class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
   int selected = 0;
   final visited = <int>{0};
-  final panels = const [
-    AppearanceBasic(),
-    AppearanceBackground(),
-    AppearanceChat(),
-    AppearanceInput(),
-    AppearanceInterface(),
+  List<Widget> get panels => [
+    const AppearanceBasic(),
+    AppearanceBackground(snapshot: widget.media.background),
+    AppearanceChat(snapshot: widget.media),
+    const AppearanceInput(),
+    const AppearanceInterface(),
   ];
   // 旧 ThemeSettingsTabs 使用语义色，区别于设置目录的 IconTone 角色色。
   static const tabs = [
