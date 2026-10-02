@@ -27,8 +27,8 @@
 | S07 视频播放器 | `ui/main/shell/KiyoriPlayerSettingsPage.kt` / PlayerModels、PlayerExperienceSettings | `video/presentation/player_settings_page.dart`、player_experience_page.dart | 六组28项及字幕/声音/弹幕/控制栏，选项、颜色、数值、重置及路径 | player_settings_test.dart |
 | S08 音乐播放器 | MusicSettingsPage / MusicSourceSettings、MusicDownloadSettings、MusicDesktopLyricSettings、MusicBackupSettings | `music/presentation/music_settings_page.dart` | 十分组、音源导入/详情/移除、下载/歌词、备份预览与确认、空/非空 | music_settings_test.dart |
 | S09 广告拦截器 | `ui/main/shell/KiyoriAdBlockSettingsPage.kt` / BrowserAdBlockStore、SubscriptionCatalog | `browser/presentation/adblock_settings_page.dart` | 概览/订阅/规则/白名单/诊断；初始化、载荷、错误、自定义编辑/删除/同步、搜索 | adblock_settings_test.dart |
-| S10 界面定制 | KiyoriApplicationSettingsPages / ThemeSettingsScreen、LanguageSettingsScreen、GlobalDisplaySettingsScreen、LayoutAdjustmentSettingsScreen；BackgroundSection、CoreSections、BubbleImageBackgroundSurface | `settings/presentation/appearance/` | 父级四项；主题五标签、已选媒体/视频帧与九宫格/拉伸预览、色盘、语言八项、显示/布局数值与条件项；自定义字体和头像非空态仍待覆盖 | appearance_settings_test.dart、appearance_media_test.dart、appearance_media_capture_test.dart、display_settings_test.dart、settings_theme_capture_test.dart |
-| S11 数据备份 | KiyoriApplicationSettingsPages / ChatBackupSettingsScreen、ChatHistorySettingsScreen | `settings/presentation/data_settings_page.dart` → backup_settings_page.dart、`assistant/presentation/history/` | 十卡备份、两层导出、配置/会话选择、恢复与运行快照；历史五卡、归类/删除/重建日期 | backup_settings_test.dart、chat_history_capture_test.dart |
+| S10 界面定制 | KiyoriApplicationSettingsPages / ThemeSettingsScreen、LanguageSettingsScreen、GlobalDisplaySettingsScreen、LayoutAdjustmentSettingsScreen；BackgroundSection、CoreSections、FontAvatarSections、AvatarPicker、BubbleImageBackgroundSurface | `settings/presentation/appearance/` | 父级四项；主题五标签、已选媒体/视频帧与九宫格/拉伸预览、自定义字体/头像、色盘、语言八项、显示/布局数值与条件项 | appearance_settings_test.dart、appearance_identity_test.dart、appearance_media_test.dart、appearance_media_capture_test.dart、display_settings_test.dart、settings_theme_capture_test.dart |
+| S11 数据备份 | KiyoriApplicationSettingsPages / ChatBackupSettingsScreen、BackupManagementCards、BackupDialogs、RoomDbBackupComponents、ChatHistorySettingsScreen | `settings/presentation/data_settings_page.dart` → backup_settings_page.dart、`assistant/presentation/history/` | 十卡备份、两层导出、六种导入格式、配置/策略、最近备份、覆盖确认/重启提示、运行/错误快照；历史五卡、归类/删除/重建日期 | backup_settings_test.dart、backup_states_test.dart、chat_history_capture_test.dart |
 | S12 更多功能 | `ui/main/shell/KiyoriMoreFeaturesSettingsPage.kt` / KiyoriStoragePathsPage、KiyoriNetworkProxySettingsPage | `settings/presentation/more_settings_page.dart` | 存储五目的地、代理六层、协议/隐私、权限、开源、六页引导；已有代理数据/错误/确认 | storage_settings_test.dart、network_settings_test.dart、permissions_settings_test.dart |
 
 ## AI设置内部入口与边界
@@ -117,3 +117,17 @@ page持有历史确认/偏好选择路由，desktop_lyric_settings只投影同�
 music_states_test、music_preferences_test及music_states_capture_test覆盖实体更新/删除、
 链接遮蔽、busy错误、备份取消/重入、滑块权威值、下载依赖和明暗/小屏/横屏/键盘。
 真实脚本执行、网络更新、文件选择/备份编解码、播放与桌面歌词服务仍未接入。
+
+## 备份运行状态与字体头像
+
+ChatBackupSettingsScreen的文件选择返回、Profile→Strategy、恢复确认与重启分支分别对应
+BackupPromptKind会话；BackupManagementCards定义四类操作卡，RoomDbBackupComponents定义
+最近备份14px圆角/12px内距。新页面不读取文件或启动Room；BackupOperation分别承接聊天、
+角色、记忆、模型、数据库备份/恢复与文件快照阶段。backup_states_test覆盖选择取交集、
+配置切换/删除、会话替换/取消、宿主退出、失效恢复文件、离屏动画与六种视口主题组合。
+测试快照不是默认业务数据，导出/恢复/重启按钮不生成结果。
+
+字体/头像核对ThemeSettingsFontAvatarSections、AvatarPicker、CoreSections的
+BubbleFontStyleEditor与PreviewChatAvatar，以及ChatTab的previewUserAvatarUri。
+appearance_identity_test覆盖文件名/注册字体、头像回退、重置可点性、名称controller与
+同值草稿生命周期；3视口明暗/双倍字捕获详见status。加载字体、选图、写偏好仍待业务owner。

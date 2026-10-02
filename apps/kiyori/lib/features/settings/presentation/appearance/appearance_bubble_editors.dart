@@ -28,8 +28,18 @@ class AppearanceInsetCard extends StatelessWidget {
 class BubbleFontDraft {
   bool enabled = false, file = false;
   String font = '默认字体';
+  String? fileName, registeredFamily;
+  void read(AppearanceFontPresentation snapshot) {
+    enabled = snapshot.enabled;
+    file = snapshot.file;
+    font = snapshot.systemFont;
+    fileName = snapshot.fileName;
+    registeredFamily = snapshot.family;
+  }
+
   String? family(TargetPlatform platform) {
-    if (!enabled || file) return null;
+    if (!enabled) return null;
+    if (file) return registeredFamily;
     final desktop = platform == TargetPlatform.windows;
     return switch (font) {
       '衬线体 (Serif)' => desktop ? 'Times New Roman' : 'serif',
@@ -137,6 +147,17 @@ class AppearanceBubbleFont extends StatelessWidget {
               ),
             ],
           ),
+          if (draft.fileName?.isNotEmpty ?? false)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '当前字体文件:\n${draft.fileName}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
         ],
       ],
     ],

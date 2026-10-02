@@ -3,6 +3,12 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'backup_components.dart';
 import 'backup_dialogs.dart';
+import 'backup_operation.dart';
+import 'backup_restore_dialogs.dart';
+
+export 'backup_operation.dart';
+export 'backup_restore_dialogs.dart'
+    show BackupPrompt, BackupPromptKind, BackupFile;
 
 /// 旧 ChatBackupSettingsScreen 的初始展示快照；统计不来自宿主文件扫描。
 /// 后续由备份领域注入事实，UI 不创建数据库、目录或第二套配置存储。
@@ -11,6 +17,7 @@ class BackupPresentation {
     this.chats = const [],
     this.profiles = const [],
     this.profileName = '默认配置',
+    this.activeProfileId = 'default',
     this.characterCount = 0,
     this.memoryCount = 0,
     this.linkCount = 0,
@@ -24,22 +31,170 @@ class BackupPresentation {
     this.maxBackups = 10,
     this.auditSummary,
     this.largestAudit,
+    this.chatOperation = const BackupOperation(),
+    this.characterOperation = const BackupOperation(),
+    this.memoryOperation = const BackupOperation(),
+    this.modelOperation = const BackupOperation(),
+    this.databaseBackup = const BackupOperation(),
+    this.databaseRestore = const BackupOperation(),
+    this.rawOperation = const BackupOperation(),
+    this.scanning = false,
+    this.savingDailyBackup = false,
+    this.dailyBackupError,
+    this.lastBackup = '-',
+    this.lastError,
+    this.recentBackups = const [],
+    this.prompt,
   });
   final List<BackupChoice> chats, profiles;
-  final String profileName;
+  final String profileName, activeProfileId;
   final int characterCount, memoryCount, linkCount, modelCount;
   final int chatFiles, characterFiles, memoryFiles, modelFiles, databaseFiles;
   final bool? dailyBackup;
   final int maxBackups;
   final String? auditSummary, largestAudit;
+  final BackupOperation chatOperation,
+      characterOperation,
+      memoryOperation,
+      modelOperation,
+      databaseBackup,
+      databaseRestore,
+      rawOperation;
+  final bool scanning, savingDailyBackup;
+  final String? dailyBackupError, lastError;
+  final String lastBackup;
+  final List<BackupFile> recentBackups;
+  final BackupPrompt? prompt;
 }
 
-class BackupSettingsPage extends StatelessWidget {
+class BackupSettingsPage extends StatefulWidget {
   const BackupSettingsPage({
     this.snapshot = const BackupPresentation(),
     super.key,
   });
   final BackupPresentation snapshot;
+
+  @override
+  State<BackupSettingsPage> createState() => _BackupSettingsPageState();
+}
+
+class _BackupSettingsPageState extends State<BackupSettingsPage> {
+  BackupPresentation get snapshot => widget.snapshot;
+  final _changes = _BackupChanges();
+  final _routes = <ModalRoute<dynamic>, bool Function()>{};
+  (String, BackupPromptKind)? _handledPrompt;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedulePrompt();
+  }
+
+  @override
+  void didUpdateWidget(covariant BackupSettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final stale = _routes.entries
+        .where((entry) => !entry.value())
+        .map((entry) => entry.key)
+        .toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in stale.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+      if (mounted) _changes.refresh();
+    });
+    _schedulePrompt();
+  }
+
+  Future<T?> _dialog<T>(WidgetBuilder builder, {bool Function()? valid}) async {
+    if (!mounted) return null;
+    final route = DialogRoute<T>(
+      context: context,
+      builder: (context) => ListenableBuilder(
+        listenable: _changes,
+        builder: (context, _) => SettingsTheme(child: builder(context)),
+      ),
+    );
+    _routes[route] = valid ?? () => true;
+    try {
+      return await Navigator.of(context).push(route);
+    } finally {
+      _routes.remove(route);
+    }
+  }
+
+  void _schedulePrompt() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final prompt = snapshot.prompt;
+      if (prompt == null || _handledPrompt == (prompt.id, prompt.kind)) return;
+      _handledPrompt = (prompt.id, prompt.kind);
+      _openPrompt(prompt);
+    });
+  }
+
+  Future<void> _openPrompt(BackupPrompt prompt) async {
+    bool valid() =>
+        mounted &&
+        snapshot.prompt?.id == prompt.id &&
+        snapshot.prompt?.kind == prompt.kind;
+    if (prompt.kind == BackupPromptKind.memoryImport) {
+      final id = await _dialog<String>(
+        (_) => BackupProfileDialog(
+          profiles: snapshot.profiles,
+          selectedId: snapshot.activeProfileId,
+          title: '选择要导入到的配置',
+          returnSelection: true,
+        ),
+        valid: valid,
+      );
+      if (id == null || !valid() || !snapshot.profiles.any((p) => p.id == id)) {
+        return;
+      }
+      await _dialog<void>(
+        (_) => const BackupMemoryStrategyDialog(),
+        valid: () => valid() && snapshot.profiles.any((p) => p.id == id),
+      );
+    } else {
+      await _dialog<void>(
+        (_) => prompt.kind == BackupPromptKind.chatImport
+            ? const BackupFormatDialog(importing: true)
+            : BackupRestoreDialog(prompt: valid() ? snapshot.prompt! : prompt),
+        valid: valid,
+      );
+    }
+  }
+
+  Future<void> _exportChats() async {
+    final selected = await _dialog<Set<String>>(
+      (_) => BackupChatSelection(snapshot.chats),
+    );
+    if (selected == null || !mounted) return;
+    // 集合沿选择→格式这一次会话存活，目录移除后不会因同ID重入复活。
+    bool valid() {
+      selected.retainAll(snapshot.chats.map((chat) => chat.id));
+      return selected.isNotEmpty;
+    }
+
+    if (!valid()) return;
+    await _dialog<void>(
+      (_) => BackupFormatDialog(selectedChatIds: Set.unmodifiable(selected)),
+      valid: valid,
+    );
+  }
+
+  @override
+  void dispose() {
+    final routes = _routes.keys.toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+      _changes.dispose();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => SettingsWorkspacePage(
@@ -60,7 +215,8 @@ class BackupSettingsPage extends StatelessWidget {
           icon: Icons.history,
           tone: IconTone.browser,
           description: '当前共有 ${snapshot.chats.length} 条聊天记录。',
-          onExport: () => showBackupChatSelection(context, snapshot.chats),
+          onExport: _exportChats,
+          operation: snapshot.chatOperation,
           delete: true,
         ),
         3 => BackupCard(
@@ -95,6 +251,7 @@ class BackupSettingsPage extends StatelessWidget {
           tone: IconTone.account,
           description:
               '当前共有 ${snapshot.characterCount} 个角色卡。导出的文件会保存在「下载/Kiyori」文件夹中。',
+          operation: snapshot.characterOperation,
         ),
         5 => _management(
           context,
@@ -104,9 +261,12 @@ class BackupSettingsPage extends StatelessWidget {
           tone: IconTone.ai,
           description:
               '当前共有 ${snapshot.memoryCount} 条记忆和 ${snapshot.linkCount} 个链接。',
-          onExport: () => showDialog<void>(
-            context: context,
-            builder: (_) => BackupProfileDialog(profiles: snapshot.profiles),
+          operation: snapshot.memoryOperation,
+          onExport: () => _dialog<void>(
+            (_) => BackupProfileDialog(
+              profiles: snapshot.profiles,
+              selectedId: snapshot.activeProfileId,
+            ),
           ),
         ),
         6 => _management(
@@ -116,22 +276,23 @@ class BackupSettingsPage extends StatelessWidget {
           icon: Icons.settings_outlined,
           tone: IconTone.settings,
           description: '当前共有 ${snapshot.modelCount} 个模型配置。',
+          operation: snapshot.modelOperation,
         ),
         7 => _faq(),
         8 => _database(context),
-        _ => const BackupCard(
+        _ => BackupCard(
           children: [
-            BackupHeader(
+            const BackupHeader(
               '文件快照备份（实验）',
               '以文件/目录为单位的整体压缩备份与恢复',
               Icons.storage,
               IconTone.storage,
             ),
-            BackupText(
+            const BackupText(
               '将打包会随“清除数据”一起删除的应用数据：内部 files/shared_prefs/datastore/databases，以及 Android/data/包名/files（终端 Linux 环境体积很大，默认不备份）。恢复会覆盖当前数据，并且需要重启应用生效。部分加密数据在换机/重装后可能无法使用。',
               small: true,
             ),
-            Wrap(
+            const Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
@@ -139,6 +300,12 @@ class BackupSettingsPage extends StatelessWidget {
                 BackupButton('从文件恢复', Icons.file_open, warning: true),
               ],
             ),
+            if (snapshot.rawOperation.phase != BackupPhase.idle)
+              BackupOperationView(
+                snapshot.rawOperation,
+                subject: '文件快照',
+                raw: true,
+              ),
           ],
         ),
       },
@@ -209,9 +376,14 @@ class BackupSettingsPage extends StatelessWidget {
             SizedBox.square(
               dimension: 40,
               child: FilledButton.tonal(
-                onPressed: emptyAction,
+                onPressed: snapshot.scanning ? null : emptyAction,
                 style: FilledButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Icon(Icons.refresh, size: 20, semanticLabel: '刷新'),
+                child: snapshot.scanning
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh, size: 20, semanticLabel: '刷新'),
               ),
             ),
           ],
@@ -285,6 +457,7 @@ class BackupSettingsPage extends StatelessWidget {
     required IconTone tone,
     required String description,
     VoidCallback onExport = emptyAction,
+    BackupOperation operation = const BackupOperation(),
     bool delete = false,
   }) => BackupCard(
     children: [
@@ -306,10 +479,12 @@ class BackupSettingsPage extends StatelessWidget {
               '删除全部',
               Icons.delete_outline,
               destructive: true,
-              onPressed: () => showBackupDeleteConfirmation(context),
+              onPressed: () => _dialog<void>((_) => const BackupDeleteDialog()),
             ),
         ],
       ),
+      if (operation.phase != BackupPhase.idle)
+        BackupOperationView(operation, subject: title),
     ],
   );
 
@@ -359,7 +534,10 @@ class BackupSettingsPage extends StatelessWidget {
           ),
           Switch(
             value: snapshot.dailyBackup == true,
-            onChanged: snapshot.dailyBackup == null ? null : (_) {},
+            onChanged:
+                snapshot.dailyBackup == null || snapshot.savingDailyBackup
+                ? null
+                : (_) {},
           ),
         ],
       ),
@@ -367,6 +545,11 @@ class BackupSettingsPage extends StatelessWidget {
         '保存位置：/storage/emulated/0/Download/Kiyori-Android/backup/room_db\n不随主动导出目录改变。关闭自动备份不删除已有文件，仍可手动备份。备份可能包含对话内容，分享前请检查。',
         small: true,
       ),
+      if (snapshot.dailyBackupError != null)
+        Text(
+          snapshot.dailyBackupError!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
       LayoutBuilder(
         builder: (context, constraints) {
           const label = Column(
@@ -420,8 +603,60 @@ class BackupSettingsPage extends StatelessWidget {
           BackupButton('从文件恢复', Icons.file_open, warning: true),
         ],
       ),
+      if (snapshot.recentBackups.isNotEmpty) ...[
+        const Text(
+          '最近三次备份（自动 + 手动，仅展示 3 份）',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        for (final file in snapshot.recentBackups.take(3))
+          BackupFileRow(
+            file: file,
+            onRestore: () => _dialog<void>(
+              (_) => BackupRestoreDialog(
+                prompt: BackupPrompt(
+                  id: file.id,
+                  kind: BackupPromptKind.databaseRestore,
+                  fileName:
+                      snapshot.recentBackups
+                          .where((entry) => entry.id == file.id)
+                          .firstOrNull
+                          ?.fileName ??
+                      file.fileName,
+                ),
+              ),
+              valid: () =>
+                  snapshot.recentBackups.any((entry) => entry.id == file.id),
+            ),
+          ),
+      ],
+      if (snapshot.databaseBackup.phase != BackupPhase.idle)
+        BackupOperationView(
+          snapshot.databaseBackup,
+          subject: '数据库',
+          database: true,
+        ),
+      if (snapshot.databaseRestore.phase != BackupPhase.idle)
+        BackupOperationView(
+          snapshot.databaseRestore,
+          subject: '数据库',
+          database: true,
+          restoring: true,
+        ),
+      BackupText('上次成功备份：${snapshot.lastBackup}', small: true),
+      if (snapshot.lastError?.trim().isNotEmpty == true)
+        Text(
+          '上次错误：${snapshot.lastError}',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.error,
+          ),
+        ),
     ],
   );
+}
+
+class _BackupChanges extends ChangeNotifier {
+  void refresh() => notifyListeners();
 }
 
 class _FaqItem extends StatelessWidget {

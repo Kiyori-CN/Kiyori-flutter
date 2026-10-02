@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'appearance_components.dart';
+import 'appearance_media_presentation.dart';
 
 /// ThemeSettingsBasicTab：主题和全局字体不写入角色卡。
 class AppearanceBasic extends StatefulWidget {
-  const AppearanceBasic({super.key});
+  const AppearanceBasic({
+    this.snapshot = const AppearanceFontPresentation(),
+    super.key,
+  });
+  final AppearanceFontPresentation snapshot;
   @override
   State<AppearanceBasic> createState() => _AppearanceBasicState();
 }
@@ -14,6 +19,26 @@ class _AppearanceBasicState extends State<AppearanceBasic> {
   bool system = false, hidden = false, customFont = false;
   String mode = 'light', fontType = 'system', font = '默认字体';
   double scale = 1;
+  void readSnapshot() {
+    final value = widget.snapshot;
+    customFont = value.enabled;
+    fontType = value.file ? 'file' : 'system';
+    font = value.systemFont;
+    scale = value.scale.clamp(.8, 1.5);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    readSnapshot();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppearanceBasic oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.snapshot.sameSettings(widget.snapshot)) readSnapshot();
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,14 +232,38 @@ class _AppearanceBasicState extends State<AppearanceBasic> {
               const SizedBox(height: 8),
               const AppearanceDescription('支持 .ttf、.otf 和 .ttc 字体文件'),
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: emptyAction,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('选择字体文件'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: emptyAction,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('选择字体文件'),
+                    ),
+                  ),
+                  if (widget.snapshot.fileName?.isNotEmpty ?? false) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: emptyAction,
+                        icon: const Icon(Icons.clear, size: 18),
+                        label: const Text('清除字体'),
+                      ),
+                    ),
+                  ],
+                ],
               ),
+              if (widget.snapshot.fileName?.isNotEmpty ?? false)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    '当前字体文件:\n${widget.snapshot.fileName}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
             ],
             const AppearanceDivider(space: 16),
             Text(

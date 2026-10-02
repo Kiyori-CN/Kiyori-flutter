@@ -56,8 +56,51 @@ class AppearanceMediaPresentation {
     this.aiBubble = const AppearanceBubblePresentation(),
     this.bubble = false,
     this.tiled = true,
+    this.font = const AppearanceFontPresentation(),
+    this.userFont = const AppearanceFontPresentation(),
+    this.aiFont = const AppearanceFontPresentation(),
+    this.avatars = const AppearanceAvatarPresentation(),
   });
   final AppearanceBackgroundPresentation background;
   final AppearanceBubblePresentation userBubble, aiBubble;
   final bool bubble, tiled;
+  final AppearanceFontPresentation font, userFont, aiFont;
+  final AppearanceAvatarPresentation avatars;
+}
+
+/// family只引用宿主已注册的字体，不在设置页加载本机字体路径。
+class AppearanceFontPresentation {
+  const AppearanceFontPresentation({
+    this.enabled = false,
+    this.file = false,
+    this.systemFont = '默认字体',
+    this.fileName,
+    this.family,
+    this.scale = 1,
+  });
+  final bool enabled, file;
+  final String systemFont;
+  final String? fileName, family;
+  final double scale;
+  bool sameSettings(AppearanceFontPresentation other) =>
+      enabled == other.enabled &&
+      file == other.file &&
+      systemFont == other.systemFont &&
+      fileName == other.fileName &&
+      scale == other.scale;
+}
+
+class AppearanceAvatarPresentation {
+  const AppearanceAvatarPresentation({
+    this.user,
+    this.globalUser,
+    this.ai,
+    this.name = '',
+    this.square = false,
+    this.radius = 8,
+  });
+  final AppearanceImagePresentation? user, globalUser, ai;
+  final String name;
+  final bool square;
+  final int radius;
 }

@@ -107,11 +107,29 @@ E11324CC8530F649686CE1CCA4DCDC906CD3FE5F0A5B67670D3A815D2A4782CD；Windows82文�
 身份/ARM64/v2/ZIP16K/ELF、Windows x64/DLL pin/native资产与复制哈希通过；无依赖/Rust API/桥变动。
 审计461文件234 Dart93资产，无warning/大文件/import循环。自定义字体/头像非空态继续下一批。
 
-这不是完整设置验收：其余非默认态、有效二维码服务、音乐音源/备份和外观媒体等仍需继续；形象导入/渲染和真实AI业务尚未实现。设备视觉、
+第七批字体/头像与备份运行状态已实现并通过本机验证。字体family由资源owner
+注册，角色/全局头像选择器独立、样例30px圆形回退；等值媒体更新保留名称与字体草稿。
+备份独立操作进度/结果、聊天六种导入格式、记忆配置→策略、最近备份覆盖确认、恢复后
+重启和模型导出安全提示均由快照投影。页面唯一管理模态路由，目录移除与宿主退出释放
+所属选择/格式/策略/确认；未执行文件选择、导入导出、恢复、重启或偏好写入。
+联合定向40项通过，96张捕获在work/settings-identity-backup-capture-v5；日志
+work/settings-identity-backup-regression-v5.log。已审阅字体/头像、进度、最近备份、导入/
+策略、横屏安全提示；离屏进度停止请求帧通过。首次测试const索引编译、动画捕获等待及
+只向下滚动的测试定位器失败已修，日志保留；暗色安全确认按钮改用onPrimary前景。
+完整tools/verify.ps1通过：51文档/4脚本、Rust fmt/Clippy/6测试、242 Dart格式/analyze、
+Flutter391项（10捕获跳过）、真实FFI6项；日志work/settings-identity-backup-verify.log。
+无依赖/Rust API/桥变动，未重复Windows引擎集成。串行双端Debug通过，固定
+artifacts/ui-preview/20261003-040134：APK105080454字节，SHA256
+FF85FD4FCBFE2418906F99629B309A16FBE1451D0D59B36FDEE2E9B250C25605；Windows82文件118572644字节。
+身份/ARM64/v2/ZIP16K/ELF、Windows x64/DLL pin和逐文件复制哈希通过。交付树审计465文件、
+238 Dart、93资产，无warning/大文件/import循环。设备/文件业务与Apple边界仍未验证。
+
+这不是完整设置验收：角色标签批量导出、市场/生成等关联入口及其余非默认态仍需继续；
+有效二维码服务、音乐/外观资源业务、形象导入/渲染和真实AI业务尚未实现。设备视觉、
 触摸/Profile、真实账号/供应商、Apple构建没有执行，不能由本机Debug结果外推。
 
 恢复入口：读取[设置映射](design/settings-replication-map.md)、当前Git差异和本机日记
-`c3e66803-02cf-452e-aae6-a3ad0662dae0`，接续外观自定义字体/头像非空态，再进入备份恢复运行状态。
+`c3e66803-02cf-452e-aae6-a3ad0662dae0`，核对第七批Git交付后进入角色标签相关缺口。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
 ## 最近已交付：第四轮群组卡草稿垂直切片

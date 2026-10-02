@@ -23,12 +23,15 @@ NetworkProxyPresentation提供运行事实与订阅/节点/规则/脚本/日志�
 只管理筛选/排序/输入，page管理实体存在期与所属模态，不接管network领域业务。
 工作台顶栏/固定底栏在 kiyori_ui，输入草稿仍局部持有；路径与代理外观校验不构成
 文件访问、授权或网络策略，未来领域 owner 必须重新验证并返回权威快照。
-settings 中的备份页面以 BackupPresentation 投影原始计数、配置和会话选择，
-不建立备份存储或扫描器；法律、开源阅读和权限分组同属展示层，系统事实由后续 adapter 注入。
+settings 中的备份页面以 BackupPresentation 投影计数、配置、独立操作阶段和已解析备份，
+backup_operation渲染进度/结果，backup_dialogs与backup_restore_dialogs提供选择/恢复/重启/
+模型安全提示；页面管理路由和目录失效，不建立备份存储或扫描器。法律、开源阅读和权限
+分组同属展示层，系统事实由后续 adapter 注入。
 settings/presentation/appearance 按原五标签拆分，聊天面板持有样式草稿，编辑器与预览
 共享该草稿；AppearanceMediaPresentation借用资源owner的已解码图像，背景/九宫格预览
 不读路径、不解码或创建播放器。AppearanceNineSlice拥有局部纹理并随组件释放，模式/缩放
-复用切片；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
+复用切片；字体快照只引用已注册family，头像选择器与聊天预览使用借用资源。媒体路径与
+全局主题事实尚未接入，不建立第二配置存储。
 accounts/presentation 由 AccountPresentation 投影未连接、已连接、读取、失效及错误，
 包含方式选择与退出/移除确认；不拥有凭据存储、登录控制器或 WebView。
 GitHubLoginDialog和BilibiliQrPresentation只投影内嵌壳、加载/完成/二维码状态，不创建

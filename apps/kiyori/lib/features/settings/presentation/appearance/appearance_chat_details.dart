@@ -2,17 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'appearance_components.dart';
+import 'appearance_media_presentation.dart';
 
 class AppearanceAvatars extends StatefulWidget {
-  const AppearanceAvatars({super.key});
+  const AppearanceAvatars({
+    this.snapshot = const AppearanceAvatarPresentation(),
+    super.key,
+  });
+  final AppearanceAvatarPresentation snapshot;
   @override
   State<AppearanceAvatars> createState() => _AppearanceAvatarsState();
 }
 
 class _AppearanceAvatarsState extends State<AppearanceAvatars> {
-  final name = TextEditingController();
+  late final name = TextEditingController(text: widget.snapshot.name);
   bool square = false;
   int radius = 8;
+  @override
+  void initState() {
+    super.initState();
+    square = widget.snapshot.square;
+    radius = widget.snapshot.radius.clamp(0, 16);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppearanceAvatars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.snapshot.name != widget.snapshot.name) {
+      name.text = widget.snapshot.name;
+    }
+    if (oldWidget.snapshot.square != widget.snapshot.square) {
+      square = widget.snapshot.square;
+    }
+    if (oldWidget.snapshot.radius != widget.snapshot.radius) {
+      radius = widget.snapshot.radius.clamp(0, 16);
+    }
+  }
+
   @override
   void dispose() {
     name.dispose();
@@ -28,14 +54,17 @@ class _AppearanceAvatarsState extends State<AppearanceAvatars> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final label in ['用户头像', '全局用户头像'])
+              for (final entry in [
+                ('用户头像', widget.snapshot.user),
+                ('全局用户头像', widget.snapshot.globalUser),
+              ])
                 Expanded(
                   child: Column(
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
-                          label,
+                          entry.$1,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 14,
@@ -51,23 +80,35 @@ class _AppearanceAvatarsState extends State<AppearanceAvatars> {
                           width: 70,
                           height: 70,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEDF1F5),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            shape: BoxShape.circle,
+                          ),
+                          foregroundDecoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: PrimaryColors.of(context).accent,
                               width: 2,
                             ),
                           ),
-                          child: Icon(
-                            Icons.person,
-                            size: 35,
-                            color: PrimaryColors.of(context).secondary,
-                          ),
+                          child: entry.$2 == null
+                              ? Icon(
+                                  Icons.person,
+                                  size: 35,
+                                  color: PrimaryColors.of(context).secondary,
+                                )
+                              : ClipOval(
+                                  child: RawImage(
+                                    image: entry.$2!.image,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 6),
                       OutlinedButton.icon(
-                        onPressed: null,
+                        onPressed: entry.$2 == null ? null : emptyAction,
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

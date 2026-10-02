@@ -36,6 +36,8 @@ class _AppearanceChatState extends State<AppearanceChat> {
     tiled = widget.snapshot.tiled;
     images[0].read(widget.snapshot.userBubble);
     images[1].read(widget.snapshot.aiBubble);
+    fonts[0].read(widget.snapshot.userFont);
+    fonts[1].read(widget.snapshot.aiFont);
   }
 
   @override
@@ -55,6 +57,16 @@ class _AppearanceChatState extends State<AppearanceChat> {
     }
     if (old.bubble != next.bubble) bubble = next.bubble;
     if (old.tiled != next.tiled) tiled = next.tiled;
+    if (!old.userFont.sameSettings(next.userFont)) {
+      fonts[0].read(next.userFont);
+    } else {
+      fonts[0].registeredFamily = next.userFont.family;
+    }
+    if (!old.aiFont.sameSettings(next.aiFont)) {
+      fonts[1].read(next.aiFont);
+    } else {
+      fonts[1].registeredFamily = next.aiFont.family;
+    }
   }
 
   void refreshDraft() => setState(() {});
@@ -262,7 +274,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
           _preview(),
         ],
       ),
-      const AppearanceAvatars(),
+      AppearanceAvatars(snapshot: widget.snapshot.avatars),
       const AppearanceDisplayOptions(),
     ],
   );
@@ -381,14 +393,26 @@ class _AppearanceChatState extends State<AppearanceChat> {
               ),
       ),
     );
+    final avatarImage = user
+        ? widget.snapshot.avatars.user ?? widget.snapshot.avatars.globalUser
+        : widget.snapshot.avatars.ai;
     final avatar = CircleAvatar(
       radius: 15,
-      backgroundColor: Color(0xFFEDF1F5),
-      child: Icon(
-        Icons.person,
-        size: 18,
-        color: PrimaryColors.of(context).secondary,
-      ),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: avatarImage == null
+          ? Icon(
+              Icons.person,
+              size: 18,
+              color: PrimaryColors.of(context).secondary,
+            )
+          : ClipOval(
+              child: RawImage(
+                image: avatarImage.image,
+                width: 30,
+                height: 30,
+                fit: BoxFit.cover,
+              ),
+            ),
     );
     if (wide) {
       return Column(

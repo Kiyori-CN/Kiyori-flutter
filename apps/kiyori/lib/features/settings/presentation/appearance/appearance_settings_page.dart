@@ -23,7 +23,7 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
   int selected = 0;
   final visited = <int>{0};
   List<Widget> get panels => [
-    const AppearanceBasic(),
+    AppearanceBasic(snapshot: widget.media.font),
     AppearanceBackground(snapshot: widget.media.background),
     AppearanceChat(snapshot: widget.media),
     const AppearanceInput(),

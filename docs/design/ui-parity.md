@@ -81,13 +81,23 @@ ThemeSettingsCoreSections / FontAvatarSections / BackgroundSection 和 ColorPick
 真实参数更新或媒体移除重置对应草稿。无效长度/非有限参数拒绝，数值按旧边界约束。
 像素测试区分两模式和角区，一像素/极端裁剪有测试；这不代表真机帧耗时或全像素一致验收。
 手动色盘支持 HEX/RGB/HSV、亮度/透明度与原预设色；粘贴不访问剪贴板。
+FontAvatarSections与AvatarPicker定义字体文件名/清除及70px圆形头像/2px边框；资源存在才
+启用重置。角色与全局选择器各自显示，ChatTab的聊天预览才采用user或globalUser回退。
+CoreSections的聊天样例头像固定30px圆形，不受方形偏好影响；样例名称仍用旧固定文案。
+注册family更新只改变预览资源，等值设置保留草稿，权威名称改变更新controller。
 
 备份页来自 ChatBackupSettingsScreen / BackupCards / BackupManagementCards /
 BackupDialogs，十张卡片原顺序，聊天导出为选择与格式两层，记忆导出为配置选择。
 BackupPresentation 仅为展示快照，默认零值是旧初始化外观，不代表本机统计；未加载审计
 保留原 spinner，列表惰性构建。最终业务按钮为空操作，不显示假成功或调用系统选择器。
 数据库保留数默认 10，自动备份未读取时原开关禁用；原路径为 Kiyori-Android，帮助文案
-仍保留源资源中的 Kiyori。恢复/运行结果及导入选择器返回后的分支仍待覆盖。
+仍保留源资源中的 Kiyori。独立导出/导入/删除状态沿旧24px spinner、16px内距、结果容器
+0.2透明度投影；长文本进度有限值约束到0..1，未知非有限值按0绘制，不伪造完成。
+聊天导入六格式默认Kiyori JSON；记忆导入从当前配置进入三策略，默认跳过。文件返回与
+恢复成功由稳定提示会话注入，取消不重弹；最近三份备份进入覆盖确认，结果快照才能显示
+重启提示。模型导出完成后安全提示保留原说明与展示路径，确认仅关闭提示。
+页面统一释放所属弹层，目录移除清理选择/格式/策略/恢复确认，同ID重入不复活草稿。
+每日备份读取中或保存中禁用开关，其它管理按钮沿旧源保持原可点外观，不构造整页busy。
 公共主题主容器、次色、第三色和错误色已从 KiyoriColorSchemes 显式映射，避免 seed
 算法生成与原色值不同的按钮；不改变页面布局。
 
