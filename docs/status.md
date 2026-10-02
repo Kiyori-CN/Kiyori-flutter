@@ -11,8 +11,9 @@
 本任务授权范围内实现、验证、串行Android/Windows构建、精确提交与普通推送；不操作
 设备、账号、私人收费端点、生产或CI，不启动自动化，不委派。日记local_only、Asia/Shanghai。
 
-执行阶段A/B：核对12项设置及全部设置子树，完善公共组件、非默认态、弹层和返回来源。
-设置本地验收后立即进入AI左抽屉与真实业务切片；AI重要功能未实现时Goal保持未完成。
+阶段A/B已完成设置UI的本地验收：12项及设置子树的映射、状态、弹层、返回和代表截图
+以settings-replication-map及下述十一批证据为准。当前转入AI左抽屉及真实业务切片；
+AI重要功能未实现时Goal保持未完成。设置业务写入与平台动作仍不计为已实现。
 每周期按相关性合并有效实现，完成批次继续下一批。总验收包括源码映射、行为/截图、
 静态/FFI/集成、双端构建、固定产物及远端一致；设备/供应商/Apple缺口单列。
 
@@ -178,7 +179,25 @@ Windows82文件118786796字节。APK身份/签名/16K/ELF与Windows x64/DLL pin/
 复制哈希通过；482文件255人工Dart审计无发现。无Rust API或依赖变化。后续收口用量定价、
 局域网、上下文及语音实体的权威值更新/弹层释放，设置关闭条件继续按映射核对。
 
-## 最近已交付：第四轮群组卡草稿垂直切片
+第十批已交付77af2994cfedd11f953c0cce31d6cf12d4fe018b，manifest已补提交。第十一批
+收口资料加载/干净刷新与未保存草稿、上下文configId及字段刷新、LAN Token重遮蔽、
+用量定价目录和语音实体存在期。统一音色选择器失效结果守卫，配置/目录更新或宿主退出
+释放所属弹层，controller延后到旧控件卸载后释放。系统默认音色空ID保留合法选择。
+联合既有六组页面回归54项通过，最终生命周期8项通过，9张PNG位于
+work/settings-lifecycle-capture-v3；代表定价/资料/系统音色截图已审阅。
+全量初轮发现旧治理测试的弹层移除同帧迟到点击会误pop底层页面；TtsOptionDialog现校验
+当前有效路由再返回，保留原迟到点击步骤后治理+生命周期16项通过，失败日志完整保留。
+本批完整verify-v2通过：51文档/4脚本、Rust fmt/Clippy/6、260 Dart格式/analyze、
+Flutter450（10捕获跳过）及真实FFI6。串行双端Debug通过，固定
+artifacts/ui-preview/20261003-060325：APK105188296字节，SHA256
+4A11C4FC61EDE7E1AF0AC81397EFB8AAB97AB7E1AD4A9CDCCC48476C4DFCE401；Windows82文件
+118824940字节。APK身份/签名/16K/ELF及Windows x64/DLL pin/native资产/复制哈希通过；
+审计483文件256人工Dart无发现。没有Rust API/桥/依赖变化，不重复Windows引擎集成。
+本地UI验收按S01–S12累计证据关闭；后续从KiyoriAiDrawer、ScreenRouteRegistry和
+OperitNavigationStackPolicy继续AI主阶段，保持HomeShell唯一一级导航owner与既有草稿。
+真实设置持久化、系统动作、设备/Profile/Apple及供应商验收仍单列，不能称业务完成。
+
+## 历史交付：第四轮群组卡草稿垂直切片
 
 基线为 main / b2ded4b0f7b60e82acc0a6e452e48611699ed556，原任务开始时干净、与
 origin/main为0/0。中断恢复时保留原17个未提交文件，暂存区为空；复核后接续交付。

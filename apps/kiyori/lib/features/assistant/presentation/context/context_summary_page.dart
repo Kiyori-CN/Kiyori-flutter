@@ -8,6 +8,7 @@ part 'context_summary_fields.dart';
 /// 旧模型默认值的 UI 快照；不初始化或写入模型配置。
 class ContextSummaryPresentation {
   const ContextSummaryPresentation({
+    this.configId = 'default',
     this.configName = '默认配置',
     this.contextLength = '64',
     this.maxContextLength = '200',
@@ -19,7 +20,7 @@ class ContextSummaryPresentation {
     this.imageTurns = '2',
     this.mediaTurns = '1',
   });
-  final String configName, contextLength, maxContextLength, threshold;
+  final String configId, configName, contextLength, maxContextLength, threshold;
   final String messageCount, rules, imageTurns, mediaTurns;
   final bool enableSummary, byMessageCount;
 }
@@ -35,6 +36,7 @@ class ContextSummaryPage extends StatefulWidget {
 }
 
 class _ContextSummaryPageState extends State<ContextSummaryPage> {
+  DialogRoute<void>? _resetRoute;
   late final length = TextEditingController(
     text: widget.snapshot.contextLength,
   );
@@ -52,7 +54,54 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
   final summaryError = ValueNotifier<String?>(null);
 
   @override
+  void didUpdateWidget(covariant ContextSummaryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.snapshot;
+    final next = widget.snapshot;
+    final changed = old.configId != next.configId;
+    if (changed) _closeReset();
+    for (final item in [
+      (length, old.contextLength, next.contextLength),
+      (maximum, old.maxContextLength, next.maxContextLength),
+      (threshold, old.threshold, next.threshold),
+      (count, old.messageCount, next.messageCount),
+      (rules, old.rules, next.rules),
+      (images, old.imageTurns, next.imageTurns),
+      (media, old.mediaTurns, next.mediaTurns),
+    ]) {
+      if (changed || item.$2 != item.$3) item.$1.text = item.$3;
+    }
+    if (changed || old.enableSummary != next.enableSummary) {
+      summary = next.enableSummary;
+    }
+    if (changed || old.byMessageCount != next.byMessageCount) {
+      byCount = next.byMessageCount;
+    }
+    validateContext();
+    validateSummary();
+  }
+
+  void _closeReset() {
+    final route = _resetRoute;
+    _resetRoute = null;
+    if (route == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> _showReset(BuildContext context, WidgetBuilder builder) async {
+    if (_resetRoute != null) return;
+    final route = DialogRoute<void>(context: context, builder: builder);
+    _resetRoute = route;
+    await Navigator.of(context).push(route);
+    if (identical(_resetRoute, route)) _resetRoute = null;
+  }
+
+  @override
   void dispose() {
+    _closeReset();
     for (final controller in [
       length,
       maximum,
@@ -247,9 +296,9 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (context) => AlertDialog(
+            onPressed: () => _showReset(
+              context,
+              (context) => AlertDialog(
                 title: const Text('恢复历史媒体默认值？'),
                 scrollable: true,
                 content: const Text(

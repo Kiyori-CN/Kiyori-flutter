@@ -43,10 +43,16 @@ class _SttSettingsPageState extends State<SttSettingsPage> {
     super.didUpdateWidget(oldWidget);
     final ids = widget.profiles.map((p) => p.id).toSet();
     for (final id in drafts.keys.where((id) => !ids.contains(id)).toList()) {
-      drafts.remove(id)?.dispose();
+      final removed = drafts.remove(id);
+      WidgetsBinding.instance.addPostFrameCallback((_) => removed?.dispose());
     }
-    if (!ids.contains(selected)) {
-      selected = widget.profiles.firstOrNull?.id ?? '';
+    for (final profile in widget.profiles) {
+      drafts[profile.id]?.update(profile);
+    }
+    if (oldWidget.activeId != widget.activeId || !ids.contains(selected)) {
+      selected = ids.contains(widget.activeId)
+          ? widget.activeId
+          : widget.profiles.firstOrNull?.id ?? '';
     }
   }
 
@@ -232,13 +238,28 @@ class _SttSettingsPageState extends State<SttSettingsPage> {
 
 class _SttDraft {
   _SttDraft(SttProfilePresentation profile)
-    : engine = profile.engine,
+    : source = profile,
+      engine = profile.engine,
       endpoint = TextEditingController(text: profile.endpoint),
       apiKey = TextEditingController(text: profile.apiKey),
       model = TextEditingController(text: profile.model);
   SttEngine engine;
   final TextEditingController endpoint, apiKey, model;
   bool visible = false;
+  SttProfilePresentation source;
+  void update(SttProfilePresentation next) {
+    if (source.engine != next.engine) engine = next.engine;
+    for (final value in [
+      (endpoint, source.endpoint, next.endpoint),
+      (apiKey, source.apiKey, next.apiKey),
+      (model, source.model, next.model),
+    ]) {
+      if (value.$2 != value.$3) value.$1.text = value.$3;
+    }
+    if (source.apiKey != next.apiKey) visible = false;
+    source = next;
+  }
+
   void dispose() {
     endpoint.dispose();
     apiKey.dispose();

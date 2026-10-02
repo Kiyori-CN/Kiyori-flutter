@@ -30,9 +30,49 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final editorScroll = ScrollController();
   int tab = 0;
   bool canPop = false, confirming = false;
+  final _routes = <ModalRoute<dynamic>>{};
   bool get changed => draft.text != widget.snapshot.markdown;
   @override
+  void didUpdateWidget(covariant UserProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.snapshot;
+    final next = widget.snapshot;
+    // 后台快照只刷新干净草稿；加载完成不能覆盖用户尚未保存的输入。
+    if (draft.text == old.markdown && old.markdown != next.markdown) {
+      draft.text = next.markdown;
+    }
+    if (old.loading != next.loading ||
+        old.markdown != next.markdown ||
+        old.archive != next.archive) {
+      _closeRoutes();
+    }
+  }
+
+  void _closeRoutes() {
+    final routes = _routes.toList();
+    _routes.clear();
+    if (routes.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<bool?> _confirm(BuildContext context, WidgetBuilder builder) async {
+    if (_routes.isNotEmpty) return null;
+    final route = DialogRoute<bool>(context: context, builder: builder);
+    _routes.add(route);
+    final text = draft.text;
+    final result = await Navigator.of(context).push(route);
+    final current = _routes.remove(route);
+    return mounted && current && draft.text == text ? result : null;
+  }
+
+  @override
   void dispose() {
+    _closeRoutes();
     draft.dispose();
     editorScroll.dispose();
     super.dispose();
@@ -42,9 +82,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
     if (confirming) return;
     if (changed) {
       confirming = true;
-      final discard = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
+      final discard = await _confirm(
+        context,
+        (context) => AlertDialog(
           title: const Text('放弃未保存的修改？'),
           content: const Text('返回后，本次对 user.md 的修改将丢失。'),
           actions: [
@@ -69,9 +109,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> reset(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
+    final confirmed = await _confirm(
+      context,
+      (context) => AlertDialog(
         title: const Text('恢复默认模板？'),
         content: const Text('当前草稿会被默认 user.md 模板替换；请检查内容并保存后再生效。'),
         actions: [
@@ -92,55 +132,66 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  void archive(BuildContext context) => showKiyoriModalDrawer<void>(
-    context,
-    builder: (context, dismiss) => Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const title = Text(
-            'legacy-user-profiles.md',
-            style: TextStyle(fontSize: 22),
-          );
-          final body = SelectableText(
-            widget.snapshot.archive!,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
-          );
-          final copy = Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.copy),
-              label: const Text('复制内容'),
-            ),
-          );
-          // 半展开动画和大字下允许标题随正文滚动，避免固定标题挤掉正文。
-          if (constraints.maxHeight <
-              140 + MediaQuery.textScalerOf(context).scale(100)) {
-            return ListView(
+  Future<void> archive(BuildContext context) async {
+    final content = widget.snapshot.archive;
+    if (content == null || _routes.isNotEmpty) return;
+    ModalRoute<dynamic>? route;
+    await showKiyoriModalDrawer<void>(
+      context,
+      onRoute: (value) {
+        route = value;
+        _routes.add(value);
+      },
+      builder: (context, dismiss) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const title = Text(
+              'legacy-user-profiles.md',
+              style: TextStyle(fontSize: 22),
+            );
+            final body = SelectableText(
+              content,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+            );
+            final copy = Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.copy),
+                label: const Text('复制内容'),
+              ),
+            );
+            // 半展开动画和大字下允许标题随正文滚动，避免固定标题挤掉正文。
+            if (constraints.maxHeight <
+                140 + MediaQuery.textScalerOf(context).scale(100)) {
+              return ListView(
+                children: [
+                  title,
+                  const SizedBox(height: 12),
+                  body,
+                  const SizedBox(height: 12),
+                  copy,
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 title,
                 const SizedBox(height: 12),
-                body,
+                Expanded(child: SingleChildScrollView(child: body)),
                 const SizedBox(height: 12),
                 copy,
               ],
             );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              title,
-              const SizedBox(height: 12),
-              Expanded(child: SingleChildScrollView(child: body)),
-              const SizedBox(height: 12),
-              copy,
-            ],
-          );
-        },
+          },
+        ),
       ),
-    ),
-  );
+    );
+    _routes.remove(route);
+  }
+
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: canPop,
@@ -208,7 +259,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           ),
                         ];
                         final save = FilledButton.tonalIcon(
-                          onPressed: changed && value.text.length <= 12000
+                          onPressed:
+                              !widget.snapshot.loading &&
+                                  changed &&
+                                  value.text.length <= 12000
                               ? () {}
                               : null,
                           icon: const Icon(Icons.save_outlined),

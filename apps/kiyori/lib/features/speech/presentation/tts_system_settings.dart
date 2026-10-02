@@ -20,6 +20,25 @@ class TtsSystemSettings extends StatefulWidget {
 }
 
 class _TtsSystemSettingsState extends State<TtsSystemSettings> {
+  final picker = TtsOptionSession();
+  @override
+  void didUpdateWidget(covariant TtsSystemSettings oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.draft, widget.draft) ||
+        !sameSpeechOptions(
+          oldWidget.catalog.systemVoices,
+          widget.catalog.systemVoices,
+        )) {
+      picker.close();
+    }
+  }
+
+  @override
+  void dispose() {
+    picker.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = widget.draft;
@@ -90,9 +109,11 @@ class _TtsSystemSettingsState extends State<TtsSystemSettings> {
                   tooltip: ttsText('simple_tts_voice_select'),
                   icon: const Icon(Icons.format_list_bulleted),
                   onPressed: () async {
-                    final choice = await showDialog<SpeechVoiceOption>(
-                      context: context,
-                      builder: (_) => TtsOptionDialog(
+                    final locale = d.locale;
+                    final voice = d['voice'].text;
+                    final choice = await picker.show(
+                      context,
+                      (_) => TtsOptionDialog(
                         title: ttsText('simple_tts_voice_select'),
                         options: voices
                             .where(
@@ -106,7 +127,17 @@ class _TtsSystemSettingsState extends State<TtsSystemSettings> {
                         system: true,
                       ),
                     );
-                    if (!mounted || choice == null) return;
+                    if (!mounted ||
+                        choice == null ||
+                        !identical(d, widget.draft) ||
+                        d.locale != locale ||
+                        d['voice'].text != voice ||
+                        (choice.id.isNotEmpty &&
+                            !widget.catalog.systemVoices.any(
+                              (v) => v.id == choice.id,
+                            ))) {
+                      return;
+                    }
                     setState(() {
                       d['voice'].text = choice.id;
                       if (d.locale.isEmpty && choice.id.isNotEmpty) {

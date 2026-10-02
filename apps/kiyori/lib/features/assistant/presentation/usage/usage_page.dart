@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
@@ -13,6 +15,8 @@ class UsagePage extends StatefulWidget {
 }
 
 class _UsagePageState extends State<UsagePage> {
+  final _routes = <DialogRoute<void>, String?>{};
+  late final catalog = ValueNotifier(widget.snapshot.models);
   late final rate = TextEditingController(
     text: widget.snapshot.exchangeRate.toString(),
   );
@@ -32,17 +36,75 @@ class _UsagePageState extends State<UsagePage> {
       models = sortedModels();
       distribution = sortedDistribution();
     }
+    if (oldWidget.snapshot.exchangeRate != widget.snapshot.exchangeRate) {
+      rate.text = widget.snapshot.exchangeRate.toString();
+    }
+    final names = widget.snapshot.models.map((model) => model.name).toSet();
+    _removeRoutes(
+      _routes.entries
+          .where((entry) => entry.value != null && !names.contains(entry.value))
+          .map((entry) => entry.key),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) catalog.value = widget.snapshot.models;
+    });
   }
+
+  void _removeRoutes(Iterable<DialogRoute<void>> values) {
+    final routes = values.toList();
+    if (routes.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> _show(
+    BuildContext context,
+    WidgetBuilder builder, {
+    String? model,
+  }) async {
+    if (_routes.isNotEmpty) return;
+    final route = DialogRoute<void>(
+      context: context,
+      builder: (context) => SettingsTheme(child: builder(context)),
+    );
+    _routes[route] = model;
+    try {
+      await Navigator.of(context).push(route);
+    } finally {
+      _routes.remove(route);
+    }
+  }
+
+  void _edit(BuildContext context, ModelUsagePresentation model) => unawaited(
+    _show(
+      context,
+      (_) => ValueListenableBuilder(
+        valueListenable: catalog,
+        builder: (_, values, _) => UsagePricingDialog(
+          model:
+              values.where((value) => value.name == model.name).firstOrNull ??
+              model,
+        ),
+      ),
+      model: model.name,
+    ),
+  );
 
   @override
   void dispose() {
+    _removeRoutes(_routes.keys);
+    WidgetsBinding.instance.addPostFrameCallback((_) => catalog.dispose());
     rate.dispose();
     super.dispose();
   }
 
-  Future<void> reset(BuildContext context, [String? model]) => showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
+  Future<void> reset(BuildContext context, [String? model]) => _show(
+    context,
+    (context) => AlertDialog(
       title: Text(model == null ? '重置确认' : '重置模型确认'),
       content: Text(
         model == null
@@ -63,6 +125,7 @@ class _UsagePageState extends State<UsagePage> {
         ),
       ],
     ),
+    model: model,
   );
   @override
   Widget build(BuildContext context) => SettingsWorkspacePage(
@@ -138,10 +201,7 @@ class _UsagePageState extends State<UsagePage> {
                 key: ValueKey('usage-${model.name}'),
                 model: model,
                 onReset: () => reset(context, model.name),
-                onEdit: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => UsagePricingDialog(model: model),
-                ),
+                onEdit: () => _edit(context, model),
               );
             }
             return UsageCard(

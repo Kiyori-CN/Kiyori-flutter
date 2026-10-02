@@ -15,38 +15,69 @@ class LanAutomationPage extends StatefulWidget {
 }
 
 class _LanAutomationPageState extends State<LanAutomationPage> {
+  DialogRoute<void>? _resetRoute;
   late final port = TextEditingController(
     text: widget.snapshot.port.toString(),
   );
   late final token = TextEditingController(text: widget.snapshot.token);
   bool tokenVisible = false;
   @override
+  void didUpdateWidget(covariant LanAutomationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.snapshot.port != widget.snapshot.port) {
+      port.text = widget.snapshot.port.toString();
+    }
+    if (oldWidget.snapshot.token != widget.snapshot.token) {
+      token.text = widget.snapshot.token;
+      tokenVisible = false;
+      _closeReset();
+    }
+  }
+
+  void _closeReset() {
+    final route = _resetRoute;
+    _resetRoute = null;
+    if (route == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
   void dispose() {
+    _closeReset();
     port.dispose();
     token.dispose();
     super.dispose();
   }
 
-  Future<void> resetToken(BuildContext context) => showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('重置访问 Token？'),
-      content: const Text('重置后，所有仍在使用旧 Token 的客户端会立即失效。新 Token 将复制到剪贴板。'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed: () {},
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
+  Future<void> resetToken(BuildContext context) async {
+    if (_resetRoute != null) return;
+    final route = DialogRoute<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重置访问 Token？'),
+        content: const Text('重置后，所有仍在使用旧 Token 的客户端会立即失效。新 Token 将复制到剪贴板。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
           ),
-          child: const Text('重置 Token'),
-        ),
-      ],
-    ),
-  );
+          TextButton(
+            onPressed: () {},
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('重置 Token'),
+          ),
+        ],
+      ),
+    );
+    _resetRoute = route;
+    await Navigator.of(context).push(route);
+    if (identical(_resetRoute, route)) _resetRoute = null;
+  }
 
   @override
   Widget build(BuildContext context) => SettingsWorkspacePage(

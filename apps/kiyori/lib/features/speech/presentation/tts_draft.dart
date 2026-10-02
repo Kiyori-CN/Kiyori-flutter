@@ -1,12 +1,14 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'tts_presentation.dart';
 
 class TtsDraft {
   TtsDraft(TtsProfilePresentation profile)
-    : engine = profile.engine,
+    : source = profile,
+      engine = profile.engine,
       rate = profile.rate,
       pitch = profile.pitch,
       method = profile.method,
@@ -33,7 +35,47 @@ class TtsDraft {
   bool keyVisible = false;
   final Map<String, TextEditingController> fields;
   final List<TextEditingController> cleaners;
+  TtsProfilePresentation source;
   TextEditingController operator [](String key) => fields[key]!;
+
+  void update(TtsProfilePresentation next) {
+    final old = source;
+    if (old.engine != next.engine) engine = next.engine;
+    if (old.rate != next.rate) rate = next.rate;
+    if (old.pitch != next.pitch) pitch = next.pitch;
+    if (old.method != next.method) method = next.method;
+    if (old.locale != next.locale) locale = next.locale;
+    if (old.apiKey != next.apiKey) keyVisible = false;
+    for (final value in [
+      ('endpoint', old.endpoint, next.endpoint),
+      ('key', old.apiKey, next.apiKey),
+      ('headers', old.headers, next.headers),
+      ('body', old.body, next.body),
+      ('contentType', old.contentType, next.contentType),
+      ('voice', old.voice, next.voice),
+      ('model', old.model, next.model),
+      ('pipeline', old.pipeline, next.pipeline),
+      ('packagePath', old.packagePath, next.packagePath),
+      ('speaker', old.speaker, next.speaker),
+      ('options', old.options, next.options),
+    ]) {
+      if (value.$2 != value.$3) this[value.$1].text = value.$3;
+    }
+    if (!listEquals(old.cleaners, next.cleaners)) {
+      final removed = cleaners.toList();
+      cleaners
+        ..clear()
+        ..addAll(
+          next.cleaners.map((text) => TextEditingController(text: text)),
+        );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final controller in removed) {
+          controller.dispose();
+        }
+      });
+    }
+    source = next;
+  }
 
   void selectEngine(TtsEngine value) {
     engine = value;

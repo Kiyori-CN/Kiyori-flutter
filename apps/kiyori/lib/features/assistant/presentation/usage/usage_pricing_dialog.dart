@@ -24,6 +24,22 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
     text: usageEditablePrice(widget.model.requestPriceCny),
   );
   @override
+  void didUpdateWidget(covariant UsagePricingDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.model;
+    final next = widget.model;
+    if (old.billing != next.billing) billing = next.billing;
+    for (final item in [
+      (input, old.inputPriceCny, next.inputPriceCny),
+      (output, old.outputPriceCny, next.outputPriceCny),
+      (cached, old.cachedPriceCny, next.cachedPriceCny),
+      (request, old.requestPriceCny, next.requestPriceCny),
+    ]) {
+      if (item.$2 != item.$3) item.$1.text = usageEditablePrice(item.$3);
+    }
+  }
+
+  @override
   void dispose() {
     for (final controller in [input, output, cached, request]) {
       controller.dispose();

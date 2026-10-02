@@ -29,6 +29,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
       ? widget.activeId
       : widget.profiles.firstOrNull?.id ?? '';
   final drafts = <String, TtsDraft>{};
+  final picker = TtsOptionSession();
   TtsDraft get draft => drafts.putIfAbsent(
     selected,
     () => TtsDraft(
@@ -38,6 +39,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
   );
   @override
   void dispose() {
+    picker.close();
     for (final draft in drafts.values) {
       draft.dispose();
     }
@@ -48,11 +50,33 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
   void didUpdateWidget(TtsSettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     final ids = widget.profiles.map((p) => p.id).toSet();
+    final previous = selected;
     for (final id in drafts.keys.where((id) => !ids.contains(id)).toList()) {
-      drafts.remove(id)?.dispose();
+      final removed = drafts.remove(id);
+      WidgetsBinding.instance.addPostFrameCallback((_) => removed?.dispose());
     }
-    if (!ids.contains(selected)) {
-      selected = widget.profiles.firstOrNull?.id ?? '';
+    for (final profile in widget.profiles) {
+      final current = drafts[profile.id];
+      if (profile.id == selected &&
+          current != null &&
+          (current.source.engine != profile.engine ||
+              current.source.endpoint != profile.endpoint ||
+              current.source.apiKey != profile.apiKey ||
+              current.source.voice != profile.voice ||
+              current.source.model != profile.model)) {
+        picker.close();
+      }
+      current?.update(profile);
+    }
+    if (oldWidget.activeId != widget.activeId || !ids.contains(selected)) {
+      selected = ids.contains(widget.activeId)
+          ? widget.activeId
+          : widget.profiles.firstOrNull?.id ?? '';
+    }
+    if (previous != selected ||
+        !sameSpeechOptions(oldWidget.catalog.models, widget.catalog.models) ||
+        !sameSpeechOptions(oldWidget.catalog.voices, widget.catalog.voices)) {
+      picker.close();
     }
   }
 
@@ -93,7 +117,10 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
           SpeechProfiles(
             profiles: widget.profiles.map((p) => p.option).toList(),
             selected: selected,
-            onSelect: (id) => setState(() => selected = id),
+            onSelect: (id) {
+              picker.close();
+              setState(() => selected = id);
+            },
           ),
         SettingsGroup(
           title: ttsText('tts_title'),
@@ -129,6 +156,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                     ],
                     onChanged: (value) {
                       if (value != null) {
+                        picker.close();
                         setState(() => current.selectEngine(value));
                       }
                     },
@@ -649,9 +677,10 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
             onPressed: models && options.isEmpty
                 ? null
                 : () async {
-                    final choice = await showDialog<SpeechVoiceOption>(
-                      context: context,
-                      builder: (_) => TtsOptionDialog(
+                    final engine = d.engine;
+                    final choice = await picker.show(
+                      context,
+                      (_) => TtsOptionDialog(
                         title: models ? '选择模型' : '选择预设音色',
                         options: options,
                         models: models,
@@ -659,7 +688,10 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                     );
                     if (mounted &&
                         choice != null &&
-                        drafts.values.contains(d)) {
+                        identical(drafts[selected], d) &&
+                        d.engine == engine &&
+                        (models ? widget.catalog.models : widget.catalog.voices)
+                            .any((option) => option.id == choice.id)) {
                       d[models ? 'model' : 'voice'].text = choice.id;
                     }
                   },
@@ -679,11 +711,15 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
     tooltip: title,
     icon: const Icon(Icons.format_list_bulleted),
     onPressed: () async {
-      final voice = await showDialog<SpeechVoiceOption>(
-        context: context,
-        builder: (_) => TtsOptionDialog(title: title, options: options),
+      final engine = d.engine;
+      final voice = await picker.show(
+        context,
+        (_) => TtsOptionDialog(title: title, options: options),
       );
-      if (mounted && voice != null && drafts.values.contains(d)) {
+      if (mounted &&
+          voice != null &&
+          identical(drafts[selected], d) &&
+          d.engine == engine) {
         d['voice'].text = voice.id;
       }
     },

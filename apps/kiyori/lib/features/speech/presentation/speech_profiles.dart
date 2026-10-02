@@ -6,7 +6,7 @@ class SpeechProfileOption {
   final String id, name;
 }
 
-class SpeechProfiles extends StatelessWidget {
+class SpeechProfiles extends StatefulWidget {
   const SpeechProfiles({
     required this.profiles,
     required this.selected,
@@ -17,15 +17,62 @@ class SpeechProfiles extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onSelect;
   @override
+  State<SpeechProfiles> createState() => _SpeechProfilesState();
+}
+
+class _SpeechProfilesState extends State<SpeechProfiles> {
+  DialogRoute<void>? _route;
+  SpeechProfileOption? _target;
+  void _close() {
+    final route = _route;
+    _route = null;
+    if (route == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void didUpdateWidget(covariant SpeechProfiles oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final target = _target;
+    if (oldWidget.selected != widget.selected ||
+        (target != null &&
+            !widget.profiles.any(
+              (profile) =>
+                  profile.id == target.id && profile.name == target.name,
+            ))) {
+      _close();
+    }
+  }
+
+  @override
+  void dispose() {
+    _close();
+    super.dispose();
+  }
+
+  Future<void> _show(WidgetBuilder builder, SpeechProfileOption? target) async {
+    if (_route != null) return;
+    final route = DialogRoute<void>(context: context, builder: builder);
+    _target = target;
+    _route = route;
+    await Navigator.of(context).push(route);
+    if (identical(_route, route)) _route = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profiles = widget.profiles;
+    final selected = widget.selected;
     if (profiles.isEmpty) return const SizedBox.shrink();
     final active = profiles
         .where((profile) => profile.id == selected)
         .firstOrNull;
-    void edit([SpeechProfileOption? profile]) => showDialog<void>(
-      context: context,
-      builder: (_) =>
-          _SpeechProfileName(profile: profile, canCreate: active != null),
+    void edit([SpeechProfileOption? profile]) => _show(
+      (_) => _SpeechProfileName(profile: profile, canCreate: active != null),
+      profile ?? active,
     );
     return SettingsGroup(
       title: '语音服务配置',
@@ -37,7 +84,10 @@ class SpeechProfiles extends StatelessWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  key: ValueKey(selected),
+                  key: ValueKey((
+                    selected,
+                    profiles.map((p) => p.id).join('\u0000'),
+                  )),
                   initialValue: active?.id,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -52,7 +102,10 @@ class SpeechProfiles extends StatelessWidget {
                       ),
                   ],
                   onChanged: (value) {
-                    if (value != null) onSelect(value);
+                    if (value != null &&
+                        widget.profiles.any((p) => p.id == value)) {
+                      widget.onSelect(value);
+                    }
                   },
                 ),
               ),
@@ -93,9 +146,8 @@ class SpeechProfiles extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: '删除语音配置',
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (context) => AlertDialog(
+                  onPressed: () => _show(
+                    (context) => AlertDialog(
                       title: const Text('删除语音配置'),
                       content: Text('确定删除语音配置“${profile.name}”吗？活动配置不能删除。'),
                       actions: [
@@ -106,6 +158,7 @@ class SpeechProfiles extends StatelessWidget {
                         TextButton(onPressed: () {}, child: const Text('删除')),
                       ],
                     ),
+                    profile,
                   ),
                   icon: const Icon(Icons.delete_outline),
                 ),

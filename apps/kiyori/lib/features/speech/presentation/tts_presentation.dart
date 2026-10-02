@@ -22,6 +22,19 @@ class SpeechVoiceOption {
   String get display => name == id ? name : '$name ($id)';
 }
 
+bool sameSpeechOptions(List<SpeechVoiceOption> a, List<SpeechVoiceOption> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].id != b[i].id ||
+        a[i].name != b[i].name ||
+        a[i].locale != b[i].locale) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /// 目录和运行状态由外层提供，UI 不读取系统音色或刷新远程目录。
 class TtsCatalogPresentation {
   const TtsCatalogPresentation({

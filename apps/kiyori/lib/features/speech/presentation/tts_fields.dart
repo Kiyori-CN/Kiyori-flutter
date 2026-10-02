@@ -5,6 +5,36 @@ import 'tts_draft.dart';
 import 'tts_presentation.dart';
 import 'tts_strings.dart';
 
+/// 页面拥有选择器的存在期，失效目录不能在异步返回后写回旧草稿。
+class TtsOptionSession {
+  DialogRoute<SpeechVoiceOption>? _route;
+  void close() {
+    final route = _route;
+    _route = null;
+    if (route == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<SpeechVoiceOption?> show(
+    BuildContext context,
+    WidgetBuilder builder,
+  ) async {
+    if (_route != null) return null;
+    final route = DialogRoute<SpeechVoiceOption>(
+      context: context,
+      builder: builder,
+    );
+    _route = route;
+    final result = await Navigator.of(context).push(route);
+    if (!identical(_route, route)) return null;
+    _route = null;
+    return result;
+  }
+}
+
 class TtsField extends StatelessWidget {
   const TtsField({
     required this.draft,
@@ -131,6 +161,13 @@ class TtsOptionDialog extends StatefulWidget {
 
 class _TtsOptionDialogState extends State<TtsOptionDialog> {
   final query = TextEditingController();
+  void select([SpeechVoiceOption? option]) {
+    // removeRoute 后旧控件可能保留至下一帧，迟到点击不能退出底层页面。
+    if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.pop(context, option);
+    }
+  }
+
   @override
   void dispose() {
     query.dispose();
@@ -181,10 +218,8 @@ class _TtsOptionDialogState extends State<TtsOptionDialog> {
                     children: [
                       if (widget.system)
                         TextButton(
-                          onPressed: () => Navigator.pop(
-                            context,
-                            const SpeechVoiceOption('', ''),
-                          ),
+                          onPressed: () =>
+                              select(const SpeechVoiceOption('', '')),
                           child: Text(ttsText('simple_tts_voice_default')),
                         ),
                       if (options.isEmpty && !widget.system)
@@ -192,14 +227,14 @@ class _TtsOptionDialogState extends State<TtsOptionDialog> {
                       for (final option in options)
                         widget.system
                             ? TextButton(
-                                onPressed: () => Navigator.pop(context, option),
+                                onPressed: () => select(option),
                                 child: Text(
                                   '${option.name} (${option.locale})',
                                 ),
                               )
                             : ListTile(
                                 title: Text(option.display),
-                                onTap: () => Navigator.pop(context, option),
+                                onTap: () => select(option),
                               ),
                     ],
                   ),
@@ -210,10 +245,7 @@ class _TtsOptionDialogState extends State<TtsOptionDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(widget.system ? '取消' : '确定'),
-        ),
+        TextButton(onPressed: select, child: Text(widget.system ? '取消' : '确定')),
       ],
     );
   }

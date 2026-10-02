@@ -172,3 +172,20 @@ KiyoriFileManagerSettingsPage:302–345与FileOpenWithDialog全文定义隐藏�
 FileSettingsSession投影动态目录、忙碌/错误和精确模态所有权；格式移除关闭对应编辑，
 隐藏目录更新保留筛选。file_settings_states_test验证非空/空/搜索、MIME/当前默认、
 目录移除、忙碌Back/取消拦截、宿主退出及六种视口主题；不改路径、规则或文件事实。
+
+## 设置权威快照与弹层生命周期
+
+TokenUsageStatisticsScreen的汇率/定价状态、ExternalHttpChatSettingsScreen:87–99的
+端口/Token flow、ContextSummarySettingsScreen:121–176的configId/字段Effect，以及
+UserPreferencesSettingsScreen:85–145的资料加载，分别映射到usage/server/context/profile。
+同实体等值快照保留输入，字段权威值改变仅刷新相关草稿；上下文切configId刷新全部字段。
+资料刷新仅覆盖干净草稿，加载中不能保存；旧档案移除/替换释放抽屉，迟到确认不清新草稿。
+用量模型移除、LAN Token更新、上下文切配置和宿主退出均释放所属确认/编辑路由。
+
+SpeechServicesSettingsScreen:140–185定义TTS/STT字段和清理规则随配置更新；2756的
+名称草稿按实体ID初始化。新SpeechProfiles持有增改删弹层，实体移除/重命名/活动配置
+切换时释放；草稿按ID隔离，移除后同ID重建不继承旧输入。TTS/STT权威字段逐项更新，
+新密钥重新遮蔽，controller在旧控件卸载后释放。TtsOptionSession统一系统/远程选择器
+存在期，目录更新/页面退出使待返回结果失效；系统默认音色空ID仍是合法选择。
+settings_lifecycle_test覆盖上述异步失效、等值刷新、删除重入和来源同步，现有六组页面
+回归继续覆盖小屏/横屏/桌面、大字和键盘。此层不保存偏好、不访问系统音频或远端模型。
