@@ -14,6 +14,11 @@ ToolboxSettingsSession 只管理页面弹层生命周期；名称校验使用uno
 不建立Dart布局数据库或工具执行器。
 browser/presentation/adblock 由 AdblockPresentation 投影运行时和规则/订阅目录；按ID维护
 编辑弹层、域名折叠和状态快照，更新/删除保留空动作边界，不下载、解析或执行过滤规则。
+browser_credentials_presentation分开凭据摘要和临时详情；页面搜索不遍历密码，详情/编辑
+默认遮蔽，实体移除/保险库失效/宿主退出撤销路由。平台安全描述由快照提供，不把Android
+Keystore文案当Windows安全事实。browser_scripts_presentation只投影声明和运行状态。
+files/presentation的FileSettingsSession统一持有格式/隐藏列表/确认路由，快照仅提供
+现有规则、路径和计数；不建立文件偏好数据库，不执行恢复、删除或清理。
 documents 设置及说明弹窗、files 格式选择器、music 设置和音源导入/备份确认也已加入
 UI 投影；没有加载文档、播放、下载、调用系统选择器或实际导入导出。
 music/presentation以MusicSettingsPresentation投影音源目录、偏好、播放速度/历史和

@@ -2,11 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'file_open_defaults_dialog.dart';
+import 'file_settings_presentation.dart';
 
 /// KiyoriFileManagerSettingsPage / FileManagerSettings presentation defaults.
 /// Startup paths are draft settings; this surface never probes those locations.
-class FileSettingsPage extends StatelessWidget {
-  const FileSettingsPage({super.key});
+class FileSettingsPage extends StatefulWidget {
+  const FileSettingsPage({
+    this.snapshot = const FileSettingsPresentation(),
+    super.key,
+  });
+  final FileSettingsPresentation snapshot;
+  @override
+  State<FileSettingsPage> createState() => _FileSettingsPageState();
+}
+
+class _FileSettingsPageState extends State<FileSettingsPage> {
+  late final session = FileSettingsSession(widget.snapshot);
+  @override
+  void didUpdateWidget(covariant FileSettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    session.update(widget.snapshot);
+  }
+
+  @override
+  void dispose() {
+    session.dispose();
+    super.dispose();
+  }
 
   static const _groups = [
     (
@@ -138,23 +160,26 @@ class FileSettingsPage extends StatelessWidget {
         title: title,
         current: value!,
         options: options,
+        onRoute: session.track,
       );
     } else if (title == '按格式设置默认打开方式') {
-      await showFileOpenDefaults(context);
+      await showFileOpenDefaults(context, session: session);
     } else if (['Android工作区', 'Linux工作区', '左列启动目录', '右列启动目录'].contains(title)) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => _PathDialog(title: title),
-      );
+      await session.show(context, (_, _) => _PathDialog(title: title));
     } else if (title == '手动隐藏清单' || title == '隐藏的本地入口') {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => _HiddenDialog(title: title),
+      await session.show(
+        context,
+        (_, snapshot) => _HiddenDialog(
+          title: title,
+          entries: title == '手动隐藏清单'
+              ? snapshot.hiddenFiles
+              : snapshot.hiddenLocations,
+        ),
       );
     } else if (title == '回收与恢复说明') {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
+      await session.show(
+        context,
+        (context, _) => AlertDialog(
           title: Text(title),
           content: const SingleChildScrollView(
             child: Column(
@@ -177,26 +202,67 @@ class FileSettingsPage extends StatelessWidget {
           ],
         ),
       );
-    } else if (title == '恢复默认侧栏布局' || title == '恢复浏览默认设置') {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
+    } else if (title == '恢复默认侧栏布局' ||
+        title == '恢复浏览默认设置' ||
+        title.startsWith('清空')) {
+      await session.show(
+        context,
+        (context, snapshot) => AlertDialog(
           title: Text(title),
-          content: Text(
-            title == '恢复默认侧栏布局'
-                ? '将恢复分类、内置入口和顺序，保留自建入口、别名、授权和书签。'
-                : '将恢复启动位置、显示、排序和刷新偏好；侧栏、隐藏清单与历史记录会保留。',
+          scrollable: true,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title == '恢复默认侧栏布局'
+                    ? '将恢复分类、内置入口和顺序，保留自建入口、别名、授权和书签。'
+                    : title == '恢复浏览默认设置'
+                    ? '将恢复启动位置、显示、排序和刷新偏好；侧栏、隐藏清单与历史记录会保留。'
+                    : title == '清空搜索记录'
+                    ? '将清空 ${snapshot.searchCount} 条搜索记录。当前目录和实际文件不会改变。'
+                    : '将清空 ${snapshot.finishedTaskCount} 条已结束任务记录，进行中的任务和实际文件会保留。',
+              ),
+              if (snapshot.confirmationError case final error?) ...[
+                const SizedBox(height: 8),
+                Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: snapshot.confirmationBusy
+                  ? null
+                  : () => Navigator.pop(context),
               child: const Text('取消'),
             ),
-            const TextButton(onPressed: emptyAction, child: Text('确认')),
+            TextButton(
+              onPressed: snapshot.confirmationBusy ? null : emptyAction,
+              child: Text(snapshot.confirmationBusy ? '处理中…' : '确认'),
+            ),
           ],
         ),
+        confirmation: true,
       );
     }
+  }
+
+  int? _count(String title) => switch (title) {
+    '按格式设置默认打开方式' => widget.snapshot.openDefaults.length,
+    '手动隐藏清单' => widget.snapshot.hiddenFiles.length,
+    '隐藏的本地入口' => widget.snapshot.hiddenLocations.length,
+    '清空搜索记录' => widget.snapshot.searchCount,
+    '清空已结束的任务记录' => widget.snapshot.finishedTaskCount,
+    _ => null,
+  };
+  String? _value(String title, String? fallback) {
+    final count = _count(title);
+    return count == null
+        ? fallback
+        : '$count ${title.startsWith('清空') ? '条' : '项'}';
   }
 
   @override
@@ -213,9 +279,11 @@ class FileSettingsPage extends StatelessWidget {
               SettingsRow(
                 title: group.$3[index].$1,
                 description: group.$3[index].$2,
-                value: group.$3[index].$3,
+                value: _value(group.$3[index].$1, group.$3[index].$3),
                 checked: group.$3[index].$4,
-                enabled: !group.$3[index].$1.startsWith('清空'),
+                enabled:
+                    !group.$3[index].$1.startsWith('清空') ||
+                    (_count(group.$3[index].$1) ?? 0) > 0,
                 onTap: () =>
                     _open(context, group.$3[index].$1, group.$3[index].$3),
               ),
@@ -283,27 +351,90 @@ class _PathDialogState extends State<_PathDialog> {
   );
 }
 
-class _HiddenDialog extends StatelessWidget {
-  const _HiddenDialog({required this.title});
+class _HiddenDialog extends StatefulWidget {
+  const _HiddenDialog({required this.title, required this.entries});
   final String title;
+  final List<String> entries;
+  @override
+  State<_HiddenDialog> createState() => _HiddenDialogState();
+}
+
+class _HiddenDialogState extends State<_HiddenDialog> {
+  final query = TextEditingController();
+  late List<String> entries = widget.entries.toList()..sort();
+  @override
+  void didUpdateWidget(covariant _HiddenDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entries != widget.entries) {
+      entries = widget.entries.toList()..sort();
+    }
+  }
+
+  @override
+  void dispose() {
+    query.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(title),
+    title: Text(widget.title),
+    scrollable: true,
     content: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('0 项 · 只改变侧栏或列表显示，不修改文件', style: TextStyle(fontSize: 12)),
+          Text(
+            '${entries.length} 项 · 只改变侧栏或列表显示，不修改文件',
+            style: const TextStyle(fontSize: 12),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: TextField(
-              decoration: settingsFieldDecoration(context, label: '筛选路径或名称'),
+            child: KiyoriSearchField(
+              controller: query,
+              hint: '筛选路径或名称',
+              onChanged: (_) => setState(() {}),
             ),
           ),
-          Text(
-            '暂无记录',
-            style: TextStyle(color: PrimaryColors.of(context).secondary),
+          Builder(
+            builder: (context) {
+              final visible = entries
+                  .where(
+                    (entry) => entry.toLowerCase().contains(
+                      query.text.trim().toLowerCase(),
+                    ),
+                  )
+                  .toList();
+              if (visible.isEmpty) {
+                return Text(
+                  entries.isEmpty ? '暂无记录' : '没有匹配项',
+                  style: TextStyle(color: PrimaryColors.of(context).secondary),
+                );
+              }
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (final entry in visible)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(entry, maxLines: 2)),
+                              const TextButton(
+                                onPressed: emptyAction,
+                                child: Text('恢复'),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -153,3 +153,22 @@ MnnModelDownloadScreen全文及strings.xml:3478–3498定义加载/错误/空目
 新LocalModelsPresentation只消费共享下载事实，刷新/下载/暂停/继续/删除均不伪造状态；
 目录删除或转入不可删除阶段会撤销旧确认。local_models_test覆盖路由返回、草稿保留、
 非有限进度、移除/重入、宿主退出与明暗/窄屏/大字/键盘；下载执行仍待共享Transfer。
+
+## 浏览器凭据、脚本及文件非空目录
+
+KiyoriBrowserPasswordManagerPage全文定义保险库加载/可用/错误、搜索四个摘要字段、
+详情14圆角卡片、8–16遮蔽圆点、512账号/4096密码编辑上限及删除说明。新摘要和详情
+分离，securityDescription由平台owner提供；新页面不读取安全存储、复制或保存密码。
+实体删除/失效与页面退出释放路由，等值更新保留草稿，密码权威值改变重新遮蔽。
+browser_settings_states_test验证这些边界以及小屏/横屏/大字键盘。
+
+KiyoriBrowserSettingsPage:929–1088定义脚本权限描述、去重规则摘要、运行可用性、
+阻塞优先于未知权限再到启停。browser_scripts_presentation复用该投影，详情回调携带
+稳定ID；实际目的地为WebSession的UserscriptDetail，不创建第二脚本执行器。扩展中心/
+脚本诊断/脚本完整管理属于浏览器独立工作台，尚未实施业务，不计为设置编辑器完成。
+
+KiyoriFileManagerSettingsPage:302–345与FileOpenWithDialog全文定义隐藏列表、格式
+目录和清理/重置确认；FileManagerContentState定义MIME及扩展名推荐、历史枚举MEDIA。
+FileSettingsSession投影动态目录、忙碌/错误和精确模态所有权；格式移除关闭对应编辑，
+隐藏目录更新保留筛选。file_settings_states_test验证非空/空/搜索、MIME/当前默认、
+目录移除、忙碌Back/取消拦截、宿主退出及六种视口主题；不改路径、规则或文件事实。

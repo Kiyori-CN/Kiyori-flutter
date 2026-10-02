@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-Future<void> showFileOpenDefaults(BuildContext context) =>
-    showDialog<void>(context: context, builder: (_) => const _OpenDefaults());
+import 'file_settings_presentation.dart';
+
+Future<void> showFileOpenDefaults(
+  BuildContext context, {
+  required FileSettingsSession session,
+}) => session.show(
+  context,
+  (_, snapshot) =>
+      _OpenDefaults(session: session, defaults: snapshot.openDefaults),
+);
 
 class _OpenDefaults extends StatefulWidget {
-  const _OpenDefaults();
+  const _OpenDefaults({required this.session, required this.defaults});
+  final FileSettingsSession session;
+  final Map<String, String> defaults;
   @override
   State<_OpenDefaults> createState() => _OpenDefaultsState();
 }
@@ -63,19 +73,47 @@ class _OpenDefaultsState extends State<_OpenDefaults> {
                   onPressed:
                       RegExp(r'^[a-z0-9][a-z0-9_+-]{0,19}$')
                           .hasMatch(value.text)
-                      ? () => showDialog<void>(
-                          context: context,
-                          builder: (_) => _FormatChoice(extension: value.text),
-                        )
+                      ? () {
+                          final extension = value.text;
+                          widget.session.show(
+                            context,
+                            (_, snapshot) => _FormatChoice(
+                              extension: extension,
+                              saved: snapshot.openDefaults['ext:$extension'],
+                            ),
+                          );
+                        }
                       : null,
                   child: const Text('设置此格式'),
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('尚未自定义：音频用音乐播放器，视频用视频播放器。'),
-            ),
+            if (widget.defaults.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('尚未自定义：音频用音乐播放器，视频用视频播放器。'),
+              ),
+            for (final key in (widget.defaults.keys.toList()..sort()))
+              ListTile(
+                title: Text(_formatLabel(key)),
+                subtitle: Text(
+                  _fromName(widget.defaults[key])?.label ?? '推荐方式',
+                ),
+                onTap: () => widget.session.show(
+                  context,
+                  (_, snapshot) => _FormatChoice(
+                    extension: key.startsWith('ext:') ? key.substring(4) : '',
+                    formatKey: key,
+                    saved: snapshot.openDefaults[key],
+                  ),
+                  existingFormat: key,
+                ),
+                trailing: IconButton(
+                  onPressed: emptyAction,
+                  tooltip: '恢复 ${_formatLabel(key)} 的推荐方式',
+                  icon: const Icon(Icons.restore),
+                ),
+              ),
           ],
         ),
       ),
@@ -104,8 +142,49 @@ enum _OpenChoice {
   final IconData icon;
 }
 
+String _formatLabel(String key) => key.startsWith('ext:')
+    ? '.${key.substring(4)}'
+    : key.startsWith('mime:')
+    ? key.substring(5)
+    : key;
+_OpenChoice? _fromName(String? value) => switch (value) {
+  'MUSIC' => _OpenChoice.music,
+  'MEDIA' => _OpenChoice.video,
+  'IMAGE' => _OpenChoice.image,
+  'DOCUMENT' => _OpenChoice.document,
+  'TEXT' => _OpenChoice.text,
+  'BROWSER' => _OpenChoice.browser,
+  'SYSTEM' => _OpenChoice.system,
+  'CHOOSE' => _OpenChoice.choose,
+  _ => null,
+};
+
 /// 只计算选择弹窗的默认展示，不用于判断内容、权限或实际打开文件。
-_OpenChoice _recommended(String extension) {
+_OpenChoice _recommended(String extension, {String? formatKey}) {
+  final mime = formatKey?.startsWith('mime:') == true
+      ? formatKey!.substring(5).split(';').first.trim().toLowerCase()
+      : '';
+  if (mime.startsWith('audio/') ||
+      ['application/ogg', 'application/x-flac'].contains(mime)) {
+    return _OpenChoice.music;
+  }
+  if (mime.startsWith('video/') ||
+      [
+        'application/vnd.apple.mpegurl',
+        'application/x-mpegurl',
+        'application/dash+xml',
+      ].contains(mime)) {
+    return _OpenChoice.video;
+  }
+  if (mime.startsWith('image/')) return _OpenChoice.image;
+  if (['text/html', 'application/xhtml+xml'].contains(mime)) {
+    return _OpenChoice.browser;
+  }
+  if (['application/pdf', 'application/epub+zip'].contains(mime) ||
+      mime.startsWith('application/vnd.openxmlformats-officedocument.')) {
+    return _OpenChoice.document;
+  }
+  if (mime.startsWith('text/')) return _OpenChoice.text;
   for (final entry in const [
     (
       _OpenChoice.music,
@@ -129,17 +208,31 @@ _OpenChoice _recommended(String extension) {
 }
 
 class _FormatChoice extends StatefulWidget {
-  const _FormatChoice({required this.extension});
+  const _FormatChoice({required this.extension, this.formatKey, this.saved});
   final String extension;
+  final String? formatKey, saved;
   @override
   State<_FormatChoice> createState() => _FormatChoiceState();
 }
 
 class _FormatChoiceState extends State<_FormatChoice> {
-  late final recommended = _recommended(widget.extension);
-  late _OpenChoice? selected = recommended == _OpenChoice.choose
-      ? null
-      : recommended;
+  late final recommended = _recommended(
+    widget.extension,
+    formatKey: widget.formatKey,
+  );
+  late _OpenChoice? selected =
+      _fromName(widget.saved) ??
+      (recommended == _OpenChoice.choose ? null : recommended);
+  @override
+  void didUpdateWidget(covariant _FormatChoice oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.saved != widget.saved) {
+      selected =
+          _fromName(widget.saved) ??
+          (recommended == _OpenChoice.choose ? null : recommended);
+    }
+  }
+
   late final choices = [
     recommended,
     ..._OpenChoice.values.where((choice) => choice != recommended),
@@ -155,7 +248,7 @@ class _FormatChoiceState extends State<_FormatChoice> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '文件.${widget.extension}',
+              widget.extension.isEmpty ? '无扩展名文件' : '文件.${widget.extension}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleSmall,
@@ -163,13 +256,14 @@ class _FormatChoiceState extends State<_FormatChoice> {
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 12),
               child: Text(
-                '.${widget.extension} 文件',
+                '${_formatLabel(widget.formatKey ?? 'ext:${widget.extension}')} 文件',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: PrimaryColors.of(context).secondary),
               ),
             ),
             for (final choice in choices)
               Semantics(
+                key: ValueKey('format-choice-${choice.name}'),
                 selected: selected == choice,
                 inMutuallyExclusiveGroup: true,
                 child: Material(
@@ -202,7 +296,9 @@ class _FormatChoiceState extends State<_FormatChoice> {
                                         .bodyLarge,
                                   ),
                                   Text(
-                                    choice == recommended
+                                    choice == _fromName(widget.saved)
+                                        ? '当前默认'
+                                        : choice == recommended
                                         ? '推荐 · ${choice.description}'
                                         : choice.description,
                                     style: Theme.of(context).textTheme.bodySmall
@@ -230,6 +326,11 @@ class _FormatChoiceState extends State<_FormatChoice> {
                     ),
                   ),
                 ),
+              ),
+            if (widget.saved != null)
+              const TextButton(
+                onPressed: emptyAction,
+                child: Text('恢复此格式的推荐方式'),
               ),
           ],
         ),
