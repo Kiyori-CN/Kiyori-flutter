@@ -37,6 +37,9 @@ accounts/presentation 由 AccountPresentation 投影未连接、已连接、读�
 GitHubLoginDialog和BilibiliQrPresentation只投影内嵌壳、加载/完成/二维码状态，不创建
 WebView、OAuth客户端或二维码请求。
 assistant/presentation 的设置入口通过类型化回调交给 app 装配。
+prompts/tag_export_dialog管理标签选择与目录代次；tag_market_page及presets展示旧本地
+13项预设，不执行提示词、HTML或外链。persona_generation_page复用角色目录，按实体
+持有侧栏字段/输入草稿并投影消息/生成阶段；没有Dart角色仓库或独立工具执行器。
 assistant/presentation/avatar 投影模型目录、预览、六类型参数、Mood绑定与导入指南；
 参数草稿按模型ID及存在期隔离，菜单/编辑路由随宿主释放。当前没有资源导入、持久化或
 原生renderer，无adapter时显示旧不支持分支；不建立平行配置存储或动画运行时。

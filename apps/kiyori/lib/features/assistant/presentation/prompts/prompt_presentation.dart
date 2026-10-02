@@ -12,6 +12,8 @@ class PromptsPresentation {
     this.tools = const [],
     this.activeCardId = 'default_character',
     this.activeGroupId,
+    this.tagsImporting = false,
+    this.tagsExporting = false,
   });
   final List<CharacterPresentation> cards;
   final List<PromptTagPresentation> tags;
@@ -21,6 +23,7 @@ class PromptsPresentation {
   final List<CharacterToolOption> tools;
   final String? activeCardId;
   final String? activeGroupId;
+  final bool tagsImporting, tagsExporting;
 
   CharacterPresentation? card(String id) =>
       cards.where((e) => e.id == id).firstOrNull;

@@ -130,6 +130,23 @@ FF85FD4FCBFE2418906F99629B309A16FBE1451D0D59B36FDEE2E9B250C25605；Windows82文�
 
 恢复入口：读取[设置映射](design/settings-replication-map.md)、当前Git差异和本机日记
 `c3e66803-02cf-452e-aae6-a3ad0662dae0`，核对第七批Git交付后进入角色标签相关缺口。
+
+第八批角色关联入口已实现：标签批量导出选择、旧13项标签市场与添加预填、人设生成工作台
+的角色侧栏/八字段/消息/生成中/清空与上限状态，均复用PromptsPresentation并保持实体
+代次隔离；设置页导航可进入市场和人设页，Back返回标签/角色来源。真实标签导入导出、
+市场写入、角色创建删除、模型请求、消息历史、自动保存和工具执行仍未接入。
+20项联合定向通过，48张明暗/320/844/1280/双倍字/键盘捕获在
+work/settings-tags-persona-capture-v2，日志work/settings-tags-persona-capture-v2.log。
+初次导出弹层惰性列表固有尺寸错误已改为有界滚动列；角色菜单命中警告已改为稳定选择器，
+失败日志work/settings-tags-states-v1.log保留。市场正文来自旧TagMarketBilingualData，
+人设入口/字段/上限来自旧PersonaCardGenerationScreen。
+本批完整verify-v2通过：51文档、4脚本、Rust fmt/Clippy/6测试、Dart格式/analyze、
+Flutter411项（10捕获跳过）、真实FFI6项。初轮花括号lint已修，DartWorker线程错误保留
+失败日志。串行Android/Windows Debug通过，固定artifacts/ui-preview/20261003-043340：
+APK105132790字节，SHA256 AA9A63CA70EC675D41892805DC4FA1D57AB96EC55890B4E3C24DE2F6C83C41E2；
+Windows82文件118694020字节。身份/ARM64/v2/ZIP16K/ELF、x64/DLL pin/native资产与复制
+哈希通过；审计473文件246Dart无发现，无Rust API、桥或依赖变动。本批精确交付后继续
+人设空目录八字段/消息尾部定位及模型下载目的地核对，尚不宣布设置全树完成。
 上一批固定产物`artifacts/ui-preview/20261002-171634/`保留。
 
 ## 最近已交付：第四轮群组卡草稿垂直切片

@@ -37,7 +37,7 @@
 | --- | --- | --- | --- |
 | S02.models | assistant/presentation/models | 配置切换、提供方/协议、模型排序、参数四标签、头部/密钥池、导入/下载；ModelConfigScreen及子section | Rust配置/provider；密钥引用交native安全存储 |
 | S02.functions | assistant/presentation/functions | 11功能、两层选择、测试/错误快照、管理模型再返回 | 同一模型配置owner |
-| S02.prompts | assistant/presentation/prompts | 角色/标签/群组、八字段、大屏编辑、绑定、确认、导出；详见[角色契约](character-prompts.md) | Rust角色/标签/群组及会话关系 |
+| S02.prompts | assistant/presentation/prompts | 角色/标签/群组、八字段、大屏编辑、绑定、确认、导出；标签批量导出/13项市场、人设生成侧栏与消息；详见[角色契约](character-prompts.md) | Rust角色/标签/群组及会话关系 |
 | S02.profile | assistant/presentation/profile | 编辑/预览、旧档案、恢复/离开确认、超限 | Rust资料与共享资源引用 |
 | S02.avatar | assistant/presentation/avatar_settings_page.dart及avatar目录 | KiyoriAssistantExperienceSettingsPages / AvatarConfigSection / AvatarPreviewSection；模型、导入说明、Mood、相机、重命名删除确认 | Rust配置与native渲染；当前参数和绑定只为草稿，测试avatar_settings_test.dart |
 | S02.replies | assistant/presentation/replies | 分句/合并/提示词/自拍、表情库分类/选择/编辑 | Rust角色与回复策略 |
@@ -131,3 +131,12 @@ BackupPromptKind会话；BackupManagementCards定义四类操作卡，RoomDbBack
 BubbleFontStyleEditor与PreviewChatAvatar，以及ChatTab的previewUserAvatarUri。
 appearance_identity_test覆盖文件名/注册字体、头像回退、重置可点性、名称controller与
 同值草稿生命周期；3视口明暗/双倍字捕获详见status。加载字体、选图、写偏好仍待业务owner。
+
+## 标签与人设关联入口
+
+ModelPromptsSettingsScreen:985/1509/2580核对标签空目录、批量选择、导入导出busy；
+TagMarketScreen与TagMarketBilingualData全文核对市场四分类13预设/添加，OperitScreens:
+1166确认独立页面导航。PersonaCardGenerationScreen:521–1037核对工作台、360侧栏、
+八字段、角色切换/新建/删除、消息/40条上限、清空；180–309核对角色与历史加载边界。
+tag_market_test/persona_generation_test覆盖目录重排/删除/重入、controller释放、来源
+返回、多视口和160px键盘。真实模型、消息历史、自动保存、工具执行/导出不属于UI完成证据。

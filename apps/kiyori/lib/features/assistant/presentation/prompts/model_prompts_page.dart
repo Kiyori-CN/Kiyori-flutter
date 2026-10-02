@@ -8,13 +8,18 @@ import 'group_card_editor.dart';
 import 'group_card_tile.dart';
 import 'prompt_dialog.dart';
 import 'prompt_presentation.dart';
+import 'tag_export_dialog.dart';
 
 class ModelPromptsPage extends StatefulWidget {
   const ModelPromptsPage({
     this.snapshot = const PromptsPresentation(),
+    this.onOpenTagMarket = emptyAction,
+    this.onOpenPersona = emptyAction,
     super.key,
   });
   final PromptsPresentation snapshot;
+  final VoidCallback onOpenTagMarket;
+  final VoidCallback onOpenPersona;
   @override
   State<ModelPromptsPage> createState() => _ModelPromptsPageState();
 }
@@ -362,7 +367,11 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                       spacing: 8,
                       children: [
                         OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed:
+                              widget.snapshot.tagsImporting ||
+                                  widget.snapshot.tagsExporting
+                              ? null
+                              : emptyAction,
                           icon: const Icon(
                             Icons.file_download_outlined,
                             size: 14,
@@ -370,17 +379,46 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                           label: const Text('导入'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed:
+                              widget.snapshot.tagsImporting ||
+                                  widget.snapshot.tagsExporting
+                              ? null
+                              : _exportTags,
                           icon: const Icon(Icons.share_outlined, size: 14),
                           label: const Text('导出'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed:
+                              widget.snapshot.tagsImporting ||
+                                  widget.snapshot.tagsExporting
+                              ? null
+                              : widget.onOpenTagMarket,
                           icon: const Icon(Icons.store, size: 14),
                           label: const Text('标签市场'),
                         ),
                       ],
                     ),
+                    if (widget.snapshot.tagsImporting ||
+                        widget.snapshot.tagsExporting)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox.square(
+                              dimension: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '处理中...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (sortedTags.isNotEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
@@ -535,7 +573,7 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
         children: [
           _icon(Icons.add, '新建', () => _edit(CharacterPresentation.newDraft)),
           const SizedBox(width: 6),
-          _icon(Icons.auto_awesome, 'AI创作', () {}),
+          _icon(Icons.auto_awesome, 'AI创作', widget.onOpenPersona),
           const SizedBox(width: 6),
           PopupMenuButton<String>(
             tooltip: '导入酒馆角色卡',
@@ -585,6 +623,15 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
     token: _identities['tag:${tag.id}'],
     builder: (_, _) => _TagEditor(key: ValueKey(tag.id), tag: tag),
   );
+
+  void _exportTags() {
+    if (sortedTags.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('没有可导出的标签')));
+      return;
+    }
+    _dialog(builder: (_, session) => TagExportDialog(session: session));
+  }
 }
 
 String _preview(String value, int length) =>
