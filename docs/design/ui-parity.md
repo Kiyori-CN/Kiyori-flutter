@@ -54,7 +54,11 @@ CharacterGroupAssignDialog，日期范围来自 MemoryRebuildDateSelector。保�
 LanguageSettingsScreen，八项原名及提示文案保留，语言切换为空操作。
 账号页默认未连接快照；GitHub 方式选择来自 GitHubLoginMethodDialog，哔哩哔哩两模式
 来自 KiyoriBilibiliAccountSection。二维码请求、验证、导入和外部跳转为空操作；Cookie
-字段不持久化，切换方式或关闭即清除。已连接/失效快照和内嵌网页分支仍待覆盖。
+字段不持久化，切换方式或关闭即清除。AccountPresentation已覆盖已连接/失效/读取/
+busy/错误快照、退出和移除确认；内嵌网页及有效二维码分支仍需继续补齐。
+虚拟形象入口接入模型目录、220px预览、六类型参数、情绪映射和完整导入指南。
+草稿按模型存在期隔离，删除时关闭所属弹层；参数、默认值与生命周期证据见
+[设置映射](settings-replication-map.md)。无原生renderer时使用旧不支持分支，不伪造预览。
 全局显示与布局调整来自 GlobalDisplaySettingsScreen / LayoutAdjustmentSettingsScreen，
 保留分组、折叠工具三档、通知和自动化条件项、1.5/3/5/10/20 Mbps、PNG/JPG、质量/缩放
 滑轨，以及 2/16/1/0/12 默认数值和 0.8–2.0、0–48 等错误范围。所有设置/保存/重置

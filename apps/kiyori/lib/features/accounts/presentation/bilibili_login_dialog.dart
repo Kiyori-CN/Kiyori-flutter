@@ -4,7 +4,15 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 /// 登录方式切换只改变展示。二维码、导入、验证和系统跳转为空动作。
 class BilibiliLoginDialog extends StatefulWidget {
-  const BilibiliLoginDialog({super.key});
+  const BilibiliLoginDialog({
+    this.accountName,
+    this.busy = false,
+    this.message,
+    this.error = false,
+    super.key,
+  });
+  final String? accountName, message;
+  final bool busy, error;
   @override
   State<BilibiliLoginDialog> createState() => _BilibiliLoginDialogState();
 }
@@ -40,7 +48,11 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
           spacing: 14,
           children: [
             const Text('登录哔哩哔哩', style: TextStyle(fontSize: 22)),
-            description('登录一次，即可在番剧、资源和默认配置的 AI 工具包中使用。'),
+            description(
+              widget.accountName == null
+                  ? '登录一次，即可在番剧、资源和默认配置的 AI 工具包中使用。'
+                  : '当前账号：${widget.accountName}。验证成功后切换；失败时保留原账号。',
+            ),
             Wrap(
               spacing: 8,
               children: [
@@ -73,11 +85,14 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
                 ),
               ),
               description('使用哔哩哔哩官方客户端扫码并确认；同一手机可点击下方按钮打开确认页。国际版客户端可能不支持。'),
-              FilledButton(onPressed: emptyAction, child: const Text('获取二维码')),
+              FilledButton(
+                onPressed: widget.busy ? null : emptyAction,
+                child: const Text('获取二维码'),
+              ),
               const OutlinedButton(onPressed: null, child: Text('打开哔哩哔哩确认')),
             ] else ...[
               OutlinedButton(
-                onPressed: emptyAction,
+                onPressed: widget.busy ? null : emptyAction,
                 child: const Text(
                   '从 Kiyori 浏览器获取并登录',
                   textAlign: TextAlign.center,
@@ -89,7 +104,7 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: emptyAction,
+                  onPressed: widget.busy ? null : emptyAction,
                   child: const Text('打开 Kiyori 浏览器登录'),
                 ),
               ),
@@ -99,6 +114,7 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
               const Divider(),
               TextField(
                 controller: cookie,
+                enabled: !widget.busy,
                 obscureText: true,
                 enableSuggestions: false,
                 autocorrect: false,
@@ -114,16 +130,22 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
               ValueListenableBuilder(
                 valueListenable: cookie,
                 builder: (context, value, _) => FilledButton(
-                  onPressed: value.text.trim().isEmpty ? null : emptyAction,
+                  onPressed: value.text.trim().isEmpty || widget.busy
+                      ? null
+                      : emptyAction,
                   child: const Text('验证并登录'),
                 ),
               ),
             ],
+            if (widget.busy) const LinearProgressIndicator(),
             Text(
-              qr ? '获取二维码后，使用哔哩哔哩客户端扫码' : 'Cookie 仅在本机加密保存，用于哔哩哔哩账号验证',
+              widget.message ??
+                  (qr ? '获取二维码后，使用哔哩哔哩客户端扫码' : 'Cookie 仅在本机加密保存，用于哔哩哔哩账号验证'),
               style: TextStyle(
                 fontSize: 14,
-                color: PrimaryColors.of(context).secondary,
+                color: widget.error
+                    ? Theme.of(context).colorScheme.error
+                    : PrimaryColors.of(context).secondary,
               ),
             ),
             description('凭据仅发送给哔哩哔哩完成验证，不写入日志或备份。'),

@@ -18,8 +18,12 @@ settings 中的备份页面以 BackupPresentation 投影原始计数、配置和
 不建立备份存储或扫描器；法律、开源阅读和权限分组同属展示层，系统事实由后续 adapter 注入。
 settings/presentation/appearance 按原五标签拆分，聊天面板持有样式草稿，编辑器与预览
 共享该草稿；媒体路径与全局主题事实尚未接入，不建立第二配置存储。
-accounts/presentation 仅有未连接列表与方式选择 UI，不拥有凭据存储、登录控制器或
-WebView；assistant/presentation 的设置入口通过类型化回调交给 app 装配。
+accounts/presentation 由 AccountPresentation 投影未连接、已连接、读取、失效及错误，
+包含方式选择与退出/移除确认；不拥有凭据存储、登录控制器或 WebView。
+assistant/presentation 的设置入口通过类型化回调交给 app 装配。
+assistant/presentation/avatar 投影模型目录、预览、六类型参数、Mood绑定与导入指南；
+参数草稿按模型ID及存在期隔离，菜单/编辑路由随宿主释放。当前没有资源导入、持久化或
+原生renderer，无adapter时显示旧不支持分支；不建立平行配置存储或动画运行时。
 appearance 的 global_display_page 与 layout_adjustment_page 只投影旧默认值和验证外观，
 不接 DisplayPreferencesManager、UserPreferencesManager、前台服务、Root 或截图管线。
 onboarding/presentation 保存引导导航和本次草稿，复用 settings 的法律正文及权限目录；

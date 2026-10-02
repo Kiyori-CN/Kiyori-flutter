@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 设置顶栏覆盖列表上方；从侧边双向拖动，避免滑块或按钮截获手势。
+Future<void> revealAvatar(WidgetTester tester, Finder target) async {
+  for (var attempt = 0; attempt < 160; attempt++) {
+    final list = find.byType(ListView).first;
+    final rect = tester.getRect(list);
+    var up = false;
+    if (target.evaluate().isNotEmpty) {
+      final y = tester.getCenter(target).dy;
+      if (y > 140 &&
+          y < rect.bottom - 50 &&
+          target.hitTestable().evaluate().isNotEmpty) {
+        return;
+      }
+      up = y < 140;
+    }
+    await tester.dragFrom(
+      Offset(rect.left + 3, rect.center.dy),
+      Offset(0, up ? 100 : -100),
+    );
+    await tester.pumpAndSettle();
+  }
+  fail('Cannot reach avatar control $target');
+}
+
 Future<void> reveal(WidgetTester tester, Finder finder) async {
   for (var attempt = 0; attempt < 60; attempt++) {
     if (finder.evaluate().isNotEmpty) {

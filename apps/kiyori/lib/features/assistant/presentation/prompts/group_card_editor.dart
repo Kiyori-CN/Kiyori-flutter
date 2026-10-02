@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'prompt_dialog.dart';
 import 'prompt_presentation.dart';
@@ -132,39 +133,14 @@ class _GroupCardEditorState extends State<GroupCardEditor> {
     int lines,
   ) => Padding(
     padding: const EdgeInsets.only(top: 6, bottom: 8),
-    child: Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 32),
-          child: TextField(
-            key: ValueKey(id),
-            controller: controller,
-            style: const TextStyle(fontSize: 12),
-            maxLines: lines,
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: const TextStyle(fontSize: 11),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              contentPadding: const EdgeInsets.all(12),
-            ),
-          ),
-        ),
-        Positioned(
-          right: 2,
-          top: 2,
-          child: IconButton(
-            // 旧 GroupCardDialog 的两个展开回调为空，不能借角色编辑器新增流程。
-            onPressed: () {},
-            tooltip: '大屏编辑$label',
-            icon: const Icon(Icons.open_in_full, size: 14),
-            color: Theme.of(context).colorScheme.primary,
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-          ),
-        ),
-      ],
+    child: CompactExpandField(
+      fieldKey: ValueKey(id),
+      controller: controller,
+      label: label,
+      maxLines: lines,
+      expandLabel: '大屏编辑$label',
+      // 旧 GroupCardDialog 的两个展开回调为空，不能借角色编辑器新增流程。
+      onExpand: emptyAction,
     ),
   );
 

@@ -8,6 +8,7 @@ export 'src/settings_selection.dart';
 export 'src/modal_drawer.dart';
 export 'src/search_field.dart';
 export 'src/settings_workspace_page.dart';
+export 'src/compact_expand_field.dart';
 
 abstract final class KiyoriTheme {
   static ThemeData light() => _create(Brightness.light);

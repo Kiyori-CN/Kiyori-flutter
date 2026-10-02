@@ -77,53 +77,22 @@ class _CharacterCardEditorState extends State<CharacterCardEditor> {
 
   Widget field(int index) => Padding(
     padding: EdgeInsets.only(top: index < 2 || index > 5 ? 6 : 0, bottom: 8),
-    child: Stack(
-      // InputDecorator 的浮动标签会绘制到字段盒上方，不能由展开按钮的 Stack 裁掉。
-      clipBehavior: Clip.none,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 32),
-          child: TextField(
-            key: ValueKey('character-field-$index'),
-            controller: fields[index],
-            style: const TextStyle(fontSize: 12),
-            minLines: index < 2 || index == 7 ? 1 : 2,
-            maxLines: index == 0
-                ? 1
-                : index == 1 || index == 7
-                ? 2
-                : index == 6
-                ? 3
-                : 4,
-            decoration: InputDecoration(
-              labelText: index < 2 || index > 5 ? labels[index] : null,
-              labelStyle: const TextStyle(fontSize: 11),
-              hintText: hints[index].isEmpty ? null : hints[index],
-              hintStyle: const TextStyle(fontSize: 11),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          right: 2,
-          top: 2,
-          child: IconButton(
-            key: ValueKey('expand-character-$index'),
-            tooltip: '大屏编辑${labels[index]}',
-            onPressed: () => expand(index),
-            iconSize: 14,
-            color: Theme.of(context).colorScheme.primary,
-            icon: const Icon(Icons.open_in_full),
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-          ),
-        ),
-      ],
+    child: CompactExpandField(
+      fieldKey: ValueKey('character-field-$index'),
+      expandKey: ValueKey('expand-character-$index'),
+      controller: fields[index],
+      label: index < 2 || index > 5 ? labels[index] : null,
+      hint: hints[index].isEmpty ? null : hints[index],
+      minLines: index < 2 || index == 7 ? 1 : 2,
+      maxLines: index == 0
+          ? 1
+          : index == 1 || index == 7
+          ? 2
+          : index == 6
+          ? 3
+          : 4,
+      expandLabel: '大屏编辑${labels[index]}',
+      onExpand: () => expand(index),
     ),
   );
 

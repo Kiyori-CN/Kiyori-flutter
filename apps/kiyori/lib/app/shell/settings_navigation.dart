@@ -25,6 +25,7 @@ import '../../features/settings/presentation/appearance/appearance_settings_page
 import '../../features/settings/presentation/appearance/appearance_menu_page.dart';
 import '../../features/settings/presentation/data_settings_page.dart';
 import '../../features/assistant/presentation/assistant_settings_page.dart';
+import '../../features/assistant/presentation/avatar_settings_page.dart';
 import '../../features/assistant/presentation/prompts/model_prompts_page.dart';
 import '../../features/assistant/presentation/history/chat_history_page.dart';
 import '../../features/assistant/presentation/context/context_summary_page.dart';
@@ -74,6 +75,8 @@ class SettingsNavigation {
             openPage(const ModelApiPage());
           } else if (section == AssistantSettingsSection.roles) {
             openPage(const ModelPromptsPage());
+          } else if (section == AssistantSettingsSection.avatar) {
+            openPage(const AvatarSettingsPage());
           } else if (section == AssistantSettingsSection.permissions) {
             openPage(const ToolPermissionsPage());
           } else if (section == AssistantSettingsSection.profile) {
