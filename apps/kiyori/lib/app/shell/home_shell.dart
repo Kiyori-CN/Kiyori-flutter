@@ -6,16 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../features/assistant/presentation/chat_page.dart';
+import '../../features/assistant/presentation/ai_drawer.dart';
 import '../../features/browser/presentation/browser_page.dart';
 import '../../features/files/presentation/files_page.dart';
 import '../../features/toolbox/presentation/toolbox_page.dart';
+import '../../features/toolbox/presentation/toolbox_presentation.dart';
+import '../../features/workflows/presentation/workflow_controller.dart';
+import '../../features/workflows/presentation/workflow_page.dart';
 import 'settings_navigation.dart';
 import 'bottom_navigation.dart';
 import 'home_page.dart';
 import 'minus_one_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({this.workflows, super.key});
+  final WorkflowController? workflows;
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
@@ -30,15 +35,72 @@ class _HomeShellState extends State<HomeShell> {
   int browserReturn = 0;
   final visitedPages = <int, Widget>{};
   bool preloadReady = false;
+  bool aiDrawerOpen = false;
+  String? selectedAiEntry = 'main.ai_chat';
+  Widget? aiToolbox;
+  Widget? aiWorkflows;
+  final workflowKey = GlobalKey<WorkflowPageState>();
+  late final drawerPlugins = <AiDrawerEntry>[];
   late final pages = <Widget>[
     MinusOnePage(onClose: () => go(1)),
     HomePage(openAi: () => go(2)),
-    const ChatPage(),
+    ChatPage(onOpenDrawer: openAiDrawer),
   ];
+
+  void openAiDrawer() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => aiDrawerOpen = true);
+    final workflows = widget.workflows;
+    if (workflows != null && !workflows.loaded && !workflows.loading) {
+      unawaited(workflows.load());
+    }
+  }
+
+  void closeAiDrawer() => setState(() => aiDrawerOpen = false);
+
+  void selectAiEntry(AiDrawerEntry entry) {
+    final same = selectedAiEntry == entry.id;
+    setState(() => aiDrawerOpen = false);
+    if (same) return;
+    switch (entry.id) {
+      case 'main.ai_chat':
+        selectedAiEntry = entry.id;
+        go(2);
+      case 'main.toolbox':
+        selectedAiEntry = entry.id;
+        aiToolbox ??= ToolboxPage(
+          onMenu: openAiDrawer,
+          onSettings: navigation.openToolboxSettings,
+          onSpeech: navigation.openSpeechTool,
+        );
+        go(2);
+      case 'main.settings':
+        navigation.openPage(
+          Scaffold(
+            body: navigation.buildSettingsPage(
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+        );
+      case 'main.workflow':
+        final workflows = widget.workflows;
+        if (workflows == null) return;
+        selectedAiEntry = entry.id;
+        aiWorkflows ??= WorkflowPage(
+          key: workflowKey,
+          controller: workflows,
+          onMenu: openAiDrawer,
+        );
+        go(2);
+      default:
+        break;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    widget.workflows?.addListener(_workflowsChanged);
     // 首帧先显示首页；随后准备相邻轻量页面，避免第一次手指移动才布局。
     // 这里只预热 UI，不允许页面 build 启动网络、文件扫描或业务任务。
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,8 +110,13 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    widget.workflows?.removeListener(_workflowsChanged);
     pager.dispose();
     super.dispose();
+  }
+
+  void _workflowsChanged() {
+    if (mounted) setState(() {});
   }
 
   void go(int page) {
@@ -87,7 +154,14 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void back() {
-    if (destination == 1) {
+    if (aiDrawerOpen) {
+      closeAiDrawer();
+    } else if (destination == 0 &&
+        settled == 2 &&
+        selectedAiEntry == 'main.workflow' &&
+        (workflowKey.currentState?.handleBack() ?? false)) {
+      return;
+    } else if (destination == 1) {
       select(browserReturn);
     } else if (destination != 0) {
       select(0);
@@ -98,7 +172,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: destination == 0 && settled == 1,
+    canPop: !aiDrawerOpen && destination == 0 && settled == 1,
     onPopInvokedWithResult: (didPop, result) {
       if (!didPop) back();
     },
@@ -138,8 +212,51 @@ class _HomeShellState extends State<HomeShell> {
                       children: [
                         for (var index = 0; index < pages.length; index++)
                           ExcludeFocus(
-                            excluding: settled != index,
-                            child: pages[index],
+                            excluding: settled != index || aiDrawerOpen,
+                            child: index == 2
+                                ? Stack(
+                                    children: [
+                                      Offstage(
+                                        offstage:
+                                            selectedAiEntry != 'main.ai_chat',
+                                        child: ExcludeFocus(
+                                          excluding:
+                                              selectedAiEntry != 'main.ai_chat',
+                                          child: pages[index],
+                                        ),
+                                      ),
+                                      if (aiToolbox != null)
+                                        Offstage(
+                                          offstage:
+                                              selectedAiEntry != 'main.toolbox',
+                                          child: ExcludeFocus(
+                                            excluding:
+                                                selectedAiEntry !=
+                                                'main.toolbox',
+                                            child: aiToolbox!,
+                                          ),
+                                        ),
+                                      if (aiWorkflows != null)
+                                        Offstage(
+                                          offstage:
+                                              selectedAiEntry !=
+                                              'main.workflow',
+                                          child: ExcludeFocus(
+                                            excluding:
+                                                selectedAiEntry !=
+                                                'main.workflow',
+                                            child: TickerMode(
+                                              enabled:
+                                                  settled == 2 &&
+                                                  selectedAiEntry ==
+                                                      'main.workflow',
+                                              child: aiWorkflows!,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  )
+                                : pages[index],
                           ),
                       ],
                     ),
@@ -192,6 +309,21 @@ class _HomeShellState extends State<HomeShell> {
                   );
                 },
               ),
+            ),
+            AiDrawer(
+              toolboxCount: ToolboxPresentation.all.length,
+              workflowCount: widget.workflows?.loaded == true
+                  ? widget.workflows!.records.length
+                  : null,
+              open: aiDrawerOpen,
+              selected: selectedAiEntry,
+              plugins: drawerPlugins,
+              onDismiss: closeAiDrawer,
+              onClose: () {
+                closeAiDrawer();
+                go(1);
+              },
+              onSelect: selectAiEntry,
             ),
           ],
         ),

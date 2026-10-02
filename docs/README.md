@@ -9,6 +9,7 @@
 - [ADR 0002：交互与边界](decisions/0002-interaction-and-module-boundaries.md)：分页性能、模块化单体与原生方案的取舍。
 - [ADR 0003：资料 Markdown](decisions/0003-profile-markdown-presentation.md)：编辑高亮、静态解析、展示与资源边界。
 - [ADR 0004：Unicode输入校验](decisions/0004-unicode-input-normalization.md)：工具箱名称NFKC依赖与业务边界。
+- [ADR 0005：Runtime SQLite存储](decisions/0005-runtime-sqlite-storage.md)：工作流定义持久化、应用目录与关闭/迁移契约。
 
 ## 架构
 
@@ -22,6 +23,7 @@
 
 - [全页面 UI 复刻方案](design/ui-replication-plan.md)：分层顺序、组件复用、页面保真与持续验收。
 - [设置全树复刻映射](design/settings-replication-map.md)：12项入口、子树、旧源、新实现、状态与测试索引。
+- [AI抽屉与业务映射](design/ai-replication-map.md)：根目的地、工作流存储切片、旧源与验收契约。
 - [UI 复刻契约](design/ui-parity.md)：原项目依据、首页三页、图标与底栏、空点击及验证范围。
 - [角色卡与提示词](design/character-prompts.md)：旧源码深度、角色/群组成员草稿、目录身份、嵌套弹层与业务接入边界。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。

@@ -1,6 +1,6 @@
 # Kiyori 核心语义
 
-本文保存跨模块共同使用的定义。M1 已实现运行时与工程骨架，其余领域仍为设计契约，实施状态以 [docs/status.md](docs/status.md) 为准。
+本文保存跨模块共同使用的定义。M1 已实现运行时与工程骨架，工作流定义开始接入持久化，其余领域按设计契约推进；实施状态以 [docs/status.md](docs/status.md) 为准。
 
 ## 术语
 
@@ -31,6 +31,13 @@ UI 以旧 Kiyori Android 为保真基线；跨平台重构调整代码与目录�
 不是可用业务能力；浏览器默认空白窗口外观不建立 BrowserSession，文件统计不伪造数据。
 按访问保留轻量页面的滚动/折叠状态，隐藏页暂停 ticker 并排除焦点，不产生 I/O；首页 pager 和 AI
 草稿在页面往返时继续保留。设置入口不打开开发诊断。
+
+AI左抽屉仍由HomeShell管理；工作流目录和抽屉计数共享WorkflowController的不可变投影。
+持久化权威为既有Rust Runtime管理的SQLite，Application Support目录由app通过
+path_provider提供；Dart不维护第二存储。短事务提交后即为业务事实，页面退出仅抑制迟到
+回填；runtime关闭等待当前事务并释放连接，后续操作拒绝。schema更高/损坏时拒绝覆盖。
+定义创建/编辑/启用/删除不等于WorkflowRun执行，节点、工具与调度按后续切片接入。
+契约见[SQLite决策](docs/decisions/0005-runtime-sqlite-storage.md)。
 
 设置详情由 app 装配并使用 Navigator 页面栈返回准确来源，模态路由先消费 Back。
 `SettingsNavigation` 仅聚合详情构造与回调，不持有导航选中项、页面缓存或业务状态；

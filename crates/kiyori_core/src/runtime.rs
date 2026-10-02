@@ -1,3 +1,4 @@
+use crate::workflows::WorkflowStore;
 use std::{fmt, time::Duration};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -7,6 +8,7 @@ pub enum ErrorCode {
     InvalidInput,
     RuntimeClosed,
     ConcurrentRead,
+    Storage,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +104,7 @@ impl DiagnosticTask {
 
 pub struct Runtime {
     cancellation: CancellationToken,
+    workflows: std::sync::Mutex<Option<WorkflowStore>>,
 }
 
 impl Default for Runtime {
@@ -114,7 +117,59 @@ impl Runtime {
     pub fn new() -> Self {
         Self {
             cancellation: CancellationToken::new(),
+            workflows: std::sync::Mutex::new(None),
         }
+    }
+
+    pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
+        Ok(Self {
+            cancellation: CancellationToken::new(),
+            workflows: std::sync::Mutex::new(Some(WorkflowStore::open(path)?)),
+        })
+    }
+
+    fn with_workflows<T>(
+        &self,
+        operation: impl FnOnce(&WorkflowStore) -> Result<T, CoreError>,
+    ) -> Result<T, CoreError> {
+        let store = self.workflows.lock().map_err(|_| CoreError {
+            code: ErrorCode::Storage,
+            message: "Application storage lock failed.".into(),
+        })?;
+        self.ensure_open()?;
+        let store = store.as_ref().ok_or_else(|| CoreError {
+            code: ErrorCode::Storage,
+            message: "Persistent application storage is not configured.".into(),
+        })?;
+        operation(store)
+    }
+
+    pub fn list_workflows(&self) -> Result<Vec<crate::workflows::WorkflowRecord>, CoreError> {
+        self.with_workflows(|store| store.list())
+    }
+    pub fn create_workflow(
+        &self,
+        name: String,
+        description: String,
+    ) -> Result<crate::workflows::WorkflowRecord, CoreError> {
+        self.with_workflows(|store| store.create(name, description))
+    }
+    pub fn delete_workflow(&self, id: String) -> Result<bool, CoreError> {
+        self.with_workflows(|store| store.delete(id))
+    }
+
+    pub fn delete_workflows(&self, ids: Vec<String>) -> Result<u32, CoreError> {
+        self.with_workflows(|store| store.delete_many(ids))
+    }
+
+    pub fn update_workflow(
+        &self,
+        id: String,
+        name: String,
+        description: String,
+        enabled: bool,
+    ) -> Result<crate::workflows::WorkflowRecord, CoreError> {
+        self.with_workflows(|store| store.update(id, name, description, enabled))
     }
 
     pub fn ensure_open(&self) -> Result<(), CoreError> {
@@ -155,6 +210,10 @@ impl Runtime {
 
     pub fn close(&self) {
         self.cancellation.cancel();
+        // 关闭等待当前短事务提交；后续操作在持锁后检查关闭状态，不能迟到写入。
+        if let Ok(mut store) = self.workflows.lock() {
+            store.take();
+        }
     }
 }
 

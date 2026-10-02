@@ -56,4 +56,25 @@ class FakeClient implements RuntimeClient {
     closed = true;
     await run?.cancel();
   }
+
+  @override
+  Future<List<WorkflowRecord>> listWorkflows() async => const [];
+
+  @override
+  Future<WorkflowRecord> createWorkflow(String name, String description) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> deleteWorkflow(String id) async => false;
+  @override
+  Future<int> deleteWorkflows(List<String> ids) async => 0;
+
+  @override
+  Future<WorkflowRecord> updateWorkflow({
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  }) => throw UnimplementedError();
 }

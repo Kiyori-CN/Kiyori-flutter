@@ -8,6 +8,16 @@ abstract interface class RuntimeClient {
   Future<api.RuntimeInfo> info();
   Future<DiagnosticRun> startDiagnostic({int steps = 20, int intervalMs = 100});
   Future<void> close();
+  Future<List<api.WorkflowRecord>> listWorkflows();
+  Future<api.WorkflowRecord> createWorkflow(String name, String description);
+  Future<bool> deleteWorkflow(String id);
+  Future<int> deleteWorkflows(List<String> ids);
+  Future<api.WorkflowRecord> updateWorkflow({
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  });
 }
 
 abstract interface class DiagnosticRun {
@@ -23,9 +33,12 @@ final class NativeRuntimeClient implements RuntimeClient {
   final Set<_NativeDiagnosticRun> _runs = {};
   Future<void>? _closing;
 
-  static Future<NativeRuntimeClient> open() async {
+  static Future<NativeRuntimeClient> open({String? dataDirectory}) async {
     await (_initialization ??= RustLib.init());
-    return NativeRuntimeClient._(await api.createRuntime());
+    final handle = dataDirectory == null
+        ? await api.createRuntime()
+        : await api.createRuntimeWithDataDir(dataDir: dataDirectory);
+    return NativeRuntimeClient._(handle);
   }
 
   void _ensureOpen() {
@@ -41,6 +54,49 @@ final class NativeRuntimeClient implements RuntimeClient {
   Future<api.RuntimeInfo> info() {
     _ensureOpen();
     return _handle.info();
+  }
+
+  @override
+  Future<List<api.WorkflowRecord>> listWorkflows() async {
+    _ensureOpen();
+    return _handle.listWorkflows();
+  }
+
+  @override
+  Future<api.WorkflowRecord> createWorkflow(
+    String name,
+    String description,
+  ) async {
+    _ensureOpen();
+    return _handle.createWorkflow(name: name, description: description);
+  }
+
+  @override
+  Future<bool> deleteWorkflow(String id) async {
+    _ensureOpen();
+    return _handle.deleteWorkflow(id: id);
+  }
+
+  @override
+  Future<int> deleteWorkflows(List<String> ids) async {
+    _ensureOpen();
+    return _handle.deleteWorkflows(ids: ids);
+  }
+
+  @override
+  Future<api.WorkflowRecord> updateWorkflow({
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  }) async {
+    _ensureOpen();
+    return _handle.updateWorkflow(
+      id: id,
+      name: name,
+      description: description,
+      enabled: enabled,
+    );
   }
 
   @override

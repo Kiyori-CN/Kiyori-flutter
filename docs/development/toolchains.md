@@ -79,6 +79,12 @@ Google Maven 稳定版本列表和 9.4.1 POM 确认 AGP 补丁可用；官方聚
 
 Native Assets 依赖要求 `crates/kiyori_ffi/rust-toolchain.toml`，因此保留一份 crate-local pin，基础检查器保证其与根 pin 一致；不是第二版本来源。Apple targets 安装标准库不代表具备 Apple linker 或 Xcode。
 
+Android应用的`defaultConfig.ndk.abiFilters`跟随Flutter `target-platform`，避免JNI依赖
+AAR把未构建Flutter/Rust库的ABI带入单目标APK。`split-per-abi=true`时由Flutter的splits
+负责过滤，不同时设置NDK过滤。正式build入口仍为ARM64；新增目标需要对应构建验收。
+依据[Flutter ABI过滤说明](https://docs.flutter.dev/release/breaking-changes/default-abi-filters-android)
+及本机pin的Gradle源码，最终以APK实际native-code和全部原生库审计为准。
+
 Native Assets hook 显式登记根 Cargo 清单/lock/pin、core 与 ffi 两个 crate 清单及本地 pin。
 Cargo dep-info 自动记录源码，但不能代替这些配置输入；产物 hook output 中可核对最终依赖集。
 桥接 `-Check` 比较递归 Dart 输出和 Rust 输出的完整路径/摘要集合，新增或删除也会失败。

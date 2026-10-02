@@ -8,10 +8,12 @@ class ToolboxPage extends StatefulWidget {
   const ToolboxPage({
     this.onSettings = emptyAction,
     this.onSpeech = emptyAction,
+    this.onMenu,
     super.key,
   });
   final VoidCallback onSettings;
   final VoidCallback onSpeech;
+  final VoidCallback? onMenu;
   @override
   State<ToolboxPage> createState() => _ToolboxPageState();
 }
@@ -21,6 +23,7 @@ class _ToolboxPageState extends State<ToolboxPage> {
   @override
   Widget build(BuildContext context) => PrimaryPage(
     title: '工具箱',
+    onMenu: widget.onMenu,
     actions: [
       SizedBox(
         width: 96,
@@ -33,7 +36,7 @@ class _ToolboxPageState extends State<ToolboxPage> {
     ],
     child: ListView.separated(
       key: const PageStorageKey('toolbox-list'),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 86),
+      padding: EdgeInsets.fromLTRB(16, 14, 16, widget.onMenu == null ? 86 : 16),
       itemCount: ToolboxPresentation.groups.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {

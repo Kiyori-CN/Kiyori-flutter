@@ -1,10 +1,15 @@
 # 模块目录与验收边界
 
-本表描述目标模块，全部业务仍待实现。`core` 指 `crates/kiyori_core/src`；`feature` 指 `apps/kiyori/lib/features`；`native` 指 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
+本表描述目标模块，业务按当前状态逐项实施。`core` 指 `crates/kiyori_core/src`；`feature` 指 `apps/kiyori/lib/features`；`native` 指尚未建立的目标目录 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实
 未来归media领域，不新建平行player状态。捕获测试辅助只在test/support，不进入产品依赖。
+
+core/workflows拥有SQLite定义目录，runtime拥有数据库连接与关闭边界，FFI只映射DTO。
+feature/workflows/presentation负责不可变目录、读取代次、提交互斥和页面/弹层。
+app通过path_provider取得应用支持目录，并把同一runtime的client注入工作流controller；
+HomeShell消费该投影更新抽屉计数与内部导航。定义CRUD不包含节点、执行器或调度器。
 
 当前已有 `feature/assistant/presentation` 及 browser、toolbox、files、settings 的一级 UI。
 已追加 browser 设置及子页、downloads 设置、files 设置、video 设置及字幕/声音/弹幕/控制栏子页，

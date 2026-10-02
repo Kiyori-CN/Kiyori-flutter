@@ -17,6 +17,31 @@ AI重要功能未实现时Goal保持未完成。设置业务写入与平台动�
 每周期按相关性合并有效实现，完成批次继续下一批。总验收包括源码映射、行为/截图、
 静态/FFI/集成、双端构建、固定产物及远端一致；设备/供应商/Apple缺口单列。
 
+AI第一批正在实施，基线main/248d49a与origin/main同步；设置正式代码为450999b，
+428b0ad误跟踪本机产物清单后已由248d49a普通提交移出索引，当前最终树与450999b相同。
+产物继续保留本机忽略目录，不再强加索引。抽屉28项联合回归通过，6张最终捕获在
+work/ai-drawer-capture-v3，analyze-v3无问题；320明暗/标题已审阅。
+工作流已加入Rust SQLite目录存储、schema1、真实应用支持目录与桥接DTO，创建/编辑/
+启用/删除及原子批量删除通过真实存储和跨桥验证。
+范围与旧源见[AI映射](design/ai-replication-map.md)；节点/模板/执行/调度、扩展与记忆真实
+业务尚未实现；本批定义切片已完成本机验证和双端构建，不能视为AI阶段完成。
+
+工作流随后补入编辑/启用、来源Back、浮动菜单、多选/全选/清空/批量删除及更新时间投影。
+最终完整verify-final-v2通过：53文档/4脚本、Rust fmt/Clippy/12测试、265 Dart格式/analyze、
+Flutter470（10捕获跳过）、真实FFI7、Windows引擎3；日志work/workflow-verify-final-v2.log。
+桥接Check五文件一致。工作流v5十三项及12PNG通过，work/workflow-capture-v5保留；
+320明亮列表/错误及1280暗色列表已审阅。初轮类型、测试帧推进、未使用导入和花括号lint
+失败均已修正，原失败日志保留，没有缩小断言或关闭检查。
+
+双端Debug构建通过；首次固定产物20261003-073131审计发现path_provider的JNI传递依赖
+混入非目标ABI，原目录保留且不作为最终交付。Gradle现按Flutter target-platform过滤
+依赖JNI，split-per-abi仍交给Flutter；Android重建37.2s通过，Windows未受影响复用已验证
+普通产品构建。最终固定artifacts/ui-preview/20261003-073852：APK91429003字节、SHA256
+14C9EB99EE73876313056E857802C7617CA7817B4ECDA101AE64F7BBBF4426F0；Windows83文件129905521字节。
+APK实际ARM64、身份/v2签名/ZIP16K/全部ELF LOAD对齐、Windows x64/DLL pin/native资产
+及84个副本逐文件哈希通过。本机manifest及失败审计留在忽略目录，精确提交不包含产物。
+本批交付后继续扩展和记忆根关联树，设备/Profile/供应商/Apple仍未执行。
+
 已确认一级12项顺序一致；AI虚拟形象入口已补接并覆盖模型空态/启用/预览/Mood/导入说明，
 账号页已补已连接/失效状态，
 角色与群组同源紧凑字段已归并，账号状态和设置映射已实施。当前批次已通过账号、形象、

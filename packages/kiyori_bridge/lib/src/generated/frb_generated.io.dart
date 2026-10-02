@@ -87,10 +87,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
   List<Capability> dco_decode_list_capability(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw);
 
   @protected
   TaskEvent? dco_decode_opt_box_autoadd_task_event(dynamic raw);
@@ -115,6 +124,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  WorkflowRecord dco_decode_workflow_record(dynamic raw);
 
   @protected
   RuntimeHandle
@@ -174,10 +186,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<WorkflowRecord> sse_decode_list_workflow_record(
+    SseDeserializer deserializer,
+  );
 
   @protected
   TaskEvent? sse_decode_opt_box_autoadd_task_event(
@@ -204,6 +227,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  WorkflowRecord sse_decode_workflow_record(SseDeserializer deserializer);
 
   @protected
   void
@@ -272,6 +298,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_capability(
     List<Capability> self,
     SseSerializer serializer,
@@ -280,6 +312,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_workflow_record(
+    List<WorkflowRecord> self,
     SseSerializer serializer,
   );
 
@@ -309,6 +347,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_workflow_record(
+    WorkflowRecord self,
+    SseSerializer serializer,
+  );
 }
 
 // Section: wire_class

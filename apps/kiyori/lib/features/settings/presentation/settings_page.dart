@@ -15,6 +15,7 @@ class SettingsPage extends StatelessWidget {
     this.onOpenAppearance = emptyAction,
     this.onOpenAssistant = emptyAction,
     this.onOpenAccount = emptyAction,
+    this.onBack,
     super.key,
   });
   final VoidCallback onOpenBrowser;
@@ -29,6 +30,7 @@ class SettingsPage extends StatelessWidget {
   final VoidCallback onOpenAppearance;
   final VoidCallback onOpenAssistant;
   final VoidCallback onOpenAccount;
+  final VoidCallback? onBack;
 
   static const groups = [
     [
@@ -56,6 +58,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PrimaryPage(
     title: '设置',
+    onBack: onBack,
     actionWidth: 160,
     actions: [
       for (final entry in [

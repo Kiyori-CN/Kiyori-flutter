@@ -7,20 +7,41 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 Future<RuntimeHandle> createRuntime() =>
     RustLib.instance.api.crateApiCreateRuntime();
+
+Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
+    RustLib.instance.api.crateApiCreateRuntimeWithDataDir(dataDir: dataDir);
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>>
 abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<void> close();
 
+  Future<WorkflowRecord> createWorkflow({
+    required String name,
+    required String description,
+  });
+
+  Future<bool> deleteWorkflow({required String id});
+
+  Future<int> deleteWorkflows({required List<String> ids});
+
   Future<RuntimeInfo> info();
+
+  Future<List<WorkflowRecord>> listWorkflows();
 
   Future<TaskHandle> startDiagnostic({
     required int steps,
     required int intervalMs,
+  });
+
+  Future<WorkflowRecord> updateWorkflow({
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
   });
 }
 
@@ -73,7 +94,7 @@ class Capability {
           reason == other.reason;
 }
 
-enum ErrorCode { invalidInput, runtimeClosed, concurrentRead }
+enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
 
 class RuntimeInfo {
   final String coreVersion;
@@ -132,3 +153,42 @@ class TaskEvent {
 }
 
 enum TaskPhase { started, running, completed, cancelled }
+
+class WorkflowRecord {
+  final String id;
+  final String name;
+  final String description;
+  final PlatformInt64 createdAt;
+  final PlatformInt64 updatedAt;
+  final bool enabled;
+
+  const WorkflowRecord({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.enabled,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      description.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode ^
+      enabled.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkflowRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          description == other.description &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt &&
+          enabled == other.enabled;
+}

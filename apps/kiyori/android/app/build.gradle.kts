@@ -25,6 +25,22 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // JNI 依赖可能包含更多 ABI；必须与本次 Flutter/Rust 目标一致，避免假报支持。
+        // 分 ABI 构建由 Flutter 的 splits 配置过滤，不能同时设置 ndk.abiFilters。
+        if (providers.gradleProperty("split-per-abi").orNull != "true") {
+            providers.gradleProperty("target-platform").orNull?.let { platforms ->
+                val platformAbis = mapOf(
+                    "android-arm" to "armeabi-v7a",
+                    "android-arm64" to "arm64-v8a",
+                    "android-x64" to "x86_64",
+                )
+                ndk.abiFilters.clear()
+                ndk.abiFilters.addAll(platforms.split(",").map { platform ->
+                    requireNotNull(platformAbis[platform]) { "Unsupported target-platform: $platform" }
+                })
+            }
+        }
     }
 
     buildTypes {

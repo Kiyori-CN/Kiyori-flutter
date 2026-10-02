@@ -4,7 +4,8 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 /// 未接入模型前只保存 UI 草稿，发送和工具按钮不产生业务副作用。
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  const ChatPage({this.onOpenDrawer = emptyAction, super.key});
+  final VoidCallback onOpenDrawer;
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
@@ -32,7 +33,13 @@ class _ChatPageState extends State<ChatPage>
             child: Row(
               children: [
                 const SizedBox(width: 4),
-                const ShellAction(Icons.menu, '菜单', size: 48, iconSize: 21),
+                ShellAction(
+                  Icons.menu,
+                  '菜单',
+                  onTap: widget.onOpenDrawer,
+                  size: 48,
+                  iconSize: 21,
+                ),
                 const Expanded(
                   child: Text(
                     'AI 对话',

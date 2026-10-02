@@ -16,8 +16,23 @@ class RuntimeController extends ChangeNotifier {
   DiagnosticRun? _run;
   bool _disposed = false;
   Future<void>? _shutdown;
+  Future<void>? _initializing;
 
-  Future<void> initialize() async {
+  Future<void> initialize() => _initializing ??= _initialize();
+
+  Future<RuntimeClient> connectedClient() async {
+    await initialize();
+    final client = _client;
+    if (_disposed || client == null) {
+      throw const BridgeError(
+        code: ErrorCode.runtimeClosed,
+        message: 'Runtime is unavailable.',
+      );
+    }
+    return client;
+  }
+
+  Future<void> _initialize() async {
     try {
       final client = await _connect();
       if (_disposed) {

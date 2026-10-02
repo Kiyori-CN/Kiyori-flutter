@@ -64,7 +64,8 @@ class SettingsNavigation {
     ModelApiPage(onOpenLocalModels: () => openPage(const LocalModelsPage())),
   );
 
-  Widget buildSettingsPage() => SettingsPage(
+  Widget buildSettingsPage({VoidCallback? onBack}) => SettingsPage(
+    onBack: onBack,
     onOpenAssistant: () => openPage(
       AssistantSettingsPage(
         onOpen: (section) {

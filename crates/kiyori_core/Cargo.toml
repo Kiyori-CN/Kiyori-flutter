@@ -7,3 +7,4 @@ publish.workspace = true
 [dependencies]
 tokio.workspace = true
 tokio-util.workspace = true
+rusqlite.workspace = true

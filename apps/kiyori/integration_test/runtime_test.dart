@@ -1,11 +1,37 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'platform support directory and packaged SQLite survive runtime reopening',
+    (tester) async {
+      final support = await getApplicationSupportDirectory();
+      expect(support.isAbsolute, isTrue);
+      final directory = await support.createTemp(
+        'kiyori-integration-workflow-',
+      );
+      NativeRuntimeClient? client;
+      try {
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        final record = await client.createWorkflow('本机引擎验证', '真实SQLite');
+        await client.close();
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        expect((await client.listWorkflows()).single, record);
+        await client.deleteWorkflow(record.id);
+        expect(await client.listWorkflows(), isEmpty);
+      } finally {
+        await client?.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 
   testWidgets(
     'packaged engine loads Rust and completes and cancels real work',

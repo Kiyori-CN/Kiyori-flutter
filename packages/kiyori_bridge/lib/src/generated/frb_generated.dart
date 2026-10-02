@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1562263099;
+  int get rustContentHash => 528037997;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,7 +81,27 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 abstract class RustLibApi extends BaseApi {
   Future<void> crateApiRuntimeHandleClose({required RuntimeHandle that});
 
+  Future<WorkflowRecord> crateApiRuntimeHandleCreateWorkflow({
+    required RuntimeHandle that,
+    required String name,
+    required String description,
+  });
+
+  Future<bool> crateApiRuntimeHandleDeleteWorkflow({
+    required RuntimeHandle that,
+    required String id,
+  });
+
+  Future<int> crateApiRuntimeHandleDeleteWorkflows({
+    required RuntimeHandle that,
+    required List<String> ids,
+  });
+
   Future<RuntimeInfo> crateApiRuntimeHandleInfo({required RuntimeHandle that});
+
+  Future<List<WorkflowRecord>> crateApiRuntimeHandleListWorkflows({
+    required RuntimeHandle that,
+  });
 
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
     required RuntimeHandle that,
@@ -89,11 +109,23 @@ abstract class RustLibApi extends BaseApi {
     required int intervalMs,
   });
 
+  Future<WorkflowRecord> crateApiRuntimeHandleUpdateWorkflow({
+    required RuntimeHandle that,
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  });
+
   Future<void> crateApiTaskHandleCancel({required TaskHandle that});
 
   Future<TaskEvent?> crateApiTaskHandleNextEvent({required TaskHandle that});
 
   Future<RuntimeHandle> crateApiCreateRuntime();
+
+  Future<RuntimeHandle> crateApiCreateRuntimeWithDataDir({
+    required String dataDir,
+  });
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_RuntimeHandle;
@@ -153,6 +185,122 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "RuntimeHandle_close", argNames: ["that"]);
 
   @override
+  Future<WorkflowRecord> crateApiRuntimeHandleCreateWorkflow({
+    required RuntimeHandle that,
+    required String name,
+    required String description,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(name, serializer);
+          sse_encode_String(description, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_workflow_record,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleCreateWorkflowConstMeta,
+        argValues: [that, name, description],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleCreateWorkflowConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_create_workflow",
+        argNames: ["that", "name", "description"],
+      );
+
+  @override
+  Future<bool> crateApiRuntimeHandleDeleteWorkflow({
+    required RuntimeHandle that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteWorkflowConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteWorkflowConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_workflow",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<int> crateApiRuntimeHandleDeleteWorkflows({
+    required RuntimeHandle that,
+    required List<String> ids,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_list_String(ids, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_32,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteWorkflowsConstMeta,
+        argValues: [that, ids],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteWorkflowsConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_workflows",
+        argNames: ["that", "ids"],
+      );
+
+  @override
   Future<RuntimeInfo> crateApiRuntimeHandleInfo({required RuntimeHandle that}) {
     return handler.executeNormal(
       NormalTask(
@@ -165,7 +313,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 5,
             port: port_,
           );
         },
@@ -182,6 +330,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiRuntimeHandleInfoConstMeta =>
       const TaskConstMeta(debugName: "RuntimeHandle_info", argNames: ["that"]);
+
+  @override
+  Future<List<WorkflowRecord>> crateApiRuntimeHandleListWorkflows({
+    required RuntimeHandle that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_workflow_record,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleListWorkflowsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleListWorkflowsConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_list_workflows",
+        argNames: ["that"],
+      );
 
   @override
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
@@ -202,7 +386,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 7,
             port: port_,
           );
         },
@@ -225,6 +409,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<WorkflowRecord> crateApiRuntimeHandleUpdateWorkflow({
+    required RuntimeHandle that,
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_String(name, serializer);
+          sse_encode_String(description, serializer);
+          sse_encode_bool(enabled, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_workflow_record,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleUpdateWorkflowConstMeta,
+        argValues: [that, id, name, description, enabled],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleUpdateWorkflowConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_update_workflow",
+        argNames: ["that", "id", "name", "description", "enabled"],
+      );
+
+  @override
   Future<void> crateApiTaskHandleCancel({required TaskHandle that}) {
     return handler.executeNormal(
       NormalTask(
@@ -237,7 +465,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 9,
             port: port_,
           );
         },
@@ -268,7 +496,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 10,
             port: port_,
           );
         },
@@ -298,7 +526,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 11,
             port: port_,
           );
         },
@@ -316,6 +544,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiCreateRuntimeConstMeta =>
       const TaskConstMeta(debugName: "create_runtime", argNames: []);
+
+  @override
+  Future<RuntimeHandle> crateApiCreateRuntimeWithDataDir({
+    required String dataDir,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(dataDir, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiCreateRuntimeWithDataDirConstMeta,
+        argValues: [dataDir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCreateRuntimeWithDataDirConstMeta =>
+      const TaskConstMeta(
+        debugName: "create_runtime_with_data_dir",
+        argNames: ["dataDir"],
+      );
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_RuntimeHandle => wire
@@ -443,6 +705,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<Capability> dco_decode_list_capability(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_capability).toList();
@@ -452,6 +726,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_workflow_record).toList();
   }
 
   @protected
@@ -515,6 +795,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt dco_decode_usize(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeU64(raw);
+  }
+
+  @protected
+  WorkflowRecord dco_decode_workflow_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return WorkflowRecord(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      description: dco_decode_String(arr[2]),
+      createdAt: dco_decode_i_64(arr[3]),
+      updatedAt: dco_decode_i_64(arr[4]),
+      enabled: dco_decode_bool(arr[5]),
+    );
   }
 
   @protected
@@ -639,6 +935,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -655,6 +969,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<WorkflowRecord> sse_decode_list_workflow_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <WorkflowRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_workflow_record(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -726,6 +1054,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  WorkflowRecord sse_decode_workflow_record(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_description = sse_decode_String(deserializer);
+    var var_createdAt = sse_decode_i_64(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    var var_enabled = sse_decode_bool(deserializer);
+    return WorkflowRecord(
+      id: var_id,
+      name: var_name,
+      description: var_description,
+      createdAt: var_createdAt,
+      updatedAt: var_updatedAt,
+      enabled: var_enabled,
+    );
   }
 
   @protected
@@ -855,6 +1202,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_capability(
     List<Capability> self,
     SseSerializer serializer,
@@ -874,6 +1236,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_workflow_record(
+    List<WorkflowRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_workflow_record(item, serializer);
+    }
   }
 
   @protected
@@ -934,6 +1308,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
   }
+
+  @protected
+  void sse_encode_workflow_record(
+    WorkflowRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.description, serializer);
+    sse_encode_i_64(self.createdAt, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+    sse_encode_bool(self.enabled, serializer);
+  }
 }
 
 @sealed
@@ -958,8 +1346,28 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
   Future<void> close() =>
       RustLib.instance.api.crateApiRuntimeHandleClose(that: this);
 
+  Future<WorkflowRecord> createWorkflow({
+    required String name,
+    required String description,
+  }) => RustLib.instance.api.crateApiRuntimeHandleCreateWorkflow(
+    that: this,
+    name: name,
+    description: description,
+  );
+
+  Future<bool> deleteWorkflow({required String id}) => RustLib.instance.api
+      .crateApiRuntimeHandleDeleteWorkflow(that: this, id: id);
+
+  Future<int> deleteWorkflows({required List<String> ids}) => RustLib
+      .instance
+      .api
+      .crateApiRuntimeHandleDeleteWorkflows(that: this, ids: ids);
+
   Future<RuntimeInfo> info() =>
       RustLib.instance.api.crateApiRuntimeHandleInfo(that: this);
+
+  Future<List<WorkflowRecord>> listWorkflows() =>
+      RustLib.instance.api.crateApiRuntimeHandleListWorkflows(that: this);
 
   Future<TaskHandle> startDiagnostic({
     required int steps,
@@ -968,6 +1376,19 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     that: this,
     steps: steps,
     intervalMs: intervalMs,
+  );
+
+  Future<WorkflowRecord> updateWorkflow({
+    required String id,
+    required String name,
+    required String description,
+    required bool enabled,
+  }) => RustLib.instance.api.crateApiRuntimeHandleUpdateWorkflow(
+    that: this,
+    id: id,
+    name: name,
+    description: description,
+    enabled: enabled,
   );
 }
 

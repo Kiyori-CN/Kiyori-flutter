@@ -121,7 +121,9 @@ enum IconTone {
   warning(0xFFA77F10, 0xFFF7F3E9, 0xFFF7D66C, 0xFF3C3624),
   reading(0xFF40937D, 0xFFEEF5F3, 0xFF87D8BA, 0xFF293731),
   link(0xFF1491B0, 0xFFEAF5F8, 0xFF68D4EE, 0xFF24363A),
-  settings(0xFF6B7585, 0xFFF0F2F5, 0xFFB9C1CD, 0xFF333840);
+  settings(0xFF6B7585, 0xFFF0F2F5, 0xFFB9C1CD, 0xFF333840),
+  extensionAccent(0xFFAE3B6D, 0xFFFCEAF2, 0xFFF49AC0, 0xFF452336),
+  exit(0xFFC95181, 0xFFFAEFF4, 0xFFF799B8, 0xFF3C2C31);
 
   const IconTone(
     this.foreground,
@@ -148,12 +150,16 @@ class PrimaryPage extends StatelessWidget {
     required this.actions,
     required this.child,
     this.actionWidth = 96,
+    this.onMenu,
+    this.onBack,
     super.key,
   });
   final String title;
   final List<Widget> actions;
   final Widget child;
   final double actionWidth;
+  final VoidCallback? onMenu;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) => SettingsTheme(
@@ -171,8 +177,20 @@ class PrimaryPage extends StatelessWidget {
                 height: 64,
                 child: Stack(
                   children: [
+                    if (onMenu != null || onBack != null)
+                      Positioned(
+                        left: 4,
+                        top: 8,
+                        child: ShellAction(
+                          onMenu != null ? Icons.menu : Icons.arrow_back,
+                          onMenu != null ? '菜单' : '返回',
+                          onTap: onMenu ?? onBack!,
+                          size: 48,
+                          iconSize: 21,
+                        ),
+                      ),
                     Positioned(
-                      left: 16,
+                      left: onMenu == null && onBack == null ? 16 : 56,
                       right: actionWidth + 16,
                       top: 20,
                       child: Semantics(

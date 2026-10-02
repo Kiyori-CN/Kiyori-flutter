@@ -1,9 +1,75 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'real SQLite bridge persists Unicode records, deletes and closes',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-ffi-workflows-',
+      );
+      NativeRuntimeClient? client;
+      try {
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        expect(await client.listWorkflows(), isEmpty);
+        final first = await client.createWorkflow('中文工作流', '第一行\n第二行');
+        final second = await client.createWorkflow('另一个工作流', '');
+        expect((await client.listWorkflows()).map((w) => w.id), [
+          second.id,
+          first.id,
+        ]);
+        await client.close();
+        await expectLater(
+          client.listWorkflows(),
+          throwsA(
+            isA<BridgeError>().having(
+              (e) => e.code,
+              'closed',
+              ErrorCode.runtimeClosed,
+            ),
+          ),
+        );
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        final restored = await client.listWorkflows();
+        expect(restored.last, first);
+        final edited = await client.updateWorkflow(
+          id: second.id,
+          name: '重命名',
+          description: '保存描述',
+          enabled: false,
+        );
+        expect(edited.createdAt, second.createdAt);
+        expect(edited.enabled, isFalse);
+        expect(await client.deleteWorkflow(first.id), isTrue);
+        expect(await client.deleteWorkflow(first.id), isFalse);
+        await expectLater(
+          client.createWorkflow('  ', ''),
+          throwsA(
+            isA<BridgeError>().having(
+              (e) => e.code,
+              'invalid',
+              ErrorCode.invalidInput,
+            ),
+          ),
+        );
+        await client.close();
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        expect((await client.listWorkflows()).single, edited);
+        final third = await client.createWorkflow('批量删除', '');
+        expect(
+          await client.deleteWorkflows([edited.id, third.id, edited.id]),
+          2,
+        );
+        expect(await client.listWorkflows(), isEmpty);
+      } finally {
+        await client?.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
   late NativeRuntimeClient runtime;
   setUp(() async {
     runtime = await NativeRuntimeClient.open();
