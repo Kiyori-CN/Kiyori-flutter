@@ -40,6 +40,100 @@ class ControlledSecrets implements SecretStore {
 
 void main() {
   testWidgets(
+    'cleanup failure preserves active key and never occupies status bar',
+    (tester) async {
+      final directory = Directory.systemTemp.createTempSync(
+        'kiyori-cleanup-safearea-',
+      );
+      final runtime = (await tester.runAsync(
+        () => NativeRuntimeClient.open(dataDirectory: directory.path),
+      ))!;
+      final secrets = ControlledSecrets(
+        WindowsSecretStore(Directory('${directory.path}/secrets')),
+      );
+      final owner = ModelsController(() async => runtime, () async => secrets);
+      String? retired;
+      try {
+        await tester.runAsync(() async {
+          await owner.load();
+          var base = owner.catalog!.configs.single;
+          base = await owner.save(
+            base,
+            base.draft,
+            const ModelCredentials(),
+            const ModelCredentials(apiKey: 'synthetic-before'),
+          );
+          retired = base.secretReference;
+          secrets.failDelete = true;
+          await owner.save(
+            base,
+            base.draft,
+            const ModelCredentials(apiKey: 'synthetic-before'),
+            const ModelCredentials(apiKey: 'synthetic-active'),
+          );
+        });
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding: const EdgeInsets.only(top: 32),
+                viewPadding: const EdgeInsets.only(top: 32),
+              ),
+              child: child!,
+            ),
+            home: PersistentModelsPage(controller: owner, onManage: () {}),
+          ),
+        );
+        for (var i = 0; i < 80; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(owner.cleanupDiagnostic, 'cleanup_failed');
+        expect(find.textContaining('旧安全凭据'), findsNothing);
+        expect(find.text('安全凭据维护未完成'), findsNothing);
+        expect(
+          tester.getTopLeft(find.text('模型与 API').first).dy,
+          greaterThanOrEqualTo(32),
+        );
+        var inspected = false;
+        final inspection = () async {
+          expectSync(await runtime.retiredModelSecrets(), contains(retired));
+          expectSync(
+            (await owner.readCredentials(owner.catalog!.configs.single)).apiKey,
+            'synthetic-active',
+          );
+          secrets.failDelete = false;
+          await owner.load();
+          expectSync(await runtime.retiredModelSecrets(), isEmpty);
+          expectSync(await secrets.read(retired!), isNull);
+          expectSync(
+            (await owner.readCredentials(owner.catalog!.configs.single)).apiKey,
+            'synthetic-active',
+          );
+          inspected = true;
+        }();
+        for (var i = 0; i < 200 && !inspected; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(inspected, isTrue);
+        await inspection;
+        await tester.pumpAndSettle();
+        expect(owner.cleanupDiagnostic, isNull);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        owner.dispose();
+        await tester.runAsync(runtime.close);
+        directory.deleteSync(recursive: true);
+      }
+    },
+  );
+  testWidgets(
     'imported pool is encrypted and flush waits for an unfinished picker',
     (tester) async {
       tester.view.physicalSize = const Size(440, 1200);
@@ -151,7 +245,8 @@ void main() {
       final orphan = await abandoned.reserve(base.id, base.revision);
       await secrets.writeNew(orphan, 'unfinished-fixture');
       await owner.load();
-      expect(owner.cleanupWarning, isNotNull);
+      expect(owner.cleanupWarning, isNull);
+      expect(owner.cleanupDiagnostic, 'cleanup_deferred_busy');
       expect(await secrets.read(orphan), 'unfinished-fixture');
       await abandoned.close();
       await owner.load();
@@ -218,6 +313,15 @@ void main() {
       await owner.cleanupRetired();
       expect(await runtime.retiredModelSecrets(), isEmpty);
       expect(await secrets.read(previous.secretReference!), isNull);
+      expect((await owner.readCredentials(base)).apiKey, 'fixture-key-two');
+      await Future.wait([
+        owner.load(),
+        owner.load(),
+        owner.readCredentials(base),
+        owner.cleanupRetired(),
+      ]);
+      expect(owner.cleanupWarning, isNull);
+      expect(owner.cleanupDiagnostic, isNull);
       expect((await owner.readCredentials(base)).apiKey, 'fixture-key-two');
       final bytes = File('${directory.path}/kiyori.sqlite3').readAsBytesSync();
       final raw = String.fromCharCodes(bytes);

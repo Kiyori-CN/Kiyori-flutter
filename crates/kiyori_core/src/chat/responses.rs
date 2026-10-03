@@ -60,6 +60,55 @@ fn validate_item(item: &Value) -> Result<(), ChatFailure> {
 }
 
 impl Decoder {
+    pub async fn document(
+        value: Value,
+        probe: &mut Option<probe::Probe>,
+        sender: &mpsc::Sender<ChatEvent>,
+    ) -> Result<String, ChatFailure> {
+        let kind = match value.get("status").and_then(Value::as_str) {
+            Some("completed") => "response.completed",
+            Some("incomplete") => "response.incomplete",
+            _ => return Err(ChatFailure::protocol()),
+        };
+        let output = value
+            .get("output")
+            .and_then(Value::as_array)
+            .ok_or_else(ChatFailure::protocol)?;
+        // 先核对整个文档的输出类型，再投影文本；完整JSON复用相同终态与用量校验。
+        for item in output {
+            validate_item(item)?;
+        }
+        let mut decoder = Self::default();
+        for (index, item) in output.iter().enumerate() {
+            if item["type"] != "message" {
+                continue;
+            }
+            let id = item
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(ChatFailure::protocol)?;
+            for (part, content) in item["content"]
+                .as_array()
+                .ok_or_else(ChatFailure::protocol)?
+                .iter()
+                .enumerate()
+            {
+                let text = content
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .ok_or_else(ChatFailure::protocol)?;
+                decoder.decode(&serde_json::json!({"type":"response.output_text.delta","output_index":index,"content_index":part,"item_id":id,"delta":text}).to_string(),probe,sender).await?;
+            }
+        }
+        decoder
+            .decode(
+                &serde_json::json!({"type":kind,"response":value}).to_string(),
+                probe,
+                sender,
+            )
+            .await?
+            .ok_or_else(ChatFailure::protocol)
+    }
     pub async fn decode(
         &mut self,
         data: &str,

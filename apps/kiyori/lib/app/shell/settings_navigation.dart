@@ -25,6 +25,7 @@ import '../../features/settings/presentation/appearance/appearance_settings_page
 import '../../features/settings/presentation/appearance/appearance_menu_page.dart';
 import '../../features/settings/presentation/data_settings_page.dart';
 import '../../features/assistant/presentation/assistant_settings_page.dart';
+import '../../features/assistant/presentation/chat_controller.dart';
 import '../../features/assistant/presentation/avatar_settings_page.dart';
 import '../../features/assistant/presentation/prompts/model_prompts_page.dart';
 import '../../features/assistant/presentation/prompts/persistent_prompts_page.dart';
@@ -63,10 +64,32 @@ import '../../features/browser/presentation/adblock_settings_page.dart';
 
 /// 详情路由的装配层；只借用现有 Navigator，不持有目的地或业务状态。
 class SettingsNavigation {
-  SettingsNavigation(this.navigator, {this.prompts, this.models});
+  SettingsNavigation(this.navigator, {this.prompts, this.models, this.chat});
+  final ChatController? chat;
   final ModelsController? models;
   final PromptsController? prompts;
   final NavigatorState navigator;
+
+  void openCharacters() => openPage(
+    prompts == null
+        ? ModelPromptsPage(
+            onOpenTagMarket: () => openPage(const TagMarketPage()),
+            onOpenPersona: () => openPage(const PersonaGenerationPage()),
+          )
+        : PersistentPromptsPage(
+            controller: prompts!,
+            onOpenTagMarket: () =>
+                openPage(TagMarketPage(onSave: prompts!.saveTag)),
+            onOpenPersona: () => openPage(
+              ListenableBuilder(
+                listenable: prompts!,
+                builder: (context, _) => PersonaGenerationPage(
+                  snapshot: PersonaPresentation(catalog: prompts!.snapshot),
+                ),
+              ),
+            ),
+          ),
+  );
 
   void openModels() => openPage(
     models == null
@@ -105,29 +128,7 @@ class SettingsNavigation {
           } else if (section == AssistantSettingsSection.models) {
             openModels();
           } else if (section == AssistantSettingsSection.roles) {
-            openPage(
-              prompts == null
-                  ? ModelPromptsPage(
-                      onOpenTagMarket: () => openPage(const TagMarketPage()),
-                      onOpenPersona: () =>
-                          openPage(const PersonaGenerationPage()),
-                    )
-                  : PersistentPromptsPage(
-                      controller: prompts!,
-                      onOpenTagMarket: () =>
-                          openPage(TagMarketPage(onSave: prompts!.saveTag)),
-                      onOpenPersona: () => openPage(
-                        ListenableBuilder(
-                          listenable: prompts!,
-                          builder: (context, _) => PersonaGenerationPage(
-                            snapshot: PersonaPresentation(
-                              catalog: prompts!.snapshot,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-            );
+            openCharacters();
           } else if (section == AssistantSettingsSection.avatar) {
             openPage(const AvatarSettingsPage());
           } else if (section == AssistantSettingsSection.permissions) {
@@ -163,7 +164,28 @@ class SettingsNavigation {
       AppearanceMenuPage(
         onOpen: (section) {
           if (section == AppearanceSection.theme) {
-            openPage(const AppearanceSettingsPage());
+            openPage(
+              chat == null
+                  ? const AppearanceSettingsPage()
+                  : AnimatedBuilder(
+                      animation: chat!,
+                      builder: (context, _) => AppearanceSettingsPage(
+                        messageStyle: chat!.preferences?.messageStyle,
+                        inputStyle: chat!.preferences?.inputStyle,
+                        onPreference: (key, value) async {
+                          final ok = await chat!.setPreference(key, value);
+                          if (!ok && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(chat!.error ?? '设置未保存，请重试'),
+                              ),
+                            );
+                          }
+                          return ok;
+                        },
+                      ),
+                    ),
+            );
           } else if (section == AppearanceSection.language) {
             openPage(const LanguageSettingsPage());
           } else if (section == AppearanceSection.display) {

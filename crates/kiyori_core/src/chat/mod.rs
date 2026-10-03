@@ -54,6 +54,7 @@ pub struct ChatMessage {
 
 // 凭据输入不实现Debug，错误也不附带请求、URL或供应商响应正文。
 pub struct ChatRequest {
+    pub stream: bool,
     pub probe: Option<probe::Probe>,
     pub protocol: String,
     pub endpoint: String,
@@ -365,7 +366,7 @@ async fn execute(
         object.insert("messages".into(), json!(input.messages));
         object.insert("n".into(), json!(1));
     }
-    object.insert("stream".into(), json!(true));
+    object.insert("stream".into(), json!(input.stream));
     let bytes = serde_json::to_vec(&body).map_err(|_| ChatFailure::protocol())?;
     if bytes.len() > 8 * 1024 * 1024 {
         return Err(ChatFailure::new(
@@ -417,7 +418,14 @@ async fn execute(
             .post(url)
             .headers(headers)
             .header("Content-Type", "application/json")
-            .header("Accept", "text/event-stream")
+            .header(
+                "Accept",
+                if input.stream {
+                    "text/event-stream"
+                } else {
+                    "application/json"
+                },
+            )
             .body(bytes)
             .send()
             .await
@@ -429,6 +437,39 @@ async fn execute(
                 message: format!("模型服务返回HTTP {status}"),
                 http_status: Some(status),
             });
+        }
+        if !input.stream {
+            let mut body = Vec::new();
+            while let Some(chunk) = response.chunk().await.map_err(transport)? {
+                if body.len() + chunk.len() > 8 * 1024 * 1024 {
+                    return Err(ChatFailure::new(
+                        ChatFailureKind::Protocol,
+                        "模型回复超过8 MiB限制",
+                    ));
+                }
+                body.extend_from_slice(&chunk);
+            }
+            let mut value: Value =
+                serde_json::from_slice(&body).map_err(|_| ChatFailure::protocol())?;
+            let reason = if is_responses {
+                responses::Decoder::document(value, &mut input.probe, sender).await?
+            } else {
+                let choices = value
+                    .get_mut("choices")
+                    .and_then(Value::as_array_mut)
+                    .ok_or_else(ChatFailure::protocol)?;
+                for choice in choices {
+                    let object = choice.as_object_mut().ok_or_else(ChatFailure::protocol)?;
+                    let message = object.remove("message").ok_or_else(ChatFailure::protocol)?;
+                    object.insert("delta".into(), message);
+                }
+                let mut finish = None;
+                decode(&value.to_string(), &mut finish, &mut input.probe, sender).await?;
+                finish.ok_or_else(ChatFailure::protocol)?
+            };
+            let verified = input.probe.as_ref().map(|p| p.verified(&reason));
+            let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
+            return Ok(());
         }
         if response
             .headers()

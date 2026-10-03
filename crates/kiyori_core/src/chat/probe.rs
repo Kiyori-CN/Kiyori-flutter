@@ -82,6 +82,7 @@ pub fn prepare(
         );
     }
     Ok(ChatRequest {
+        stream: true,
         protocol: draft.protocol,
         endpoint: draft.endpoint,
         model,

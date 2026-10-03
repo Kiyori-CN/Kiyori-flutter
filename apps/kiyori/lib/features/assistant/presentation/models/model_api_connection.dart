@@ -195,6 +195,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
           'API协议',
           provider.protocolLabel(protocol),
           subtitle: '选择API协议',
+          summary: protocol.summary,
           onTap: () async {
             final value = await showApiProtocolDrawer(
               context,

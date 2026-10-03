@@ -7,29 +7,38 @@ class ProfileMarkdownPreview extends StatefulWidget {
   const ProfileMarkdownPreview({
     required this.text,
     this.embedded = false,
+    this.selectable = true,
+    this.parsedNodes,
     super.key,
   });
   final String text;
   final bool embedded;
+  final bool selectable;
+  final List<md.Node>? parsedNodes;
   @override
   State<ProfileMarkdownPreview> createState() => _ProfileMarkdownPreviewState();
 }
 
 class _ProfileMarkdownPreviewState extends State<ProfileMarkdownPreview> {
   late List<md.Node> nodes = parse();
-  List<md.Node> parse() => md.Document(
-    extensionSet: md.ExtensionSet.gitHubFlavored,
-    encodeHtml: false,
-  ).parseLines(widget.text.split('\n'));
+  List<md.Node> parse() =>
+      widget.parsedNodes ??
+      md.Document(
+        extensionSet: md.ExtensionSet.gitHubFlavored,
+        encodeHtml: false,
+      ).parseLines(widget.text.split('\n'));
   @override
   void didUpdateWidget(ProfileMarkdownPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) nodes = parse();
+    if (oldWidget.text != widget.text ||
+        oldWidget.parsedNodes != widget.parsedNodes) {
+      nodes = parse();
+    }
   }
 
   @override
-  Widget build(BuildContext context) => SelectionArea(
-    child: widget.embedded
+  Widget build(BuildContext context) {
+    final content = widget.embedded
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [for (final node in nodes) block(context, node)],
@@ -39,8 +48,10 @@ class _ProfileMarkdownPreviewState extends State<ProfileMarkdownPreview> {
             padding: const EdgeInsets.all(16),
             itemCount: nodes.length,
             itemBuilder: (context, index) => block(context, nodes[index]),
-          ),
-  );
+          );
+    return widget.selectable ? SelectionArea(child: content) : content;
+  }
+
   Widget block(BuildContext context, md.Node node) {
     final colors = Theme.of(context).colorScheme;
     if (node is md.Text) return text(context, [node]);

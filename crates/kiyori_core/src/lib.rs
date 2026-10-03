@@ -1,6 +1,7 @@
 //! Kiyori shared runtime. No Flutter or platform UI dependency belongs here.
 
 pub mod chat;
+pub mod chat_preferences;
 pub mod context;
 pub mod conversations;
 pub mod diary;

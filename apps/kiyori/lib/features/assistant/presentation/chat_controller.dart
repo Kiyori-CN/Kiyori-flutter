@@ -5,6 +5,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_platform/kiyori_platform.dart';
 
 import 'models/model_credentials.dart';
+import 'models/model_options_editing.dart';
 
 /// 只持有交互与不可变快照；历史、模型解析和终态均由Rust决定。
 class ChatController extends ChangeNotifier {
@@ -15,6 +16,57 @@ class ChatController extends ChangeNotifier {
   ConversationSnapshot? snapshot;
   ModelCatalog? models;
   PromptCatalog? prompts;
+  ChatPreferences? preferences;
+  KnowledgeSnapshot? knowledge;
+  final _replies = <String, ConversationMessage>{};
+  final memoryFolderDrafts = <String, List<String>>{};
+  List<String> get memoryFolders => memoryFolderDrafts[draftId] ?? const [];
+  void attachMemoryFolders(List<String> folders) {
+    memoryFolderDrafts[draftId] = folders;
+    _notify();
+  }
+
+  void clearMemoryFolders() {
+    memoryFolderDrafts.remove(draftId);
+    _notify();
+  }
+
+  ConversationMessage? get replyTo => _replies[draftId];
+  void setReply(ConversationMessage message) {
+    _replies[draftId] = message;
+    _notify();
+  }
+
+  void clearReply() {
+    _replies.remove(draftId);
+    _notify();
+  }
+
+  bool savingPreference = false;
+
+  Future<bool> setPreference(String key, String value) async {
+    final base = preferences;
+    if (_disposed || savingPreference || base == null) return false;
+    savingPreference = true;
+    error = null;
+    _notify();
+    try {
+      preferences = await (await connect()).changeChatPreference(
+        base.revision,
+        key,
+        value,
+      );
+      if (key.endsWith('_folder')) await load();
+      return true;
+    } catch (failure) {
+      error = _error(failure);
+      return false;
+    } finally {
+      savingPreference = false;
+      _notify();
+    }
+  }
+
   bool loading = false, changing = false, _disposed = false;
   String? error;
   int _generation = 0;
@@ -24,11 +76,7 @@ class ChatController extends ChangeNotifier {
   ChatExecution? get execution => executions[snapshot?.conversation.id];
   bool get busy => changing || (execution?.active ?? false);
   PromptCharacter? get character => prompts?.characters
-      .where(
-        (c) =>
-            c.id ==
-            (snapshot?.conversation.characterId ?? prompts?.activeCharacter),
-      )
+      .where((c) => c.id == prompts?.activeCharacter)
       .firstOrNull;
   String get modelName =>
       character?.draft.modelName ??
@@ -37,6 +85,46 @@ class ChatController extends ChangeNotifier {
           .firstOrNull
           ?.modelName ??
       '未选择';
+  String? get modelConfigId =>
+      character?.draft.modelConfig ??
+      models?.functions
+          .where((f) => f.function == 'chat')
+          .firstOrNull
+          ?.configId;
+  ModelConfig? get modelConfig =>
+      models?.configs.where((config) => config.id == modelConfigId).firstOrNull;
+
+  Future<void> setMaxContext(bool enabled) async {
+    final config = modelConfig;
+    if (changing || _disposed || config == null) return;
+    changing = true;
+    error = null;
+    _notify();
+    try {
+      final d = config.draft;
+      await (await connect()).saveModelConfig(
+        config.id,
+        config.revision,
+        ModelConfigDraft(
+          name: d.name,
+          provider: d.provider,
+          protocol: d.protocol,
+          endpoint: d.endpoint,
+          models: d.models,
+          options: d.options.copyWith(maxContextMode: enabled),
+        ),
+        config.secretReference,
+        null,
+      );
+      await load();
+    } catch (failure) {
+      error = _error(failure);
+    } finally {
+      changing = false;
+      _notify();
+    }
+  }
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }
@@ -54,14 +142,23 @@ class ChatController extends ChangeNotifier {
       final directory = await runtime.conversationCatalog();
       final modelDirectory = await runtime.modelCatalog();
       final promptDirectory = await runtime.promptCatalog();
+      final chatPreferences = await runtime.chatPreferences();
+      final knowledgeDirectory = await runtime.knowledgeSnapshot();
       final selected = id ?? snapshot?.conversation.id ?? directory.activeId;
       final exists = directory.conversations.any((c) => c.id == selected);
       final value = exists ? await runtime.conversation(selected!) : null;
       if (_disposed || generation != _generation) return;
       catalog = directory;
       snapshot = value;
+      final reply = _replies[selected];
+      if (reply != null &&
+          value?.messages.any((m) => m.id == reply.id) != true) {
+        _replies.remove(selected);
+      }
       models = modelDirectory;
       prompts = promptDirectory;
+      preferences = chatPreferences;
+      knowledge = knowledgeDirectory;
     } catch (failure) {
       if (!_disposed && generation == _generation) error = _error(failure);
     } finally {
@@ -116,18 +213,60 @@ class ChatController extends ChangeNotifier {
 
   Future<void> chooseCharacter(String id) async {
     if (busy || _disposed) return;
-    final item = snapshot?.conversation;
-    if (item != null) {
-      await change(item, 'character', id);
-      return;
-    }
     changing = true;
+    error = null;
     _notify();
     try {
-      await (await connect()).activatePrompt('character', id);
-      await load();
+      final runtime = await connect();
+      await runtime.selectChatCharacter(id);
+      final directory = await runtime.conversationCatalog();
+      await load(id: directory.activeId);
     } catch (failure) {
       error = _error(failure);
+    } finally {
+      changing = false;
+      _notify();
+    }
+  }
+
+  Future<bool> chooseMemory(String id) async {
+    if (changing || _disposed) return false;
+    changing = true;
+    error = null;
+    _notify();
+    try {
+      final runtime = await connect();
+      final card = character;
+      if (card?.draft.memorySpace != null) {
+        final d = card!.draft;
+        await runtime.saveCharacter(
+          card.id,
+          card.revision,
+          CharacterDraft(
+            name: d.name,
+            description: d.description,
+            setting: d.setting,
+            opening: d.opening,
+            chat: d.chat,
+            voice: d.voice,
+            custom: d.custom,
+            marks: d.marks,
+            tagIds: d.tagIds,
+            modelConfig: d.modelConfig,
+            modelName: d.modelName,
+            memorySpace: id,
+            toolsEnabled: d.toolsEnabled,
+            tools: d.tools,
+          ),
+        );
+      } else {
+        await runtime.selectKnowledgeSpace(id);
+      }
+      await load();
+      return error == null;
+    } catch (failure) {
+      error = _error(failure);
+      return false;
     } finally {
       changing = false;
       _notify();
@@ -139,7 +278,8 @@ class ChatController extends ChangeNotifier {
     changing = true;
     _notify();
     try {
-      await (await connect()).selectConversation(id);
+      final runtime = await connect();
+      await runtime.selectConversation(id);
       await load(id: id);
       return error == null;
     } catch (failure) {
@@ -213,7 +353,12 @@ class ChatController extends ChangeNotifier {
         action,
         text,
       );
-      await load();
+      if (action == 'branch') {
+        final directory = await (await connect()).conversationCatalog();
+        await load(id: directory.activeId);
+      } else {
+        await load();
+      }
       return error == null;
     } catch (failure) {
       error = _error(failure);
@@ -231,6 +376,12 @@ class ChatController extends ChangeNotifier {
     int? revision,
   }) async {
     if (busy || loading || _disposed || text.trim().isEmpty) return;
+    if (memoryFolders.isNotEmpty) {
+      error = '记忆文件夹附件需要记忆查询工具，当前尚未接入。请移除附件后发送文字。';
+      _notify();
+      return;
+    }
+    final reply = replyTo;
     if (snapshot == null && !await create()) return;
     if (_disposed) return;
     final id = snapshot!.conversation.id;
@@ -246,6 +397,7 @@ class ChatController extends ChangeNotifier {
       accepted,
       replaceFrom,
       revision,
+      reply?.id,
     );
     await operation.done;
   }
@@ -257,11 +409,20 @@ class ChatController extends ChangeNotifier {
     void Function()? accepted,
     String? replaceFrom,
     int? revision,
+    String? replyId,
   ) async {
     PreparedConversation? prepared;
     try {
       final runtime = await connect();
-      prepared = await runtime.prepareConversation(id);
+      final target =
+          replaceFrom != null &&
+              snapshot?.messages.any(
+                    (m) => m.id == replaceFrom && m.role == 'assistant',
+                  ) ==
+                  true
+          ? replaceFrom
+          : null;
+      prepared = await runtime.prepareConversation(id, target: target);
       if (_disposed || operation.stopping) return;
       final reference = await prepared.secretReference();
       // 仅此作用域持有明文；句柄中的短lease覆盖native读取及Rust最终配置复核。
@@ -280,8 +441,10 @@ class ChatController extends ChangeNotifier {
         payload,
         replaceFrom: replaceFrom,
         revision: revision,
+        replyTo: replyId,
       );
       operation.run = run;
+      if (_replies[id]?.id == replyId) _replies.remove(id);
       if (drafts[id] == text) drafts.remove(id);
       if (drafts['new'] == text) drafts.remove('new');
       if (!_disposed && snapshot?.conversation.id == id) accepted?.call();
@@ -293,7 +456,10 @@ class ChatController extends ChangeNotifier {
       }
       // 网络可能先于FFI快照返回；流正文从空串累积，禁止把DB快照与重放delta相加。
       final started = await runtime.conversation(id);
-      operation.messageId = started.messages.last.id;
+      operation.messageId = started.messages
+          .where((m) => m.state == 'running')
+          .firstOrNull
+          ?.id;
       if (!_disposed && snapshot?.conversation.id == id) {
         snapshot = started;
         _notify();

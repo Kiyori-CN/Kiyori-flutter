@@ -9,6 +9,25 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 import 'support/ui_test_helpers.dart';
 
 void main() {
+  testWidgets('protocol value and explanation stay below its title', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: KiyoriTheme.light(), home: const ModelApiPage()),
+    );
+    await tester.pumpAndSettle();
+    await revealModel(tester, find.text('API协议'));
+    final title = tester.getRect(find.text('API协议'));
+    final value = tester.getRect(find.text('OpenAI Chat Completions'));
+    expect(value.top, greaterThanOrEqualTo(title.bottom));
+    expect(value.left, title.left);
+    expect(find.text(ModelApiProtocol.chat.summary), findsOneWidget);
+    await tester.tap(find.text('API协议'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择API协议'), findsOneWidget);
+    expect(find.text('OpenAI Responses API'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'provider switch preserves custom endpoint and key draft is masked off focus',
     (tester) async {

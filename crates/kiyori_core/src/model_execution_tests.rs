@@ -136,7 +136,7 @@ fn independent_connections_serialize_cursor_and_schema_seven_migrates() {
             .connection
             .lock()
             .unwrap()
-            .execute_batch("DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE model_key_cursors; PRAGMA user_version=7;")
+            .execute_batch("DROP TABLE conversation_variants; DROP TABLE chat_preferences; DROP TABLE conversation_folders; DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE model_key_cursors; PRAGMA user_version=7;")
             .unwrap();
     }
     let p = payload(&[("a", "UNTESTED", true), ("b", "UNTESTED", true)], "");

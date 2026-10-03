@@ -15,6 +15,9 @@ pub struct Conversation {
     pub revision: u32,
     pub updated_at: i64,
     pub message_count: u32,
+    pub folder: String,
+    pub pinned: bool,
+    pub locked: bool,
 }
 impl From<kiyori_core::conversations::Conversation> for Conversation {
     fn from(v: kiyori_core::conversations::Conversation) -> Self {
@@ -26,10 +29,15 @@ impl From<kiyori_core::conversations::Conversation> for Conversation {
             revision: v.revision,
             updated_at: v.updated_at,
             message_count: v.message_count,
+            folder: v.folder,
+            pinned: v.pinned,
+            locked: v.locked,
         }
     }
 }
 pub struct ConversationMessage {
+    pub variant: u32,
+    pub variant_count: u32,
     pub id: String,
     pub run_id: String,
     pub role: String,
@@ -37,6 +45,12 @@ pub struct ConversationMessage {
     pub state: String,
     pub error: String,
     pub model: String,
+    pub role_name: Option<String>,
+    pub sent_at: Option<i64>,
+    pub first_output_ms: Option<i64>,
+    pub duration_ms: Option<i64>,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
 }
 pub struct ConversationSnapshot {
     pub conversation: Conversation,
@@ -50,6 +64,8 @@ impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnap
                 .messages
                 .into_iter()
                 .map(|m| ConversationMessage {
+                    variant: m.variant,
+                    variant_count: m.variant_count,
                     id: m.id,
                     run_id: m.run_id,
                     role: m.role,
@@ -57,6 +73,12 @@ impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnap
                     state: m.state,
                     error: m.error,
                     model: m.model,
+                    role_name: m.role_name,
+                    sent_at: m.sent_at,
+                    first_output_ms: m.first_output_ms,
+                    duration_ms: m.duration_ms,
+                    input_tokens: m.input_tokens,
+                    output_tokens: m.output_tokens,
                 })
                 .collect(),
         }
@@ -65,6 +87,58 @@ impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnap
 pub struct ConversationCatalog {
     pub active_id: Option<String>,
     pub conversations: Vec<Conversation>,
+}
+
+pub struct ConversationStatistics {
+    pub requests: u32,
+    pub reported_requests: u32,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
+    pub recent_input_tokens: Option<i64>,
+    pub recent_output_tokens: Option<i64>,
+    pub recent_model: String,
+    pub first_output_ms: Option<i64>,
+    pub duration_ms: Option<i64>,
+}
+
+pub struct ChatPreferences {
+    pub revision: u32,
+    pub history_mode: String,
+    pub auto_character: bool,
+    pub auto_chat: bool,
+    pub thinking: bool,
+    pub thinking_quality: u32,
+    pub message_style: String,
+    pub input_style: String,
+    pub memory_auto: bool,
+    pub tools_enabled: bool,
+    pub permission: String,
+    pub disable_stream: bool,
+    pub auto_read: bool,
+    pub disable_preferences: bool,
+    pub folders: Vec<String>,
+}
+impl From<kiyori_core::chat_preferences::Snapshot> for ChatPreferences {
+    fn from(s: kiyori_core::chat_preferences::Snapshot) -> Self {
+        let v = s.value;
+        Self {
+            revision: s.revision,
+            history_mode: v.history_mode,
+            auto_character: v.auto_character,
+            auto_chat: v.auto_chat,
+            thinking: v.thinking,
+            thinking_quality: v.thinking_quality,
+            message_style: v.message_style,
+            input_style: v.input_style,
+            memory_auto: v.memory_auto,
+            tools_enabled: v.tools_enabled,
+            permission: v.permission,
+            disable_stream: v.disable_stream,
+            auto_read: v.auto_read,
+            disable_preferences: v.disable_preferences,
+            folders: s.folders,
+        }
+    }
 }
 
 #[frb(opaque)]
@@ -92,6 +166,7 @@ impl ConversationPreparation {
         payload: String,
         replace_from: Option<String>,
         revision: Option<u32>,
+        reply_to: Option<String>,
     ) -> Result<ChatHandle, BridgeError> {
         let prepared = self
             .prepared
@@ -106,12 +181,13 @@ impl ConversationPreparation {
                 message: "请求准备已使用或释放".into(),
             })?;
         Ok(ChatHandle {
-            inner: Arc::new(self.runtime.start_conversation_replacing(
+            inner: Arc::new(self.runtime.start_conversation_replying(
                 prepared,
                 text,
                 payload,
                 replace_from,
                 revision,
+                reply_to,
             )?),
         })
     }
@@ -1094,12 +1170,46 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn chat_preferences(&self) -> Result<ChatPreferences, BridgeError> {
+        Ok(self.inner.chat_preferences()?.into())
+    }
+    pub fn change_chat_preference(
+        &self,
+        revision: u32,
+        key: String,
+        value: String,
+    ) -> Result<ChatPreferences, BridgeError> {
+        Ok(self
+            .inner
+            .change_chat_preference(revision, key, value)?
+            .into())
+    }
+    pub fn conversation_statistics(
+        &self,
+        id: String,
+    ) -> Result<ConversationStatistics, BridgeError> {
+        let v = self.inner.conversation_statistics(id)?;
+        Ok(ConversationStatistics {
+            requests: v.requests,
+            reported_requests: v.reported_requests,
+            input_tokens: v.input_tokens,
+            output_tokens: v.output_tokens,
+            recent_input_tokens: v.recent_input_tokens,
+            recent_output_tokens: v.recent_output_tokens,
+            recent_model: v.recent_model,
+            first_output_ms: v.first_output_ms,
+            duration_ms: v.duration_ms,
+        })
+    }
     pub fn conversation_catalog(&self) -> Result<ConversationCatalog, BridgeError> {
         let value = self.inner.conversation_catalog()?;
         Ok(ConversationCatalog {
             active_id: value.active_id,
             conversations: value.conversations.into_iter().map(Into::into).collect(),
         })
+    }
+    pub fn search_conversations(&self, query: String) -> Result<Vec<String>, BridgeError> {
+        Ok(self.inner.search_conversations(&query)?)
     }
     pub fn conversation(&self, id: String) -> Result<ConversationSnapshot, BridgeError> {
         Ok(self.inner.conversation(id)?.into())
@@ -1109,6 +1219,9 @@ impl RuntimeHandle {
     }
     pub fn select_conversation(&self, id: String) -> Result<(), BridgeError> {
         Ok(self.inner.select_conversation(id)?)
+    }
+    pub fn select_chat_character(&self, id: String) -> Result<(), BridgeError> {
+        Ok(self.inner.select_chat_character(id)?)
     }
     pub fn change_conversation(
         &self,
@@ -1133,9 +1246,15 @@ impl RuntimeHandle {
             .inner
             .change_message(id, revision, message, action, text)?)
     }
-    pub fn prepare_conversation(&self, id: String) -> Result<ConversationPreparation, BridgeError> {
+    pub fn prepare_conversation(
+        &self,
+        id: String,
+        target: Option<String>,
+    ) -> Result<ConversationPreparation, BridgeError> {
         Ok(ConversationPreparation {
-            prepared: std::sync::Mutex::new(Some(self.inner.prepare_conversation(id)?)),
+            prepared: std::sync::Mutex::new(Some(
+                self.inner.prepare_conversation_target(id, target)?,
+            )),
             runtime: self.inner.clone(),
         })
     }
@@ -1199,6 +1318,7 @@ impl RuntimeHandle {
         Ok(ChatHandle {
             inner: Arc::new(
                 self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    stream: true,
                     probe: None,
                     protocol: request.protocol,
                     endpoint: request.endpoint,

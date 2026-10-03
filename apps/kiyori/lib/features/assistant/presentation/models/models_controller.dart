@@ -15,31 +15,55 @@ class ModelsController extends ChangeNotifier {
   bool loading = false, _disposed = false;
   String? error;
   String? cleanupWarning;
+  // 只记录固定诊断码，不保存native异常正文、路径或凭据。
+  String? cleanupDiagnostic;
+  Future<void>? _loadFlight;
+  Future<void> _secretTail = Future<void>.value();
   int _generation = 0;
 
   void _notify() {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> load() async {
+  Future<T> _withSecrets<T>(Future<T> Function() action) {
+    final result = _secretTail.then((_) => action());
+    _secretTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  Future<void> load() => _loadFlight ??= _load().whenComplete(() {
+    _loadFlight = null;
+  });
+
+  Future<void> _refreshCommitted() async {
+    // 已经在途的目录读取可能早于本次提交，必须等待后重新读取。
+    await _loadFlight;
+    await load();
+  }
+
+  Future<void> _load() async {
     final generation = ++_generation;
     loading = true;
     error = null;
     _notify();
     try {
+      try {
+        await cleanupRetired();
+        cleanupWarning = null;
+        cleanupDiagnostic = null;
+      } catch (failure) {
+        final busy =
+            failure is BridgeError &&
+            failure.message == 'Model secret storage is busy.';
+        // 另一个实例/聊天短lease正在使用凭据不是清理失败；保留账本，下次再对账。
+        cleanupDiagnostic = busy ? 'cleanup_deferred_busy' : 'cleanup_failed';
+        if (!busy) cleanupWarning = '安全凭据维护未完成';
+      }
       final value = await (await connect()).modelCatalog();
       if (!_disposed && generation == _generation) catalog = value;
-      try {
-        final lease = await (await connect()).beginModelSecrets();
-        try {
-          await cleanupRetired(lease: lease);
-        } finally {
-          await lease.close();
-        }
-        cleanupWarning = null;
-      } catch (_) {
-        cleanupWarning = '旧安全凭据清理未完成，点击重试';
-      }
     } catch (_) {
       if (!_disposed && generation == _generation) error = '模型配置读取失败，请重试';
     } finally {
@@ -50,7 +74,10 @@ class ModelsController extends ChangeNotifier {
     }
   }
 
-  Future<ModelCredentials> readCredentials(ModelConfig config) async {
+  Future<ModelCredentials> readCredentials(ModelConfig config) =>
+      _withSecrets(() => _readCredentials(config));
+
+  Future<ModelCredentials> _readCredentials(ModelConfig config) async {
     final runtime = await connect();
     final lease = await runtime.beginModelSecrets();
     try {
@@ -71,7 +98,11 @@ class ModelsController extends ChangeNotifier {
     }
   }
 
-  Future<void> cleanupRetired({ModelSecretsWrite? lease}) async {
+  Future<void> cleanupRetired({ModelSecretsWrite? lease}) => lease == null
+      ? _withSecrets(() => _cleanupRetired())
+      : _cleanupRetired(lease: lease);
+
+  Future<void> _cleanupRetired({ModelSecretsWrite? lease}) async {
     final runtime = await connect();
     final owned = lease ?? await runtime.beginModelSecrets();
     try {
@@ -89,6 +120,20 @@ class ModelsController extends ChangeNotifier {
   }
 
   Future<ModelConfig> save(
+    ModelConfig base,
+    ModelConfigDraft draft,
+    ModelCredentials before,
+    ModelCredentials after, {
+    String? replacement,
+  }) async {
+    final committed = await _withSecrets(
+      () => _save(base, draft, before, after, replacement: replacement),
+    );
+    await _refreshCommitted();
+    return committed;
+  }
+
+  Future<ModelConfig> _save(
     ModelConfig base,
     ModelConfigDraft draft,
     ModelCredentials before,
@@ -120,7 +165,7 @@ class ModelsController extends ChangeNotifier {
         try {
           // 活跃检查与退役在核心同一事务；提交响应丢失也不能删活跃凭据。
           await runtime.retireModelSecret(reserved);
-          await cleanupRetired(lease: lease);
+          await _cleanupRetired(lease: lease);
         } catch (_) {
           cleanupWarning = '部分安全凭据等待对账，原配置保持可恢复';
         }
@@ -136,19 +181,12 @@ class ModelsController extends ChangeNotifier {
       draft: draft,
       secretReference: reference,
     );
-    try {
-      await cleanupRetired();
-      cleanupWarning = null;
-    } catch (_) {
-      cleanupWarning = '配置已保存，旧安全凭据清理将在下次重试';
-    }
-    await load();
     return committed;
   }
 
   Future<String> create(String name) async {
     final id = await (await connect()).createModelConfig(name);
-    await load();
+    await _refreshCommitted();
     return id;
   }
 
@@ -163,22 +201,17 @@ class ModelsController extends ChangeNotifier {
       replacementConfig,
       replacementModel,
     );
-    try {
-      await cleanupRetired();
-    } catch (_) {
-      cleanupWarning = '配置已删除，安全凭据清理将在下次重试';
-    }
-    await load();
+    await _refreshCommitted();
   }
 
   Future<void> select(String function, String config, String model) async {
     await (await connect()).selectFunctionModel(function, config, model);
-    await load();
+    await _refreshCommitted();
   }
 
   Future<void> resetFunctions() async {
     await (await connect()).resetFunctionModels();
-    await load();
+    await _refreshCommitted();
   }
 
   @override

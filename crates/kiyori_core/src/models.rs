@@ -374,8 +374,10 @@ impl AppStore {
             .truncate(false)
             .open(self.directory.join("model-secrets.lock"))
             .map_err(|_| invalid("Cannot open model secret lock."))?;
-        file.try_lock()
-            .map_err(|_| invalid("Model secret storage is busy or locking is unavailable."))?;
+        file.try_lock().map_err(|error| match error {
+            std::fs::TryLockError::WouldBlock => invalid("Model secret storage is busy."),
+            std::fs::TryLockError::Error(_) => invalid("Model secret locking is unavailable."),
+        })?;
         let lease = ModelSecretsLease {
             directory: self.directory.clone(),
             file: Mutex::new(Some(file)),

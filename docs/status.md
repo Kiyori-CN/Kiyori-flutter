@@ -1,13 +1,58 @@
 # 当前实施状态
 
-更新时间：2026-10-03（Asia/Shanghai）。本文件是当前实施进度唯一权威；
+更新时间：2026-10-04（Asia/Shanghai）。本文件是当前实施进度唯一权威；
 [路线图](roadmap.md)规定顺序，[历史记录](status-history.md)保留过往批次证据。
 
 ## 当前任务：设置全树与AI真实业务连续开发
 
+本轮从已交付766eb0c承接，重新逐项核对[聊天交互对照](design/chat-replication-checklist.md)。
+用户于2026-10-04要求适时停止开发并构建、提交、推送以手动安装APK检查。
+当前按该要求冻结新增功能，已完成阶段预览包构建与本机验证；全清单复刻仍未完成，
+交付后暂停开发等待用户手动安装反馈。
+本轮已修API协议缺少summary造成右侧值、模型安全操作同owner锁竞争及SafeArea外警告；
+models定向15项通过（work/parity-models-v5.log），含32px状态栏及真实清理失败/恢复；
+实际清理失败保留retired并可重试，锁忙不误报。全屏草稿、停止按钮、左侧历史及正文搜索、
+长按复制、消息片段编辑与失败保留、300/420模型卡及真实MAX保存、模态路由租期已实施；
+parity-editor-v1/popup-v1各9项、parity-lifecycle-v1十二项通过。
+统计区分未报告与报告0，保存首次正文时刻；schema11加入历史文件夹、置顶/锁定/排序与聊天偏好。
+完整Rust73项通过（work/parity-verify-v3.log），含旧版本迁移、角色切换事务和思考参数边界；
+schema12新增运行角色名称快照，schema13保存角色ID与回复版本；旧数据未知来源保持空值。
+历史按角色/文件夹分组、折叠、重命名及失败草稿保留已接入；组合回归11项通过
+（work/parity-history-v2.log）。角色选择默认不改写历史归属，自动切换由Rust同一事务完成。
+流式Markdown后台解析与持续delta节流通过；主题模式保存和BUBBLE/CLASSIC基本投影已接入，
+模式交互回归已通过；最终截图套件20项通过，13张PNG位于work/parity-capture-final，
+明暗、320大字/键盘、模型弹层、角色、统计、编辑及历史代表图已人工审阅。
+后续增量已实施CLASSIC设置/模型嵌套与回复预览、历史拖拽/左右滑动与角色排序隔离、
+多选Back及批量删除事务、非流式真实请求、Markdown保守增量与终态状态保留。
+schema13新增消息回复版本，单条再生成保留后续消息和原回复，分支复制独立版本；
+work/parity-actions-rust-v2十二项、parity-regression-v5十项、parity-history-v4六项通过。
+parity-incremental-v3五项通过，含每个流前缀与正式Markdown完整解析对照；HTML边界差异已修。
+记忆文件夹选择/预览/移除及非流式正式请求扩展三项通过（work/parity-memory-nonstream-v3.log），
+工具发送明确能力边界并保留草稿。
+再生成按运行中保存的角色ID准备配置/凭据，旧数据缺少身份时明确拒绝，不猜测当前角色。
+其余附件布局、历史文件夹作用域、消息分享与完整旧版细节仍待继续核对，不能宣称清单全部复刻。
+本轮完整tools/verify.ps1 -WindowsIntegration已通过（work/parity-verify-v3.log）：
+56文档/4脚本、Rust73/fmt/Clippy、345 Dart格式/analyze、Flutter554（11条件跳过）、
+platform5、独立FFI18和Windows引擎5；含正式页面/DPAPI/SQLite本地两轮及历史重开。
+初轮Clippy写法和两处Dart格式问题已修，失败日志保留；未降低检查标准。
+按用户收尾要求本轮不追加供应商请求，不引用上轮请求当本轮证明。
+generate-bridge.ps1 -Check五个输出一致。Android ARM64 Debug（59.4s）和普通产品入口
+Windows x64 Debug（11.5s）已串行完成，日志parity-android-final / parity-windows-final。
+固定artifacts/ui-preview/20261004-021908，旧20261003-223817保留：
+APK117892490字节，SHA256 51CA40FDE39E99A43D29003DDBF066BE3A0ADB82F0DB74C10449C1BC5542033B；
+Windows84文件158471576字节；Rust DLL10374656字节，SHA256
+0C21FB550028A04E4A39DFDB0181AA5793BD6273B95ABEB6D798A56955D200C1。
+85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及Windows x64/Flutter DLL pin通过；
+Windows原生runner增量复用，最新Dart由kernel hash与时间核对，manifest记录完整文件哈希。
+本批69个源码/测试/文档按精确允许清单审计，无敏感模式、异常大文件或链接/gitlink，
+固定包/日志/测试临时数据不进入Git；提交后普通推送main，最终ref以Git及manifest为准。
+Android安装/触摸/键盘/安全存储实机、Profile、Apple和本轮指定供应商保持待验证；
+SQLite已迁移到schema13，回滚需恢复对应二进制与升级前一致数据，不能直接降级覆盖新库。
+以下各批记录仅为历史实现证据，不代表本轮已达到相关UI/交互复刻验收。
+
 当前收敛切片为“配置API并正常基本文字对话”，基线main/21044e8，承接未提交密钥轮换与
-会话核心。schema9、正式ChatPage发送/停止、历史、新建/切换/重命名/删除、基础消息菜单、
-角色与模型选择、安全短lease和多轮持久化已实现；本机验证通过，正在最终构建交付。
+会话核心。历史批次schema9、正式ChatPage发送/停止、历史、新建/切换/重命名/删除、基础消息菜单、
+角色与模型选择、安全短lease和多轮持久化已实现并完成上轮交付；不是本轮最终验证证据。
 core/conversations复用Runtime/SQLite，先保存后投影、OS锁恢复中断、不自动重试；重发先校验
 配置与凭据，再事务替换历史。流式局部32ms合并，上翻停止跟随。默认UI按旧CURSOR/AGENT。
 

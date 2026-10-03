@@ -12,9 +12,13 @@ import 'appearance_nine_slice.dart';
 class AppearanceChat extends StatefulWidget {
   const AppearanceChat({
     this.snapshot = const AppearanceMediaPresentation(),
+    this.persistedBubble,
+    this.onBubble,
     super.key,
   });
   final AppearanceMediaPresentation snapshot;
+  final bool? persistedBubble;
+  final Future<bool> Function(bool)? onBubble;
   @override
   State<AppearanceChat> createState() => _AppearanceChatState();
 }
@@ -32,7 +36,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
   @override
   void initState() {
     super.initState();
-    bubble = widget.snapshot.bubble;
+    bubble = widget.persistedBubble ?? widget.snapshot.bubble;
     tiled = widget.snapshot.tiled;
     images[0].read(widget.snapshot.userBubble);
     images[1].read(widget.snapshot.aiBubble);
@@ -56,6 +60,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
       images[1].media = next.aiBubble.media;
     }
     if (old.bubble != next.bubble) bubble = next.bubble;
+    if (widget.persistedBubble != null) bubble = widget.persistedBubble!;
     if (old.tiled != next.tiled) tiled = next.tiled;
     if (!old.userFont.sameSettings(next.userFont)) {
       fonts[0].read(next.userFont);
@@ -70,6 +75,11 @@ class _AppearanceChatState extends State<AppearanceChat> {
   }
 
   void refreshDraft() => setState(() {});
+  Future<void> chooseBubble(bool value) async {
+    if (widget.onBubble != null && !await widget.onBubble!(value)) return;
+    if (mounted) setState(() => bubble = value);
+  }
+
   final colors = [
     const Color(0xFFD8ECFF),
     const Color(0xFFD8ECFF),
@@ -117,7 +127,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
                 child: AppearanceChoice(
                   '命令框',
                   selected: !bubble,
-                  onTap: () => setState(() => bubble = false),
+                  onTap: () => chooseBubble(false),
                 ),
               ),
               const SizedBox(width: 8),
@@ -125,7 +135,7 @@ class _AppearanceChatState extends State<AppearanceChat> {
                 child: AppearanceChoice(
                   '对话框',
                   selected: bubble,
-                  onTap: () => setState(() => bubble = true),
+                  onTap: () => chooseBubble(true),
                 ),
               ),
             ],

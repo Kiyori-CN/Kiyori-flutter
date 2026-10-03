@@ -33,10 +33,50 @@ class PersistentModelsPage extends StatefulWidget {
 }
 
 class _PersistentModelsPageState extends State<PersistentModelsPage> {
+  final messenger = GlobalKey<ScaffoldMessengerState>();
+  String? shownError;
+
+  void changed() {
+    final error = widget.controller.error;
+    if (error == shownError) return;
+    shownError = error;
+    if (error == null || widget.controller.catalog == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.controller.error != error) return;
+      messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(error),
+          action: SnackBarAction(
+            label: '重试',
+            onPressed: widget.controller.load,
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    widget.controller.addListener(changed);
     unawaited(widget.controller.load());
+  }
+
+  @override
+  void didUpdateWidget(PersistentModelsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(changed);
+      widget.controller.addListener(changed);
+      shownError = null;
+      unawaited(widget.controller.load());
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(changed);
+    super.dispose();
   }
 
   @override
@@ -58,47 +98,34 @@ class _PersistentModelsPageState extends State<PersistentModelsPage> {
         );
       }
       final configs = catalog.configs.map(presentModel).toList();
-      return Column(
-        children: [
-          if (owner.error != null || owner.cleanupWarning != null)
-            Material(
-              child: ListTile(
-                title: Text(owner.error ?? owner.cleanupWarning!),
-                trailing: TextButton(
-                  onPressed: owner.load,
-                  child: const Text('重试'),
+      return ScaffoldMessenger(
+        key: messenger,
+        child: widget.functions
+            ? FunctionModelsPage(
+                onManage: widget.onManage,
+                onSelect: owner.select,
+                onReset: owner.resetFunctions,
+                snapshot: FunctionModelsPresentation(
+                  configs: configs,
+                  selections: {
+                    for (final f in catalog.functions)
+                      AssistantFunction.values.byName(
+                        f.function,
+                      ): FunctionModelSelection(
+                        f.configId,
+                        configs
+                            .firstWhere((c) => c.id == f.configId)
+                            .models
+                            .indexOf(f.modelName),
+                      ),
+                  },
                 ),
+              )
+            : ModelApiPage(
+                controller: owner,
+                configurations: configs,
+                onOpenLocalModels: widget.onManage,
               ),
-            ),
-          Expanded(
-            child: widget.functions
-                ? FunctionModelsPage(
-                    onManage: widget.onManage,
-                    onSelect: owner.select,
-                    onReset: owner.resetFunctions,
-                    snapshot: FunctionModelsPresentation(
-                      configs: configs,
-                      selections: {
-                        for (final f in catalog.functions)
-                          AssistantFunction.values.byName(
-                            f.function,
-                          ): FunctionModelSelection(
-                            f.configId,
-                            configs
-                                .firstWhere((c) => c.id == f.configId)
-                                .models
-                                .indexOf(f.modelName),
-                          ),
-                      },
-                    ),
-                  )
-                : ModelApiPage(
-                    controller: owner,
-                    configurations: configs,
-                    onOpenLocalModels: widget.onManage,
-                  ),
-          ),
-        ],
       );
     },
   );

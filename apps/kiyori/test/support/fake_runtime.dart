@@ -25,6 +25,39 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<List<String>> searchConversations(String query) async => [];
+  @override
+  Future<ChatPreferences> chatPreferences() async => const ChatPreferences(
+    revision: 1,
+    historyMode: 'folder',
+    autoCharacter: false,
+    autoChat: false,
+    thinking: false,
+    thinkingQuality: 2,
+    messageStyle: 'cursor',
+    inputStyle: 'agent',
+    memoryAuto: true,
+    toolsEnabled: true,
+    permission: 'ask',
+    disableStream: false,
+    autoRead: false,
+    disablePreferences: false,
+    folders: [],
+  );
+  @override
+  Future<ChatPreferences> changeChatPreference(
+    int revision,
+    String key,
+    String value,
+  ) async => throw UnimplementedError();
+  @override
+  Future<ConversationStatistics> conversationStatistics(String id) async =>
+      const ConversationStatistics(
+        requests: 0,
+        reportedRequests: 0,
+        recentModel: '',
+      );
+  @override
   Future<ConversationCatalog> conversationCatalog() async =>
       const ConversationCatalog(activeId: null, conversations: []);
   @override
@@ -34,6 +67,9 @@ class FakeClient implements RuntimeClient {
   Future<String> createConversation() async => throw UnimplementedError();
   @override
   Future<void> selectConversation(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<void> selectChatCharacter(String id) async =>
       throw UnimplementedError();
   @override
   Future<void> changeConversation(
@@ -51,8 +87,10 @@ class FakeClient implements RuntimeClient {
     String text,
   ) async => throw UnimplementedError();
   @override
-  Future<PreparedConversation> prepareConversation(String id) async =>
-      throw UnimplementedError();
+  Future<PreparedConversation> prepareConversation(
+    String id, {
+    String? target,
+  }) async => throw UnimplementedError();
   @override
   Future<ChatRun> startConfiguredProbe(
     String id,

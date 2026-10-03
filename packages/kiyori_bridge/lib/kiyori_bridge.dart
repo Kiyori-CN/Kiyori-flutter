@@ -6,6 +6,8 @@ export 'src/generated/api.dart'
         ConversationCatalog,
         ConversationMessage,
         ConversationSnapshot,
+        ConversationStatistics,
+        ChatPreferences,
         ChatMessage,
         PoolKey,
         ChatHeader,

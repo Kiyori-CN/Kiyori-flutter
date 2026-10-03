@@ -12,9 +12,14 @@ import 'appearance_media_presentation.dart';
 class AppearanceSettingsPage extends StatefulWidget {
   const AppearanceSettingsPage({
     this.media = const AppearanceMediaPresentation(),
+    this.messageStyle,
+    this.inputStyle,
+    this.onPreference,
     super.key,
   });
   final AppearanceMediaPresentation media;
+  final String? messageStyle, inputStyle;
+  final Future<bool> Function(String, String)? onPreference;
   @override
   State<AppearanceSettingsPage> createState() => _AppearanceSettingsPageState();
 }
@@ -25,8 +30,24 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
   List<Widget> get panels => [
     AppearanceBasic(snapshot: widget.media.font),
     AppearanceBackground(snapshot: widget.media.background),
-    AppearanceChat(snapshot: widget.media),
-    const AppearanceInput(),
+    AppearanceChat(
+      snapshot: widget.media,
+      persistedBubble: widget.messageStyle == null
+          ? null
+          : widget.messageStyle == 'bubble',
+      onBubble: widget.onPreference == null
+          ? null
+          : (v) =>
+                widget.onPreference!('message_style', v ? 'bubble' : 'cursor'),
+    ),
+    AppearanceInput(
+      persistedAgent: widget.inputStyle == null
+          ? null
+          : widget.inputStyle == 'agent',
+      onAgent: widget.onPreference == null
+          ? null
+          : (v) => widget.onPreference!('input_style', v ? 'agent' : 'classic'),
+    ),
     const AppearanceInterface(),
   ];
   // 旧 ThemeSettingsTabs 使用语义色，区别于设置目录的 IconTone 角色色。

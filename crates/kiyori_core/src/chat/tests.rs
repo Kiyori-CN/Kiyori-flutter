@@ -37,6 +37,7 @@ use std::net::TcpListener;
 
 fn request(endpoint: String) -> ChatRequest {
     ChatRequest {
+        stream: true,
         probe: None,
         protocol: "chat".into(),
         endpoint,
@@ -49,6 +50,53 @@ fn request(endpoint: String) -> ChatRequest {
         }],
         parameters: "{\"temperature\":0}".into(),
         timeout_ms: 3000,
+    }
+}
+
+#[tokio::test]
+async fn nonstream_chat_and_responses_use_json_and_preserve_usage() {
+    for (protocol, body) in [
+        (
+            "chat",
+            json!({"choices":[{"index":0,"message":{"role":"assistant","content":"完整回复"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}),
+        ),
+        (
+            "responses",
+            json!({"status":"completed","output":[{"type":"message","role":"assistant","id":"message","content":[{"type":"output_text","text":"完整回复"}]}],"usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}),
+        ),
+    ] {
+        let (endpoint, worker) = serve("200 OK", body.to_string(), "application/json");
+        let runtime = Runtime::new();
+        let mut input = request(endpoint);
+        input.stream = false;
+        input.protocol = protocol.into();
+        let run = runtime.start_chat(input).unwrap();
+        let mut events = vec![];
+        while let Some(event) = run.next_event().await.unwrap() {
+            events.push(event);
+        }
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e,ChatEvent::Text(text) if text=="完整回复"))
+        );
+        assert!(events.iter().any(|e| matches!(
+            e,
+            ChatEvent::Usage {
+                input: 2,
+                output: 3,
+                total: 5
+            }
+        )));
+        assert!(matches!(events.last(),Some(ChatEvent::Completed {reason,..}) if reason=="stop"));
+        let request = worker.join().unwrap();
+        assert!(request.contains("\"stream\":false"));
+        assert!(
+            request
+                .to_ascii_lowercase()
+                .contains("accept: application/json")
+        );
+        runtime.close();
     }
 }
 

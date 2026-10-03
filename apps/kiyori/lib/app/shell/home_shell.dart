@@ -46,6 +46,7 @@ class _HomeShellState extends State<HomeShell> {
     Navigator.of(context),
     prompts: widget.prompts,
     models: widget.models,
+    chat: widget.chat,
   );
 
   final pager = PageController(initialPage: 1);
@@ -69,6 +70,19 @@ class _HomeShellState extends State<HomeShell> {
       onOpenDrawer: openAiDrawer,
       controller: widget.chat,
       onOpenModels: navigation.openModels,
+      onOpenCharacters: navigation.openCharacters,
+      onOpenTools: navigation.openToolboxSettings,
+      onOpenMemory: () {
+        final knowledge = widget.knowledge;
+        if (knowledge != null) {
+          navigation.openPage(
+            KnowledgePage(
+              controller: knowledge,
+              onMenu: () => Navigator.of(context).maybePop(),
+            ),
+          );
+        }
+      },
     ),
   ];
 

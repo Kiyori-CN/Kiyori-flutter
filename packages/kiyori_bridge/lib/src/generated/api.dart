@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -36,6 +36,7 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
     required String payload,
     String? replaceFrom,
     int? revision,
+    String? replyTo,
   });
 }
 
@@ -66,6 +67,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<ModelSecretsHandle> beginModelSecrets();
 
+  Future<ChatPreferences> changeChatPreference({
+    required int revision,
+    required String key,
+    required String value,
+  });
+
   Future<void> changeConversation({
     required String id,
     required int revision,
@@ -81,6 +88,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String text,
   });
 
+  Future<ChatPreferences> chatPreferences();
+
   Future<void> close();
 
   Future<String> composeCharacterPrompt({
@@ -93,6 +102,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<ConversationSnapshot> conversation({required String id});
 
   Future<ConversationCatalog> conversationCatalog();
+
+  Future<ConversationStatistics> conversationStatistics({required String id});
 
   Future<String> createConversation();
 
@@ -170,7 +181,10 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<ModelCatalog> modelCatalog();
 
-  Future<ConversationPreparation> prepareConversation({required String id});
+  Future<ConversationPreparation> prepareConversation({
+    required String id,
+    String? target,
+  });
 
   Future<PromptCatalog> promptCatalog();
 
@@ -241,6 +255,10 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     int? revision,
     required TagDraft draft,
   });
+
+  Future<List<String>> searchConversations({required String query});
+
+  Future<void> selectChatCharacter({required String id});
 
   Future<void> selectConversation({required String id});
 
@@ -523,6 +541,81 @@ enum ChatPhase {
   cancelled,
 }
 
+class ChatPreferences {
+  final int revision;
+  final String historyMode;
+  final bool autoCharacter;
+  final bool autoChat;
+  final bool thinking;
+  final int thinkingQuality;
+  final String messageStyle;
+  final String inputStyle;
+  final bool memoryAuto;
+  final bool toolsEnabled;
+  final String permission;
+  final bool disableStream;
+  final bool autoRead;
+  final bool disablePreferences;
+  final List<String> folders;
+
+  const ChatPreferences({
+    required this.revision,
+    required this.historyMode,
+    required this.autoCharacter,
+    required this.autoChat,
+    required this.thinking,
+    required this.thinkingQuality,
+    required this.messageStyle,
+    required this.inputStyle,
+    required this.memoryAuto,
+    required this.toolsEnabled,
+    required this.permission,
+    required this.disableStream,
+    required this.autoRead,
+    required this.disablePreferences,
+    required this.folders,
+  });
+
+  @override
+  int get hashCode =>
+      revision.hashCode ^
+      historyMode.hashCode ^
+      autoCharacter.hashCode ^
+      autoChat.hashCode ^
+      thinking.hashCode ^
+      thinkingQuality.hashCode ^
+      messageStyle.hashCode ^
+      inputStyle.hashCode ^
+      memoryAuto.hashCode ^
+      toolsEnabled.hashCode ^
+      permission.hashCode ^
+      disableStream.hashCode ^
+      autoRead.hashCode ^
+      disablePreferences.hashCode ^
+      folders.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatPreferences &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          historyMode == other.historyMode &&
+          autoCharacter == other.autoCharacter &&
+          autoChat == other.autoChat &&
+          thinking == other.thinking &&
+          thinkingQuality == other.thinkingQuality &&
+          messageStyle == other.messageStyle &&
+          inputStyle == other.inputStyle &&
+          memoryAuto == other.memoryAuto &&
+          toolsEnabled == other.toolsEnabled &&
+          permission == other.permission &&
+          disableStream == other.disableStream &&
+          autoRead == other.autoRead &&
+          disablePreferences == other.disablePreferences &&
+          folders == other.folders;
+}
+
 class ChatRequest {
   final String protocol;
   final String endpoint;
@@ -639,6 +732,9 @@ class Conversation {
   final int revision;
   final PlatformInt64 updatedAt;
   final int messageCount;
+  final String folder;
+  final bool pinned;
+  final bool locked;
 
   const Conversation({
     required this.id,
@@ -648,6 +744,9 @@ class Conversation {
     required this.revision,
     required this.updatedAt,
     required this.messageCount,
+    required this.folder,
+    required this.pinned,
+    required this.locked,
   });
 
   @override
@@ -658,7 +757,10 @@ class Conversation {
       characterName.hashCode ^
       revision.hashCode ^
       updatedAt.hashCode ^
-      messageCount.hashCode;
+      messageCount.hashCode ^
+      folder.hashCode ^
+      pinned.hashCode ^
+      locked.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -671,7 +773,10 @@ class Conversation {
           characterName == other.characterName &&
           revision == other.revision &&
           updatedAt == other.updatedAt &&
-          messageCount == other.messageCount;
+          messageCount == other.messageCount &&
+          folder == other.folder &&
+          pinned == other.pinned &&
+          locked == other.locked;
 }
 
 class ConversationCatalog {
@@ -693,6 +798,8 @@ class ConversationCatalog {
 }
 
 class ConversationMessage {
+  final int variant;
+  final int variantCount;
   final String id;
   final String runId;
   final String role;
@@ -700,8 +807,16 @@ class ConversationMessage {
   final String state;
   final String error;
   final String model;
+  final String? roleName;
+  final PlatformInt64? sentAt;
+  final PlatformInt64? firstOutputMs;
+  final PlatformInt64? durationMs;
+  final PlatformInt64? inputTokens;
+  final PlatformInt64? outputTokens;
 
   const ConversationMessage({
+    required this.variant,
+    required this.variantCount,
     required this.id,
     required this.runId,
     required this.role,
@@ -709,30 +824,52 @@ class ConversationMessage {
     required this.state,
     required this.error,
     required this.model,
+    this.roleName,
+    this.sentAt,
+    this.firstOutputMs,
+    this.durationMs,
+    this.inputTokens,
+    this.outputTokens,
   });
 
   @override
   int get hashCode =>
+      variant.hashCode ^
+      variantCount.hashCode ^
       id.hashCode ^
       runId.hashCode ^
       role.hashCode ^
       content.hashCode ^
       state.hashCode ^
       error.hashCode ^
-      model.hashCode;
+      model.hashCode ^
+      roleName.hashCode ^
+      sentAt.hashCode ^
+      firstOutputMs.hashCode ^
+      durationMs.hashCode ^
+      inputTokens.hashCode ^
+      outputTokens.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ConversationMessage &&
           runtimeType == other.runtimeType &&
+          variant == other.variant &&
+          variantCount == other.variantCount &&
           id == other.id &&
           runId == other.runId &&
           role == other.role &&
           content == other.content &&
           state == other.state &&
           error == other.error &&
-          model == other.model;
+          model == other.model &&
+          roleName == other.roleName &&
+          sentAt == other.sentAt &&
+          firstOutputMs == other.firstOutputMs &&
+          durationMs == other.durationMs &&
+          inputTokens == other.inputTokens &&
+          outputTokens == other.outputTokens;
 }
 
 class ConversationSnapshot {
@@ -754,6 +891,57 @@ class ConversationSnapshot {
           runtimeType == other.runtimeType &&
           conversation == other.conversation &&
           messages == other.messages;
+}
+
+class ConversationStatistics {
+  final int requests;
+  final int reportedRequests;
+  final PlatformInt64? inputTokens;
+  final PlatformInt64? outputTokens;
+  final PlatformInt64? recentInputTokens;
+  final PlatformInt64? recentOutputTokens;
+  final String recentModel;
+  final PlatformInt64? firstOutputMs;
+  final PlatformInt64? durationMs;
+
+  const ConversationStatistics({
+    required this.requests,
+    required this.reportedRequests,
+    this.inputTokens,
+    this.outputTokens,
+    this.recentInputTokens,
+    this.recentOutputTokens,
+    required this.recentModel,
+    this.firstOutputMs,
+    this.durationMs,
+  });
+
+  @override
+  int get hashCode =>
+      requests.hashCode ^
+      reportedRequests.hashCode ^
+      inputTokens.hashCode ^
+      outputTokens.hashCode ^
+      recentInputTokens.hashCode ^
+      recentOutputTokens.hashCode ^
+      recentModel.hashCode ^
+      firstOutputMs.hashCode ^
+      durationMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationStatistics &&
+          runtimeType == other.runtimeType &&
+          requests == other.requests &&
+          reportedRequests == other.reportedRequests &&
+          inputTokens == other.inputTokens &&
+          outputTokens == other.outputTokens &&
+          recentInputTokens == other.recentInputTokens &&
+          recentOutputTokens == other.recentOutputTokens &&
+          recentModel == other.recentModel &&
+          firstOutputMs == other.firstOutputMs &&
+          durationMs == other.durationMs;
 }
 
 class DiaryDocument {

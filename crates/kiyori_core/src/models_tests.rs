@@ -156,7 +156,7 @@ fn context_invalid_options_roll_back_media_and_schema_six_migrates() {
         .connection
         .lock()
         .unwrap()
-        .execute_batch("DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE history_retention; PRAGMA user_version=6;")
+        .execute_batch("DROP TABLE conversation_variants; DROP TABLE chat_preferences; DROP TABLE conversation_folders; DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE history_retention; PRAGMA user_version=6;")
         .unwrap();
     drop(store);
     let reopened = AppStore::open(&dir.0).unwrap();

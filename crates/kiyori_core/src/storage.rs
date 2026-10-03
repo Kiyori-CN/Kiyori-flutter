@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 9;
+const SCHEMA_VERSION: i32 = 13;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -193,6 +193,38 @@ impl AppStore {
             transaction
                 .execute_batch(crate::conversations::SCHEMA)
                 .map_err(|_| error("Cannot migrate conversation storage."))?;
+        }
+        if version < 10 {
+            transaction.execute_batch(
+                "ALTER TABLE conversation_runs ADD COLUMN usage_reported INTEGER NOT NULL DEFAULT 0;
+                 ALTER TABLE conversation_runs ADD COLUMN first_output_at INTEGER;
+                 UPDATE conversation_runs SET usage_reported=1 WHERE input_tokens>0 OR output_tokens>0;
+                 PRAGMA user_version=10;"
+            ).map_err(|_| error("Cannot migrate conversation usage evidence."))?;
+        }
+        if version < 11 {
+            transaction.execute_batch(
+                "CREATE TABLE conversation_folders(name TEXT PRIMARY KEY NOT NULL);
+                 ALTER TABLE conversations ADD COLUMN folder TEXT NOT NULL DEFAULT '';
+                 ALTER TABLE conversations ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+                 ALTER TABLE conversations ADD COLUMN locked INTEGER NOT NULL DEFAULT 0;
+                 ALTER TABLE conversations ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+                 CREATE TABLE chat_preferences(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,value TEXT NOT NULL);
+                 INSERT INTO chat_preferences VALUES(1,1,'{}');
+                 PRAGMA user_version=11;"
+            ).map_err(|_| error("Cannot migrate conversation organization."))?;
+        }
+        if version < 12 {
+            // 历史运行没有角色快照时保留NULL；不能用当前角色冒充当时的回复来源。
+            transaction.execute_batch("ALTER TABLE conversation_runs ADD COLUMN role_name TEXT; PRAGMA user_version=12;")
+                .map_err(|_| error("Cannot migrate conversation role snapshots."))?;
+        }
+        if version < 13 {
+            transaction.execute_batch("ALTER TABLE conversation_messages ADD COLUMN variant INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE conversation_runs ADD COLUMN role_id TEXT;
+                CREATE TABLE conversation_variants(message_id TEXT NOT NULL REFERENCES conversation_messages(id) ON DELETE CASCADE,
+                variant INTEGER NOT NULL,run_id TEXT,content TEXT NOT NULL,state TEXT NOT NULL,
+                PRIMARY KEY(message_id,variant)); PRAGMA user_version=13;").map_err(|_| error("Cannot migrate message variants."))?;
         }
         transaction
             .commit()

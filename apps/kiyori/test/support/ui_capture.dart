@@ -51,6 +51,14 @@ Future<void> captureUi(
   final previous = debugDisableShadows;
   debugDisableShadows = false;
   try {
+    // debugDisableShadows改变不会自动使既有PhysicalShape层失效；必须重新绘制，
+    // 否则截图仍会复用测试模式的黑色轮廓，误判为产品边框。
+    void repaint(RenderObject object) {
+      object.markNeedsPaint();
+      object.visitChildren(repaint);
+    }
+
+    repaint(boundaryKey.currentContext!.findRenderObject()!);
     if (animated) {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));

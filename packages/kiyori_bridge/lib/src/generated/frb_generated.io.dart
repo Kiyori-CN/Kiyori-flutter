@@ -162,6 +162,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   HistoryRetention dco_decode_box_autoadd_history_retention(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
   MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw);
 
   @protected
@@ -215,6 +218,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChatPhase dco_decode_chat_phase(dynamic raw);
 
   @protected
+  ChatPreferences dco_decode_chat_preferences(dynamic raw);
+
+  @protected
   ChatRequest dco_decode_chat_request(dynamic raw);
 
   @protected
@@ -234,6 +240,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ConversationSnapshot dco_decode_conversation_snapshot(dynamic raw);
+
+  @protected
+  ConversationStatistics dco_decode_conversation_statistics(dynamic raw);
 
   @protected
   DiaryDocument dco_decode_diary_document(dynamic raw);
@@ -395,6 +404,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DiarySummary? dco_decode_opt_box_autoadd_diary_summary(dynamic raw);
+
+  @protected
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
 
   @protected
   MemoryRecord? dco_decode_opt_box_autoadd_memory_record(dynamic raw);
@@ -588,6 +600,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   MemoryDraft sse_decode_box_autoadd_memory_draft(SseDeserializer deserializer);
 
   @protected
@@ -647,6 +662,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChatPhase sse_decode_chat_phase(SseDeserializer deserializer);
 
   @protected
+  ChatPreferences sse_decode_chat_preferences(SseDeserializer deserializer);
+
+  @protected
   ChatRequest sse_decode_chat_request(SseDeserializer deserializer);
 
   @protected
@@ -670,6 +688,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ConversationSnapshot sse_decode_conversation_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ConversationStatistics sse_decode_conversation_statistics(
     SseDeserializer deserializer,
   );
 
@@ -857,6 +880,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DiarySummary? sse_decode_opt_box_autoadd_diary_summary(
     SseDeserializer deserializer,
   );
+
+  @protected
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
   MemoryRecord? sse_decode_opt_box_autoadd_memory_record(
@@ -1082,6 +1108,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_i_64(
+    PlatformInt64 self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_memory_draft(
     MemoryDraft self,
     SseSerializer serializer,
@@ -1160,6 +1192,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_chat_phase(ChatPhase self, SseSerializer serializer);
 
   @protected
+  void sse_encode_chat_preferences(
+    ChatPreferences self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_chat_request(ChatRequest self, SseSerializer serializer);
 
   @protected
@@ -1192,6 +1230,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_conversation_snapshot(
     ConversationSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_conversation_statistics(
+    ConversationStatistics self,
     SseSerializer serializer,
   );
 
@@ -1444,6 +1488,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_diary_summary(
     DiarySummary? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_64(
+    PlatformInt64? self,
     SseSerializer serializer,
   );
 

@@ -4,7 +4,9 @@ import 'appearance_components.dart';
 
 /// 仅输入栏展示草稿，玻璃外观互斥来自原 ThemeSettingsInputTab。
 class AppearanceInput extends StatefulWidget {
-  const AppearanceInput({super.key});
+  const AppearanceInput({this.persistedAgent, this.onAgent, super.key});
+  final bool? persistedAgent;
+  final Future<bool> Function(bool)? onAgent;
   @override
   State<AppearanceInput> createState() => _AppearanceInputState();
 }
@@ -15,6 +17,23 @@ class _AppearanceInputState extends State<AppearanceInput> {
       floating = false,
       frosted = false,
       water = false;
+  @override
+  void initState() {
+    super.initState();
+    agent = widget.persistedAgent ?? true;
+  }
+
+  @override
+  void didUpdateWidget(AppearanceInput old) {
+    super.didUpdateWidget(old);
+    agent = widget.persistedAgent ?? agent;
+  }
+
+  Future<void> chooseAgent(bool value) async {
+    if (widget.onAgent != null && !await widget.onAgent!(value)) return;
+    if (mounted) setState(() => agent = value);
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -33,7 +52,7 @@ class _AppearanceInputState extends State<AppearanceInput> {
                 child: AppearanceChoice(
                   '经典样式',
                   selected: !agent,
-                  onTap: () => setState(() => agent = false),
+                  onTap: () => chooseAgent(false),
                 ),
               ),
               const SizedBox(width: 8),
@@ -41,7 +60,7 @@ class _AppearanceInputState extends State<AppearanceInput> {
                 child: AppearanceChoice(
                   'Agent样式',
                   selected: agent,
-                  onTap: () => setState(() => agent = true),
+                  onTap: () => chooseAgent(true),
                 ),
               ),
             ],

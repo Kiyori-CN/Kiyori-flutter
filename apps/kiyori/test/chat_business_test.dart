@@ -54,6 +54,28 @@ class ChatFixture {
         await request.response.close();
         return;
       }
+      if (requests.last['stream'] == false) {
+        request.response.headers.contentType = ContentType.json;
+        if (gate != null) await gate!.future;
+        request.response.write(
+          jsonEncode({
+            'choices': [
+              {
+                'index': 0,
+                'message': {'role': 'assistant', 'content': answer},
+                'finish_reason': 'stop',
+              },
+            ],
+            'usage': {
+              'prompt_tokens': 7,
+              'completion_tokens': 9,
+              'total_tokens': 16,
+            },
+          }),
+        );
+        await request.response.close();
+        return;
+      }
       request.response.write(
         'data: ${jsonEncode({
           'choices': [
@@ -154,7 +176,33 @@ void main() {
       );
       await until(tester, () => !f.chat.loading);
       await tester.tap(find.text('second-model'));
-      await until(tester, () => find.text('选择模型').evaluate().isNotEmpty);
+      await until(
+        tester,
+        () => find.byKey(const Key('chat-model-popup')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byKey(const Key('chat-model-popup'))).width,
+        300,
+      );
+      final oldReference = f.chat.modelConfig!.secretReference;
+      await tester.tap(find.byType(Switch));
+      await until(tester, () => !f.chat.changing);
+      expect(f.chat.modelConfig!.draft.options.maxContextMode, isTrue);
+      expect(f.chat.modelConfig!.secretReference, oldReference);
+      await tester.runAsync(() async {
+        expect(await f.secrets.read(oldReference!), isNotNull);
+        expect(
+          (await f.runtime.modelCatalog())
+              .configs
+              .single
+              .draft
+              .options
+              .maxContextMode,
+          isTrue,
+        );
+      });
+      await tester.tap(find.text('合成服务'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('first-model'));
       await until(
@@ -165,16 +213,15 @@ void main() {
       await tester.runAsync(() => f.chat.send('menu test'));
       await tester.pumpAndSettle();
       expect(f.requests.single['model'], 'first-model');
-      await tester.tap(find.byTooltip('消息操作').last);
+      await tester.longPress(find.text('Response').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('编辑消息'));
       await tester.pumpAndSettle();
-      final field = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
-      );
+      await tester.tap(find.text('纯文本'));
+      await tester.pumpAndSettle();
+      final field = find.byKey(const Key('message-editor-raw'));
       await tester.enterText(field, '菜单编辑后的回复');
-      await tester.tap(find.text('确定'));
+      await tester.tap(find.text('保存'));
       await tester.pumpAndSettle();
       await until(tester, () => !f.chat.changing);
       expect(f.chat.snapshot!.messages.last.content, '菜单编辑后的回复');
@@ -185,7 +232,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('会话操作'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('重命名'));
+      await tester.tap(find.text('编辑标题'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
@@ -194,10 +241,26 @@ void main() {
         ),
         '菜单重命名',
       );
-      await tester.tap(find.text('确定'));
+      await tester.tap(find.text('保存'));
       await tester.pumpAndSettle();
       await until(tester, () => !f.chat.changing);
       expect(f.chat.snapshot!.conversation.title, '菜单重命名');
+      await tester.enterText(
+        find.byKey(const Key('chat-history-search')),
+        '菜单编辑后的回复',
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+      await until(tester, () => find.text('匹配 1 / 共 1').evaluate().isNotEmpty);
+      expect(find.text('菜单重命名'), findsWidgets);
+      await tester.enterText(
+        find.byKey(const Key('chat-history-search')),
+        '%_missing',
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+      await until(tester, () => find.text('没有匹配的对话').evaluate().isNotEmpty);
+      await tester.tap(find.byTooltip('清空搜索'));
+      await tester.pumpAndSettle();
+      expect(find.text('共 1 个对话'), findsOneWidget);
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox());
