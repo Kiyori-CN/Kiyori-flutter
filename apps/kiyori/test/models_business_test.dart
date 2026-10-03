@@ -53,9 +53,28 @@ void main() {
     try {
       await owner.load();
       var base = owner.catalog!.configs.single;
+      final abandoned = await runtime.beginModelSecrets();
+      final orphan = await abandoned.reserve(base.id, base.revision);
+      await secrets.writeNew(orphan, 'unfinished-fixture');
+      await owner.load();
+      expect(owner.cleanupWarning, isNotNull);
+      expect(await secrets.read(orphan), 'unfinished-fixture');
+      await abandoned.close();
+      await owner.load();
+      expect(await secrets.read(orphan), isNull);
+      expect(owner.cleanupWarning, isNull);
       const first = ModelCredentials(
         apiKey: 'fixture-key-one',
         headers: {'Authorization': 'fixture-header-one'},
+        usePool: true,
+        keys: [
+          ModelPoolKey(
+            id: 'fixture-id',
+            key: 'fixture-pool-one',
+            name: 'API Key one',
+            enabled: false,
+          ),
+        ],
       );
       base = await owner.save(
         base,
@@ -64,6 +83,10 @@ void main() {
         first,
       );
       expect((await owner.readCredentials(base)).apiKey, first.apiKey);
+      expect(
+        (await owner.readCredentials(base)).keys.single.toJson(),
+        first.keys.single.toJson(),
+      );
       secrets.failWrite = true;
       await expectLater(
         owner.save(

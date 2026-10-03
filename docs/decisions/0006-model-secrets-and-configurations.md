@@ -1,6 +1,6 @@
 # ADR 0006：模型配置与平台安全凭据
 
-日期：2026-10-03。状态：已采用，基础配置批次本地验证通过；恢复扩展仍在实施，
+日期：2026-10-03。状态：已采用，基础配置批次已交付；恢复及上下文扩展已实现，
 本机测试与平台验收证据见当前状态。
 
 ## 背景与选择
@@ -41,20 +41,36 @@ schema6增加model_configs/model_names/function_models/model_secrets，不改写
 
 ## 双存储提交与恢复
 
-1. 核心按当前revision预留随机不可变reference，状态pending。
+1. 获取应用目录model-secrets.lock的OS独占锁，持有至本次native写入和核心提交结束。
+   取得锁后将无活跃配置引用的遗留pending转retired，再按当前revision预留新reference。
 2. native写入新引用成功后，Rust事务更新配置并将新引用置active、旧引用置retired。
 3. native删除retired成功后移除账本；失败保持记录，下次读取/保存重试。
 4. 保存失败只尝试退役本次预留；active检查和退役同一Immediate事务，不能删除已生效引用。
 
 这不是跨存储原子事务。retired是不可再激活的终态，因此重复清理安全。
-崩溃发生于native写入或提交前时，pending保留为未决记录；当前不按时间或启动扫描删除，
-因为另一个进程可能仍在写同一预留。安全的跨进程独占恢复及未决引用回收仍未完成，
-不能宣称已经闭合崩溃孤儿回收。已提交配置保持可读，未决密文可能占用空间。
-删除配置也保留其pending记录直到能证明写入结束。错误文案不带明文、路径或native原异常。
+崩溃退出由OS释放锁；只有成功重新取得锁的writer才能回收遗留pending，不按年龄猜测。
+锁忙时拒绝新凭据写入，目录仍可读取并提示清理待重试；锁文件始终保留，不能删除重建。
+lease显式close或Drop释放，已关闭/跨库lease不能预留；native删除失败保留retired供重试。
+schema7提高协议版本，阻止v6二进制重新打开数据库；无法关闭已经运行的v6进程，升级前
+必须退出旧实例。目录canonicalize用于lease归属，错误文案不带明文、路径或native原异常。
+未来请求借用凭据时须补执行期引用保护，当前尚无真实请求，不能称该生命周期已经验证。
 
 旧页面700ms去抖和切换前刷写保留；同配置串行提交，提交中输入进入下一次。
 失败保留草稿，离开可显式放弃；成功后目录刷新失败单独显示，不重复提交已成功命令。
 Windows native buffer清零，Dart String无法保证内存清零，关闭编辑会话释放引用。
+
+安全payload v2以id/key/name/enabled保存池条目，编辑保留ID和启用状态；读取v1按原顺序
+分配legacy索引ID，重复值仍为独立条目。非法/重复ID或损坏payload拒绝读取，错误不包含正文。
+接口测试和轮换策略尚未执行，不把未测试条目展示为可用。
+
+## 独立上下文设置
+
+ContextSummarySettingsScreen的currentConfig来自FunctionType.CHAT；新实现读取同一功能映射，
+不依赖角色绑定或任意默认配置。schema7新增全局history_retention，默认图片2、音视频1。
+save_context_settings在Immediate事务校验聊天绑定、模型revision、历史revision，局部更新
+上下文/总结字段，保留模型其它参数和安全引用。仅媒体变化不推进模型revision，反之亦然；
+任一校验失败整体不写，保持草稿。返回前刷写，重载显式放弃草稿并等待已有保存结束。
+当前持久化选项不等于实际压缩/媒体裁剪执行，后者由后续消息构建owner消费。
 
 ## 验证与后续
 
@@ -62,7 +78,8 @@ Windows native buffer清零，Dart String无法保证内存清零，关闭编辑
 真实Windows DPAPI测试覆盖密文、损坏保留与拒覆盖。models_business_test使用真实FFI
 和DPAPI验证写入失败、清理失败、旧值可读、SQLite无凭据夹具明文、保存中输入及页面新建。
 Android真实构建与Windows引擎验收按验证策略执行；真实供应商、设备和Apple另列。
-模型请求、文件导入导出、完整key池管理、上下文页真实接入和pending恢复继续推进。
+真实子进程测试验证活跃锁拒绝恢复、进程终止后回收；上下文测试验证全局媒体、局部更新、
+绑定切换、陈旧revision、非法输入回滚与schema6迁移。模型请求、文件导入导出、池测试/轮换继续推进。
 
 来源：[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)、
 [CryptProtectData](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata)、

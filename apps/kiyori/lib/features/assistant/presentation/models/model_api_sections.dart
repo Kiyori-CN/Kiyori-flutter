@@ -405,10 +405,48 @@ class ModelAdvancedCard extends StatefulWidget {
 }
 
 class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
+  DialogRoute<String>? _keyRoute;
+  Future<void> clearPool() async {
+    if (_keyRoute != null) return;
+    final route = DialogRoute<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空密钥池'),
+        content: Text('确定要删除全部 ${keys.length} 个密钥吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('clear'),
+            child: const Text('清空密钥池'),
+          ),
+        ],
+      ),
+    );
+    _keyRoute = route;
+    final result = await Navigator.of(context).push(route);
+    if (identical(_keyRoute, route)) _keyRoute = null;
+    if (mounted && result == 'clear') setState(keys.clear);
+  }
+
+  Future<String?> editKey([String initial = '']) async {
+    if (_keyRoute != null) return null;
+    final route = DialogRoute<String>(
+      context: context,
+      builder: (_) => _PoolKeyDialog(initial: initial),
+    );
+    _keyRoute = route;
+    final value = await Navigator.of(context).push(route);
+    if (identical(_keyRoute, route)) _keyRoute = null;
+    return mounted ? value : null;
+  }
+
   bool queue = false, pool = false;
   final limit = TextEditingController(text: '0'),
       concurrent = TextEditingController(text: '0');
-  final keys = <String>[];
+  final keys = <ModelPoolKey>[];
   @override
   void initState() {
     super.initState();
@@ -451,6 +489,12 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
     widget.session?.readers.remove(this);
     limit.dispose();
     concurrent.dispose();
+    final route = _keyRoute;
+    _keyRoute = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route?.isActive == true) route!.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
     super.dispose();
   }
 
@@ -565,17 +609,79 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
             color: PrimaryColors.of(context).secondary,
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final value = await showDialog<String>(
-              context: context,
-              builder: (_) => const _PoolKeyDialog(),
-            );
-            if (mounted && value != null) setState(() => keys.add(value));
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('添加API密钥'),
-        ),
+        if (keys.length <= 20)
+          for (final key in keys)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.key, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${key.name} (...${key.key.substring(key.key.length > 4 ? key.key.length - 4 : 0)})',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  const Icon(Icons.help_outline, size: 16),
+                  IconButton(
+                    tooltip: '编辑API密钥',
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    onPressed: () async {
+                      final value = await editKey(key.key);
+                      if (!mounted || value == null) return;
+                      final index = keys.indexWhere((k) => k.id == key.id);
+                      if (index >= 0) {
+                        setState(() => keys[index] = key.edited(value));
+                      }
+                    },
+                  ),
+                  IconButton(
+                    tooltip: '删除API密钥',
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    onPressed: () =>
+                        setState(() => keys.removeWhere((k) => k.id == key.id)),
+                  ),
+                ],
+              ),
+            ),
+        if (keys.length > 20)
+          const Text('密钥数量超过 20 个时，不再显示逐条编辑列表', style: TextStyle(fontSize: 12)),
+        if (keys.isNotEmpty) ...[
+          Text(
+            '可用 0 · 不可用 0 · 未测试 ${keys.length}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {},
+                  child: const Text('开始测试'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('暂停'),
+                ),
+              ),
+            ],
+          ),
+          OutlinedButton(onPressed: () {}, child: const Text('清除测试标记')),
+        ],
+        if (keys.length <= 20)
+          OutlinedButton.icon(
+            onPressed: () async {
+              final value = await editKey();
+              if (mounted && value != null) {
+                setState(() => keys.add(ModelPoolKey.create(value)));
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('添加API密钥'),
+          ),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -584,6 +690,15 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
             OutlinedButton(onPressed: () {}, child: const Text('导出密钥')),
           ],
         ),
+        if (keys.length > 20)
+          OutlinedButton.icon(
+            onPressed: clearPool,
+            icon: const Icon(Icons.delete_forever_outlined, size: 18),
+            label: const Text('清空密钥池'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
         Text(
           '请选择包含API密钥的文本文件，每行一个密钥',
           style: TextStyle(
@@ -597,13 +712,14 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
 }
 
 class _PoolKeyDialog extends StatefulWidget {
-  const _PoolKeyDialog();
+  const _PoolKeyDialog({this.initial = ''});
+  final String initial;
   @override
   State<_PoolKeyDialog> createState() => _PoolKeyDialogState();
 }
 
 class _PoolKeyDialogState extends State<_PoolKeyDialog> {
-  final value = TextEditingController();
+  late final value = TextEditingController(text: widget.initial);
   @override
   void dispose() {
     value.dispose();
@@ -613,7 +729,7 @@ class _PoolKeyDialogState extends State<_PoolKeyDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     scrollable: true,
-    title: const Text('添加API密钥'),
+    title: Text(widget.initial.isEmpty ? '添加API密钥' : '编辑API密钥'),
     content: TextField(
       controller: value,
       minLines: 1,

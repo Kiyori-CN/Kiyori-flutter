@@ -6,6 +6,40 @@ use crate::{
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::{
+    fs::{File, OpenOptions},
+    path::PathBuf,
+    sync::Mutex,
+};
+
+/// 文件锁覆盖native写入窗口，进程退出由OS释放；不能通过年龄猜测pending已失去owner。
+pub struct ModelSecretsLease {
+    directory: PathBuf,
+    file: Mutex<Option<File>>,
+}
+impl ModelSecretsLease {
+    pub fn close(&self) {
+        if let Ok(mut file) = self.file.lock() {
+            file.take();
+        }
+    }
+    fn with_store<T>(
+        &self,
+        store: &AppStore,
+        operation: impl FnOnce() -> Result<T, CoreError>,
+    ) -> Result<T, CoreError> {
+        let file = self
+            .file
+            .lock()
+            .map_err(|_| invalid("Secret lease lock failed."))?;
+        if file.is_none() || self.directory != store.directory {
+            return Err(invalid(
+                "Secret lease is closed or belongs to another database.",
+            ));
+        }
+        operation()
+    }
+}
 
 pub const DEFAULT_MODEL_CONFIG: &str = "default";
 #[cfg(test)]
@@ -165,7 +199,7 @@ fn storage(_: rusqlite::Error) -> CoreError {
         message: "Model storage operation failed.".into(),
     }
 }
-fn options_json(value: &ModelOptions) -> Result<String, CoreError> {
+pub(crate) fn options_json(value: &ModelOptions) -> Result<String, CoreError> {
     serde_json::to_string(value).map_err(|_| invalid("Invalid model options."))
 }
 fn parse_options(value: &str) -> Result<ModelOptions, CoreError> {
@@ -192,7 +226,7 @@ pub(crate) fn initialize(tx: &Transaction<'_>) -> Result<(), CoreError> {
     Ok(())
 }
 
-fn validate(draft: &mut ModelConfigDraft) -> Result<(), CoreError> {
+pub(crate) fn validate(draft: &mut ModelConfigDraft) -> Result<(), CoreError> {
     draft.name = draft.name.trim().into();
     if draft.name.is_empty()
         || draft.provider.trim().is_empty()
@@ -303,7 +337,7 @@ pub(crate) fn require_model(tx: &Connection, config: &str, name: &str) -> Result
     }
     Ok(())
 }
-fn read_config(tx: &Connection, id: &str) -> Result<ModelConfig, CoreError> {
+pub(crate) fn read_config(tx: &Connection, id: &str) -> Result<ModelConfig, CoreError> {
     let row = tx.query_row("SELECT revision,name,provider,protocol,endpoint,options,secret_reference FROM model_configs WHERE id=?1",[id],|r|Ok((
         r.get::<_,u32>(0)?, r.get::<_,String>(1)?, r.get::<_,String>(2)?,r.get::<_,String>(3)?,
         r.get::<_,String>(4)?,r.get::<_,String>(5)?,r.get::<_,Option<String>>(6)?,
@@ -331,6 +365,28 @@ fn read_config(tx: &Connection, id: &str) -> Result<ModelConfig, CoreError> {
 }
 
 impl AppStore {
+    pub fn begin_model_secrets(&self) -> Result<ModelSecretsLease, CoreError> {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(self.directory.join("model-secrets.lock"))
+            .map_err(|_| invalid("Cannot open model secret lock."))?;
+        file.try_lock()
+            .map_err(|_| invalid("Model secret storage is busy or locking is unavailable."))?;
+        let lease = ModelSecretsLease {
+            directory: self.directory.clone(),
+            file: Mutex::new(Some(file)),
+        };
+        // 已取得独占锁，所有前任writer已退出。只改账本，native删除仍按retired可重试执行。
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| invalid("Storage lock failed."))?;
+        connection.execute("UPDATE model_secrets SET state='retired' WHERE state='pending' AND reference NOT IN (SELECT secret_reference FROM model_configs WHERE secret_reference IS NOT NULL)", []).map_err(storage)?;
+        Ok(lease)
+    }
     pub fn model_catalog(&self) -> Result<ModelCatalog, CoreError> {
         let mut connection = self
             .connection
@@ -464,7 +520,15 @@ impl AppStore {
         }
         tx.commit().map_err(storage)
     }
-    pub fn reserve_model_secret(&self, id: String, revision: u32) -> Result<String, CoreError> {
+    pub fn reserve_model_secret(
+        &self,
+        id: String,
+        revision: u32,
+        lease: &ModelSecretsLease,
+    ) -> Result<String, CoreError> {
+        lease.with_store(self, || self.reserve_model_secret_locked(id, revision))
+    }
+    fn reserve_model_secret_locked(&self, id: String, revision: u32) -> Result<String, CoreError> {
         let mut connection = self
             .connection
             .lock()
@@ -625,6 +689,9 @@ impl AppStore {
     }
 }
 impl Runtime {
+    pub fn begin_model_secrets(&self) -> Result<ModelSecretsLease, CoreError> {
+        self.with_store(AppStore::begin_model_secrets)
+    }
     pub fn reset_function_models(&self) -> Result<(), CoreError> {
         self.with_store(AppStore::reset_function_models)
     }
@@ -644,8 +711,13 @@ impl Runtime {
     ) -> Result<(), CoreError> {
         self.with_store(|s| s.save_model_config(id, revision, draft, secret_reference, replacement))
     }
-    pub fn reserve_model_secret(&self, id: String, revision: u32) -> Result<String, CoreError> {
-        self.with_store(|s| s.reserve_model_secret(id, revision))
+    pub fn reserve_model_secret(
+        &self,
+        id: String,
+        revision: u32,
+        lease: &ModelSecretsLease,
+    ) -> Result<String, CoreError> {
+        self.with_store(|s| s.reserve_model_secret(id, revision, lease))
     }
     pub fn retire_model_secret(&self, reference: String) -> Result<(), CoreError> {
         self.with_store(|s| s.retire_model_secret(reference))

@@ -231,6 +231,59 @@ pub struct ModelCatalog {
     pub configs: Vec<ModelConfig>,
     pub functions: Vec<FunctionModel>,
 }
+
+pub struct ContextOptions {
+    pub context_length: f64,
+    pub max_context_length: f64,
+    pub summary_enabled: bool,
+    pub summary_threshold: f64,
+    pub summary_by_count: bool,
+    pub summary_count: u32,
+    pub summary_rules: String,
+}
+impl From<ContextOptions> for kiyori_core::context::ContextOptions {
+    fn from(v: ContextOptions) -> Self {
+        Self {
+            context_length: v.context_length,
+            max_context_length: v.max_context_length,
+            summary_enabled: v.summary_enabled,
+            summary_threshold: v.summary_threshold,
+            summary_by_count: v.summary_by_count,
+            summary_count: v.summary_count,
+            summary_rules: v.summary_rules,
+        }
+    }
+}
+pub struct HistoryRetention {
+    pub revision: u32,
+    pub image_turns: u32,
+    pub media_turns: u32,
+}
+impl From<HistoryRetention> for kiyori_core::context::HistoryRetention {
+    fn from(v: HistoryRetention) -> Self {
+        Self {
+            revision: v.revision,
+            image_turns: v.image_turns,
+            media_turns: v.media_turns,
+        }
+    }
+}
+pub struct ContextSettings {
+    pub config: ModelConfig,
+    pub history: HistoryRetention,
+}
+impl From<kiyori_core::context::ContextSettings> for ContextSettings {
+    fn from(v: kiyori_core::context::ContextSettings) -> Self {
+        Self {
+            config: v.config.into(),
+            history: HistoryRetention {
+                revision: v.history.revision,
+                image_turns: v.history.image_turns,
+                media_turns: v.history.media_turns,
+            },
+        }
+    }
+}
 impl From<kiyori_core::models::ModelCatalog> for ModelCatalog {
     fn from(v: kiyori_core::models::ModelCatalog) -> Self {
         Self {
@@ -784,6 +837,22 @@ pub struct RuntimeHandle {
 }
 
 #[frb(opaque)]
+pub struct ModelSecretsHandle {
+    lease: kiyori_core::models::ModelSecretsLease,
+    runtime: Arc<runtime::Runtime>,
+}
+impl ModelSecretsHandle {
+    pub fn reserve(&self, id: String, revision: u32) -> Result<String, BridgeError> {
+        Ok(self
+            .runtime
+            .reserve_model_secret(id, revision, &self.lease)?)
+    }
+    pub fn close(&self) {
+        self.lease.close();
+    }
+}
+
+#[frb(opaque)]
 pub struct TaskHandle {
     inner: runtime::DiagnosticTask,
 }
@@ -801,11 +870,32 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn begin_model_secrets(&self) -> Result<ModelSecretsHandle, BridgeError> {
+        Ok(ModelSecretsHandle {
+            lease: self.inner.begin_model_secrets()?,
+            runtime: self.inner.clone(),
+        })
+    }
     pub fn reset_function_models(&self) -> Result<(), BridgeError> {
         Ok(self.inner.reset_function_models()?)
     }
     pub fn model_catalog(&self) -> Result<ModelCatalog, BridgeError> {
         Ok(self.inner.model_catalog()?.into())
+    }
+    pub fn context_settings(&self) -> Result<ContextSettings, BridgeError> {
+        Ok(self.inner.context_settings()?.into())
+    }
+    pub fn save_context_settings(
+        &self,
+        id: String,
+        revision: u32,
+        options: ContextOptions,
+        history: HistoryRetention,
+    ) -> Result<ContextSettings, BridgeError> {
+        Ok(self
+            .inner
+            .save_context_settings(id, revision, options.into(), history.into())?
+            .into())
     }
     pub fn create_model_config(&self, name: String) -> Result<String, BridgeError> {
         Ok(self.inner.create_model_config(name)?)
@@ -825,9 +915,6 @@ impl RuntimeHandle {
             secret_reference,
             replacement,
         )?)
-    }
-    pub fn reserve_model_secret(&self, id: String, revision: u32) -> Result<String, BridgeError> {
-        Ok(self.inner.reserve_model_secret(id, revision)?)
     }
     pub fn retire_model_secret(&self, reference: String) -> Result<(), BridgeError> {
         Ok(self.inner.retire_model_secret(reference)?)

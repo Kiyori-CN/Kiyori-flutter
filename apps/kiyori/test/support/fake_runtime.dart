@@ -25,6 +25,16 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ContextSettings> contextSettings() async =>
+      throw UnimplementedError('Use real context runtime.');
+  @override
+  Future<ContextSettings> saveContextSettings(
+    String id,
+    int revision,
+    ContextOptions options,
+    HistoryRetention history,
+  ) async => throw UnimplementedError('Use real context runtime.');
+  @override
   Future<void> resetFunctionModels() async =>
       throw UnimplementedError('Use real model runtime.');
   @override
@@ -47,7 +57,7 @@ class FakeClient implements RuntimeClient {
     'Use a real runtime for model persistence tests.',
   );
   @override
-  Future<String> reserveModelSecret(String id, int revision) async =>
+  Future<ModelSecretsWrite> beginModelSecrets() async =>
       throw UnimplementedError(
         'Use a real runtime for model persistence tests.',
       );

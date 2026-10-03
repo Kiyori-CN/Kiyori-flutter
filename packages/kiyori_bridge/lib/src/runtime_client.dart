@@ -5,6 +5,13 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<api.ContextSettings> contextSettings();
+  Future<api.ContextSettings> saveContextSettings(
+    String id,
+    int revision,
+    api.ContextOptions options,
+    api.HistoryRetention history,
+  );
   Future<void> resetFunctionModels();
   Future<api.ModelCatalog> modelCatalog();
   Future<String> createModelConfig(String name);
@@ -15,7 +22,7 @@ abstract interface class RuntimeClient {
     String? secretReference,
     String? replacement,
   );
-  Future<String> reserveModelSecret(String id, int revision);
+  Future<ModelSecretsWrite> beginModelSecrets();
   Future<void> retireModelSecret(String reference);
   Future<List<String>> retiredModelSecrets();
   Future<void> forgetRetiredModelSecret(String reference);
@@ -111,6 +118,21 @@ abstract interface class DiagnosticRun {
   Future<void> cancel();
 }
 
+abstract interface class ModelSecretsWrite {
+  Future<String> reserve(String id, int revision);
+  Future<void> close();
+}
+
+final class _NativeModelSecretsWrite implements ModelSecretsWrite {
+  _NativeModelSecretsWrite(this.handle);
+  final api.ModelSecretsHandle handle;
+  @override
+  Future<String> reserve(String id, int revision) =>
+      handle.reserve(id: id, revision: revision);
+  @override
+  Future<void> close() => handle.close();
+}
+
 final class NativeRuntimeClient implements RuntimeClient {
   @override
   Future<void> resetFunctionModels() {
@@ -149,9 +171,31 @@ final class NativeRuntimeClient implements RuntimeClient {
   }
 
   @override
-  Future<String> reserveModelSecret(String id, int revision) {
+  Future<ModelSecretsWrite> beginModelSecrets() async {
     _ensureOpen();
-    return _handle.reserveModelSecret(id: id, revision: revision);
+    return _NativeModelSecretsWrite(await _handle.beginModelSecrets());
+  }
+
+  @override
+  Future<api.ContextSettings> contextSettings() {
+    _ensureOpen();
+    return _handle.contextSettings();
+  }
+
+  @override
+  Future<api.ContextSettings> saveContextSettings(
+    String id,
+    int revision,
+    api.ContextOptions options,
+    api.HistoryRetention history,
+  ) {
+    _ensureOpen();
+    return _handle.saveContextSettings(
+      id: id,
+      revision: revision,
+      options: options,
+      history: history,
+    );
   }
 
   @override

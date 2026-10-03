@@ -33,6 +33,203 @@ fn config(store: &AppStore, id: &str) -> ModelConfig {
         .unwrap()
 }
 
+fn context_options(config: &ModelConfig) -> crate::context::ContextOptions {
+    let o = &config.draft.options;
+    crate::context::ContextOptions {
+        context_length: o.context_length,
+        max_context_length: o.max_context_length,
+        summary_enabled: o.summary_enabled,
+        summary_threshold: o.summary_threshold,
+        summary_by_count: o.summary_by_count,
+        summary_count: o.summary_count,
+        summary_rules: o.summary_rules.clone(),
+    }
+}
+
+#[test]
+fn context_settings_preserve_other_options_and_global_media_across_chat_binding() {
+    let dir = Directory::new();
+    let store = AppStore::open(&dir.0).unwrap();
+    let initial = store.context_settings().unwrap();
+    assert_eq!(
+        (initial.history.image_turns, initial.history.media_turns),
+        (2, 1)
+    );
+    let mut options = context_options(&initial.config);
+    options.context_length = 80.;
+    options.summary_rules = "完整保留中文规则".into();
+    let mut history = initial.history.clone();
+    history.image_turns = 0;
+    history.media_turns = 5;
+    let saved = store
+        .save_context_settings(
+            initial.config.id.clone(),
+            initial.config.revision,
+            options.clone(),
+            history,
+        )
+        .unwrap();
+    assert_eq!(saved.config.revision, initial.config.revision + 1);
+    assert_eq!(
+        saved.config.draft.options.parameters,
+        initial.config.draft.options.parameters
+    );
+    assert_eq!(
+        saved.config.secret_reference,
+        initial.config.secret_reference
+    );
+    assert!(
+        store
+            .save_context_settings(
+                initial.config.id.clone(),
+                initial.config.revision,
+                options.clone(),
+                initial.history
+            )
+            .is_err()
+    );
+    let other = store.create_model_config("第二个".into()).unwrap();
+    let other_config = config(&store, &other);
+    let mut draft = other_config.draft;
+    draft.models = vec!["local-fixture".into()];
+    store
+        .save_model_config(other.clone(), other_config.revision, draft, None, None)
+        .unwrap();
+    store
+        .select_function_model("chat".into(), other.clone(), "local-fixture".into())
+        .unwrap();
+    assert!(
+        store
+            .save_context_settings(
+                saved.config.id,
+                saved.config.revision,
+                options,
+                saved.history.clone()
+            )
+            .is_err()
+    );
+    let rebound = store.context_settings().unwrap();
+    assert_eq!(rebound.config.id, other);
+    assert_eq!(rebound.history, saved.history);
+    let reset = crate::context::HistoryRetention {
+        revision: rebound.history.revision,
+        image_turns: 2,
+        media_turns: 1,
+    };
+    let reset = store
+        .save_context_settings(
+            other,
+            rebound.config.revision,
+            context_options(&rebound.config),
+            reset,
+        )
+        .unwrap();
+    assert_eq!(reset.config, rebound.config);
+    drop(store);
+    assert_eq!(
+        AppStore::open(&dir.0).unwrap().context_settings().unwrap(),
+        reset
+    );
+}
+
+#[test]
+fn context_invalid_options_roll_back_media_and_schema_six_migrates() {
+    let dir = Directory::new();
+    let store = AppStore::open(&dir.0).unwrap();
+    let initial = store.context_settings().unwrap();
+    let mut options = context_options(&initial.config);
+    options.context_length = f64::NAN;
+    let mut history = initial.history.clone();
+    history.image_turns = 99;
+    assert!(
+        store
+            .save_context_settings(
+                initial.config.id.clone(),
+                initial.config.revision,
+                options,
+                history
+            )
+            .is_err()
+    );
+    assert_eq!(store.context_settings().unwrap(), initial);
+    store
+        .connection
+        .lock()
+        .unwrap()
+        .execute_batch("DROP TABLE history_retention; PRAGMA user_version=6;")
+        .unwrap();
+    drop(store);
+    let reopened = AppStore::open(&dir.0).unwrap();
+    assert_eq!(reopened.context_settings().unwrap(), initial);
+}
+
+#[test]
+fn secret_lease_child_process() {
+    let Some(path) = std::env::var_os("KIYORI_SECRET_LEASE_TEST_DIR") else {
+        return;
+    };
+    let store = AppStore::open(PathBuf::from(path)).unwrap();
+    let lease = store.begin_model_secrets().unwrap();
+    let reference = store
+        .reserve_model_secret("default".into(), 1, &lease)
+        .unwrap();
+    std::fs::write(store.directory.join("child-ready"), reference).unwrap();
+    // 父测试终止这个专用子进程，验证真实OS锁在异常退出后释放。
+    loop {
+        std::thread::park_timeout(std::time::Duration::from_secs(1));
+    }
+}
+
+#[test]
+fn crashed_writer_is_recovered_only_after_its_process_releases_the_lock() {
+    let dir = Directory::new();
+    let store = AppStore::open(&dir.0).unwrap();
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "models::tests::secret_lease_child_process",
+            "--nocapture",
+        ])
+        .env("KIYORI_SECRET_LEASE_TEST_DIR", &dir.0)
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let ready = dir.0.join("child-ready");
+    for _ in 0..200 {
+        if ready.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    if !ready.exists() {
+        child.kill().unwrap();
+        child.wait().unwrap();
+        panic!("Child did not acquire its secret lease");
+    }
+    let reference = std::fs::read_to_string(ready).unwrap();
+    assert!(store.begin_model_secrets().is_err());
+    assert!(store.retired_model_secrets().unwrap().is_empty());
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let recovery = store.begin_model_secrets().unwrap();
+    assert_eq!(store.retired_model_secrets().unwrap(), vec![reference]);
+    assert!(store.begin_model_secrets().is_err());
+    recovery.close();
+    assert!(
+        store
+            .reserve_model_secret("default".into(), 1, &recovery)
+            .is_err()
+    );
+    let next = store.begin_model_secrets().unwrap();
+    let other_dir = Directory::new();
+    let other_store = AppStore::open(&other_dir.0).unwrap();
+    assert!(
+        other_store
+            .reserve_model_secret("default".into(), 1, &next)
+            .is_err()
+    );
+}
+
 #[test]
 fn model_reorder_preserves_bindings_and_removal_requires_explicit_replacement() {
     let dir = Directory::new();
@@ -138,8 +335,13 @@ fn immutable_secret_references_survive_conflicts_and_retirement_cannot_delete_ac
     let store = AppStore::open(&dir.0).unwrap();
     let other = AppStore::open(&dir.0).unwrap();
     let draft = config(&store, "default").draft;
-    let first = store.reserve_model_secret("default".into(), 1).unwrap();
-    let stale = other.reserve_model_secret("default".into(), 1).unwrap();
+    let lease = store.begin_model_secrets().unwrap();
+    let first = store
+        .reserve_model_secret("default".into(), 1, &lease)
+        .unwrap();
+    let stale = other
+        .reserve_model_secret("default".into(), 1, &lease)
+        .unwrap();
     store
         .save_model_config(
             "default".into(),

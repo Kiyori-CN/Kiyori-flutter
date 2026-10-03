@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_bridge/kiyori_bridge.dart';
+
+import 'context_edit_session.dart';
 
 part 'context_summary_fields.dart';
 
@@ -28,9 +31,13 @@ class ContextSummaryPresentation {
 class ContextSummaryPage extends StatefulWidget {
   const ContextSummaryPage({
     this.snapshot = const ContextSummaryPresentation(),
+    this.session,
+    this.onBack,
     super.key,
   });
   final ContextSummaryPresentation snapshot;
+  final ContextEditSession? session;
+  final VoidCallback? onBack;
   @override
   State<ContextSummaryPage> createState() => _ContextSummaryPageState();
 }
@@ -52,6 +59,44 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
   late bool byCount = widget.snapshot.byMessageCount;
   final contextError = ValueNotifier<String?>(null);
   final summaryError = ValueNotifier<String?>(null);
+
+  @override
+  void initState() {
+    super.initState();
+    final session = widget.session;
+    if (session == null) return;
+    for (final c in [length, maximum, threshold, count, rules, images, media]) {
+      c.addListener(session.changed);
+    }
+    session.read = () {
+      final old = session.options;
+      // 关闭的数值输入沿用最后有效值，允许修正之前先关闭总结。
+      session.options = ContextOptions(
+        contextLength: double.parse(length.text),
+        maxContextLength: double.parse(maximum.text),
+        summaryEnabled: summary,
+        summaryThreshold: summary
+            ? double.parse(threshold.text)
+            : old.summaryThreshold,
+        summaryByCount: byCount,
+        summaryCount: summary && byCount
+            ? int.parse(count.text)
+            : old.summaryCount,
+        summaryRules: rules.text,
+      );
+      session.history = HistoryRetention(
+        revision: session.base.history.revision,
+        imageTurns: int.parse(images.text),
+        mediaTurns: int.parse(media.text),
+      );
+    };
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    widget.session?.changed();
+  }
 
   @override
   void didUpdateWidget(covariant ContextSummaryPage oldWidget) {
@@ -101,6 +146,7 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
 
   @override
   void dispose() {
+    widget.session?.read = null;
     _closeReset();
     for (final controller in [
       length,
@@ -142,7 +188,7 @@ class _ContextSummaryPageState extends State<ContextSummaryPage> {
   @override
   Widget build(BuildContext context) => SettingsWorkspacePage(
     title: '上下文与总结',
-    onBack: () => Navigator.of(context).maybePop(),
+    onBack: widget.onBack ?? () => Navigator.of(context).maybePop(),
     body: SingleChildScrollView(
       key: const PageStorageKey('context-summary'),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

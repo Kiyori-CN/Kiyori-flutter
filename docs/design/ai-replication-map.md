@@ -105,8 +105,13 @@ Jieba Rust词典与旧Java词典不保证所有分词逐字一致；典型中文
 角色业务依据CharacterCardManager、PromptTagManager、CharacterGroupCardManager和
 ActivePromptManager的CRUD/复制/组合调用链，复用Runtime schema5。角色八字段、标签、
 群组有序成员和活跃目标真实持久，revision冲突拒绝覆盖；市场添加保存完整预设。
-工具偏好不授予执行，模型目录已接schema6共享配置，记忆绑定验证真实空间。导入导出、头像/主题/
+工具偏好不授予执行，模型目录已接schema7共享配置，记忆绑定验证真实空间。导入导出、头像/主题/
 形象/表情克隆、会话关联更新和人设生成仍未实现；细节见[角色契约](character-prompts.md)。
+
+ContextSummarySettingsScreen的聊天功能绑定与ApiPreferences媒体保留现映射到core/context；
+模型字段局部更新与全局history_retention保持不同revision，页面使用ContextEditSession串行保存。
+ModelConfigManager的密钥池条目保留稳定ID，v1字符串payload兼容迁移；跨进程锁覆盖native写入。
+上下文压缩执行、密钥池测试/轮换及文件交换仍未实现，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
 
 ## 验收证据入口
 

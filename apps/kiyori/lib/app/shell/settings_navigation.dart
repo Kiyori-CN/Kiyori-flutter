@@ -33,6 +33,7 @@ import '../../features/assistant/presentation/prompts/tag_market_page.dart';
 import '../../features/assistant/presentation/prompts/persona_generation_page.dart';
 import '../../features/assistant/presentation/history/chat_history_page.dart';
 import '../../features/assistant/presentation/context/context_summary_page.dart';
+import '../../features/assistant/presentation/context/persistent_context_page.dart';
 import '../../features/assistant/presentation/models/function_models_page.dart';
 import '../../features/assistant/presentation/models/model_api_page.dart';
 import '../../features/assistant/presentation/models/models_controller.dart';
@@ -86,7 +87,11 @@ class SettingsNavigation {
           if (section == AssistantSettingsSection.artifacts) {
             openPage(const ArtifactStoragePage());
           } else if (section == AssistantSettingsSection.context) {
-            openPage(const ContextSummaryPage());
+            openPage(
+              models == null
+                  ? const ContextSummaryPage()
+                  : PersistentContextPage(connect: models!.connect),
+            );
           } else if (section == AssistantSettingsSection.functions) {
             openPage(
               models == null

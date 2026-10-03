@@ -2,6 +2,9 @@ library;
 
 export 'src/generated/api.dart'
     show
+        ContextOptions,
+        ContextSettings,
+        HistoryRetention,
         ModelParameter,
         ModelOptions,
         ModelConfigDraft,

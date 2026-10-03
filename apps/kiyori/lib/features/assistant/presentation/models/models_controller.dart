@@ -28,7 +28,12 @@ class ModelsController extends ChangeNotifier {
       final value = await (await connect()).modelCatalog();
       if (!_disposed && generation == _generation) catalog = value;
       try {
-        await cleanupRetired();
+        final lease = await (await connect()).beginModelSecrets();
+        try {
+          await cleanupRetired();
+        } finally {
+          await lease.close();
+        }
         cleanupWarning = null;
       } catch (_) {
         cleanupWarning = '旧安全凭据清理未完成，点击重试';
@@ -71,12 +76,14 @@ class ModelsController extends ChangeNotifier {
   }) async {
     final runtime = await connect();
     String? reserved;
+    ModelSecretsWrite? lease;
     var reference = base.secretReference;
     final encoded = after.encode();
     try {
       if (encoded != before.encode()) {
         final secrets = await openSecrets();
-        reserved = await runtime.reserveModelSecret(base.id, base.revision);
+        lease = await runtime.beginModelSecrets();
+        reserved = await lease.reserve(base.id, base.revision);
         await secrets.writeNew(reserved, encoded);
         reference = reserved;
       }
@@ -98,6 +105,8 @@ class ModelsController extends ChangeNotifier {
         }
       }
       rethrow;
+    } finally {
+      await lease?.close();
     }
     // 命令成功即事实。读目录失败也返回已提交revision，禁止误报失败再重复保存。
     final committed = ModelConfig(

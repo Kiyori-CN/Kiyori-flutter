@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -17,6 +17,13 @@ Future<RuntimeHandle> createRuntime() =>
 
 Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
     RustLib.instance.api.crateApiCreateRuntimeWithDataDir(dataDir: dataDir);
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelSecretsHandle>>
+abstract class ModelSecretsHandle implements RustOpaqueInterface {
+  Future<void> close();
+
+  Future<String> reserve({required String id, required int revision});
+}
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>>
 abstract class RuntimeHandle implements RustOpaqueInterface {
@@ -36,12 +43,16 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required bool archived,
   });
 
+  Future<ModelSecretsHandle> beginModelSecrets();
+
   Future<void> close();
 
   Future<String> composeCharacterPrompt({
     required String id,
     required bool voice,
   });
+
+  Future<ContextSettings> contextSettings();
 
   Future<String> createDiary({
     required String space,
@@ -127,11 +138,6 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String new_,
   });
 
-  Future<String> reserveModelSecret({
-    required String id,
-    required int revision,
-  });
-
   Future<void> resetDefaultCharacter({required int revision});
 
   Future<void> resetFunctionModels();
@@ -144,6 +150,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     String? id,
     int? revision,
     required CharacterDraft draft,
+  });
+
+  Future<ContextSettings> saveContextSettings({
+    required String id,
+    required int revision,
+    required ContextOptions options,
+    required HistoryRetention history,
   });
 
   Future<String> saveKnowledgeSpace({String? id, required String name});
@@ -336,6 +349,67 @@ class CharacterDraft {
           tools == other.tools;
 }
 
+class ContextOptions {
+  final double contextLength;
+  final double maxContextLength;
+  final bool summaryEnabled;
+  final double summaryThreshold;
+  final bool summaryByCount;
+  final int summaryCount;
+  final String summaryRules;
+
+  const ContextOptions({
+    required this.contextLength,
+    required this.maxContextLength,
+    required this.summaryEnabled,
+    required this.summaryThreshold,
+    required this.summaryByCount,
+    required this.summaryCount,
+    required this.summaryRules,
+  });
+
+  @override
+  int get hashCode =>
+      contextLength.hashCode ^
+      maxContextLength.hashCode ^
+      summaryEnabled.hashCode ^
+      summaryThreshold.hashCode ^
+      summaryByCount.hashCode ^
+      summaryCount.hashCode ^
+      summaryRules.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContextOptions &&
+          runtimeType == other.runtimeType &&
+          contextLength == other.contextLength &&
+          maxContextLength == other.maxContextLength &&
+          summaryEnabled == other.summaryEnabled &&
+          summaryThreshold == other.summaryThreshold &&
+          summaryByCount == other.summaryByCount &&
+          summaryCount == other.summaryCount &&
+          summaryRules == other.summaryRules;
+}
+
+class ContextSettings {
+  final ModelConfig config;
+  final HistoryRetention history;
+
+  const ContextSettings({required this.config, required this.history});
+
+  @override
+  int get hashCode => config.hashCode ^ history.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContextSettings &&
+          runtimeType == other.runtimeType &&
+          config == other.config &&
+          history == other.history;
+}
+
 class DiaryDocument {
   final String preface;
   final List<DiaryEntry> entries;
@@ -497,6 +571,31 @@ class GroupDraft {
           name == other.name &&
           description == other.description &&
           members == other.members;
+}
+
+class HistoryRetention {
+  final int revision;
+  final int imageTurns;
+  final int mediaTurns;
+
+  const HistoryRetention({
+    required this.revision,
+    required this.imageTurns,
+    required this.mediaTurns,
+  });
+
+  @override
+  int get hashCode =>
+      revision.hashCode ^ imageTurns.hashCode ^ mediaTurns.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HistoryRetention &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          imageTurns == other.imageTurns &&
+          mediaTurns == other.mediaTurns;
 }
 
 class KnowledgeSnapshot {

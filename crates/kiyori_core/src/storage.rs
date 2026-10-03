@@ -1,11 +1,15 @@
 use crate::runtime::{CoreError, ErrorCode};
 use rusqlite::Connection;
-use std::{path::Path, sync::Mutex};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
-const SCHEMA_VERSION: i32 = 6;
+const SCHEMA_VERSION: i32 = 7;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
+    pub(crate) directory: PathBuf,
 }
 
 impl AppStore {
@@ -160,11 +164,28 @@ impl AppStore {
             ).map_err(|_| error("Cannot migrate model storage."))?;
             crate::models::initialize(&transaction)?;
         }
+        if version < 7 {
+            transaction
+                .execute_batch(
+                    "CREATE TABLE IF NOT EXISTS history_retention (
+                id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,
+                image_turns INTEGER NOT NULL CHECK(image_turns>=0),
+                media_turns INTEGER NOT NULL CHECK(media_turns>=0));
+                INSERT OR IGNORE INTO history_retention VALUES(1,1,2,1);",
+                )
+                .map_err(|_| error("Cannot migrate history retention."))?;
+            // v6没有凭据lease。拒绝旧二进制再次打开；升级前仍须关闭已运行的旧进程。
+            transaction
+                .pragma_update(None, "user_version", 7)
+                .map_err(|_| error("Cannot migrate model secret recovery protocol."))?;
+        }
         transaction
             .commit()
             .map_err(|e| error(&format!("Cannot commit schema: {e}")))?;
         Ok(Self {
             connection: Mutex::new(connection),
+            directory: std::fs::canonicalize(path)
+                .map_err(|_| error("Cannot resolve application data directory."))?,
         })
     }
 }
