@@ -18,6 +18,13 @@ Future<RuntimeHandle> createRuntime() =>
 Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
     RustLib.instance.api.crateApiCreateRuntimeWithDataDir(dataDir: dataDir);
 
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChatHandle>>
+abstract class ChatHandle implements RustOpaqueInterface {
+  Future<void> cancel();
+
+  Future<ChatEvent?> nextEvent();
+}
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelSecretsHandle>>
 abstract class ModelSecretsHandle implements RustOpaqueInterface {
   Future<void> close();
@@ -216,9 +223,18 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required MemoryQuery query,
   });
 
+  Future<ChatHandle> startChat({required ChatRequest request});
+
   Future<TaskHandle> startDiagnostic({
     required int steps,
     required int intervalMs,
+  });
+
+  Future<ChatHandle> startModelProbe({
+    required ModelConfigDraft draft,
+    required String apiKey,
+    required List<ChatHeader> headers,
+    required String kind,
   });
 
   Future<WorkflowRecord> updateWorkflow({
@@ -347,6 +363,146 @@ class CharacterDraft {
           memorySpace == other.memorySpace &&
           toolsEnabled == other.toolsEnabled &&
           tools == other.tools;
+}
+
+class ChatEvent {
+  final bool? verified;
+  final ChatPhase phase;
+  final String text;
+  final String reason;
+  final String errorKind;
+  final String errorMessage;
+  final int? httpStatus;
+  final BigInt inputTokens;
+  final BigInt outputTokens;
+  final BigInt totalTokens;
+
+  const ChatEvent({
+    this.verified,
+    required this.phase,
+    required this.text,
+    required this.reason,
+    required this.errorKind,
+    required this.errorMessage,
+    this.httpStatus,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.totalTokens,
+  });
+
+  @override
+  int get hashCode =>
+      verified.hashCode ^
+      phase.hashCode ^
+      text.hashCode ^
+      reason.hashCode ^
+      errorKind.hashCode ^
+      errorMessage.hashCode ^
+      httpStatus.hashCode ^
+      inputTokens.hashCode ^
+      outputTokens.hashCode ^
+      totalTokens.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatEvent &&
+          runtimeType == other.runtimeType &&
+          verified == other.verified &&
+          phase == other.phase &&
+          text == other.text &&
+          reason == other.reason &&
+          errorKind == other.errorKind &&
+          errorMessage == other.errorMessage &&
+          httpStatus == other.httpStatus &&
+          inputTokens == other.inputTokens &&
+          outputTokens == other.outputTokens &&
+          totalTokens == other.totalTokens;
+}
+
+class ChatHeader {
+  final String name;
+  final String value;
+
+  const ChatHeader({required this.name, required this.value});
+
+  @override
+  int get hashCode => name.hashCode ^ value.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatHeader &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          value == other.value;
+}
+
+class ChatMessage {
+  final String role;
+  final String content;
+
+  const ChatMessage({required this.role, required this.content});
+
+  @override
+  int get hashCode => role.hashCode ^ content.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          role == other.role &&
+          content == other.content;
+}
+
+enum ChatPhase { started, text, usage, completed, failed, cancelled }
+
+class ChatRequest {
+  final String protocol;
+  final String endpoint;
+  final String model;
+  final String apiKey;
+  final List<ChatHeader> headers;
+  final List<ChatMessage> messages;
+  final String parameters;
+  final int timeoutMs;
+
+  const ChatRequest({
+    required this.protocol,
+    required this.endpoint,
+    required this.model,
+    required this.apiKey,
+    required this.headers,
+    required this.messages,
+    required this.parameters,
+    required this.timeoutMs,
+  });
+
+  @override
+  int get hashCode =>
+      protocol.hashCode ^
+      endpoint.hashCode ^
+      model.hashCode ^
+      apiKey.hashCode ^
+      headers.hashCode ^
+      messages.hashCode ^
+      parameters.hashCode ^
+      timeoutMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatRequest &&
+          runtimeType == other.runtimeType &&
+          protocol == other.protocol &&
+          endpoint == other.endpoint &&
+          model == other.model &&
+          apiKey == other.apiKey &&
+          headers == other.headers &&
+          messages == other.messages &&
+          parameters == other.parameters &&
+          timeoutMs == other.timeoutMs;
 }
 
 class ContextOptions {

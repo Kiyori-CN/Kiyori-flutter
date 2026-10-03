@@ -105,6 +105,7 @@ impl DiagnosticTask {
 pub struct Runtime {
     cancellation: CancellationToken,
     store: std::sync::Mutex<Option<AppStore>>,
+    chat_client: std::sync::OnceLock<Result<std::sync::Arc<reqwest::Client>, CoreError>>,
 }
 
 impl Default for Runtime {
@@ -118,6 +119,7 @@ impl Runtime {
         Self {
             cancellation: CancellationToken::new(),
             store: std::sync::Mutex::new(None),
+            chat_client: std::sync::OnceLock::new(),
         }
     }
 
@@ -125,6 +127,7 @@ impl Runtime {
         Ok(Self {
             cancellation: CancellationToken::new(),
             store: std::sync::Mutex::new(Some(AppStore::open(path)?)),
+            chat_client: std::sync::OnceLock::new(),
         })
     }
 
@@ -214,6 +217,22 @@ impl Runtime {
         if let Ok(mut store) = self.store.lock() {
             store.take();
         }
+    }
+
+    pub fn start_chat(
+        &self,
+        request: crate::chat::ChatRequest,
+    ) -> Result<crate::chat::ChatRun, CoreError> {
+        self.ensure_open()?;
+        let client = self
+            .chat_client
+            .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))
+            .clone()?;
+        Ok(crate::chat::start(
+            client,
+            request,
+            self.cancellation.child_token(),
+        ))
     }
 }
 

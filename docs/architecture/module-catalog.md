@@ -76,12 +76,14 @@ app 用全屏模态路由装配重看入口，系统权限和首启完成均不�
 assistant/presentation/history 投影聊天概览、角色/群聊统计、批量归类和无绑定工作区，
 复用 settings 的卡片外观；只读快照由后续领域 owner 注入，不另建聊天库或文件扫描器。
 assistant/presentation/context 持有上下文/总结/历史媒体局部表单，字段与错误按局部
-监听更新；不复刻旧偏好存储与自动保存协程，真实写入后续统一交给模型配置 owner。
+监听更新；真实上下文保存复用core/context与模型配置owner，700ms去抖和返回刷写。
 assistant/presentation/models 目前投影11功能的模型分配卡片与配置/模型两层展开，
-共享摘要类型不包含凭据；管理配置由 app 接线，测试不构造客户端或发起网络请求。
+共享摘要类型不包含凭据；管理配置由app接线，模型/API测试通过core/chat的共享请求核心。
 同目录模型/API页按连接配置、上下文/请求头/高级卡片、参数与标签编辑器拆分；每个已访问
 配置子树保留独立草稿，配置目录变化按 ID 对齐。供应商协议目录是只读展示常量，密钥仅随
-局部输入控制器存活，领域配置 owner 仍待接入，不复制旧自动保存或服务刷新流程。
+编辑与请求快照存活，ModelsController投影core/models事实并委托native安全存储。
+ModelConnectionTest仅投影Chat和系统指令探测，core/chat拥有HTTP/SSE/超时/取消与错误；
+不建立Dart HTTP客户端。协议、TLS根与未实现能力见ADR0007。
 assistant/presentation/prompts 包含角色/标签目录快照、中文默认角色、编辑与嵌套绑定弹层。
 复用 models 的配置摘要，不持有角色、标签、群组或活跃目标的业务存储；弹层仅有局部
 草稿与自己的路由释放责任。group_card_tile/editor 投影群组列表、成员下拉与编辑草稿；

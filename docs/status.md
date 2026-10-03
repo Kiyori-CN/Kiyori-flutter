@@ -17,9 +17,30 @@ Android31.1s、Windows19.9s串行构建通过，native系统选择器/Android pr
 固定artifacts/ui-preview/20261003-144455：APK117610606字节，SHA256
 BE5A2F571483DE805F161579F033188ECFF23A4A98E52CD788C64235DE43F0ED；Windows84文件153949256字节。
 85份复制hash、APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过，549文件审计无发现。
-准备精确提交并普通推送；历史产物保留。
+已精确提交并普通推送e859ad746bc39864357f194106ed33bd1656fafb，0/0干净；历史产物保留。
 业务首轮假时钟等待停滞，仅终止该测试子进程；修测试推进原生事件及帧后原断言通过。
 模型连接/轮换执行与会话业务继续推进，总Goal保持active。
+
+共享Chat请求核心与单密钥模型测试本机验收通过，正式契约见ADR0007。Runtime单client，
+无自动重试/重定向，HTTPS直连与固定Mozilla根；loopback可HTTP，其他协议明确不支持。
+Rust持有SSE解析、背压、取消/超时、错误和探测规则；模型页面flush后测试聊天与system随机口令，
+按稳定配置/执行代次隔离，工具/媒体未验证。取消等待worker释放，未订阅与关闭无死锁。
+Android主manifest补INTERNET，未操作设备/供应商/私人密钥，代理与用户CA不支持。
+
+work/chat-verify-v2.log通过55文档/4脚本、Rust52/fmt/Clippy、311 Dart格式/analyze、
+Flutter519（10捕获跳过）、platform5、FFI16、Windows引擎4。v1仅新测试花括号lint失败已修。
+FFI初轮fixture未设UTF8导致中文无法写出，修后3项通过；UI初轮按错误工具模式查标签，
+按真实配置修正后通过。探测判定后移至Rust，完整verify覆盖最终实现，生成v4的类型推断
+失败显式标注Option<String>后v5通过。所有失败日志保留。
+work/chat-capture-final两套件通过、7PNG，模型页按钮和暗色结果卡已审阅；bridge-final五文件一致。
+Android141.1s、普通Windows40.7s串行Debug通过，未声称设备TLS、触摸/Profile或Apple验收。
+
+固定artifacts/ui-preview/20261003-154337：APK117648075字节，SHA256
+8232990C911F3BC875AC72C4B2E7D307B5F66D1DE238E349A1B6EA1B2B965C58；Windows84文件157121400字节。
+Rust DLL9684480字节，SHA256 86D1B5661616709E799C73AC955F8A548403ECBC4A935CCFA054FBC701E26311。
+85副本hash、APK身份/网络权限/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过；
+ARM64 Rust库8733696字节，新增网络实现已进入包。558文件审计无发现。准备精确提交与普通推送。
+后续继续密钥池测试/轮换与会话；这些关键业务尚未实现，总Goal保持active。
 
 模型配置基础批次已提交并普通推送029128357a2a38b360c404d03ffed67a215cb738。
 schema7扩展本机验收通过：跨进程凭据lease/崩溃pending恢复、密钥池稳定ID编辑与payload迁移、

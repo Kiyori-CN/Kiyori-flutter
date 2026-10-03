@@ -25,6 +25,17 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ChatRun> startModelProbe(
+    ModelConfigDraft draft,
+    String apiKey,
+    List<ChatHeader> headers,
+    String kind,
+  ) async =>
+      throw UnimplementedError('Use loopback with real request runtime.');
+  @override
+  Future<ChatRun> startChat(ChatRequest request) async =>
+      throw UnimplementedError('Use loopback with real request runtime.');
+  @override
   Future<ContextSettings> contextSettings() async =>
       throw UnimplementedError('Use real context runtime.');
   @override

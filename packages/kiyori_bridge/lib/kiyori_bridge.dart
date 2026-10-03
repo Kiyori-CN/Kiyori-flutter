@@ -2,6 +2,11 @@ library;
 
 export 'src/generated/api.dart'
     show
+        ChatMessage,
+        ChatHeader,
+        ChatRequest,
+        ChatEvent,
+        ChatPhase,
         ContextOptions,
         ContextSettings,
         HistoryRetention,

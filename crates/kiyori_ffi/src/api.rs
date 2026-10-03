@@ -2,6 +2,101 @@ use flutter_rust_bridge::frb;
 use kiyori_core::runtime;
 use std::{fmt, sync::Arc};
 
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+pub struct ChatHeader {
+    pub name: String,
+    pub value: String,
+}
+pub struct ChatRequest {
+    pub protocol: String,
+    pub endpoint: String,
+    pub model: String,
+    pub api_key: String,
+    pub headers: Vec<ChatHeader>,
+    pub messages: Vec<ChatMessage>,
+    pub parameters: String,
+    pub timeout_ms: u32,
+}
+pub enum ChatPhase {
+    Started,
+    Text,
+    Usage,
+    Completed,
+    Failed,
+    Cancelled,
+}
+pub struct ChatEvent {
+    pub verified: Option<bool>,
+    pub phase: ChatPhase,
+    pub text: String,
+    pub reason: String,
+    pub error_kind: String,
+    pub error_message: String,
+    pub http_status: Option<u16>,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub total_tokens: u64,
+}
+#[frb(opaque)]
+pub struct ChatHandle {
+    inner: Arc<kiyori_core::chat::ChatRun>,
+}
+impl ChatHandle {
+    pub async fn cancel(&self) {
+        self.inner.cancel_and_wait().await;
+    }
+    pub async fn next_event(&self) -> Result<Option<ChatEvent>, BridgeError> {
+        Ok(self.inner.next_event().await?.map(|event| {
+            let mut result = ChatEvent {
+                verified: None,
+                phase: ChatPhase::Started,
+                text: String::new(),
+                reason: String::new(),
+                error_kind: String::new(),
+                error_message: String::new(),
+                http_status: None,
+                input_tokens: 0,
+                output_tokens: 0,
+                total_tokens: 0,
+            };
+            use kiyori_core::chat::ChatEvent as E;
+            match event {
+                E::Started => {}
+                E::Text(text) => {
+                    result.phase = ChatPhase::Text;
+                    result.text = text;
+                }
+                E::Usage {
+                    input,
+                    output,
+                    total,
+                } => {
+                    result.phase = ChatPhase::Usage;
+                    result.input_tokens = input;
+                    result.output_tokens = output;
+                    result.total_tokens = total;
+                }
+                E::Completed { reason, verified } => {
+                    result.phase = ChatPhase::Completed;
+                    result.reason = reason;
+                    result.verified = verified;
+                }
+                E::Cancelled => result.phase = ChatPhase::Cancelled,
+                E::Failed(error) => {
+                    result.phase = ChatPhase::Failed;
+                    result.error_kind = format!("{:?}", error.kind);
+                    result.error_message = error.message;
+                    result.http_status = error.http_status;
+                }
+            }
+            result
+        }))
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum ErrorCode {
     InvalidInput,
@@ -870,6 +965,51 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub async fn start_model_probe(
+        &self,
+        draft: ModelConfigDraft,
+        api_key: String,
+        headers: Vec<ChatHeader>,
+        kind: String,
+    ) -> Result<ChatHandle, BridgeError> {
+        let request = kiyori_core::chat::probe::prepare(
+            draft.into(),
+            api_key,
+            headers.into_iter().map(|h| (h.name, h.value)).collect(),
+            &kind,
+        )?;
+        Ok(ChatHandle {
+            inner: Arc::new(self.inner.start_chat(request)?),
+        })
+    }
+    pub async fn start_chat(&self, request: ChatRequest) -> Result<ChatHandle, BridgeError> {
+        Ok(ChatHandle {
+            inner: Arc::new(
+                self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    probe: None,
+                    protocol: request.protocol,
+                    endpoint: request.endpoint,
+                    model: request.model,
+                    api_key: request.api_key,
+                    headers: request
+                        .headers
+                        .into_iter()
+                        .map(|h| (h.name, h.value))
+                        .collect(),
+                    messages: request
+                        .messages
+                        .into_iter()
+                        .map(|m| kiyori_core::chat::ChatMessage {
+                            role: m.role,
+                            content: m.content,
+                        })
+                        .collect(),
+                    parameters: request.parameters,
+                    timeout_ms: request.timeout_ms,
+                })?,
+            ),
+        })
+    }
     pub fn begin_model_secrets(&self) -> Result<ModelSecretsHandle, BridgeError> {
         Ok(ModelSecretsHandle {
             lease: self.inner.begin_model_secrets()?,

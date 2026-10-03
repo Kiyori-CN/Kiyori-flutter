@@ -9,6 +9,7 @@ import 'model_parameters_card.dart';
 import 'function_model_presentation.dart';
 import 'models_controller.dart';
 import 'model_edit_session.dart';
+import 'model_test_results.dart';
 
 /// 目录为核心投影，编辑会话可注入真实保存；纯快照仍不写入。
 class ModelApiPage extends StatefulWidget {
@@ -311,6 +312,8 @@ class _ModelApiPageState extends State<ModelApiPage> {
                   (c) => c.id == id,
                 );
                 if (index < 0) return;
+                await sessions[config.id]?.connectionTest.cancel();
+                if (!mounted) return;
                 FocusManager.instance.primaryFocus?.unfocus();
                 setState(() {
                   selected = index;
@@ -419,7 +422,27 @@ class _ModelApiPageState extends State<ModelApiPage> {
                       ),
                     ),
                   ],
-                  _action('测试模型', Icons.dns, () {}),
+                  if (sessions[config.id] case final session?)
+                    ListenableBuilder(
+                      listenable: session.connectionTest,
+                      builder: (context, _) =>
+                          _testAction(session.connectionTest.running, () async {
+                            if (session.connectionTest.running) {
+                              await session.connectionTest.cancel();
+                            } else if (await session.flush() &&
+                                mounted &&
+                                identical(sessions[config.id], session)) {
+                              unawaited(
+                                session.connectionTest.start(
+                                  session.draft,
+                                  session.credentials,
+                                ),
+                              );
+                            }
+                          }),
+                    )
+                  else
+                    _testAction(false, () {}),
                 ];
                 if (constraints.maxWidth < 400 &&
                     MediaQuery.textScalerOf(context).scale(12) > 18) {
@@ -435,11 +458,42 @@ class _ModelApiPageState extends State<ModelApiPage> {
                 );
               },
             ),
+            if (sessions[config.id] case final session?)
+              ListenableBuilder(
+                listenable: session.connectionTest,
+                builder: (context, _) =>
+                    ModelTestResults(session.connectionTest),
+              ),
           ],
         ),
       ),
     );
   }
+
+  Widget _testAction(bool running, VoidCallback onPressed) =>
+      FilledButton.tonalIcon(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        icon: running
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.dns, size: 14),
+        label: Text(
+          running ? '取消' : '测试模型',
+          style: const TextStyle(fontSize: 12),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
 
   Widget _action(String text, IconData icon, VoidCallback onPressed) =>
       OutlinedButton.icon(

@@ -21,6 +21,11 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+core/chat通过真实loopback HTTP覆盖POST、拆流、结束/usage、错误/重定向与取消；
+packages/kiyori_bridge/test/chat_runtime_test.dart覆盖真实FFI事件、取消等待、未订阅关闭和超时。
+model_connection_test.dart用真实Rust及loopback探测聊天和system口令并捕获结果卡。
+这些不替代真实供应商、TLS根/代理、Android设备或Apple环境验收。
+
 模型配置补充：core/models测试迁移、模型名引用/显式替代和安全引用状态；
 apps/kiyori/test/models_business_test.dart在Windows使用真实FFI和DPAPI验证保存失败、
 清理重试、并发输入与UI写入。packages/kiyori_platform/test使用Windows真实加密和

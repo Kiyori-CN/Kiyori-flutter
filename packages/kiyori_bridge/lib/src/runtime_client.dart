@@ -5,6 +5,13 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<ChatRun> startChat(api.ChatRequest request);
+  Future<ChatRun> startModelProbe(
+    api.ModelConfigDraft draft,
+    String apiKey,
+    List<api.ChatHeader> headers,
+    String kind,
+  );
   Future<api.ContextSettings> contextSettings();
   Future<api.ContextSettings> saveContextSettings(
     String id,
@@ -115,6 +122,11 @@ abstract interface class RuntimeClient {
 
 abstract interface class DiagnosticRun {
   Stream<api.TaskEvent> get events;
+  Future<void> cancel();
+}
+
+abstract interface class ChatRun {
+  Stream<api.ChatEvent> get events;
   Future<void> cancel();
 }
 
@@ -371,6 +383,7 @@ final class NativeRuntimeClient implements RuntimeClient {
   static Future<void>? _initialization;
   final api.RuntimeHandle _handle;
   final Set<_NativeDiagnosticRun> _runs = {};
+  final Set<_NativeChatRun> _chatRuns = {};
   Future<void>? _closing;
 
   static Future<NativeRuntimeClient> open({String? dataDirectory}) async {
@@ -578,8 +591,115 @@ final class NativeRuntimeClient implements RuntimeClient {
 
   Future<void> _close() async {
     await _handle.close();
+    await Future.wait(_chatRuns.toList().map((run) => run.stop()));
     await Future.wait(_runs.toList().map((run) => run.stop()));
     _handle.dispose();
+  }
+
+  @override
+  Future<ChatRun> startChat(api.ChatRequest request) async {
+    _ensureOpen();
+    final handle = await _handle.startChat(request: request);
+    return _trackChat(handle);
+  }
+
+  @override
+  Future<ChatRun> startModelProbe(
+    api.ModelConfigDraft draft,
+    String apiKey,
+    List<api.ChatHeader> headers,
+    String kind,
+  ) async {
+    _ensureOpen();
+    return _trackChat(
+      await _handle.startModelProbe(
+        draft: draft,
+        apiKey: apiKey,
+        headers: headers,
+        kind: kind,
+      ),
+    );
+  }
+
+  Future<ChatRun> _trackChat(api.ChatHandle handle) async {
+    if (_closing != null) {
+      await handle.cancel();
+      handle.dispose();
+      _ensureOpen();
+    }
+    late final _NativeChatRun run;
+    run = _NativeChatRun(handle, () => _chatRuns.remove(run));
+    _chatRuns.add(run);
+    return run;
+  }
+}
+
+final class _NativeChatRun implements ChatRun {
+  _NativeChatRun(this.handle, this.onDone) {
+    controller = StreamController<api.ChatEvent>(
+      onListen: () => pumping = pump(),
+      onPause: () => resume ??= Completer<void>(),
+      onResume: wake,
+      onCancel: stop,
+    );
+  }
+  final api.ChatHandle handle;
+  final void Function() onDone;
+  late final StreamController<api.ChatEvent> controller;
+  Future<void>? pumping, cancellation;
+  Completer<void>? resume;
+  bool stopped = false, disposed = false;
+  @override
+  Stream<api.ChatEvent> get events => controller.stream;
+  void wake() {
+    resume?.complete();
+    resume = null;
+  }
+
+  @override
+  Future<void> cancel() async {
+    if (disposed) return;
+    await (cancellation ??= handle.cancel());
+    wake();
+  }
+
+  Future<void> stop() async {
+    stopped = true;
+    await cancel();
+    wake();
+    if (pumping == null) unawaited(controller.close());
+    await pumping;
+    dispose();
+  }
+
+  Future<void> pump() async {
+    try {
+      while (!stopped) {
+        if (resume case final waiting?) await waiting.future;
+        if (stopped) break;
+        final event = await handle.nextEvent();
+        if (event == null || stopped) break;
+        controller.add(event);
+        if (event.phase == api.ChatPhase.completed ||
+            event.phase == api.ChatPhase.failed ||
+            event.phase == api.ChatPhase.cancelled) {
+          break;
+        }
+      }
+    } catch (error, stack) {
+      if (!stopped) controller.addError(error, stack);
+    } finally {
+      unawaited(controller.close());
+      await cancellation;
+      dispose();
+    }
+  }
+
+  void dispose() {
+    if (disposed) return;
+    disposed = true;
+    handle.dispose();
+    onDone();
   }
 }
 

@@ -5,17 +5,20 @@ import 'package:flutter/foundation.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'model_credentials.dart';
+import 'model_connection_test.dart';
 import 'model_options_editing.dart';
 import 'models_controller.dart';
 
 /// 单配置编辑会话。700ms去抖沿用旧版；提交串行，保存期间的新输入进入下一次。
 class ModelEditSession extends ChangeNotifier {
   ModelEditSession(this.owner, this.base, this.credentials) {
+    connectionTest = ModelConnectionTest(owner.connect);
     draft = base.draft;
     _saved = _fingerprint();
     _persistedCredentials = credentials;
   }
   final ModelsController owner;
+  late final ModelConnectionTest connectionTest;
   ModelConfig base;
   late ModelConfigDraft draft;
   ModelCredentials credentials;
@@ -137,6 +140,7 @@ class ModelEditSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    connectionTest.dispose();
     _disposed = true;
     _timer?.cancel();
     readers.clear();

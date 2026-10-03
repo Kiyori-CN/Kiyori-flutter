@@ -11,6 +11,7 @@
 - [ADR 0004：Unicode输入校验](decisions/0004-unicode-input-normalization.md)：工具箱名称NFKC依赖与业务边界。
 - [ADR 0005：Runtime SQLite存储](decisions/0005-runtime-sqlite-storage.md)：工作流定义持久化、应用目录与关闭/迁移契约。
 - [ADR 0006：模型与安全凭据](decisions/0006-model-secrets-and-configurations.md)：配置引用、双存储提交、DPAPI/Keystore/Keychain与恢复边界。
+- [ADR 0007：共享模型请求](decisions/0007-chat-request-runtime.md)：Chat流、凭据、取消、错误与模型探测边界。
 
 ## 架构
 

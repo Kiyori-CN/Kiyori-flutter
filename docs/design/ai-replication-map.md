@@ -1,5 +1,11 @@
 # AI 抽屉、关联页面与业务复刻映射
 
+模型请求切片：旧ModelConfigScreen的flush/测试/取消/内嵌结果卡、
+ModelConfigConnectionTester的Hi与SystemInstructionCapabilityProbe随机口令，
+映射到models/model_connection_test.dart、model_test_results.dart及core/chat。
+仅聊天和system探测接入真实请求，工具/媒体明确未验证，池调度仍待实现；
+取消与迟到代次隔离、协议与TLS边界见[ADR0007](../decisions/0007-chat-request-runtime.md)。
+
 产品来源固定为只读 Kiyori-Android revision
 `6b03b03aa082803bb279db5e78773583e2d91154`。下列旧路径相对
 `app/src/main/java/`，新路径相对仓库根。实现证据和当前进度只在

@@ -22,6 +22,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ChatHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandlePtr;
+
+  CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_ModelSecretsHandlePtr => wire
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandlePtr;
 
@@ -32,6 +36,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_TaskHandlePtr => wire
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandlePtr;
+
+  @protected
+  ChatHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    dynamic raw,
+  );
 
   @protected
   ModelSecretsHandle
@@ -52,6 +62,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ChatHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    dynamic raw,
+  );
+
+  @protected
   ModelSecretsHandle
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     dynamic raw,
@@ -66,6 +82,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   TaskHandle
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
+    dynamic raw,
+  );
+
+  @protected
+  ChatHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     dynamic raw,
   );
 
@@ -98,6 +120,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   CharacterDraft dco_decode_box_autoadd_character_draft(dynamic raw);
+
+  @protected
+  ChatEvent dco_decode_box_autoadd_chat_event(dynamic raw);
+
+  @protected
+  ChatRequest dco_decode_box_autoadd_chat_request(dynamic raw);
 
   @protected
   ContextOptions dco_decode_box_autoadd_context_options(dynamic raw);
@@ -138,6 +166,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_16(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -148,6 +179,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   CharacterDraft dco_decode_character_draft(dynamic raw);
+
+  @protected
+  ChatEvent dco_decode_chat_event(dynamic raw);
+
+  @protected
+  ChatHeader dco_decode_chat_header(dynamic raw);
+
+  @protected
+  ChatMessage dco_decode_chat_message(dynamic raw);
+
+  @protected
+  ChatPhase dco_decode_chat_phase(dynamic raw);
+
+  @protected
+  ChatRequest dco_decode_chat_request(dynamic raw);
 
   @protected
   ContextOptions dco_decode_context_options(dynamic raw);
@@ -199,6 +245,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<Capability> dco_decode_list_capability(dynamic raw);
+
+  @protected
+  List<ChatHeader> dco_decode_list_chat_header(dynamic raw);
+
+  @protected
+  List<ChatMessage> dco_decode_list_chat_message(dynamic raw);
 
   @protected
   List<DiaryEntry> dco_decode_list_diary_entry(dynamic raw);
@@ -296,6 +348,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
 
   @protected
+  ChatEvent? dco_decode_opt_box_autoadd_chat_event(dynamic raw);
+
+  @protected
   DiarySummary? dco_decode_opt_box_autoadd_diary_summary(dynamic raw);
 
   @protected
@@ -303,6 +358,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TaskEvent? dco_decode_opt_box_autoadd_task_event(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
@@ -335,7 +393,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskPhase dco_decode_task_phase(dynamic raw);
 
   @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -348,6 +412,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WorkflowRecord dco_decode_workflow_record(dynamic raw);
+
+  @protected
+  ChatHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ModelSecretsHandle
@@ -368,6 +438,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ChatHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ModelSecretsHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     SseDeserializer deserializer,
@@ -382,6 +458,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   TaskHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ChatHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     SseDeserializer deserializer,
   );
 
@@ -416,6 +498,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CharacterDraft sse_decode_box_autoadd_character_draft(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ChatEvent sse_decode_box_autoadd_chat_event(SseDeserializer deserializer);
+
+  @protected
+  ChatRequest sse_decode_box_autoadd_chat_request(SseDeserializer deserializer);
 
   @protected
   ContextOptions sse_decode_box_autoadd_context_options(
@@ -468,6 +556,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -478,6 +569,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   CharacterDraft sse_decode_character_draft(SseDeserializer deserializer);
+
+  @protected
+  ChatEvent sse_decode_chat_event(SseDeserializer deserializer);
+
+  @protected
+  ChatHeader sse_decode_chat_header(SseDeserializer deserializer);
+
+  @protected
+  ChatMessage sse_decode_chat_message(SseDeserializer deserializer);
+
+  @protected
+  ChatPhase sse_decode_chat_phase(SseDeserializer deserializer);
+
+  @protected
+  ChatRequest sse_decode_chat_request(SseDeserializer deserializer);
 
   @protected
   ContextOptions sse_decode_context_options(SseDeserializer deserializer);
@@ -529,6 +635,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer);
+
+  @protected
+  List<ChatHeader> sse_decode_list_chat_header(SseDeserializer deserializer);
+
+  @protected
+  List<ChatMessage> sse_decode_list_chat_message(SseDeserializer deserializer);
 
   @protected
   List<DiaryEntry> sse_decode_list_diary_entry(SseDeserializer deserializer);
@@ -644,6 +756,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
 
   @protected
+  ChatEvent? sse_decode_opt_box_autoadd_chat_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DiarySummary? sse_decode_opt_box_autoadd_diary_summary(
     SseDeserializer deserializer,
   );
@@ -657,6 +774,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskEvent? sse_decode_opt_box_autoadd_task_event(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
 
   @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
@@ -689,7 +809,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskPhase sse_decode_task_phase(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -702,6 +828,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WorkflowRecord sse_decode_workflow_record(SseDeserializer deserializer);
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    ChatHandle self,
+    SseSerializer serializer,
+  );
 
   @protected
   void
@@ -726,6 +859,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    ChatHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     ModelSecretsHandle self,
     SseSerializer serializer,
@@ -742,6 +882,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
     TaskHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    ChatHandle self,
     SseSerializer serializer,
   );
 
@@ -778,6 +925,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_character_draft(
     CharacterDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_chat_event(
+    ChatEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_chat_request(
+    ChatRequest self,
     SseSerializer serializer,
   );
 
@@ -854,6 +1013,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -867,6 +1029,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     CharacterDraft self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_chat_event(ChatEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chat_header(ChatHeader self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chat_message(ChatMessage self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chat_phase(ChatPhase self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chat_request(ChatRequest self, SseSerializer serializer);
 
   @protected
   void sse_encode_context_options(
@@ -934,6 +1111,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_capability(
     List<Capability> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_chat_header(
+    List<ChatHeader> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_chat_message(
+    List<ChatMessage> self,
     SseSerializer serializer,
   );
 
@@ -1094,6 +1283,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_chat_event(
+    ChatEvent? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_diary_summary(
     DiarySummary? self,
     SseSerializer serializer,
@@ -1110,6 +1305,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     TaskEvent? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
@@ -1145,7 +1343,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_task_phase(TaskPhase self, SseSerializer serializer);
 
   @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
@@ -1176,6 +1380,40 @@ class RustLibWire implements BaseWire {
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary)
     : _lookup = dynamicLibrary.lookup;
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
   void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
