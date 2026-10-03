@@ -13,14 +13,17 @@ import '../../features/toolbox/presentation/toolbox_page.dart';
 import '../../features/toolbox/presentation/toolbox_presentation.dart';
 import '../../features/workflows/presentation/workflow_controller.dart';
 import '../../features/workflows/presentation/workflow_page.dart';
+import '../../features/knowledge/presentation/knowledge_controller.dart';
+import '../../features/knowledge/presentation/knowledge_page.dart';
 import 'settings_navigation.dart';
 import 'bottom_navigation.dart';
 import 'home_page.dart';
 import 'minus_one_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({this.workflows, super.key});
+  const HomeShell({this.workflows, this.knowledge, super.key});
   final WorkflowController? workflows;
+  final KnowledgeController? knowledge;
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
@@ -39,6 +42,8 @@ class _HomeShellState extends State<HomeShell> {
   String? selectedAiEntry = 'main.ai_chat';
   Widget? aiToolbox;
   Widget? aiWorkflows;
+  Widget? aiKnowledge;
+  final knowledgeKey = GlobalKey<KnowledgePageState>();
   final workflowKey = GlobalKey<WorkflowPageState>();
   late final drawerPlugins = <AiDrawerEntry>[];
   late final pages = <Widget>[
@@ -89,6 +94,16 @@ class _HomeShellState extends State<HomeShell> {
         aiWorkflows ??= WorkflowPage(
           key: workflowKey,
           controller: workflows,
+          onMenu: openAiDrawer,
+        );
+        go(2);
+      case 'main.memory_base':
+        final knowledge = widget.knowledge;
+        if (knowledge == null) return;
+        selectedAiEntry = entry.id;
+        aiKnowledge ??= KnowledgePage(
+          key: knowledgeKey,
+          controller: knowledge,
           onMenu: openAiDrawer,
         );
         go(2);
@@ -156,6 +171,11 @@ class _HomeShellState extends State<HomeShell> {
   void back() {
     if (aiDrawerOpen) {
       closeAiDrawer();
+    } else if (destination == 0 &&
+        settled == 2 &&
+        selectedAiEntry == 'main.memory_base' &&
+        (knowledgeKey.currentState?.handleBack() ?? false)) {
+      return;
     } else if (destination == 0 &&
         settled == 2 &&
         selectedAiEntry == 'main.workflow' &&
@@ -251,6 +271,24 @@ class _HomeShellState extends State<HomeShell> {
                                                   selectedAiEntry ==
                                                       'main.workflow',
                                               child: aiWorkflows!,
+                                            ),
+                                          ),
+                                        ),
+                                      if (aiKnowledge != null)
+                                        Offstage(
+                                          offstage:
+                                              selectedAiEntry !=
+                                              'main.memory_base',
+                                          child: ExcludeFocus(
+                                            excluding:
+                                                selectedAiEntry !=
+                                                'main.memory_base',
+                                            child: TickerMode(
+                                              enabled:
+                                                  settled == 2 &&
+                                                  selectedAiEntry ==
+                                                      'main.memory_base',
+                                              child: aiKnowledge!,
                                             ),
                                           ),
                                         ),

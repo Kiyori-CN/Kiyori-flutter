@@ -8,5 +8,10 @@ export 'src/generated/api.dart'
         Capability,
         TaskEvent,
         TaskPhase,
+        KnowledgeSpace,
+        KnowledgeSnapshot,
+        MemoryDraft,
+        MemoryQuery,
+        MemoryRecord,
         WorkflowRecord;
 export 'src/runtime_client.dart';

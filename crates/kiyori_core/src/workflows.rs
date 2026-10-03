@@ -1,13 +1,11 @@
-use rusqlite::{Connection, OptionalExtension, params};
-use std::{
-    path::Path,
-    sync::Mutex,
-    time::{SystemTime, UNIX_EPOCH},
-};
+#[cfg(test)]
+use rusqlite::Connection;
+use rusqlite::{OptionalExtension, params};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::runtime::{CoreError, ErrorCode};
 
-const SCHEMA_VERSION: i32 = 1;
+use crate::storage::AppStore;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowRecord {
@@ -19,60 +17,7 @@ pub struct WorkflowRecord {
     pub enabled: bool,
 }
 
-pub struct WorkflowStore {
-    connection: Mutex<Connection>,
-}
-
-impl WorkflowStore {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, CoreError> {
-        let path = path.as_ref();
-        if !path.is_absolute() {
-            return Err(error("The application support path must be absolute."));
-        }
-        std::fs::create_dir_all(path)
-            .map_err(|e| error(&format!("Cannot create application data directory: {e}")))?;
-        let database_path = path.join("kiyori.sqlite3");
-        let mut connection = Connection::open(database_path)
-            .map_err(|e| error(&format!("Cannot open Kiyori database: {e}")))?;
-        connection
-            .pragma_update(None, "foreign_keys", "ON")
-            .map_err(|e| error(&format!("Cannot configure Kiyori database: {e}")))?;
-        connection
-            .busy_timeout(std::time::Duration::from_secs(3))
-            .map_err(|e| error(&format!("Cannot set storage timeout: {e}")))?;
-        let transaction = connection
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|e| error(&format!("Cannot start schema transaction: {e}")))?;
-        let version: i32 = transaction
-            .pragma_query_value(None, "user_version", |row| row.get(0))
-            .map_err(|e| error(&format!("Cannot read Kiyori schema version: {e}")))?;
-        if version > SCHEMA_VERSION {
-            return Err(error("Kiyori data was created by a newer app version."));
-        }
-        if version < 1 {
-            transaction
-                .execute_batch(
-                    "CREATE TABLE workflows (
-                       id TEXT PRIMARY KEY NOT NULL,
-                       name TEXT NOT NULL,
-                       description TEXT NOT NULL DEFAULT '',
-                       created_at INTEGER NOT NULL,
-                       updated_at INTEGER NOT NULL,
-                       enabled INTEGER NOT NULL DEFAULT 1
-                     );
-                     CREATE INDEX workflows_updated_at ON workflows(updated_at DESC, id DESC);
-                     PRAGMA user_version = 1;",
-                )
-                .map_err(|e| error(&format!("Cannot migrate Kiyori database: {e}")))?;
-        }
-        transaction
-            .commit()
-            .map_err(|e| error(&format!("Cannot commit schema: {e}")))?;
-        Ok(Self {
-            connection: Mutex::new(connection),
-        })
-    }
-
+impl AppStore {
     pub fn list(&self) -> Result<Vec<WorkflowRecord>, CoreError> {
         let connection = self
             .connection
@@ -209,7 +154,8 @@ impl WorkflowStore {
         Ok(deleted)
     }
 
-    pub fn get(&self, id: String) -> Result<Option<WorkflowRecord>, CoreError> {
+    #[cfg(test)]
+    fn get(&self, id: String) -> Result<Option<WorkflowRecord>, CoreError> {
         let connection = self
             .connection
             .lock()
@@ -263,7 +209,7 @@ mod tests {
     #[test]
     fn creates_lists_and_deletes_workflows_in_updated_order() {
         let dir = TestDirectory::new();
-        let store = WorkflowStore::open(&dir.0).unwrap();
+        let store = AppStore::open(&dir.0).unwrap();
         assert!(store.list().unwrap().is_empty());
         let first = store.create("First".into(), "one".into()).unwrap();
         let second = store.create("Second".into(), "two".into()).unwrap();
@@ -283,7 +229,7 @@ mod tests {
     #[test]
     fn rejects_blank_names_and_preserves_unicode_and_sql_characters() {
         let dir = TestDirectory::new();
-        let store = WorkflowStore::open(&dir.0).unwrap();
+        let store = AppStore::open(&dir.0).unwrap();
         assert_eq!(
             store.create(" ".into(), String::new()).unwrap_err().code,
             ErrorCode::InvalidInput
@@ -293,14 +239,14 @@ mod tests {
             .unwrap();
         assert_eq!(record.name, "中文 ' ; --");
         drop(store);
-        let reopened = WorkflowStore::open(&dir.0).unwrap();
+        let reopened = AppStore::open(&dir.0).unwrap();
         assert_eq!(reopened.get(record.id.clone()).unwrap(), Some(record));
     }
 
     #[test]
     fn update_keeps_identity_and_creation_time_and_never_resurrects_deleted_rows() {
         let dir = TestDirectory::new();
-        let store = WorkflowStore::open(&dir.0).unwrap();
+        let store = AppStore::open(&dir.0).unwrap();
         let first = store.create("before".into(), "".into()).unwrap();
         store.create("second".into(), "".into()).unwrap();
         let updated = store
@@ -328,7 +274,7 @@ mod tests {
     #[test]
     fn batch_delete_is_atomic_and_duplicate_ids_do_not_overcount() {
         let dir = TestDirectory::new();
-        let store = WorkflowStore::open(&dir.0).unwrap();
+        let store = AppStore::open(&dir.0).unwrap();
         let one = store.create("one".into(), "".into()).unwrap();
         let two = store.create("two".into(), "".into()).unwrap();
         assert!(store.delete_many(vec![one.id.clone(), "".into()]).is_err());
@@ -350,12 +296,12 @@ mod tests {
         conn.pragma_update(None, "user_version", 100).unwrap();
         drop(conn);
         let before = std::fs::read(&path).unwrap();
-        assert!(WorkflowStore::open(&dir.0).is_err());
+        assert!(AppStore::open(&dir.0).is_err());
         assert_eq!(before, std::fs::read(&path).unwrap());
         std::fs::write(&path, b"not a database").unwrap();
-        assert!(WorkflowStore::open(&dir.0).is_err());
+        assert!(AppStore::open(&dir.0).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"not a database");
-        assert!(WorkflowStore::open("relative").is_err());
+        assert!(AppStore::open("relative").is_err());
     }
 
     #[test]
@@ -389,7 +335,7 @@ mod tests {
             runtime.list_workflows().unwrap_err().code,
             ErrorCode::RuntimeClosed
         );
-        let reopened = WorkflowStore::open(&dir.0).unwrap();
+        let reopened = AppStore::open(&dir.0).unwrap();
         assert_eq!(reopened.list().unwrap().len(), 12);
     }
 }

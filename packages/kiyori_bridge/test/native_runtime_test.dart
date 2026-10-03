@@ -6,6 +6,87 @@ import 'package:test/test.dart';
 
 void main() {
   test(
+    'knowledge DTOs preserve space identity, Unicode and committed state',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-ffi-knowledge-',
+      );
+      NativeRuntimeClient? client;
+      try {
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        final space = await client.saveKnowledgeSpace(null, '阅读资料');
+        await client.selectKnowledgeSpace(space);
+        await client.createKnowledgeFolder(space, '读书/小说');
+        const draft = MemoryDraft(
+          kind: 'knowledge',
+          title: '原文 🐱',
+          content: '第一行\n第二行',
+          category: 'other',
+          source: '手工',
+          folder: '读书/小说',
+          credibility: .8,
+          importance: .5,
+          tags: ['中文', '中文'],
+        );
+        final id = await client.saveMemory(space, null, draft);
+        await client.close();
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        final snapshot = await client.knowledgeSnapshot();
+        expect(snapshot.activeSpace, space);
+        expect(snapshot.records.single.draft.content, draft.content);
+        expect(snapshot.records.single.draft.tags, ['中文']);
+        final query = await client.queryKnowledge(
+          const MemoryQuery(
+            kind: 'knowledge',
+            folder: '',
+            text: '第二行',
+            archived: false,
+            sortTitle: false,
+            offset: 0,
+          ),
+        );
+        expect(query.records.single.id, id);
+        expect(query.hasMore, isFalse);
+        expect(
+          (await client.getMemory(space, id))!.draft.content,
+          draft.content,
+        );
+        await client.renameKnowledgeFolder(space, '读书', '资料');
+        expect(
+          (await client.knowledgeSnapshot()).records.single.draft.folder,
+          '资料/小说',
+        );
+        await client.deleteKnowledgeFolder(space, '资料');
+        expect(
+          (await client.knowledgeSnapshot()).records.single.draft.folder,
+          '',
+        );
+        await expectLater(
+          client.saveMemory('default', id, draft),
+          throwsA(
+            isA<BridgeError>().having(
+              (e) => e.code,
+              'identity',
+              ErrorCode.invalidInput,
+            ),
+          ),
+        );
+        await client.archiveMemory(space, id, true);
+        expect(
+          (await client.knowledgeSnapshot()).records.single.archived,
+          isTrue,
+        );
+        await client.deleteKnowledgeSpace(space);
+        expect((await client.knowledgeSnapshot()).activeSpace, 'default');
+        await client.close();
+        expect(() => client!.knowledgeSnapshot(), throwsA(isA<BridgeError>()));
+      } finally {
+        await client?.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'real SQLite bridge persists Unicode records, deletes and closes',
     () async {
       final directory = await Directory.systemTemp.createTemp(

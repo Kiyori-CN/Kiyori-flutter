@@ -19,7 +19,7 @@
 | main.packages | PackageManagerScreen，PACKAGES、PLUGINS、SKILLS、MCP 四标签 | extensions；包环境、市场、增删/刷新、MCP启动和错误；尚未接入 |
 | main.toolbox | ToolboxCatalog 及对应 ScreenRouteRegistry 工具目录 | 复用 toolbox 一级页，AI 内部导航保持原来源，不能跳底栏 |
 | main.workflow | WorkflowListScreen、WorkflowDetailScreen、WorkflowViewModel、WorkflowRepository | workflows；定义目录→创建→详情→删除，模板/节点/执行/调度另按旧源推进 |
-| main.memory_base | MemoryScreen、空间/文件夹导航和导入目标身份 | knowledge；空间、目录、内容与异步错误，尚未接入 |
+| main.memory_base | MemoryScreen、空间/文件夹导航和导入目标身份 | knowledge；空间、目录、手工记忆/笔记、归档与删除接入同一SQLite；日记/导入/图谱另行推进 |
 | 动态插件 | KiyoriNavigationDrawerContent、plugin keepAlive 策略 | 只消费正式插件目录，不注入产品演示插件 |
 | main.settings | KiyoriDrawerFooter → 设置主目录 | SettingsNavigation，压栈后返回准确 AI 根目的地 |
 
@@ -50,6 +50,17 @@ feature/workflows/presentation 的 WorkflowController 只保存不可变投影�
 本切片不包含节点、连接、执行日志、调度、工具授权或外部副作用，空节点数仅描述空白定义。
 
 ## 后续 AI 垂直切片边界
+
+记忆根切片来源为MemoryLibraryContent、FolderNavigator、MemoryFolderBrowsePolicy、
+EditMemoryDialog与MemoryInfoDialog。空间默认ID为default，禁止删除；删除其它空间在
+事务内回到default并级联删除所属条目/标签/目录。编辑固定space+id，不能以当前空间替换。
+新建手工记忆与知识笔记保持标题/正文必填、主题六类、目录、标签、来源、高级可信度0.8/
+重要性0.5默认；退出脏草稿确认，保存中拒绝退出。正文只在列表投影400字符摘要，完整
+内容按身份读取与保存；页面和Rust均不能以列表摘要覆盖正文。查询在Rust执行、每页100，
+更多结果显式加载；目录直接子级和筛选子树分开，路径%/_按字面处理。
+目录重命名同时移动子目录和条目；删除目录只把正文移到根，不删除条目。
+日记类型需要阶段和追加记录语义，本切片不把普通文本CRUD包装成日记；导入资料、图谱、
+语义检索及云设置动作仍保持未接入边界。存储及迁移只在core/storage统一维护。
 
 会话/消息及流式请求沿 AIChatScreen 的实际调用链继续清点，至少追踪历史、模型配置、
 取消/错误、角色/群组/提示词、上下文、附件和工具授权的真实 owner；不凭功能名称生成假实现。

@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<RuntimeHandle> createRuntime() =>
     RustLib.instance.api.crateApiCreateRuntime();
@@ -17,20 +17,62 @@ Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>>
 abstract class RuntimeHandle implements RustOpaqueInterface {
+  Future<void> archiveMemory({
+    required String space,
+    required String id,
+    required bool archived,
+  });
+
   Future<void> close();
+
+  Future<void> createKnowledgeFolder({
+    required String space,
+    required String path,
+  });
 
   Future<WorkflowRecord> createWorkflow({
     required String name,
     required String description,
   });
 
+  Future<void> deleteKnowledgeFolder({
+    required String space,
+    required String path,
+  });
+
+  Future<bool> deleteKnowledgeSpace({required String id});
+
+  Future<bool> deleteMemory({required String space, required String id});
+
   Future<bool> deleteWorkflow({required String id});
 
   Future<int> deleteWorkflows({required List<String> ids});
 
+  Future<MemoryRecord?> getMemory({required String space, required String id});
+
   Future<RuntimeInfo> info();
 
+  Future<KnowledgeSnapshot> knowledgeSnapshot();
+
   Future<List<WorkflowRecord>> listWorkflows();
+
+  Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
+
+  Future<void> renameKnowledgeFolder({
+    required String space,
+    required String old,
+    required String new_,
+  });
+
+  Future<String> saveKnowledgeSpace({String? id, required String name});
+
+  Future<String> saveMemory({
+    required String space,
+    String? id,
+    required MemoryDraft draft,
+  });
+
+  Future<void> selectKnowledgeSpace({required String id});
 
   Future<TaskHandle> startDiagnostic({
     required int steps,
@@ -95,6 +137,196 @@ class Capability {
 }
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
+
+class KnowledgeSnapshot {
+  final List<KnowledgeSpace> spaces;
+  final String activeSpace;
+  final List<String> folders;
+  final List<MemoryRecord> records;
+  final bool hasMore;
+
+  const KnowledgeSnapshot({
+    required this.spaces,
+    required this.activeSpace,
+    required this.folders,
+    required this.records,
+    required this.hasMore,
+  });
+
+  @override
+  int get hashCode =>
+      spaces.hashCode ^
+      activeSpace.hashCode ^
+      folders.hashCode ^
+      records.hashCode ^
+      hasMore.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is KnowledgeSnapshot &&
+          runtimeType == other.runtimeType &&
+          spaces == other.spaces &&
+          activeSpace == other.activeSpace &&
+          folders == other.folders &&
+          records == other.records &&
+          hasMore == other.hasMore;
+}
+
+class KnowledgeSpace {
+  final String id;
+  final String name;
+
+  const KnowledgeSpace({required this.id, required this.name});
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is KnowledgeSpace &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name;
+}
+
+class MemoryDraft {
+  final String kind;
+  final String title;
+  final String content;
+  final String category;
+  final String source;
+  final String folder;
+  final double credibility;
+  final double importance;
+  final List<String> tags;
+
+  const MemoryDraft({
+    required this.kind,
+    required this.title,
+    required this.content,
+    required this.category,
+    required this.source,
+    required this.folder,
+    required this.credibility,
+    required this.importance,
+    required this.tags,
+  });
+
+  @override
+  int get hashCode =>
+      kind.hashCode ^
+      title.hashCode ^
+      content.hashCode ^
+      category.hashCode ^
+      source.hashCode ^
+      folder.hashCode ^
+      credibility.hashCode ^
+      importance.hashCode ^
+      tags.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryDraft &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          title == other.title &&
+          content == other.content &&
+          category == other.category &&
+          source == other.source &&
+          folder == other.folder &&
+          credibility == other.credibility &&
+          importance == other.importance &&
+          tags == other.tags;
+}
+
+class MemoryQuery {
+  final String? kind;
+  final String folder;
+  final String text;
+  final String? category;
+  final String? tag;
+  final bool archived;
+  final bool sortTitle;
+  final int offset;
+
+  const MemoryQuery({
+    this.kind,
+    required this.folder,
+    required this.text,
+    this.category,
+    this.tag,
+    required this.archived,
+    required this.sortTitle,
+    required this.offset,
+  });
+
+  @override
+  int get hashCode =>
+      kind.hashCode ^
+      folder.hashCode ^
+      text.hashCode ^
+      category.hashCode ^
+      tag.hashCode ^
+      archived.hashCode ^
+      sortTitle.hashCode ^
+      offset.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryQuery &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          folder == other.folder &&
+          text == other.text &&
+          category == other.category &&
+          tag == other.tag &&
+          archived == other.archived &&
+          sortTitle == other.sortTitle &&
+          offset == other.offset;
+}
+
+class MemoryRecord {
+  final String id;
+  final String spaceId;
+  final MemoryDraft draft;
+  final bool archived;
+  final PlatformInt64 createdAt;
+  final PlatformInt64 updatedAt;
+
+  const MemoryRecord({
+    required this.id,
+    required this.spaceId,
+    required this.draft,
+    required this.archived,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      spaceId.hashCode ^
+      draft.hashCode ^
+      archived.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          spaceId == other.spaceId &&
+          draft == other.draft &&
+          archived == other.archived &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+}
 
 class RuntimeInfo {
   final String coreVersion;

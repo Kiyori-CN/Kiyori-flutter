@@ -24,6 +24,41 @@ class FakeRun implements DiagnosticRun {
 }
 
 class FakeClient implements RuntimeClient {
+  @override
+  Future<KnowledgeSnapshot> queryKnowledge(MemoryQuery query) =>
+      knowledgeSnapshot();
+  @override
+  Future<MemoryRecord?> getMemory(String space, String id) async =>
+      (await knowledgeSnapshot()).records
+          .where((r) => r.id == id && r.spaceId == space)
+          .firstOrNull;
+  @override
+  Future<void> renameKnowledgeFolder(String space, String old, String path) =>
+      throw UnimplementedError();
+  @override
+  Future<void> deleteKnowledgeFolder(String space, String path) =>
+      throw UnimplementedError();
+  @override
+  Future<KnowledgeSnapshot> knowledgeSnapshot() => throw UnimplementedError();
+  @override
+  Future<String> saveKnowledgeSpace(String? id, String name) =>
+      throw UnimplementedError();
+  @override
+  Future<void> selectKnowledgeSpace(String id) => throw UnimplementedError();
+  @override
+  Future<bool> deleteKnowledgeSpace(String id) => throw UnimplementedError();
+  @override
+  Future<void> createKnowledgeFolder(String space, String path) =>
+      throw UnimplementedError();
+  @override
+  Future<String> saveMemory(String space, String? id, MemoryDraft draft) =>
+      throw UnimplementedError();
+  @override
+  Future<void> archiveMemory(String space, String id, bool archived) =>
+      throw UnimplementedError();
+  @override
+  Future<bool> deleteMemory(String space, String id) =>
+      throw UnimplementedError();
   bool closed = false;
   int starts = 0;
   FakeRun? run;

@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 528037997;
+  int get rustContentHash => -1524737751;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,12 +79,42 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<void> crateApiRuntimeHandleArchiveMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+    required bool archived,
+  });
+
   Future<void> crateApiRuntimeHandleClose({required RuntimeHandle that});
+
+  Future<void> crateApiRuntimeHandleCreateKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String path,
+  });
 
   Future<WorkflowRecord> crateApiRuntimeHandleCreateWorkflow({
     required RuntimeHandle that,
     required String name,
     required String description,
+  });
+
+  Future<void> crateApiRuntimeHandleDeleteKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String path,
+  });
+
+  Future<bool> crateApiRuntimeHandleDeleteKnowledgeSpace({
+    required RuntimeHandle that,
+    required String id,
+  });
+
+  Future<bool> crateApiRuntimeHandleDeleteMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
   });
 
   Future<bool> crateApiRuntimeHandleDeleteWorkflow({
@@ -97,10 +127,50 @@ abstract class RustLibApi extends BaseApi {
     required List<String> ids,
   });
 
+  Future<MemoryRecord?> crateApiRuntimeHandleGetMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+  });
+
   Future<RuntimeInfo> crateApiRuntimeHandleInfo({required RuntimeHandle that});
+
+  Future<KnowledgeSnapshot> crateApiRuntimeHandleKnowledgeSnapshot({
+    required RuntimeHandle that,
+  });
 
   Future<List<WorkflowRecord>> crateApiRuntimeHandleListWorkflows({
     required RuntimeHandle that,
+  });
+
+  Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
+    required RuntimeHandle that,
+    required MemoryQuery query,
+  });
+
+  Future<void> crateApiRuntimeHandleRenameKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String old,
+    required String new_,
+  });
+
+  Future<String> crateApiRuntimeHandleSaveKnowledgeSpace({
+    required RuntimeHandle that,
+    String? id,
+    required String name,
+  });
+
+  Future<String> crateApiRuntimeHandleSaveMemory({
+    required RuntimeHandle that,
+    required String space,
+    String? id,
+    required MemoryDraft draft,
+  });
+
+  Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
+    required RuntimeHandle that,
+    required String id,
   });
 
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
@@ -154,6 +224,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<void> crateApiRuntimeHandleArchiveMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+    required bool archived,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(id, serializer);
+          sse_encode_bool(archived, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleArchiveMemoryConstMeta,
+        argValues: [that, space, id, archived],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleArchiveMemoryConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_archive_memory",
+        argNames: ["that", "space", "id", "archived"],
+      );
+
+  @override
   Future<void> crateApiRuntimeHandleClose({required RuntimeHandle that}) {
     return handler.executeNormal(
       NormalTask(
@@ -166,7 +278,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -183,6 +295,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiRuntimeHandleCloseConstMeta =>
       const TaskConstMeta(debugName: "RuntimeHandle_close", argNames: ["that"]);
+
+  @override
+  Future<void> crateApiRuntimeHandleCreateKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String path,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(path, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleCreateKnowledgeFolderConstMeta,
+        argValues: [that, space, path],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleCreateKnowledgeFolderConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_create_knowledge_folder",
+        argNames: ["that", "space", "path"],
+      );
 
   @override
   Future<WorkflowRecord> crateApiRuntimeHandleCreateWorkflow({
@@ -203,7 +355,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -225,6 +377,124 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRuntimeHandleDeleteKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String path,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(path, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteKnowledgeFolderConstMeta,
+        argValues: [that, space, path],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteKnowledgeFolderConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_knowledge_folder",
+        argNames: ["that", "space", "path"],
+      );
+
+  @override
+  Future<bool> crateApiRuntimeHandleDeleteKnowledgeSpace({
+    required RuntimeHandle that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteKnowledgeSpaceConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteKnowledgeSpaceConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_knowledge_space",
+        argNames: ["that", "id"],
+      );
+
+  @override
+  Future<bool> crateApiRuntimeHandleDeleteMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteMemoryConstMeta,
+        argValues: [that, space, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteMemoryConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_memory",
+        argNames: ["that", "space", "id"],
+      );
+
+  @override
   Future<bool> crateApiRuntimeHandleDeleteWorkflow({
     required RuntimeHandle that,
     required String id,
@@ -241,7 +511,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 8,
             port: port_,
           );
         },
@@ -279,7 +549,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 9,
             port: port_,
           );
         },
@@ -301,6 +571,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<MemoryRecord?> crateApiRuntimeHandleGetMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_memory_record,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleGetMemoryConstMeta,
+        argValues: [that, space, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleGetMemoryConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_get_memory",
+        argNames: ["that", "space", "id"],
+      );
+
+  @override
   Future<RuntimeInfo> crateApiRuntimeHandleInfo({required RuntimeHandle that}) {
     return handler.executeNormal(
       NormalTask(
@@ -313,7 +623,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 11,
             port: port_,
           );
         },
@@ -332,6 +642,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "RuntimeHandle_info", argNames: ["that"]);
 
   @override
+  Future<KnowledgeSnapshot> crateApiRuntimeHandleKnowledgeSnapshot({
+    required RuntimeHandle that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_knowledge_snapshot,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleKnowledgeSnapshotConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleKnowledgeSnapshotConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_knowledge_snapshot",
+        argNames: ["that"],
+      );
+
+  @override
   Future<List<WorkflowRecord>> crateApiRuntimeHandleListWorkflows({
     required RuntimeHandle that,
   }) {
@@ -346,7 +692,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 13,
             port: port_,
           );
         },
@@ -368,6 +714,206 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
+    required RuntimeHandle that,
+    required MemoryQuery query,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_memory_query(query, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_knowledge_snapshot,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleQueryKnowledgeConstMeta,
+        argValues: [that, query],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleQueryKnowledgeConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_query_knowledge",
+        argNames: ["that", "query"],
+      );
+
+  @override
+  Future<void> crateApiRuntimeHandleRenameKnowledgeFolder({
+    required RuntimeHandle that,
+    required String space,
+    required String old,
+    required String new_,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(old, serializer);
+          sse_encode_String(new_, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleRenameKnowledgeFolderConstMeta,
+        argValues: [that, space, old, new_],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleRenameKnowledgeFolderConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_rename_knowledge_folder",
+        argNames: ["that", "space", "old", "new_"],
+      );
+
+  @override
+  Future<String> crateApiRuntimeHandleSaveKnowledgeSpace({
+    required RuntimeHandle that,
+    String? id,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_opt_String(id, serializer);
+          sse_encode_String(name, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSaveKnowledgeSpaceConstMeta,
+        argValues: [that, id, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSaveKnowledgeSpaceConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_knowledge_space",
+        argNames: ["that", "id", "name"],
+      );
+
+  @override
+  Future<String> crateApiRuntimeHandleSaveMemory({
+    required RuntimeHandle that,
+    required String space,
+    String? id,
+    required MemoryDraft draft,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_opt_String(id, serializer);
+          sse_encode_box_autoadd_memory_draft(draft, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSaveMemoryConstMeta,
+        argValues: [that, space, id, draft],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSaveMemoryConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_memory",
+        argNames: ["that", "space", "id", "draft"],
+      );
+
+  @override
+  Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
+    required RuntimeHandle that,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSelectKnowledgeSpaceConstMeta,
+        argValues: [that, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSelectKnowledgeSpaceConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_select_knowledge_space",
+        argNames: ["that", "id"],
+      );
+
+  @override
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
     required RuntimeHandle that,
     required int steps,
@@ -386,7 +932,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 19,
             port: port_,
           );
         },
@@ -431,7 +977,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 20,
             port: port_,
           );
         },
@@ -465,7 +1011,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 21,
             port: port_,
           );
         },
@@ -496,7 +1042,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 22,
             port: port_,
           );
         },
@@ -526,7 +1072,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 23,
             port: port_,
           );
         },
@@ -557,7 +1103,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 24,
             port: port_,
           );
         },
@@ -662,6 +1208,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_memory_draft(raw);
+  }
+
+  @protected
+  MemoryQuery dco_decode_box_autoadd_memory_query(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_memory_query(raw);
+  }
+
+  @protected
+  MemoryRecord dco_decode_box_autoadd_memory_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_memory_record(raw);
+  }
+
+  @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_task_event(raw);
@@ -699,6 +1263,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -708,6 +1278,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
+  }
+
+  @protected
+  KnowledgeSnapshot dco_decode_knowledge_snapshot(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return KnowledgeSnapshot(
+      spaces: dco_decode_list_knowledge_space(arr[0]),
+      activeSpace: dco_decode_String(arr[1]),
+      folders: dco_decode_list_String(arr[2]),
+      records: dco_decode_list_memory_record(arr[3]),
+      hasMore: dco_decode_bool(arr[4]),
+    );
+  }
+
+  @protected
+  KnowledgeSpace dco_decode_knowledge_space(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return KnowledgeSpace(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+    );
   }
 
   @protected
@@ -723,6 +1320,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_knowledge_space).toList();
+  }
+
+  @protected
+  List<MemoryRecord> dco_decode_list_memory_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_memory_record).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -732,6 +1341,71 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_workflow_record).toList();
+  }
+
+  @protected
+  MemoryDraft dco_decode_memory_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return MemoryDraft(
+      kind: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      content: dco_decode_String(arr[2]),
+      category: dco_decode_String(arr[3]),
+      source: dco_decode_String(arr[4]),
+      folder: dco_decode_String(arr[5]),
+      credibility: dco_decode_f_64(arr[6]),
+      importance: dco_decode_f_64(arr[7]),
+      tags: dco_decode_list_String(arr[8]),
+    );
+  }
+
+  @protected
+  MemoryQuery dco_decode_memory_query(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return MemoryQuery(
+      kind: dco_decode_opt_String(arr[0]),
+      folder: dco_decode_String(arr[1]),
+      text: dco_decode_String(arr[2]),
+      category: dco_decode_opt_String(arr[3]),
+      tag: dco_decode_opt_String(arr[4]),
+      archived: dco_decode_bool(arr[5]),
+      sortTitle: dco_decode_bool(arr[6]),
+      offset: dco_decode_u_32(arr[7]),
+    );
+  }
+
+  @protected
+  MemoryRecord dco_decode_memory_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return MemoryRecord(
+      id: dco_decode_String(arr[0]),
+      spaceId: dco_decode_String(arr[1]),
+      draft: dco_decode_memory_draft(arr[2]),
+      archived: dco_decode_bool(arr[3]),
+      createdAt: dco_decode_i_64(arr[4]),
+      updatedAt: dco_decode_i_64(arr[5]),
+    );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  MemoryRecord? dco_decode_opt_box_autoadd_memory_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_memory_record(raw);
   }
 
   @protected
@@ -899,6 +1573,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MemoryDraft sse_decode_box_autoadd_memory_draft(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_memory_draft(deserializer));
+  }
+
+  @protected
+  MemoryQuery sse_decode_box_autoadd_memory_query(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_memory_query(deserializer));
+  }
+
+  @protected
+  MemoryRecord sse_decode_box_autoadd_memory_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_memory_record(deserializer));
+  }
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_task_event(deserializer));
@@ -929,6 +1627,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -938,6 +1642,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  KnowledgeSnapshot sse_decode_knowledge_snapshot(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_spaces = sse_decode_list_knowledge_space(deserializer);
+    var var_activeSpace = sse_decode_String(deserializer);
+    var var_folders = sse_decode_list_String(deserializer);
+    var var_records = sse_decode_list_memory_record(deserializer);
+    var var_hasMore = sse_decode_bool(deserializer);
+    return KnowledgeSnapshot(
+      spaces: var_spaces,
+      activeSpace: var_activeSpace,
+      folders: var_folders,
+      records: var_records,
+      hasMore: var_hasMore,
+    );
+  }
+
+  @protected
+  KnowledgeSpace sse_decode_knowledge_space(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    return KnowledgeSpace(id: var_id, name: var_name);
   }
 
   @protected
@@ -965,6 +1696,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<KnowledgeSpace> sse_decode_list_knowledge_space(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <KnowledgeSpace>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_knowledge_space(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MemoryRecord> sse_decode_list_memory_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MemoryRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_memory_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -983,6 +1742,97 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       ans_.add(sse_decode_workflow_record(deserializer));
     }
     return ans_;
+  }
+
+  @protected
+  MemoryDraft sse_decode_memory_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    var var_category = sse_decode_String(deserializer);
+    var var_source = sse_decode_String(deserializer);
+    var var_folder = sse_decode_String(deserializer);
+    var var_credibility = sse_decode_f_64(deserializer);
+    var var_importance = sse_decode_f_64(deserializer);
+    var var_tags = sse_decode_list_String(deserializer);
+    return MemoryDraft(
+      kind: var_kind,
+      title: var_title,
+      content: var_content,
+      category: var_category,
+      source: var_source,
+      folder: var_folder,
+      credibility: var_credibility,
+      importance: var_importance,
+      tags: var_tags,
+    );
+  }
+
+  @protected
+  MemoryQuery sse_decode_memory_query(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_opt_String(deserializer);
+    var var_folder = sse_decode_String(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    var var_category = sse_decode_opt_String(deserializer);
+    var var_tag = sse_decode_opt_String(deserializer);
+    var var_archived = sse_decode_bool(deserializer);
+    var var_sortTitle = sse_decode_bool(deserializer);
+    var var_offset = sse_decode_u_32(deserializer);
+    return MemoryQuery(
+      kind: var_kind,
+      folder: var_folder,
+      text: var_text,
+      category: var_category,
+      tag: var_tag,
+      archived: var_archived,
+      sortTitle: var_sortTitle,
+      offset: var_offset,
+    );
+  }
+
+  @protected
+  MemoryRecord sse_decode_memory_record(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_spaceId = sse_decode_String(deserializer);
+    var var_draft = sse_decode_memory_draft(deserializer);
+    var var_archived = sse_decode_bool(deserializer);
+    var var_createdAt = sse_decode_i_64(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    return MemoryRecord(
+      id: var_id,
+      spaceId: var_spaceId,
+      draft: var_draft,
+      archived: var_archived,
+      createdAt: var_createdAt,
+      updatedAt: var_updatedAt,
+    );
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  MemoryRecord? sse_decode_opt_box_autoadd_memory_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_memory_record(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -1166,6 +2016,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_memory_draft(
+    MemoryDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_memory_draft(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_memory_query(
+    MemoryQuery self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_memory_query(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_memory_record(
+    MemoryRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_memory_record(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
@@ -1196,6 +2073,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -1205,6 +2088,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_knowledge_snapshot(
+    KnowledgeSnapshot self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_knowledge_space(self.spaces, serializer);
+    sse_encode_String(self.activeSpace, serializer);
+    sse_encode_list_String(self.folders, serializer);
+    sse_encode_list_memory_record(self.records, serializer);
+    sse_encode_bool(self.hasMore, serializer);
+  }
+
+  @protected
+  void sse_encode_knowledge_space(
+    KnowledgeSpace self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
   }
 
   @protected
@@ -1229,6 +2135,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_knowledge_space(
+    List<KnowledgeSpace> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_knowledge_space(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_memory_record(
+    List<MemoryRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_memory_record(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -1247,6 +2177,67 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_workflow_record(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_memory_draft(MemoryDraft self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.content, serializer);
+    sse_encode_String(self.category, serializer);
+    sse_encode_String(self.source, serializer);
+    sse_encode_String(self.folder, serializer);
+    sse_encode_f_64(self.credibility, serializer);
+    sse_encode_f_64(self.importance, serializer);
+    sse_encode_list_String(self.tags, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_query(MemoryQuery self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.kind, serializer);
+    sse_encode_String(self.folder, serializer);
+    sse_encode_String(self.text, serializer);
+    sse_encode_opt_String(self.category, serializer);
+    sse_encode_opt_String(self.tag, serializer);
+    sse_encode_bool(self.archived, serializer);
+    sse_encode_bool(self.sortTitle, serializer);
+    sse_encode_u_32(self.offset, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_record(MemoryRecord self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.spaceId, serializer);
+    sse_encode_memory_draft(self.draft, serializer);
+    sse_encode_bool(self.archived, serializer);
+    sse_encode_i_64(self.createdAt, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_memory_record(
+    MemoryRecord? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_memory_record(self, serializer);
     }
   }
 
@@ -1343,8 +2334,28 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
         RustLib.instance.api.rust_arc_decrement_strong_count_RuntimeHandlePtr,
   );
 
+  Future<void> archiveMemory({
+    required String space,
+    required String id,
+    required bool archived,
+  }) => RustLib.instance.api.crateApiRuntimeHandleArchiveMemory(
+    that: this,
+    space: space,
+    id: id,
+    archived: archived,
+  );
+
   Future<void> close() =>
       RustLib.instance.api.crateApiRuntimeHandleClose(that: this);
+
+  Future<void> createKnowledgeFolder({
+    required String space,
+    required String path,
+  }) => RustLib.instance.api.crateApiRuntimeHandleCreateKnowledgeFolder(
+    that: this,
+    space: space,
+    path: path,
+  );
 
   Future<WorkflowRecord> createWorkflow({
     required String name,
@@ -1355,6 +2366,27 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     description: description,
   );
 
+  Future<void> deleteKnowledgeFolder({
+    required String space,
+    required String path,
+  }) => RustLib.instance.api.crateApiRuntimeHandleDeleteKnowledgeFolder(
+    that: this,
+    space: space,
+    path: path,
+  );
+
+  Future<bool> deleteKnowledgeSpace({required String id}) => RustLib
+      .instance
+      .api
+      .crateApiRuntimeHandleDeleteKnowledgeSpace(that: this, id: id);
+
+  Future<bool> deleteMemory({required String space, required String id}) =>
+      RustLib.instance.api.crateApiRuntimeHandleDeleteMemory(
+        that: this,
+        space: space,
+        id: id,
+      );
+
   Future<bool> deleteWorkflow({required String id}) => RustLib.instance.api
       .crateApiRuntimeHandleDeleteWorkflow(that: this, id: id);
 
@@ -1363,11 +2395,63 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
       .api
       .crateApiRuntimeHandleDeleteWorkflows(that: this, ids: ids);
 
+  Future<MemoryRecord?> getMemory({
+    required String space,
+    required String id,
+  }) => RustLib.instance.api.crateApiRuntimeHandleGetMemory(
+    that: this,
+    space: space,
+    id: id,
+  );
+
   Future<RuntimeInfo> info() =>
       RustLib.instance.api.crateApiRuntimeHandleInfo(that: this);
 
+  Future<KnowledgeSnapshot> knowledgeSnapshot() =>
+      RustLib.instance.api.crateApiRuntimeHandleKnowledgeSnapshot(that: this);
+
   Future<List<WorkflowRecord>> listWorkflows() =>
       RustLib.instance.api.crateApiRuntimeHandleListWorkflows(that: this);
+
+  Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query}) =>
+      RustLib.instance.api.crateApiRuntimeHandleQueryKnowledge(
+        that: this,
+        query: query,
+      );
+
+  Future<void> renameKnowledgeFolder({
+    required String space,
+    required String old,
+    required String new_,
+  }) => RustLib.instance.api.crateApiRuntimeHandleRenameKnowledgeFolder(
+    that: this,
+    space: space,
+    old: old,
+    new_: new_,
+  );
+
+  Future<String> saveKnowledgeSpace({String? id, required String name}) =>
+      RustLib.instance.api.crateApiRuntimeHandleSaveKnowledgeSpace(
+        that: this,
+        id: id,
+        name: name,
+      );
+
+  Future<String> saveMemory({
+    required String space,
+    String? id,
+    required MemoryDraft draft,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSaveMemory(
+    that: this,
+    space: space,
+    id: id,
+    draft: draft,
+  );
+
+  Future<void> selectKnowledgeSpace({required String id}) => RustLib
+      .instance
+      .api
+      .crateApiRuntimeHandleSelectKnowledgeSpace(that: this, id: id);
 
   Future<TaskHandle> startDiagnostic({
     required int steps,

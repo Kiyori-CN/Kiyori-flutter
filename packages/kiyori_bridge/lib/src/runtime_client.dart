@@ -8,6 +8,18 @@ abstract interface class RuntimeClient {
   Future<api.RuntimeInfo> info();
   Future<DiagnosticRun> startDiagnostic({int steps = 20, int intervalMs = 100});
   Future<void> close();
+  Future<api.KnowledgeSnapshot> knowledgeSnapshot();
+  Future<api.KnowledgeSnapshot> queryKnowledge(api.MemoryQuery query);
+  Future<api.MemoryRecord?> getMemory(String space, String id);
+  Future<String> saveKnowledgeSpace(String? id, String name);
+  Future<void> selectKnowledgeSpace(String id);
+  Future<bool> deleteKnowledgeSpace(String id);
+  Future<void> createKnowledgeFolder(String space, String path);
+  Future<void> renameKnowledgeFolder(String space, String old, String path);
+  Future<void> deleteKnowledgeFolder(String space, String path);
+  Future<String> saveMemory(String space, String? id, api.MemoryDraft draft);
+  Future<void> archiveMemory(String space, String id, bool archived);
+  Future<bool> deleteMemory(String space, String id);
   Future<List<api.WorkflowRecord>> listWorkflows();
   Future<api.WorkflowRecord> createWorkflow(String name, String description);
   Future<bool> deleteWorkflow(String id);
@@ -54,6 +66,78 @@ final class NativeRuntimeClient implements RuntimeClient {
   Future<api.RuntimeInfo> info() {
     _ensureOpen();
     return _handle.info();
+  }
+
+  @override
+  Future<api.KnowledgeSnapshot> knowledgeSnapshot() {
+    _ensureOpen();
+    return _handle.knowledgeSnapshot();
+  }
+
+  @override
+  Future<api.KnowledgeSnapshot> queryKnowledge(api.MemoryQuery query) {
+    _ensureOpen();
+    return _handle.queryKnowledge(query: query);
+  }
+
+  @override
+  Future<api.MemoryRecord?> getMemory(String space, String id) {
+    _ensureOpen();
+    return _handle.getMemory(space: space, id: id);
+  }
+
+  @override
+  Future<void> renameKnowledgeFolder(String space, String old, String path) {
+    _ensureOpen();
+    return _handle.renameKnowledgeFolder(space: space, old: old, new_: path);
+  }
+
+  @override
+  Future<void> deleteKnowledgeFolder(String space, String path) {
+    _ensureOpen();
+    return _handle.deleteKnowledgeFolder(space: space, path: path);
+  }
+
+  @override
+  Future<String> saveKnowledgeSpace(String? id, String name) {
+    _ensureOpen();
+    return _handle.saveKnowledgeSpace(id: id, name: name);
+  }
+
+  @override
+  Future<void> selectKnowledgeSpace(String id) {
+    _ensureOpen();
+    return _handle.selectKnowledgeSpace(id: id);
+  }
+
+  @override
+  Future<bool> deleteKnowledgeSpace(String id) {
+    _ensureOpen();
+    return _handle.deleteKnowledgeSpace(id: id);
+  }
+
+  @override
+  Future<void> createKnowledgeFolder(String space, String path) {
+    _ensureOpen();
+    return _handle.createKnowledgeFolder(space: space, path: path);
+  }
+
+  @override
+  Future<String> saveMemory(String space, String? id, api.MemoryDraft draft) {
+    _ensureOpen();
+    return _handle.saveMemory(space: space, id: id, draft: draft);
+  }
+
+  @override
+  Future<void> archiveMemory(String space, String id, bool archived) {
+    _ensureOpen();
+    return _handle.archiveMemory(space: space, id: id, archived: archived);
+  }
+
+  @override
+  Future<bool> deleteMemory(String space, String id) {
+    _ensureOpen();
+    return _handle.deleteMemory(space: space, id: id);
   }
 
   @override

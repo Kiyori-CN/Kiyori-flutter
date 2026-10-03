@@ -21,9 +21,42 @@ void main() {
       try {
         client = await NativeRuntimeClient.open(dataDirectory: directory.path);
         final record = await client.createWorkflow('本机引擎验证', '真实SQLite');
+        final memory = await client.saveMemory(
+          'default',
+          null,
+          const MemoryDraft(
+            kind: 'memory',
+            title: '真实记忆',
+            content: 'Windows引擎与SQLite',
+            category: 'fact',
+            source: 'user_input',
+            folder: '集成',
+            credibility: .8,
+            importance: .5,
+            tags: ['本机'],
+          ),
+        );
         await client.close();
         client = await NativeRuntimeClient.open(dataDirectory: directory.path);
         expect((await client.listWorkflows()).single, record);
+        expect(
+          (await client.getMemory('default', memory))!.draft.content,
+          'Windows引擎与SQLite',
+        );
+        expect(
+          (await client.queryKnowledge(
+            const MemoryQuery(
+              kind: 'memory',
+              folder: '',
+              text: 'SQLite',
+              archived: false,
+              sortTitle: false,
+              offset: 0,
+            ),
+          )).records.single.id,
+          memory,
+        );
+        await client.deleteMemory('default', memory);
         await client.deleteWorkflow(record.id);
         expect(await client.listWorkflows(), isEmpty);
       } finally {

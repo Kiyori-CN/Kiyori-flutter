@@ -8,6 +8,7 @@ import 'diagnostics/runtime_diagnostics_page.dart';
 import 'runtime_controller.dart';
 import 'shell/home_shell.dart';
 import '../features/workflows/presentation/workflow_controller.dart';
+import '../features/knowledge/presentation/knowledge_controller.dart';
 
 class KiyoriApp extends StatefulWidget {
   const KiyoriApp({required this.connect, this.diagnostics = false, super.key});
@@ -22,17 +23,20 @@ class KiyoriApp extends StatefulWidget {
 class _KiyoriAppState extends State<KiyoriApp> {
   late final RuntimeController controller;
   late final WorkflowController workflows;
+  late final KnowledgeController knowledge;
   @override
   void initState() {
     super.initState();
     controller = RuntimeController(widget.connect);
     workflows = WorkflowController(controller.connectedClient);
+    knowledge = KnowledgeController(controller.connectedClient);
     unawaited(controller.initialize());
   }
 
   @override
   void dispose() {
     workflows.dispose();
+    knowledge.dispose();
     controller.dispose();
     super.dispose();
   }
@@ -58,6 +62,6 @@ class _KiyoriAppState extends State<KiyoriApp> {
               ),
             ),
           )
-        : HomeShell(workflows: workflows),
+        : HomeShell(workflows: workflows, knowledge: knowledge),
   );
 }

@@ -72,6 +72,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw);
+
+  @protected
+  MemoryQuery dco_decode_box_autoadd_memory_query(dynamic raw);
+
+  @protected
+  MemoryRecord dco_decode_box_autoadd_memory_record(dynamic raw);
+
+  @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw);
 
   @protected
@@ -84,10 +93,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ErrorCode dco_decode_error_code(dynamic raw);
 
   @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  KnowledgeSnapshot dco_decode_knowledge_snapshot(dynamic raw);
+
+  @protected
+  KnowledgeSpace dco_decode_knowledge_space(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -96,10 +114,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Capability> dco_decode_list_capability(dynamic raw);
 
   @protected
+  List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw);
+
+  @protected
+  List<MemoryRecord> dco_decode_list_memory_record(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
   List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw);
+
+  @protected
+  MemoryDraft dco_decode_memory_draft(dynamic raw);
+
+  @protected
+  MemoryQuery dco_decode_memory_query(dynamic raw);
+
+  @protected
+  MemoryRecord dco_decode_memory_record(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  MemoryRecord? dco_decode_opt_box_autoadd_memory_record(dynamic raw);
 
   @protected
   TaskEvent? dco_decode_opt_box_autoadd_task_event(dynamic raw);
@@ -171,6 +210,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  MemoryDraft sse_decode_box_autoadd_memory_draft(SseDeserializer deserializer);
+
+  @protected
+  MemoryQuery sse_decode_box_autoadd_memory_query(SseDeserializer deserializer);
+
+  @protected
+  MemoryRecord sse_decode_box_autoadd_memory_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer);
 
   @protected
@@ -183,10 +233,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ErrorCode sse_decode_error_code(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  KnowledgeSnapshot sse_decode_knowledge_snapshot(SseDeserializer deserializer);
+
+  @protected
+  KnowledgeSpace sse_decode_knowledge_space(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -195,10 +254,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer);
 
   @protected
+  List<KnowledgeSpace> sse_decode_list_knowledge_space(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MemoryRecord> sse_decode_list_memory_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   List<WorkflowRecord> sse_decode_list_workflow_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MemoryDraft sse_decode_memory_draft(SseDeserializer deserializer);
+
+  @protected
+  MemoryQuery sse_decode_memory_query(SseDeserializer deserializer);
+
+  @protected
+  MemoryRecord sse_decode_memory_record(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  MemoryRecord? sse_decode_opt_box_autoadd_memory_record(
     SseDeserializer deserializer,
   );
 
@@ -280,6 +366,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_memory_draft(
+    MemoryDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_memory_query(
+    MemoryQuery self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_memory_record(
+    MemoryRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
@@ -295,10 +399,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_error_code(ErrorCode self, SseSerializer serializer);
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_knowledge_snapshot(
+    KnowledgeSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_knowledge_space(
+    KnowledgeSpace self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -306,6 +425,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_capability(
     List<Capability> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_knowledge_space(
+    List<KnowledgeSpace> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_memory_record(
+    List<MemoryRecord> self,
     SseSerializer serializer,
   );
 
@@ -318,6 +449,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_workflow_record(
     List<WorkflowRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_memory_draft(MemoryDraft self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_query(MemoryQuery self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_record(MemoryRecord self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_memory_record(
+    MemoryRecord? self,
     SseSerializer serializer,
   );
 
