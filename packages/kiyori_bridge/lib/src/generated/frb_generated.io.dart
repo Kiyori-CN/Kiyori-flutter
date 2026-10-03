@@ -81,6 +81,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw);
 
   @protected
+  MemoryLinkDraft dco_decode_box_autoadd_memory_link_draft(dynamic raw);
+
+  @protected
   MemoryQuery dco_decode_box_autoadd_memory_query(dynamic raw);
 
   @protected
@@ -111,6 +114,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  GraphNode dco_decode_graph_node(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -132,7 +138,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DiaryEntry> dco_decode_list_diary_entry(dynamic raw);
 
   @protected
+  List<GraphNode> dco_decode_list_graph_node(dynamic raw);
+
+  @protected
   List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw);
+
+  @protected
+  List<MemoryLink> dco_decode_list_memory_link(dynamic raw);
 
   @protected
   List<MemoryRecord> dco_decode_list_memory_record(dynamic raw);
@@ -145,6 +157,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryDraft dco_decode_memory_draft(dynamic raw);
+
+  @protected
+  MemoryGraph dco_decode_memory_graph(dynamic raw);
+
+  @protected
+  MemoryLink dco_decode_memory_link(dynamic raw);
+
+  @protected
+  MemoryLinkDraft dco_decode_memory_link_draft(dynamic raw);
 
   @protected
   MemoryQuery dco_decode_memory_query(dynamic raw);
@@ -245,6 +266,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MemoryDraft sse_decode_box_autoadd_memory_draft(SseDeserializer deserializer);
 
   @protected
+  MemoryLinkDraft sse_decode_box_autoadd_memory_link_draft(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MemoryQuery sse_decode_box_autoadd_memory_query(SseDeserializer deserializer);
 
   @protected
@@ -277,6 +303,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  GraphNode sse_decode_graph_node(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -298,9 +327,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DiaryEntry> sse_decode_list_diary_entry(SseDeserializer deserializer);
 
   @protected
+  List<GraphNode> sse_decode_list_graph_node(SseDeserializer deserializer);
+
+  @protected
   List<KnowledgeSpace> sse_decode_list_knowledge_space(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<MemoryLink> sse_decode_list_memory_link(SseDeserializer deserializer);
 
   @protected
   List<MemoryRecord> sse_decode_list_memory_record(
@@ -317,6 +352,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryDraft sse_decode_memory_draft(SseDeserializer deserializer);
+
+  @protected
+  MemoryGraph sse_decode_memory_graph(SseDeserializer deserializer);
+
+  @protected
+  MemoryLink sse_decode_memory_link(SseDeserializer deserializer);
+
+  @protected
+  MemoryLinkDraft sse_decode_memory_link_draft(SseDeserializer deserializer);
 
   @protected
   MemoryQuery sse_decode_memory_query(SseDeserializer deserializer);
@@ -433,6 +477,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_memory_link_draft(
+    MemoryLinkDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_memory_query(
     MemoryQuery self,
     SseSerializer serializer,
@@ -472,6 +522,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_graph_node(GraphNode self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -505,8 +558,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_graph_node(
+    List<GraphNode> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_knowledge_space(
     List<KnowledgeSpace> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_memory_link(
+    List<MemoryLink> self,
     SseSerializer serializer,
   );
 
@@ -530,6 +595,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_memory_draft(MemoryDraft self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_graph(MemoryGraph self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_link(MemoryLink self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_link_draft(
+    MemoryLinkDraft self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_memory_query(MemoryQuery self, SseSerializer serializer);

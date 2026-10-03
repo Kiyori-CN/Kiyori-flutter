@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -60,7 +60,14 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<bool> deleteKnowledgeSpace({required String id});
 
+  Future<int> deleteMemories({
+    required String space,
+    required List<String> ids,
+  });
+
   Future<bool> deleteMemory({required String space, required String id});
+
+  Future<bool> deleteMemoryLink({required String space, required String id});
 
   Future<bool> deleteWorkflow({required String id});
 
@@ -73,6 +80,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<KnowledgeSnapshot> knowledgeSnapshot();
 
   Future<List<WorkflowRecord>> listWorkflows();
+
+  Future<MemoryGraph> memoryGraph({required MemoryQuery query});
 
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
 
@@ -88,6 +97,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String space,
     String? id,
     required MemoryDraft draft,
+  });
+
+  Future<String> saveMemoryLink({
+    required String space,
+    String? id,
+    required MemoryLinkDraft draft,
   });
 
   Future<void> selectKnowledgeSpace({required String id});
@@ -244,6 +259,30 @@ class DiarySummary {
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
 
+class GraphNode {
+  final String id;
+  final String title;
+  final String nodeType;
+
+  const GraphNode({
+    required this.id,
+    required this.title,
+    required this.nodeType,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode ^ nodeType.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GraphNode &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          nodeType == other.nodeType;
+}
+
 class KnowledgeSnapshot {
   final List<KnowledgeSpace> spaces;
   final String activeSpace;
@@ -350,6 +389,93 @@ class MemoryDraft {
           credibility == other.credibility &&
           importance == other.importance &&
           tags == other.tags;
+}
+
+class MemoryGraph {
+  final String spaceId;
+  final List<GraphNode> nodes;
+  final List<MemoryLink> edges;
+  final bool hasMore;
+
+  const MemoryGraph({
+    required this.spaceId,
+    required this.nodes,
+    required this.edges,
+    required this.hasMore,
+  });
+
+  @override
+  int get hashCode =>
+      spaceId.hashCode ^ nodes.hashCode ^ edges.hashCode ^ hasMore.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryGraph &&
+          runtimeType == other.runtimeType &&
+          spaceId == other.spaceId &&
+          nodes == other.nodes &&
+          edges == other.edges &&
+          hasMore == other.hasMore;
+}
+
+class MemoryLink {
+  final String id;
+  final MemoryLinkDraft draft;
+  final bool crossFolder;
+
+  const MemoryLink({
+    required this.id,
+    required this.draft,
+    required this.crossFolder,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ draft.hashCode ^ crossFolder.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryLink &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          draft == other.draft &&
+          crossFolder == other.crossFolder;
+}
+
+class MemoryLinkDraft {
+  final String sourceId;
+  final String targetId;
+  final String relation;
+  final double weight;
+  final String description;
+
+  const MemoryLinkDraft({
+    required this.sourceId,
+    required this.targetId,
+    required this.relation,
+    required this.weight,
+    required this.description,
+  });
+
+  @override
+  int get hashCode =>
+      sourceId.hashCode ^
+      targetId.hashCode ^
+      relation.hashCode ^
+      weight.hashCode ^
+      description.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemoryLinkDraft &&
+          runtimeType == other.runtimeType &&
+          sourceId == other.sourceId &&
+          targetId == other.targetId &&
+          relation == other.relation &&
+          weight == other.weight &&
+          description == other.description;
 }
 
 class MemoryQuery {

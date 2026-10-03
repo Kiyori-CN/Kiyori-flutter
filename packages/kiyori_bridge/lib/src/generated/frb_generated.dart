@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 736583206;
+  int get rustContentHash => -339713826;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -128,7 +128,19 @@ abstract class RustLibApi extends BaseApi {
     required String id,
   });
 
+  Future<int> crateApiRuntimeHandleDeleteMemories({
+    required RuntimeHandle that,
+    required String space,
+    required List<String> ids,
+  });
+
   Future<bool> crateApiRuntimeHandleDeleteMemory({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+  });
+
+  Future<bool> crateApiRuntimeHandleDeleteMemoryLink({
     required RuntimeHandle that,
     required String space,
     required String id,
@@ -160,6 +172,11 @@ abstract class RustLibApi extends BaseApi {
     required RuntimeHandle that,
   });
 
+  Future<MemoryGraph> crateApiRuntimeHandleMemoryGraph({
+    required RuntimeHandle that,
+    required MemoryQuery query,
+  });
+
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -183,6 +200,13 @@ abstract class RustLibApi extends BaseApi {
     required String space,
     String? id,
     required MemoryDraft draft,
+  });
+
+  Future<String> crateApiRuntimeHandleSaveMemoryLink({
+    required RuntimeHandle that,
+    required String space,
+    String? id,
+    required MemoryLinkDraft draft,
   });
 
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
@@ -564,6 +588,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<int> crateApiRuntimeHandleDeleteMemories({
+    required RuntimeHandle that,
+    required String space,
+    required List<String> ids,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_list_String(ids, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_32,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteMemoriesConstMeta,
+        argValues: [that, space, ids],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteMemoriesConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_memories",
+        argNames: ["that", "space", "ids"],
+      );
+
+  @override
   Future<bool> crateApiRuntimeHandleDeleteMemory({
     required RuntimeHandle that,
     required String space,
@@ -582,7 +646,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -604,6 +668,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiRuntimeHandleDeleteMemoryLink({
+    required RuntimeHandle that,
+    required String space,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeleteMemoryLinkConstMeta,
+        argValues: [that, space, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeleteMemoryLinkConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_memory_link",
+        argNames: ["that", "space", "id"],
+      );
+
+  @override
   Future<bool> crateApiRuntimeHandleDeleteWorkflow({
     required RuntimeHandle that,
     required String id,
@@ -620,7 +724,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -658,7 +762,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -698,7 +802,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -732,7 +836,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -765,7 +869,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -801,7 +905,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -823,6 +927,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<MemoryGraph> crateApiRuntimeHandleMemoryGraph({
+    required RuntimeHandle that,
+    required MemoryQuery query,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_memory_query(query, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_memory_graph,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleMemoryGraphConstMeta,
+        argValues: [that, query],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleMemoryGraphConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_memory_graph",
+        argNames: ["that", "query"],
+      );
+
+  @override
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -839,7 +981,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -881,7 +1023,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -921,7 +1063,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 21,
             port: port_,
           );
         },
@@ -963,7 +1105,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 22,
             port: port_,
           );
         },
@@ -985,6 +1127,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiRuntimeHandleSaveMemoryLink({
+    required RuntimeHandle that,
+    required String space,
+    String? id,
+    required MemoryLinkDraft draft,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_opt_String(id, serializer);
+          sse_encode_box_autoadd_memory_link_draft(draft, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSaveMemoryLinkConstMeta,
+        argValues: [that, space, id, draft],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSaveMemoryLinkConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_memory_link",
+        argNames: ["that", "space", "id", "draft"],
+      );
+
+  @override
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
     required RuntimeHandle that,
     required String id,
@@ -1001,7 +1185,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1041,7 +1225,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1086,7 +1270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1120,7 +1304,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1151,7 +1335,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1181,7 +1365,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1212,7 +1396,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1244,7 +1428,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1363,6 +1547,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MemoryLinkDraft dco_decode_box_autoadd_memory_link_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_memory_link_draft(raw);
+  }
+
+  @protected
   MemoryQuery dco_decode_box_autoadd_memory_query(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_memory_query(raw);
@@ -1460,6 +1650,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  GraphNode dco_decode_graph_node(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return GraphNode(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      nodeType: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -1518,9 +1721,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<GraphNode> dco_decode_list_graph_node(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_graph_node).toList();
+  }
+
+  @protected
   List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_knowledge_space).toList();
+  }
+
+  @protected
+  List<MemoryLink> dco_decode_list_memory_link(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_memory_link).toList();
   }
 
   @protected
@@ -1557,6 +1772,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       credibility: dco_decode_f_64(arr[6]),
       importance: dco_decode_f_64(arr[7]),
       tags: dco_decode_list_String(arr[8]),
+    );
+  }
+
+  @protected
+  MemoryGraph dco_decode_memory_graph(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MemoryGraph(
+      spaceId: dco_decode_String(arr[0]),
+      nodes: dco_decode_list_graph_node(arr[1]),
+      edges: dco_decode_list_memory_link(arr[2]),
+      hasMore: dco_decode_bool(arr[3]),
+    );
+  }
+
+  @protected
+  MemoryLink dco_decode_memory_link(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return MemoryLink(
+      id: dco_decode_String(arr[0]),
+      draft: dco_decode_memory_link_draft(arr[1]),
+      crossFolder: dco_decode_bool(arr[2]),
+    );
+  }
+
+  @protected
+  MemoryLinkDraft dco_decode_memory_link_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return MemoryLinkDraft(
+      sourceId: dco_decode_String(arr[0]),
+      targetId: dco_decode_String(arr[1]),
+      relation: dco_decode_String(arr[2]),
+      weight: dco_decode_f_64(arr[3]),
+      description: dco_decode_String(arr[4]),
     );
   }
 
@@ -1807,6 +2064,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MemoryLinkDraft sse_decode_box_autoadd_memory_link_draft(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_memory_link_draft(deserializer));
+  }
+
+  @protected
   MemoryQuery sse_decode_box_autoadd_memory_query(
     SseDeserializer deserializer,
   ) {
@@ -1901,6 +2166,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  GraphNode sse_decode_graph_node(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_nodeType = sse_decode_String(deserializer);
+    return GraphNode(id: var_id, title: var_title, nodeType: var_nodeType);
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -1978,6 +2252,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<GraphNode> sse_decode_list_graph_node(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <GraphNode>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_graph_node(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<KnowledgeSpace> sse_decode_list_knowledge_space(
     SseDeserializer deserializer,
   ) {
@@ -1987,6 +2273,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <KnowledgeSpace>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_knowledge_space(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MemoryLink> sse_decode_list_memory_link(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MemoryLink>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_memory_link(deserializer));
     }
     return ans_;
   }
@@ -2048,6 +2346,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       credibility: var_credibility,
       importance: var_importance,
       tags: var_tags,
+    );
+  }
+
+  @protected
+  MemoryGraph sse_decode_memory_graph(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_spaceId = sse_decode_String(deserializer);
+    var var_nodes = sse_decode_list_graph_node(deserializer);
+    var var_edges = sse_decode_list_memory_link(deserializer);
+    var var_hasMore = sse_decode_bool(deserializer);
+    return MemoryGraph(
+      spaceId: var_spaceId,
+      nodes: var_nodes,
+      edges: var_edges,
+      hasMore: var_hasMore,
+    );
+  }
+
+  @protected
+  MemoryLink sse_decode_memory_link(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_draft = sse_decode_memory_link_draft(deserializer);
+    var var_crossFolder = sse_decode_bool(deserializer);
+    return MemoryLink(
+      id: var_id,
+      draft: var_draft,
+      crossFolder: var_crossFolder,
+    );
+  }
+
+  @protected
+  MemoryLinkDraft sse_decode_memory_link_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sourceId = sse_decode_String(deserializer);
+    var var_targetId = sse_decode_String(deserializer);
+    var var_relation = sse_decode_String(deserializer);
+    var var_weight = sse_decode_f_64(deserializer);
+    var var_description = sse_decode_String(deserializer);
+    return MemoryLinkDraft(
+      sourceId: var_sourceId,
+      targetId: var_targetId,
+      relation: var_relation,
+      weight: var_weight,
+      description: var_description,
     );
   }
 
@@ -2350,6 +2693,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_memory_link_draft(
+    MemoryLinkDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_memory_link_draft(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_memory_query(
     MemoryQuery self,
     SseSerializer serializer,
@@ -2431,6 +2783,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_graph_node(GraphNode self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.nodeType, serializer);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -2500,6 +2860,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_graph_node(
+    List<GraphNode> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_graph_node(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_knowledge_space(
     List<KnowledgeSpace> self,
     SseSerializer serializer,
@@ -2508,6 +2880,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_knowledge_space(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_memory_link(
+    List<MemoryLink> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_memory_link(item, serializer);
     }
   }
 
@@ -2557,6 +2941,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_f_64(self.credibility, serializer);
     sse_encode_f_64(self.importance, serializer);
     sse_encode_list_String(self.tags, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_graph(MemoryGraph self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.spaceId, serializer);
+    sse_encode_list_graph_node(self.nodes, serializer);
+    sse_encode_list_memory_link(self.edges, serializer);
+    sse_encode_bool(self.hasMore, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_link(MemoryLink self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_memory_link_draft(self.draft, serializer);
+    sse_encode_bool(self.crossFolder, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_link_draft(
+    MemoryLinkDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.sourceId, serializer);
+    sse_encode_String(self.targetId, serializer);
+    sse_encode_String(self.relation, serializer);
+    sse_encode_f_64(self.weight, serializer);
+    sse_encode_String(self.description, serializer);
   }
 
   @protected
@@ -2798,8 +3212,24 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
       .api
       .crateApiRuntimeHandleDeleteKnowledgeSpace(that: this, id: id);
 
+  Future<int> deleteMemories({
+    required String space,
+    required List<String> ids,
+  }) => RustLib.instance.api.crateApiRuntimeHandleDeleteMemories(
+    that: this,
+    space: space,
+    ids: ids,
+  );
+
   Future<bool> deleteMemory({required String space, required String id}) =>
       RustLib.instance.api.crateApiRuntimeHandleDeleteMemory(
+        that: this,
+        space: space,
+        id: id,
+      );
+
+  Future<bool> deleteMemoryLink({required String space, required String id}) =>
+      RustLib.instance.api.crateApiRuntimeHandleDeleteMemoryLink(
         that: this,
         space: space,
         id: id,
@@ -2831,6 +3261,11 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
   Future<List<WorkflowRecord>> listWorkflows() =>
       RustLib.instance.api.crateApiRuntimeHandleListWorkflows(that: this);
 
+  Future<MemoryGraph> memoryGraph({required MemoryQuery query}) => RustLib
+      .instance
+      .api
+      .crateApiRuntimeHandleMemoryGraph(that: this, query: query);
+
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query}) =>
       RustLib.instance.api.crateApiRuntimeHandleQueryKnowledge(
         that: this,
@@ -2860,6 +3295,17 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     String? id,
     required MemoryDraft draft,
   }) => RustLib.instance.api.crateApiRuntimeHandleSaveMemory(
+    that: this,
+    space: space,
+    id: id,
+    draft: draft,
+  );
+
+  Future<String> saveMemoryLink({
+    required String space,
+    String? id,
+    required MemoryLinkDraft draft,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSaveMemoryLink(
     that: this,
     space: space,
     id: id,

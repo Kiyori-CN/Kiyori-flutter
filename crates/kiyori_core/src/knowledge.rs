@@ -314,6 +314,16 @@ impl AppStore {
             .map_err(|_| invalid("Storage lock failed."))?;
         // 目录、活跃空间、正文和标签来自同一读事务，不能跨空间拼接两个时刻的事实。
         let transaction = connection.transaction().map_err(storage)?;
+        let snapshot = Self::query_knowledge_in(&transaction, query, 100)?;
+        transaction.commit().map_err(storage)?;
+        Ok(snapshot)
+    }
+
+    pub(crate) fn query_knowledge_in(
+        transaction: &Transaction<'_>,
+        query: MemoryQuery,
+        limit: usize,
+    ) -> Result<KnowledgeSnapshot, CoreError> {
         let active_space: String = transaction
             .query_row(
                 "SELECT active_space FROM knowledge_settings WHERE id=1",
@@ -382,7 +392,11 @@ impl AppStore {
                     } else {
                         query.offset
                     },
-                    if filter_status.is_some() { -1 } else { 101 }
+                    if filter_status.is_some() {
+                        -1
+                    } else {
+                        limit as i64 + 1
+                    }
                 ],
                 |r| {
                     Ok(MemoryRecord {
@@ -424,14 +438,14 @@ impl AppStore {
                 continue;
             }
             records.push(record);
-            if records.len() == 101 {
+            if records.len() == limit + 1 {
                 break;
             }
         }
         drop(statement);
 
-        let has_more = records.len() > 100;
-        records.truncate(100);
+        let has_more = records.len() > limit;
+        records.truncate(limit);
         let mut tag_statement = transaction
             .prepare("SELECT name FROM memory_tags WHERE memory_id=?1 ORDER BY rowid")
             .map_err(storage)?;
@@ -443,7 +457,6 @@ impl AppStore {
                 .map_err(storage)?;
         }
         drop(tag_statement);
-        transaction.commit().map_err(storage)?;
         Ok(KnowledgeSnapshot {
             spaces,
             active_space,

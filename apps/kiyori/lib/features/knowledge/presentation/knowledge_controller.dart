@@ -8,6 +8,8 @@ class KnowledgeController extends ChangeNotifier {
   KnowledgeSnapshot? snapshot;
   MemoryRecord? detail;
   DiaryDocument? diary;
+  MemoryGraph? graph;
+  bool graphVisible = false;
   static const initialQuery = MemoryQuery(
     kind: 'memory',
     folder: '',
@@ -24,19 +26,22 @@ class KnowledgeController extends ChangeNotifier {
     query = value;
   }
 
-  Future<MemoryRecord?> open(MemoryRecord record) async {
+  Future<MemoryRecord?> open(MemoryRecord record) =>
+      openId(record.spaceId, record.id);
+
+  Future<MemoryRecord?> openId(String space, String id) async {
     final generation = ++_detailGeneration;
     final catalogGeneration = _generation;
     try {
       final client = await _connect();
-      final value = await client.getMemory(record.spaceId, record.id);
+      final value = await client.getMemory(space, id);
       final document = value?.draft.kind == 'diary'
           ? await client.parseDiary(value!.draft.content)
           : null;
       if (_disposed ||
           generation != _detailGeneration ||
           catalogGeneration != _generation ||
-          snapshot?.activeSpace != record.spaceId) {
+          snapshot?.activeSpace != space) {
         return null;
       }
       detail = value;
@@ -46,7 +51,7 @@ class KnowledgeController extends ChangeNotifier {
       if (!_disposed &&
           generation == _detailGeneration &&
           catalogGeneration == _generation &&
-          snapshot?.activeSpace == record.spaceId) {
+          snapshot?.activeSpace == space) {
         error = '无法读取条目，请重试。';
         notifyListeners();
       }
@@ -80,6 +85,26 @@ class KnowledgeController extends ChangeNotifier {
   String? error;
   int _generation = 0;
 
+  Future<void> showGraph(bool visible) async {
+    if (saving || _disposed || graphVisible == visible) return;
+    graphVisible = visible;
+    if (!visible) graph = null;
+    await load();
+  }
+
+  Future<void> _refreshGraph(
+    RuntimeClient client,
+    int generation,
+    String space,
+  ) async {
+    if (!graphVisible) return;
+    final value = await client.memoryGraph(query);
+    if (value.spaceId != space) {
+      throw StateError('Knowledge space changed while reading.');
+    }
+    if (!_disposed && generation == _generation && graphVisible) graph = value;
+  }
+
   Future<void> load({bool more = false}) async {
     if (_disposed || saving) return;
     final generation = ++_generation;
@@ -103,6 +128,7 @@ class KnowledgeController extends ChangeNotifier {
       final value = await client.queryKnowledge(request);
       if (!_disposed && generation == _generation) {
         await _refreshDetail(client, value, generation);
+        await _refreshGraph(client, generation, value.activeSpace);
         if (_disposed || generation != _generation) return;
         final records = more && snapshot?.activeSpace == value.activeSpace
             ? [...snapshot!.records, ...value.records]
@@ -170,6 +196,17 @@ class KnowledgeController extends ChangeNotifier {
   Future<bool> delete(MemoryRecord record) => _mutate((client) async {
     await client.deleteMemory(record.spaceId, record.id);
   });
+  Future<bool> saveLink(String space, String? id, MemoryLinkDraft draft) =>
+      _mutate((client) async {
+        await client.saveMemoryLink(space, id, draft);
+      });
+  Future<bool> deleteLink(String space, String id) => _mutate((client) async {
+    await client.deleteMemoryLink(space, id);
+  });
+  Future<bool> deleteNodes(String space, List<String> ids) =>
+      _mutate((client) async {
+        await client.deleteMemories(space, ids);
+      });
 
   Future<bool> _mutate(Future<void> Function(RuntimeClient) action) async {
     if (_disposed || saving) return false;
@@ -186,6 +223,7 @@ class KnowledgeController extends ChangeNotifier {
       committed = true;
       final value = await client.queryKnowledge(query);
       await _refreshDetail(client, value, _generation);
+      await _refreshGraph(client, _generation, value.activeSpace);
       if (!_disposed) snapshot = value;
     } catch (failure) {
       if (!_disposed) {

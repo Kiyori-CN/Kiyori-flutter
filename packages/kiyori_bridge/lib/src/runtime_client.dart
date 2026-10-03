@@ -11,6 +11,14 @@ abstract interface class RuntimeClient {
   Future<api.KnowledgeSnapshot> knowledgeSnapshot();
   Future<api.KnowledgeSnapshot> queryKnowledge(api.MemoryQuery query);
   Future<api.MemoryRecord?> getMemory(String space, String id);
+  Future<api.MemoryGraph> memoryGraph(api.MemoryQuery query);
+  Future<String> saveMemoryLink(
+    String space,
+    String? id,
+    api.MemoryLinkDraft draft,
+  );
+  Future<bool> deleteMemoryLink(String space, String id);
+  Future<int> deleteMemories(String space, List<String> ids);
   Future<api.DiaryDocument> parseDiary(String content);
   Future<String> createDiary(
     String space,
@@ -52,6 +60,34 @@ abstract interface class DiagnosticRun {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  @override
+  Future<api.MemoryGraph> memoryGraph(api.MemoryQuery query) {
+    _ensureOpen();
+    return _handle.memoryGraph(query: query);
+  }
+
+  @override
+  Future<String> saveMemoryLink(
+    String space,
+    String? id,
+    api.MemoryLinkDraft draft,
+  ) {
+    _ensureOpen();
+    return _handle.saveMemoryLink(space: space, id: id, draft: draft);
+  }
+
+  @override
+  Future<bool> deleteMemoryLink(String space, String id) {
+    _ensureOpen();
+    return _handle.deleteMemoryLink(space: space, id: id);
+  }
+
+  @override
+  Future<int> deleteMemories(String space, List<String> ids) {
+    _ensureOpen();
+    return _handle.deleteMemories(space: space, ids: ids);
+  }
+
   NativeRuntimeClient._(this._handle);
 
   static Future<void>? _initialization;

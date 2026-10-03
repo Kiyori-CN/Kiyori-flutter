@@ -2,7 +2,7 @@ use crate::runtime::{CoreError, ErrorCode};
 use rusqlite::Connection;
 use std::{path::Path, sync::Mutex};
 
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -66,6 +66,22 @@ impl AppStore {
                  CREATE TABLE memory_tags (memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE, name TEXT NOT NULL, PRIMARY KEY(memory_id,name));
                  PRAGMA user_version = 2;"
             ).map_err(|_| error("Cannot migrate knowledge storage."))?;
+        }
+        if version < 3 {
+            transaction
+                .execute_batch(
+                    "CREATE TABLE memory_links (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    space_id TEXT NOT NULL REFERENCES knowledge_spaces(id) ON DELETE CASCADE,
+                    source_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+                    target_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+                    relation TEXT NOT NULL, weight REAL NOT NULL CHECK(weight>=0 AND weight<=1),
+                    description TEXT NOT NULL, CHECK(source_id<>target_id),
+                    UNIQUE(space_id,source_id,target_id,relation));
+                 CREATE INDEX memory_links_target ON memory_links(target_id);
+                 PRAGMA user_version = 3;",
+                )
+                .map_err(|_| error("Cannot migrate memory relationships."))?;
         }
         transaction
             .commit()

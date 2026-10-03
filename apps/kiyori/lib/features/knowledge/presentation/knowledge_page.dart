@@ -12,6 +12,7 @@ import 'knowledge_filter_sheet.dart';
 import 'diary_detail.dart';
 import 'diary_status.dart';
 import 'diary_labels.dart';
+import 'knowledge_graph.dart';
 
 class KnowledgePage extends StatefulWidget {
   const KnowledgePage({
@@ -59,6 +60,10 @@ class KnowledgePageState extends State<KnowledgePage> {
   }
 
   bool handleBack() {
+    if (state.graphVisible) {
+      unawaited(state.showGraph(false));
+      return true;
+    }
     if (folder.isEmpty) return false;
     _change(
       () => folder = folder.contains('/')
@@ -557,11 +562,13 @@ class KnowledgePageState extends State<KnowledgePage> {
           ),
         ),
       );
-  Future<void> _details(MemoryRecord original) async {
+  Future<void> _details(MemoryRecord original) =>
+      _detailsId(original.spaceId, original.id);
+  Future<void> _detailsId(String space, String id) async {
     if (_opening || state.saving) return;
     _opening = true;
     final owner = state;
-    final full = await owner.open(original);
+    final full = await owner.openId(space, id);
     if (!identical(owner, state)) return;
     if (!mounted || full == null) {
       _opening = false;
@@ -777,7 +784,11 @@ class KnowledgePageState extends State<KnowledgePage> {
       actions: [
         ShellAction(Icons.settings_outlined, '记忆与检索设置'),
         ShellAction(Icons.tune_outlined, '筛选', onTap: _filters),
-        ShellAction(Icons.account_tree_outlined, '图谱'),
+        ShellAction(
+          state.graphVisible ? Icons.list_alt : Icons.account_tree_outlined,
+          state.graphVisible ? '列表' : '图谱',
+          onTap: () => unawaited(state.showGraph(!state.graphVisible)),
+        ),
         ShellAction(Icons.refresh, '刷新', onTap: () => unawaited(state.load())),
       ],
       child: Column(
@@ -934,7 +945,15 @@ class KnowledgePageState extends State<KnowledgePage> {
                     '点击搜索图标或键盘搜索键开始查找。',
                     FilledButton(onPressed: _search, child: const Text('搜索')),
                   )
-                : entries.isEmpty && folders.isEmpty
+                : state.graphVisible && (state.graph?.nodes.isNotEmpty ?? false)
+                ? KnowledgeGraphView(
+                    key: ValueKey(
+                      '${identityHashCode(state)}/${snapshot?.activeSpace}',
+                    ),
+                    controller: state,
+                    onNode: (space, id) => unawaited(_detailsId(space, id)),
+                  )
+                : state.graphVisible || (entries.isEmpty && folders.isEmpty)
                 ? _empty(
                     filtered
                         ? '没有找到内容'

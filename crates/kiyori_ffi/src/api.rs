@@ -153,6 +153,89 @@ pub struct MemoryQuery {
     pub diary_closed: Option<bool>,
 }
 
+pub struct MemoryLinkDraft {
+    pub source_id: String,
+    pub target_id: String,
+    pub relation: String,
+    pub weight: f64,
+    pub description: String,
+}
+pub struct MemoryLink {
+    pub id: String,
+    pub draft: MemoryLinkDraft,
+    pub cross_folder: bool,
+}
+pub struct GraphNode {
+    pub id: String,
+    pub title: String,
+    pub node_type: String,
+}
+pub struct MemoryGraph {
+    pub space_id: String,
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<MemoryLink>,
+    pub has_more: bool,
+}
+
+impl From<MemoryQuery> for kiyori_core::knowledge::MemoryQuery {
+    fn from(query: MemoryQuery) -> Self {
+        Self {
+            kind: query.kind,
+            folder: query.folder,
+            text: query.text,
+            category: query.category,
+            tag: query.tag,
+            archived: query.archived,
+            sort_title: query.sort_title,
+            offset: query.offset,
+            diary_closed: query.diary_closed,
+        }
+    }
+}
+impl From<MemoryLinkDraft> for kiyori_core::graph::MemoryLinkDraft {
+    fn from(draft: MemoryLinkDraft) -> Self {
+        Self {
+            source_id: draft.source_id,
+            target_id: draft.target_id,
+            relation: draft.relation,
+            weight: draft.weight,
+            description: draft.description,
+        }
+    }
+}
+impl From<kiyori_core::graph::MemoryGraph> for MemoryGraph {
+    fn from(graph: kiyori_core::graph::MemoryGraph) -> Self {
+        Self {
+            space_id: graph.space_id,
+            has_more: graph.has_more,
+            nodes: graph
+                .nodes
+                .into_iter()
+                .map(|n| GraphNode {
+                    id: n.id,
+                    title: n.title,
+                    node_type: n.node_type,
+                })
+                .collect(),
+            edges: graph
+                .edges
+                .into_iter()
+                .map(|e| MemoryLink {
+                    id: e.id,
+                    cross_folder: e.cross_folder,
+                    draft: MemoryLinkDraft {
+                        source_id: e.draft.source_id,
+                        target_id: e.draft.target_id,
+                        relation: e.draft.relation,
+                        weight: e.draft.weight,
+                        description: e.draft.description,
+                    },
+                })
+                .collect(),
+        }
+    }
+}
+
 #[frb(opaque)]
 pub struct RuntimeHandle {
     inner: Arc<runtime::Runtime>,
@@ -176,6 +259,23 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn memory_graph(&self, query: MemoryQuery) -> Result<MemoryGraph, BridgeError> {
+        Ok(self.inner.memory_graph(query.into())?.into())
+    }
+    pub fn save_memory_link(
+        &self,
+        space: String,
+        id: Option<String>,
+        draft: MemoryLinkDraft,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.save_memory_link(space, id, draft.into())?)
+    }
+    pub fn delete_memory_link(&self, space: String, id: String) -> Result<bool, BridgeError> {
+        Ok(self.inner.delete_memory_link(space, id)?)
+    }
+    pub fn delete_memories(&self, space: String, ids: Vec<String>) -> Result<u32, BridgeError> {
+        Ok(self.inner.delete_memories(space, ids)?)
+    }
     pub fn create_diary(
         &self,
         space: String,
@@ -196,20 +296,7 @@ impl RuntimeHandle {
         Ok(self.inner.append_diary(space, id, body, phase, stamp)?)
     }
     pub fn query_knowledge(&self, query: MemoryQuery) -> Result<KnowledgeSnapshot, BridgeError> {
-        Ok(self
-            .inner
-            .query_knowledge(kiyori_core::knowledge::MemoryQuery {
-                kind: query.kind,
-                folder: query.folder,
-                text: query.text,
-                category: query.category,
-                tag: query.tag,
-                archived: query.archived,
-                sort_title: query.sort_title,
-                offset: query.offset,
-                diary_closed: query.diary_closed,
-            })?
-            .into())
+        Ok(self.inner.query_knowledge(query.into())?.into())
     }
     pub fn get_memory(
         &self,

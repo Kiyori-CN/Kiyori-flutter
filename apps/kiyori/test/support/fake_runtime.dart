@@ -25,6 +25,21 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<MemoryGraph> memoryGraph(MemoryQuery query) =>
+      throw UnimplementedError();
+  @override
+  Future<String> saveMemoryLink(
+    String space,
+    String? id,
+    MemoryLinkDraft draft,
+  ) => throw UnimplementedError();
+  @override
+  Future<bool> deleteMemoryLink(String space, String id) =>
+      throw UnimplementedError();
+  @override
+  Future<int> deleteMemories(String space, List<String> ids) =>
+      throw UnimplementedError();
+  @override
   Future<DiaryDocument> parseDiary(String content) =>
       throw UnimplementedError();
   @override

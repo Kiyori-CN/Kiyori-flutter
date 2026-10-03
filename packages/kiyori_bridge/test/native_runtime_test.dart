@@ -5,6 +5,64 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('graph relationships persist descriptions, isolate spaces and cascade across FFI', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'kiyori-graph-ffi-',
+    );
+    NativeRuntimeClient? client;
+    try {
+      client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+      const draft = MemoryDraft(
+        kind: 'memory',
+        title: '端点',
+        content: '完整内容',
+        category: 'other',
+        source: 'user_input',
+        folder: '',
+        credibility: .8,
+        importance: .5,
+        tags: [],
+      );
+      final a = await client.saveMemory('default', null, draft);
+      final b = await client.saveMemory('default', null, draft);
+      final id = await client.saveMemoryLink(
+        'default',
+        null,
+        MemoryLinkDraft(
+          sourceId: a,
+          targetId: b,
+          relation: 'explains',
+          weight: .6,
+          description: '关联说明',
+        ),
+      );
+      await client.close();
+      client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+      const query = MemoryQuery(
+        kind: 'memory',
+        folder: '',
+        text: '',
+        archived: false,
+        sortTitle: false,
+        offset: 0,
+      );
+      final graph = await client.memoryGraph(query);
+      expect(graph.nodes.length, 2);
+      expect(graph.edges.single.draft.description, '关联说明');
+      expect(graph.edges.single.id, id);
+      expect(await client.deleteMemoryLink('other', id), isFalse);
+      await expectLater(
+        client.deleteMemories('default', [a, 'missing']),
+        throwsA(isA<BridgeError>()),
+      );
+      expect((await client.memoryGraph(query)).nodes.length, 2);
+      expect(await client.deleteMemories('default', [a, b]), 2);
+      expect((await client.memoryGraph(query)).edges, isEmpty);
+    } finally {
+      await client?.close();
+      await directory.delete(recursive: true);
+    }
+  });
   test(
     'diary seed append close and reopen preserve full history across FFI',
     () async {
