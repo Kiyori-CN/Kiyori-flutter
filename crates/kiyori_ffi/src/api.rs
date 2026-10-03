@@ -38,6 +38,208 @@ impl From<runtime::CoreError> for BridgeError {
     }
 }
 
+pub struct ModelParameter {
+    pub name: String,
+    pub enabled: bool,
+    pub value_type: String,
+    pub value: String,
+    pub category: String,
+}
+impl From<kiyori_core::models::ModelParameter> for ModelParameter {
+    fn from(v: kiyori_core::models::ModelParameter) -> Self {
+        Self {
+            name: v.name,
+            enabled: v.enabled,
+            value_type: v.value_type,
+            value: v.value,
+            category: v.category,
+        }
+    }
+}
+impl From<ModelParameter> for kiyori_core::models::ModelParameter {
+    fn from(v: ModelParameter) -> Self {
+        Self {
+            name: v.name,
+            enabled: v.enabled,
+            value_type: v.value_type,
+            value: v.value,
+            category: v.category,
+        }
+    }
+}
+pub struct ModelOptions {
+    pub context_length: f64,
+    pub max_context_length: f64,
+    pub max_context_mode: bool,
+    pub summary_enabled: bool,
+    pub summary_threshold: f64,
+    pub summary_by_count: bool,
+    pub summary_count: u32,
+    pub summary_rules: String,
+    pub image: bool,
+    pub audio: bool,
+    pub video: bool,
+    pub google_search: bool,
+    pub claude_cache: bool,
+    pub tool_call: bool,
+    pub request_limit: u32,
+    pub concurrent_limit: u32,
+    pub mnn_forward: u32,
+    pub mnn_threads: u32,
+    pub llama_threads: u32,
+    pub llama_context: u32,
+    pub llama_batch: u32,
+    pub llama_micro_batch: u32,
+    pub llama_gpu_layers: i32,
+    pub llama_mmap: bool,
+    pub llama_flash_attention: bool,
+    pub llama_kv_unified: bool,
+    pub llama_offload_kqv: bool,
+    pub parameters: Vec<ModelParameter>,
+}
+impl From<kiyori_core::models::ModelOptions> for ModelOptions {
+    fn from(v: kiyori_core::models::ModelOptions) -> Self {
+        Self {
+            context_length: v.context_length,
+            max_context_length: v.max_context_length,
+            max_context_mode: v.max_context_mode,
+            summary_enabled: v.summary_enabled,
+            summary_threshold: v.summary_threshold,
+            summary_by_count: v.summary_by_count,
+            summary_count: v.summary_count,
+            summary_rules: v.summary_rules,
+            image: v.image,
+            audio: v.audio,
+            video: v.video,
+            google_search: v.google_search,
+            claude_cache: v.claude_cache,
+            tool_call: v.tool_call,
+            request_limit: v.request_limit,
+            concurrent_limit: v.concurrent_limit,
+            mnn_forward: v.mnn_forward,
+            mnn_threads: v.mnn_threads,
+            llama_threads: v.llama_threads,
+            llama_context: v.llama_context,
+            llama_batch: v.llama_batch,
+            llama_micro_batch: v.llama_micro_batch,
+            llama_gpu_layers: v.llama_gpu_layers,
+            llama_mmap: v.llama_mmap,
+            llama_flash_attention: v.llama_flash_attention,
+            llama_kv_unified: v.llama_kv_unified,
+            llama_offload_kqv: v.llama_offload_kqv,
+            parameters: v.parameters.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+impl From<ModelOptions> for kiyori_core::models::ModelOptions {
+    fn from(v: ModelOptions) -> Self {
+        Self {
+            context_length: v.context_length,
+            max_context_length: v.max_context_length,
+            max_context_mode: v.max_context_mode,
+            summary_enabled: v.summary_enabled,
+            summary_threshold: v.summary_threshold,
+            summary_by_count: v.summary_by_count,
+            summary_count: v.summary_count,
+            summary_rules: v.summary_rules,
+            image: v.image,
+            audio: v.audio,
+            video: v.video,
+            google_search: v.google_search,
+            claude_cache: v.claude_cache,
+            tool_call: v.tool_call,
+            request_limit: v.request_limit,
+            concurrent_limit: v.concurrent_limit,
+            mnn_forward: v.mnn_forward,
+            mnn_threads: v.mnn_threads,
+            llama_threads: v.llama_threads,
+            llama_context: v.llama_context,
+            llama_batch: v.llama_batch,
+            llama_micro_batch: v.llama_micro_batch,
+            llama_gpu_layers: v.llama_gpu_layers,
+            llama_mmap: v.llama_mmap,
+            llama_flash_attention: v.llama_flash_attention,
+            llama_kv_unified: v.llama_kv_unified,
+            llama_offload_kqv: v.llama_offload_kqv,
+            parameters: v.parameters.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+pub struct ModelConfigDraft {
+    pub name: String,
+    pub provider: String,
+    pub protocol: String,
+    pub endpoint: String,
+    pub models: Vec<String>,
+    pub options: ModelOptions,
+}
+impl From<kiyori_core::models::ModelConfigDraft> for ModelConfigDraft {
+    fn from(v: kiyori_core::models::ModelConfigDraft) -> Self {
+        Self {
+            name: v.name,
+            provider: v.provider,
+            protocol: v.protocol,
+            endpoint: v.endpoint,
+            models: v.models,
+            options: v.options.into(),
+        }
+    }
+}
+impl From<ModelConfigDraft> for kiyori_core::models::ModelConfigDraft {
+    fn from(v: ModelConfigDraft) -> Self {
+        Self {
+            name: v.name,
+            provider: v.provider,
+            protocol: v.protocol,
+            endpoint: v.endpoint,
+            models: v.models,
+            options: v.options.into(),
+        }
+    }
+}
+pub struct ModelConfig {
+    pub id: String,
+    pub revision: u32,
+    pub draft: ModelConfigDraft,
+    pub secret_reference: Option<String>,
+}
+impl From<kiyori_core::models::ModelConfig> for ModelConfig {
+    fn from(v: kiyori_core::models::ModelConfig) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            draft: v.draft.into(),
+            secret_reference: v.secret_reference,
+        }
+    }
+}
+pub struct FunctionModel {
+    pub function: String,
+    pub config_id: String,
+    pub model_name: String,
+}
+impl From<kiyori_core::models::FunctionModel> for FunctionModel {
+    fn from(v: kiyori_core::models::FunctionModel) -> Self {
+        Self {
+            function: v.function,
+            config_id: v.config_id,
+            model_name: v.model_name,
+        }
+    }
+}
+pub struct ModelCatalog {
+    pub configs: Vec<ModelConfig>,
+    pub functions: Vec<FunctionModel>,
+}
+impl From<kiyori_core::models::ModelCatalog> for ModelCatalog {
+    fn from(v: kiyori_core::models::ModelCatalog) -> Self {
+        Self {
+            configs: v.configs.into_iter().map(Into::into).collect(),
+            functions: v.functions.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 pub struct PromptTool {
     pub kind: String,
     pub name: String,
@@ -599,6 +801,62 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn reset_function_models(&self) -> Result<(), BridgeError> {
+        Ok(self.inner.reset_function_models()?)
+    }
+    pub fn model_catalog(&self) -> Result<ModelCatalog, BridgeError> {
+        Ok(self.inner.model_catalog()?.into())
+    }
+    pub fn create_model_config(&self, name: String) -> Result<String, BridgeError> {
+        Ok(self.inner.create_model_config(name)?)
+    }
+    pub fn save_model_config(
+        &self,
+        id: String,
+        revision: u32,
+        draft: ModelConfigDraft,
+        secret_reference: Option<String>,
+        replacement: Option<String>,
+    ) -> Result<(), BridgeError> {
+        Ok(self.inner.save_model_config(
+            id,
+            revision,
+            draft.into(),
+            secret_reference,
+            replacement,
+        )?)
+    }
+    pub fn reserve_model_secret(&self, id: String, revision: u32) -> Result<String, BridgeError> {
+        Ok(self.inner.reserve_model_secret(id, revision)?)
+    }
+    pub fn retire_model_secret(&self, reference: String) -> Result<(), BridgeError> {
+        Ok(self.inner.retire_model_secret(reference)?)
+    }
+    pub fn retired_model_secrets(&self) -> Result<Vec<String>, BridgeError> {
+        Ok(self.inner.retired_model_secrets()?)
+    }
+    pub fn forget_retired_model_secret(&self, reference: String) -> Result<(), BridgeError> {
+        Ok(self.inner.forget_retired_model_secret(reference)?)
+    }
+    pub fn select_function_model(
+        &self,
+        function: String,
+        config: String,
+        model: String,
+    ) -> Result<(), BridgeError> {
+        Ok(self.inner.select_function_model(function, config, model)?)
+    }
+    pub fn delete_model_config(
+        &self,
+        id: String,
+        revision: u32,
+        replacement_config: Option<String>,
+        replacement_model: Option<String>,
+    ) -> Result<(), BridgeError> {
+        Ok(self
+            .inner
+            .delete_model_config(id, revision, replacement_config, replacement_model)?)
+    }
     pub fn prompt_catalog(&self) -> Result<PromptCatalog, BridgeError> {
         Ok(self.inner.prompt_catalog()?.into())
     }

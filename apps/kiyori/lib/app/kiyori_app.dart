@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_platform/kiyori_platform.dart';
 
 import 'diagnostics/runtime_diagnostics_page.dart';
 import 'runtime_controller.dart';
@@ -10,6 +11,7 @@ import 'shell/home_shell.dart';
 import '../features/workflows/presentation/workflow_controller.dart';
 import '../features/knowledge/presentation/knowledge_controller.dart';
 import '../features/assistant/presentation/prompts/prompts_controller.dart';
+import '../features/assistant/presentation/models/models_controller.dart';
 
 class KiyoriApp extends StatefulWidget {
   const KiyoriApp({required this.connect, this.diagnostics = false, super.key});
@@ -26,6 +28,7 @@ class _KiyoriAppState extends State<KiyoriApp> {
   late final WorkflowController workflows;
   late final KnowledgeController knowledge;
   late final PromptsController prompts;
+  late final ModelsController models;
   @override
   void initState() {
     super.initState();
@@ -33,6 +36,10 @@ class _KiyoriAppState extends State<KiyoriApp> {
     workflows = WorkflowController(controller.connectedClient);
     knowledge = KnowledgeController(controller.connectedClient);
     prompts = PromptsController(controller.connectedClient);
+    models = ModelsController(
+      controller.connectedClient,
+      openNativeSecretStore,
+    );
     unawaited(controller.initialize());
   }
 
@@ -41,6 +48,7 @@ class _KiyoriAppState extends State<KiyoriApp> {
     workflows.dispose();
     knowledge.dispose();
     prompts.dispose();
+    models.dispose();
     controller.dispose();
     super.dispose();
   }
@@ -70,6 +78,7 @@ class _KiyoriAppState extends State<KiyoriApp> {
             workflows: workflows,
             knowledge: knowledge,
             prompts: prompts,
+            models: models,
           ),
   );
 }

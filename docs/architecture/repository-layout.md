@@ -11,7 +11,9 @@ Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存
 
 根目录表示工程角色，角色内部按语言生态和领域命名。初期采用模块化单体，不把每个页面拆成 package，也不预造几十个 crate。目录只有在承载真实实现、测试或文档时创建。
 
-下图是**目标布局**；M1 已建立 `apps/kiyori`、`kiyori_ui`、`kiyori_bridge`、`kiyori_core`、`kiyori_ffi` 与根 Pub/Cargo workspace。当前尚无原生系统能力，`kiyori_platform` 随首个真实 adapter 创建；业务 feature、SDK、extensions 和 CI 也按实际需求建立，不放空 `.gitkeep` 或假实现。
+下图是**目标布局**；已有app、UI、bridge、core、FFI与根Pub/Cargo workspace。
+kiyori_platform现已为安全凭据建立lib/test，Windows绑定DPAPI、移动端委托安全存储插件；
+未生成空android/windows/ios目录。业务feature、SDK、extensions和CI按需求建立。
 
 ```text
 Kiyori/

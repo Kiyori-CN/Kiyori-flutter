@@ -2,7 +2,7 @@ use crate::runtime::{CoreError, ErrorCode};
 use rusqlite::Connection;
 use std::{path::Path, sync::Mutex};
 
-const SCHEMA_VERSION: i32 = 5;
+const SCHEMA_VERSION: i32 = 6;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -137,6 +137,28 @@ impl AppStore {
                 )
                 .map_err(|_| error("Cannot migrate prompt storage."))?;
             crate::prompts::initialize(&transaction)?;
+        }
+        if version < 6 {
+            transaction.execute_batch(
+                "CREATE TABLE model_configs (
+                  id TEXT PRIMARY KEY NOT NULL, revision INTEGER NOT NULL,
+                  name TEXT NOT NULL, provider TEXT NOT NULL, protocol TEXT NOT NULL,
+                  endpoint TEXT NOT NULL, options TEXT NOT NULL, secret_reference TEXT UNIQUE);
+                 CREATE TABLE model_names (
+                  config_id TEXT NOT NULL REFERENCES model_configs(id) ON DELETE CASCADE,
+                  name TEXT NOT NULL, position INTEGER NOT NULL,
+                  PRIMARY KEY(config_id,name));
+                 CREATE TABLE function_models (
+                  function TEXT PRIMARY KEY NOT NULL, config_id TEXT NOT NULL, model_name TEXT NOT NULL,
+                  FOREIGN KEY(config_id,model_name) REFERENCES model_names(config_id,name)
+                    DEFERRABLE INITIALLY DEFERRED);
+                 CREATE TABLE model_secrets (
+                  reference TEXT PRIMARY KEY NOT NULL, config_id TEXT NOT NULL,
+                  state TEXT NOT NULL CHECK(state IN ('pending','active','retired')));
+                 CREATE INDEX model_secrets_config ON model_secrets(config_id,state);
+                 PRAGMA user_version=6;"
+            ).map_err(|_| error("Cannot migrate model storage."))?;
+            crate::models::initialize(&transaction)?;
         }
         transaction
             .commit()

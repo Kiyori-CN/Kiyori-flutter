@@ -101,6 +101,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ModelConfigDraft dco_decode_box_autoadd_model_config_draft(dynamic raw);
+
+  @protected
   TagDraft dco_decode_box_autoadd_tag_draft(dynamic raw);
 
   @protected
@@ -134,6 +137,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FunctionModel dco_decode_function_model(dynamic raw);
+
+  @protected
   GraphNode dco_decode_graph_node(dynamic raw);
 
   @protected
@@ -161,6 +167,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DiaryEntry> dco_decode_list_diary_entry(dynamic raw);
 
   @protected
+  List<FunctionModel> dco_decode_list_function_model(dynamic raw);
+
+  @protected
   List<GraphNode> dco_decode_list_graph_node(dynamic raw);
 
   @protected
@@ -176,6 +185,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MemorySearchCandidate> dco_decode_list_memory_search_candidate(
     dynamic raw,
   );
+
+  @protected
+  List<ModelConfig> dco_decode_list_model_config(dynamic raw);
+
+  @protected
+  List<ModelParameter> dco_decode_list_model_parameter(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -221,6 +236,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemorySearchSettings dco_decode_memory_search_settings(dynamic raw);
+
+  @protected
+  ModelCatalog dco_decode_model_catalog(dynamic raw);
+
+  @protected
+  ModelConfig dco_decode_model_config(dynamic raw);
+
+  @protected
+  ModelConfigDraft dco_decode_model_config_draft(dynamic raw);
+
+  @protected
+  ModelOptions dco_decode_model_options(dynamic raw);
+
+  @protected
+  ModelParameter dco_decode_model_parameter(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -362,6 +392,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ModelConfigDraft sse_decode_box_autoadd_model_config_draft(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TagDraft sse_decode_box_autoadd_tag_draft(SseDeserializer deserializer);
 
   @protected
@@ -395,6 +430,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  FunctionModel sse_decode_function_model(SseDeserializer deserializer);
+
+  @protected
   GraphNode sse_decode_graph_node(SseDeserializer deserializer);
 
   @protected
@@ -422,6 +460,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DiaryEntry> sse_decode_list_diary_entry(SseDeserializer deserializer);
 
   @protected
+  List<FunctionModel> sse_decode_list_function_model(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<GraphNode> sse_decode_list_graph_node(SseDeserializer deserializer);
 
   @protected
@@ -439,6 +482,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<MemorySearchCandidate> sse_decode_list_memory_search_candidate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<ModelConfig> sse_decode_list_model_config(SseDeserializer deserializer);
+
+  @protected
+  List<ModelParameter> sse_decode_list_model_parameter(
     SseDeserializer deserializer,
   );
 
@@ -496,6 +547,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MemorySearchSettings sse_decode_memory_search_settings(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ModelCatalog sse_decode_model_catalog(SseDeserializer deserializer);
+
+  @protected
+  ModelConfig sse_decode_model_config(SseDeserializer deserializer);
+
+  @protected
+  ModelConfigDraft sse_decode_model_config_draft(SseDeserializer deserializer);
+
+  @protected
+  ModelOptions sse_decode_model_options(SseDeserializer deserializer);
+
+  @protected
+  ModelParameter sse_decode_model_parameter(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -663,6 +729,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_model_config_draft(
+    ModelConfigDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_tag_draft(
     TagDraft self,
     SseSerializer serializer,
@@ -705,6 +777,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_function_model(FunctionModel self, SseSerializer serializer);
+
+  @protected
   void sse_encode_graph_node(GraphNode self, SseSerializer serializer);
 
   @protected
@@ -744,6 +819,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_function_model(
+    List<FunctionModel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_graph_node(
     List<GraphNode> self,
     SseSerializer serializer,
@@ -770,6 +851,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_memory_search_candidate(
     List<MemorySearchCandidate> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_model_config(
+    List<ModelConfig> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_model_parameter(
+    List<ModelParameter> self,
     SseSerializer serializer,
   );
 
@@ -845,6 +938,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_memory_search_settings(
     MemorySearchSettings self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_model_catalog(ModelCatalog self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_model_config(ModelConfig self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_model_config_draft(
+    ModelConfigDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_model_options(ModelOptions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_model_parameter(
+    ModelParameter self,
     SseSerializer serializer,
   );
 

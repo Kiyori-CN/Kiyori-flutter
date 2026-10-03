@@ -21,6 +21,11 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+模型配置补充：core/models测试迁移、模型名引用/显式替代和安全引用状态；
+apps/kiyori/test/models_business_test.dart在Windows使用真实FFI和DPAPI验证保存失败、
+清理重试、并发输入与UI写入。packages/kiyori_platform/test使用Windows真实加密和
+移动channel mock，后者只证明调用约定；不替代Android/Apple设备安全存储验收。
+
 页面迭代可从根目录运行 `tools/test-ui.ps1 -Test <name>_test.dart`；指定 `-Capture`
 复用真实 app 资源和本机字体捕获。脚本不会替代完整 verify，详见
 [复刻流程](ui-replication-workflow.md)。截图必须在可追溯源码版本上生成，不能在验证中修改输入。

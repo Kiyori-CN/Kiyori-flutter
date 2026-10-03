@@ -35,6 +35,9 @@ import '../../features/assistant/presentation/history/chat_history_page.dart';
 import '../../features/assistant/presentation/context/context_summary_page.dart';
 import '../../features/assistant/presentation/models/function_models_page.dart';
 import '../../features/assistant/presentation/models/model_api_page.dart';
+import '../../features/assistant/presentation/models/models_controller.dart';
+import '../../features/assistant/presentation/models/persistent_models_page.dart';
+import '../../features/assistant/presentation/prompts/persona_presentation.dart';
 import '../../features/assistant/presentation/models/local_models_page.dart';
 import '../../features/assistant/presentation/permissions/tool_permissions_page.dart';
 import '../../features/assistant/presentation/profile/user_profile_page.dart';
@@ -59,12 +62,20 @@ import '../../features/browser/presentation/adblock_settings_page.dart';
 
 /// 详情路由的装配层；只借用现有 Navigator，不持有目的地或业务状态。
 class SettingsNavigation {
-  SettingsNavigation(this.navigator, {this.prompts});
+  SettingsNavigation(this.navigator, {this.prompts, this.models});
+  final ModelsController? models;
   final PromptsController? prompts;
   final NavigatorState navigator;
 
   void openModels() => openPage(
-    ModelApiPage(onOpenLocalModels: () => openPage(const LocalModelsPage())),
+    models == null
+        ? ModelApiPage(
+            onOpenLocalModels: () => openPage(const LocalModelsPage()),
+          )
+        : PersistentModelsPage(
+            controller: models!,
+            onManage: () => openPage(const LocalModelsPage()),
+          ),
   );
 
   Widget buildSettingsPage({VoidCallback? onBack}) => SettingsPage(
@@ -77,7 +88,15 @@ class SettingsNavigation {
           } else if (section == AssistantSettingsSection.context) {
             openPage(const ContextSummaryPage());
           } else if (section == AssistantSettingsSection.functions) {
-            openPage(FunctionModelsPage(onManage: openModels));
+            openPage(
+              models == null
+                  ? FunctionModelsPage(onManage: openModels)
+                  : PersistentModelsPage(
+                      controller: models!,
+                      functions: true,
+                      onManage: openModels,
+                    ),
+            );
           } else if (section == AssistantSettingsSection.models) {
             openModels();
           } else if (section == AssistantSettingsSection.roles) {
@@ -92,8 +111,16 @@ class SettingsNavigation {
                       controller: prompts!,
                       onOpenTagMarket: () =>
                           openPage(TagMarketPage(onSave: prompts!.saveTag)),
-                      onOpenPersona: () =>
-                          openPage(const PersonaGenerationPage()),
+                      onOpenPersona: () => openPage(
+                        ListenableBuilder(
+                          listenable: prompts!,
+                          builder: (context, _) => PersonaGenerationPage(
+                            snapshot: PersonaPresentation(
+                              catalog: prompts!.snapshot,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
             );
           } else if (section == AssistantSettingsSection.avatar) {

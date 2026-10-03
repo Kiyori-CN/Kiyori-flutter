@@ -5,7 +5,31 @@
 
 ## 当前任务：设置全树与AI真实业务连续开发
 
-角色/标签/群组持久化批次本地验收闭环，基线main/3ec6223。schema5共享Runtime/SQLite，
+模型配置基础批次本地验收闭环，准备精确提交。schema6配置、完整选项、稳定模型名引用、
+功能选择/事务重置、角色模型选择、安全引用退役已接FFI与页面。700ms自动保存串行排空，
+失败保留草稿，离开可显式放弃；绑定模型删除需选择替代，新配置自动选中且隔离凭据。
+人设页消费真实角色目录。新建kiyori_platform，Windows当前用户DPAPI保护独立引用，
+Android/iOS委托Keystore/Keychain；设计及恢复边界见ADR0006。
+
+work/models-verify-v1.log：54文档/4桥夹具、Rust41/Clippy、298 Dart格式/analyze、
+Flutter509（10捕获跳过）、platform2通过。最后新增FFI关闭断言直接调用同步拒绝方法而
+失败；修为闭包且仍精确断言BridgeError/runtimeClosed后，work/models-ffi-v2.log十三项通过。
+首轮定向28项通过；最后新建选中回归/DPAPI与截图4项通过，work/models-ui-v2.log，
+7张PNG位于work/models-capture-v2，真实目录和手机暗色已审阅。最终analyze无问题。
+Windows引擎4项通过（work/models-windows-integration-v1.log），包含真实DPAPI重开；
+bridge Check五文件一致。Android112.1s、普通Windows12.7s构建通过。
+
+固定产物artifacts/ui-preview/20261003-133406：APK117570454字节，
+SHA256 B5BE23E8F4F51FED383FBC7AE0C0BFA0260E22DBCFF7B4B9A185E061E57B7DA9；
+Windows84文件153769296字节，Rust DLL6555648字节，SHA256
+3D3682575CB783CAF34B1AF3AF2BF3EDAAACA303A5819F1AA0387F06A3ECE8B8。
+85文件复制hash、APK身份/ARM64/v2签名/ZIP16K/ELF、Windows x64/Flutter DLL pin检查通过。
+538文件树审计无发现，历史产物保留。设备/Profile/真实供应商/Apple尚未验证。
+
+下一批继续pending崩溃孤儿恢复、完整key池管理、独立上下文页与真实请求/会话；
+这些仍为未实现，不能标为仅待设备验证。总Goal保持active。
+
+角色/标签/群组持久化批次本地验收闭环，已提交并推送main/fe10772。schema5共享Runtime/SQLite，
 角色八字段/标签/绑定、标签CRUD、群组有序成员、复制/激活/默认角色重置与市场添加
 已接真实命令。revision拒绝过期覆盖，级联推进关联revision，活跃删除回默认；完整提示
 组合提供真实接口。头像主题/形象/表情克隆、导入导出、会话关联、人设生成与模型执行

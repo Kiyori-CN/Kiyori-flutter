@@ -10,6 +10,7 @@
 - [ADR 0003：资料 Markdown](decisions/0003-profile-markdown-presentation.md)：编辑高亮、静态解析、展示与资源边界。
 - [ADR 0004：Unicode输入校验](decisions/0004-unicode-input-normalization.md)：工具箱名称NFKC依赖与业务边界。
 - [ADR 0005：Runtime SQLite存储](decisions/0005-runtime-sqlite-storage.md)：工作流定义持久化、应用目录与关闭/迁移契约。
+- [ADR 0006：模型与安全凭据](decisions/0006-model-secrets-and-configurations.md)：配置引用、双存储提交、DPAPI/Keystore/Keychain与恢复边界。
 
 ## 架构
 

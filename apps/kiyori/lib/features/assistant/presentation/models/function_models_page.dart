@@ -9,10 +9,14 @@ class FunctionModelsPage extends StatefulWidget {
   const FunctionModelsPage({
     this.snapshot = const FunctionModelsPresentation(),
     this.onManage = emptyAction,
+    this.onSelect,
+    this.onReset,
     super.key,
   });
   final FunctionModelsPresentation snapshot;
   final VoidCallback onManage;
+  final Future<void> Function(String, String, String)? onSelect;
+  final Future<void> Function()? onReset;
   @override
   State<FunctionModelsPage> createState() => _FunctionModelsPageState();
 }
@@ -34,6 +38,11 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
       selections.removeWhere(
         (_, selection) => !configs.containsKey(selection.configId),
       );
+      if (widget.onSelect != null) {
+        selections
+          ..clear()
+          ..addAll(widget.snapshot.selections);
+      }
     }
   }
 
@@ -153,7 +162,24 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
                       child: const Text('取消'),
                     ),
                     TextButton(
-                      onPressed: emptyAction,
+                      onPressed: widget.onReset == null
+                          ? emptyAction
+                          : () async {
+                              try {
+                                await widget.onReset!();
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('恢复失败，请检查默认配置是否包含模型'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       child: Text(
                         '恢复默认',
                         style: TextStyle(
@@ -186,8 +212,31 @@ class _FunctionModelsPageState extends State<FunctionModelsPage> {
               modelIndex: selection.modelIndex,
               available: widget.snapshot.configs,
               result: widget.snapshot.results[function],
-              onSelected: (selection) =>
-                  setState(() => selections[function] = selection),
+              onSelected: (selection) async {
+                if (widget.onSelect == null) {
+                  setState(() => selections[function] = selection);
+                  return;
+                }
+                final config = configs[selection.configId];
+                if (config == null ||
+                    selection.modelIndex < 0 ||
+                    selection.modelIndex >= config.models.length) {
+                  return;
+                }
+                try {
+                  await widget.onSelect!(
+                    function.name,
+                    config.id,
+                    config.models[selection.modelIndex],
+                  );
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('模型分配保存失败，请重试')),
+                    );
+                  }
+                }
+              },
             ),
           );
         },

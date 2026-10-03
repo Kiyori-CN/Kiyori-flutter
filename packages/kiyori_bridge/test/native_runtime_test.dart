@@ -6,6 +6,66 @@ import 'package:test/test.dart';
 
 void main() {
   test(
+    'model configuration options and function identity survive generated FFI',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-model-ffi-',
+      );
+      final client = await NativeRuntimeClient.open(
+        dataDirectory: directory.path,
+      );
+      try {
+        final initial = (await client.modelCatalog()).configs.single;
+        expect(initial.draft.options.parameters.length, 7);
+        final id = await client.createModelConfig('FFI模型');
+        final config = (await client.modelCatalog()).configs.last;
+        await client.saveModelConfig(
+          id,
+          config.revision,
+          ModelConfigDraft(
+            name: config.draft.name,
+            provider: config.draft.provider,
+            protocol: 'responses',
+            endpoint: 'http://127.0.0.1:8080/v1#',
+            models: const ['m1', 'm2'],
+            options: initial.draft.options,
+          ),
+          null,
+          null,
+        );
+        await client.selectFunctionModel('chat', id, 'm2');
+        expect(
+          (await client.modelCatalog()).functions
+              .singleWhere((f) => f.function == 'chat')
+              .modelName,
+          'm2',
+        );
+        await client.resetFunctionModels();
+        expect(
+          (await client.modelCatalog()).functions.every(
+            (f) => f.configId == 'default',
+          ),
+          isTrue,
+        );
+        await client.deleteModelConfig(id, 2, null, null);
+        await client.close();
+        await expectLater(
+          () => client.modelCatalog(),
+          throwsA(
+            isA<BridgeError>().having(
+              (e) => e.code,
+              'code',
+              ErrorCode.runtimeClosed,
+            ),
+          ),
+        );
+      } finally {
+        await client.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'prompt CRUD revisions composition and cascades survive FFI reopen',
     () async {
       final directory = await Directory.systemTemp.createTemp(

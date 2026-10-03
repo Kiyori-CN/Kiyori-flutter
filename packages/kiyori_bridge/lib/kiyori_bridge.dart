@@ -2,6 +2,12 @@ library;
 
 export 'src/generated/api.dart'
     show
+        ModelParameter,
+        ModelOptions,
+        ModelConfigDraft,
+        ModelConfig,
+        FunctionModel,
+        ModelCatalog,
         PromptTool,
         CharacterDraft,
         PromptCharacter,

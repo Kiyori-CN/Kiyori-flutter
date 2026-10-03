@@ -3,7 +3,7 @@
 ## 依赖与目录
 
 采用模块化单体和按领域纵向组织；只有独立生命周期、可复用 API 或独立构建确有收益时
-提取 package/crate。现阶段维持 app、UI、bridge、core、FFI 五个实际边界，不预建空层。
+提取package/crate。现阶段已有app、UI、bridge、core、FFI和安全存储platform六个实际边界，不预建空层。
 
 - `app` 装配 feature、路由与生命周期；feature 不 import app。共享 UI 放 `kiyori_ui`，
   跨功能命令由装配层注入，不能通过全局 service locator 绕回 Shell。

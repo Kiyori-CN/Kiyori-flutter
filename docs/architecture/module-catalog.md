@@ -1,6 +1,12 @@
 # 模块目录与验收边界
 
-本表描述目标模块，业务按当前状态逐项实施。`core` 指 `crates/kiyori_core/src`；`feature` 指 `apps/kiyori/lib/features`；`native` 指尚未建立的目标目录 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
+本表描述目标模块，业务按当前状态逐项实施。`core`指`crates/kiyori_core/src`；
+`feature`指`apps/kiyori/lib/features`；`native`指已建立安全存储adapter的
+`packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
+
+core/models拥有schema6配置、功能绑定、参数验证与安全引用账本；native安全存储只保护
+不可变payload，Dart的ModelsController/ModelEditSession编排保存和短期草稿，不另建数据库。
+凭据不得进入目录DTO，双存储失败/恢复限制见[ADR 0006](../decisions/0006-model-secrets-and-configurations.md)。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

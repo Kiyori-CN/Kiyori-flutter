@@ -25,6 +25,64 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<void> resetFunctionModels() async =>
+      throw UnimplementedError('Use real model runtime.');
+  @override
+  Future<ModelCatalog> modelCatalog() async => throw UnimplementedError(
+    'Use a real runtime for model persistence tests.',
+  );
+  @override
+  Future<String> createModelConfig(String name) async =>
+      throw UnimplementedError(
+        'Use a real runtime for model persistence tests.',
+      );
+  @override
+  Future<void> saveModelConfig(
+    String id,
+    int revision,
+    ModelConfigDraft draft,
+    String? secretReference,
+    String? replacement,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for model persistence tests.',
+  );
+  @override
+  Future<String> reserveModelSecret(String id, int revision) async =>
+      throw UnimplementedError(
+        'Use a real runtime for model persistence tests.',
+      );
+  @override
+  Future<void> retireModelSecret(String reference) async =>
+      throw UnimplementedError(
+        'Use a real runtime for model persistence tests.',
+      );
+  @override
+  Future<List<String>> retiredModelSecrets() async => throw UnimplementedError(
+    'Use a real runtime for model persistence tests.',
+  );
+  @override
+  Future<void> forgetRetiredModelSecret(String reference) async =>
+      throw UnimplementedError(
+        'Use a real runtime for model persistence tests.',
+      );
+  @override
+  Future<void> selectFunctionModel(
+    String function,
+    String config,
+    String model,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for model persistence tests.',
+  );
+  @override
+  Future<void> deleteModelConfig(
+    String id,
+    int revision,
+    String? replacementConfig,
+    String? replacementModel,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for model persistence tests.',
+  );
+  @override
   Future<PromptCatalog> promptCatalog() async => throw UnimplementedError(
     'Use a real runtime for prompt persistence tests.',
   );

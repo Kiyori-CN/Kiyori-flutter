@@ -5,6 +5,31 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<void> resetFunctionModels();
+  Future<api.ModelCatalog> modelCatalog();
+  Future<String> createModelConfig(String name);
+  Future<void> saveModelConfig(
+    String id,
+    int revision,
+    api.ModelConfigDraft draft,
+    String? secretReference,
+    String? replacement,
+  );
+  Future<String> reserveModelSecret(String id, int revision);
+  Future<void> retireModelSecret(String reference);
+  Future<List<String>> retiredModelSecrets();
+  Future<void> forgetRetiredModelSecret(String reference);
+  Future<void> selectFunctionModel(
+    String function,
+    String config,
+    String model,
+  );
+  Future<void> deleteModelConfig(
+    String id,
+    int revision,
+    String? replacementConfig,
+    String? replacementModel,
+  );
   Future<api.PromptCatalog> promptCatalog();
   Future<String> saveCharacter(
     String? id,
@@ -87,6 +112,96 @@ abstract interface class DiagnosticRun {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  @override
+  Future<void> resetFunctionModels() {
+    _ensureOpen();
+    return _handle.resetFunctionModels();
+  }
+
+  @override
+  Future<api.ModelCatalog> modelCatalog() {
+    _ensureOpen();
+    return _handle.modelCatalog();
+  }
+
+  @override
+  Future<String> createModelConfig(String name) {
+    _ensureOpen();
+    return _handle.createModelConfig(name: name);
+  }
+
+  @override
+  Future<void> saveModelConfig(
+    String id,
+    int revision,
+    api.ModelConfigDraft draft,
+    String? secretReference,
+    String? replacement,
+  ) {
+    _ensureOpen();
+    return _handle.saveModelConfig(
+      id: id,
+      revision: revision,
+      draft: draft,
+      secretReference: secretReference,
+      replacement: replacement,
+    );
+  }
+
+  @override
+  Future<String> reserveModelSecret(String id, int revision) {
+    _ensureOpen();
+    return _handle.reserveModelSecret(id: id, revision: revision);
+  }
+
+  @override
+  Future<void> retireModelSecret(String reference) {
+    _ensureOpen();
+    return _handle.retireModelSecret(reference: reference);
+  }
+
+  @override
+  Future<List<String>> retiredModelSecrets() {
+    _ensureOpen();
+    return _handle.retiredModelSecrets();
+  }
+
+  @override
+  Future<void> forgetRetiredModelSecret(String reference) {
+    _ensureOpen();
+    return _handle.forgetRetiredModelSecret(reference: reference);
+  }
+
+  @override
+  Future<void> selectFunctionModel(
+    String function,
+    String config,
+    String model,
+  ) {
+    _ensureOpen();
+    return _handle.selectFunctionModel(
+      function: function,
+      config: config,
+      model: model,
+    );
+  }
+
+  @override
+  Future<void> deleteModelConfig(
+    String id,
+    int revision,
+    String? replacementConfig,
+    String? replacementModel,
+  ) {
+    _ensureOpen();
+    return _handle.deleteModelConfig(
+      id: id,
+      revision: revision,
+      replacementConfig: replacementConfig,
+      replacementModel: replacementModel,
+    );
+  }
+
   @override
   Future<api.PromptCatalog> promptCatalog() {
     _ensureOpen();

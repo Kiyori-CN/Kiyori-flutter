@@ -6,3 +6,4 @@ workspace:
   - apps/kiyori
   - packages/kiyori_bridge
   - packages/kiyori_ui
+  - packages/kiyori_platform

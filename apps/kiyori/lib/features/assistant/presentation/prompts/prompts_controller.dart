@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart' as bridge;
 
 import 'prompt_presentation.dart';
+import '../models/function_model_presentation.dart';
 
 /// 仅持有 Rust 目录投影；编辑 revision 固定在打开表单时。
 class PromptsController extends ChangeNotifier {
@@ -18,10 +19,22 @@ class PromptsController extends ChangeNotifier {
   Future<void> _read(bridge.RuntimeClient client) async {
     final value = await client.promptCatalog();
     final knowledge = await client.knowledgeSnapshot();
+    final models = await client.modelCatalog();
     if (_disposed) return;
     snapshot = PromptsPresentation(
       activeCardId: value.activeCharacter,
       activeGroupId: value.activeGroup,
+      models: [
+        for (final config in models.configs)
+          ModelConfigPresentation(
+            id: config.id,
+            name: config.draft.name,
+            models: config.draft.models,
+            image: config.draft.options.image,
+            audio: config.draft.options.audio,
+            video: config.draft.options.video,
+          ),
+      ],
       memories: [
         for (final space in knowledge.spaces)
           PromptOption(space.id, space.name),

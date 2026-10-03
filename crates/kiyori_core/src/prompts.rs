@@ -13,6 +13,7 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) fn remove_schema_five_for_fixture(connection: &Connection) {
+    crate::models::remove_schema_six_for_fixture(connection);
     connection.execute_batch("DROP TABLE prompt_active; DROP TABLE prompt_group_members; DROP TABLE prompt_character_tools; DROP TABLE prompt_character_tags; DROP TABLE prompt_groups; DROP TABLE prompt_tags; DROP TABLE prompt_characters;").unwrap();
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -401,6 +402,9 @@ impl AppStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let (id, revision) = identity(&tx, "prompt_characters", id, revision)?;
+        if let (Some(config), Some(model)) = (&draft.model_config, &draft.model_name) {
+            crate::models::require_model(&tx, config, model)?;
+        }
         if let Some(space) = &draft.memory_space {
             crate::knowledge::require_space(&tx, space)?;
         }

@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -55,6 +55,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String path,
   });
 
+  Future<String> createModelConfig({required String name});
+
   Future<WorkflowRecord> createWorkflow({
     required String name,
     required String description,
@@ -76,6 +78,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<bool> deleteMemoryLink({required String space, required String id});
 
+  Future<void> deleteModelConfig({
+    required String id,
+    required int revision,
+    String? replacementConfig,
+    String? replacementModel,
+  });
+
   Future<void> deletePrompt({
     required String kind,
     required String id,
@@ -92,6 +101,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required int revision,
   });
 
+  Future<void> forgetRetiredModelSecret({required String reference});
+
   Future<MemoryRecord?> getMemory({required String space, required String id});
 
   Future<RuntimeInfo> info();
@@ -104,6 +115,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<MemorySearchSettings> memorySearchSettings({required String space});
 
+  Future<ModelCatalog> modelCatalog();
+
   Future<PromptCatalog> promptCatalog();
 
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
@@ -114,7 +127,18 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String new_,
   });
 
+  Future<String> reserveModelSecret({
+    required String id,
+    required int revision,
+  });
+
   Future<void> resetDefaultCharacter({required int revision});
+
+  Future<void> resetFunctionModels();
+
+  Future<void> retireModelSecret({required String reference});
+
+  Future<List<String>> retiredModelSecrets();
 
   Future<String> saveCharacter({
     String? id,
@@ -141,6 +165,14 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required MemorySearchSettings value,
   });
 
+  Future<void> saveModelConfig({
+    required String id,
+    required int revision,
+    required ModelConfigDraft draft,
+    String? secretReference,
+    String? replacement,
+  });
+
   Future<String> savePromptGroup({
     String? id,
     int? revision,
@@ -151,6 +183,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     String? id,
     int? revision,
     required TagDraft draft,
+  });
+
+  Future<void> selectFunctionModel({
+    required String function,
+    required String config,
+    required String model,
   });
 
   Future<void> selectKnowledgeSpace({required String id});
@@ -387,6 +425,31 @@ class DiarySummary {
 }
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
+
+class FunctionModel {
+  final String function;
+  final String configId;
+  final String modelName;
+
+  const FunctionModel({
+    required this.function,
+    required this.configId,
+    required this.modelName,
+  });
+
+  @override
+  int get hashCode =>
+      function.hashCode ^ configId.hashCode ^ modelName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FunctionModel &&
+          runtimeType == other.runtimeType &&
+          function == other.function &&
+          configId == other.configId &&
+          modelName == other.modelName;
+}
 
 class GraphNode {
   final String id;
@@ -896,6 +959,256 @@ class MemorySearchSettings {
           edgeWeight == other.edgeWeight &&
           autoInterval == other.autoInterval &&
           extractionRules == other.extractionRules;
+}
+
+class ModelCatalog {
+  final List<ModelConfig> configs;
+  final List<FunctionModel> functions;
+
+  const ModelCatalog({required this.configs, required this.functions});
+
+  @override
+  int get hashCode => configs.hashCode ^ functions.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelCatalog &&
+          runtimeType == other.runtimeType &&
+          configs == other.configs &&
+          functions == other.functions;
+}
+
+class ModelConfig {
+  final String id;
+  final int revision;
+  final ModelConfigDraft draft;
+  final String? secretReference;
+
+  const ModelConfig({
+    required this.id,
+    required this.revision,
+    required this.draft,
+    this.secretReference,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      revision.hashCode ^
+      draft.hashCode ^
+      secretReference.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelConfig &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          revision == other.revision &&
+          draft == other.draft &&
+          secretReference == other.secretReference;
+}
+
+class ModelConfigDraft {
+  final String name;
+  final String provider;
+  final String protocol;
+  final String endpoint;
+  final List<String> models;
+  final ModelOptions options;
+
+  const ModelConfigDraft({
+    required this.name,
+    required this.provider,
+    required this.protocol,
+    required this.endpoint,
+    required this.models,
+    required this.options,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      provider.hashCode ^
+      protocol.hashCode ^
+      endpoint.hashCode ^
+      models.hashCode ^
+      options.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelConfigDraft &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          provider == other.provider &&
+          protocol == other.protocol &&
+          endpoint == other.endpoint &&
+          models == other.models &&
+          options == other.options;
+}
+
+class ModelOptions {
+  final double contextLength;
+  final double maxContextLength;
+  final bool maxContextMode;
+  final bool summaryEnabled;
+  final double summaryThreshold;
+  final bool summaryByCount;
+  final int summaryCount;
+  final String summaryRules;
+  final bool image;
+  final bool audio;
+  final bool video;
+  final bool googleSearch;
+  final bool claudeCache;
+  final bool toolCall;
+  final int requestLimit;
+  final int concurrentLimit;
+  final int mnnForward;
+  final int mnnThreads;
+  final int llamaThreads;
+  final int llamaContext;
+  final int llamaBatch;
+  final int llamaMicroBatch;
+  final int llamaGpuLayers;
+  final bool llamaMmap;
+  final bool llamaFlashAttention;
+  final bool llamaKvUnified;
+  final bool llamaOffloadKqv;
+  final List<ModelParameter> parameters;
+
+  const ModelOptions({
+    required this.contextLength,
+    required this.maxContextLength,
+    required this.maxContextMode,
+    required this.summaryEnabled,
+    required this.summaryThreshold,
+    required this.summaryByCount,
+    required this.summaryCount,
+    required this.summaryRules,
+    required this.image,
+    required this.audio,
+    required this.video,
+    required this.googleSearch,
+    required this.claudeCache,
+    required this.toolCall,
+    required this.requestLimit,
+    required this.concurrentLimit,
+    required this.mnnForward,
+    required this.mnnThreads,
+    required this.llamaThreads,
+    required this.llamaContext,
+    required this.llamaBatch,
+    required this.llamaMicroBatch,
+    required this.llamaGpuLayers,
+    required this.llamaMmap,
+    required this.llamaFlashAttention,
+    required this.llamaKvUnified,
+    required this.llamaOffloadKqv,
+    required this.parameters,
+  });
+
+  @override
+  int get hashCode =>
+      contextLength.hashCode ^
+      maxContextLength.hashCode ^
+      maxContextMode.hashCode ^
+      summaryEnabled.hashCode ^
+      summaryThreshold.hashCode ^
+      summaryByCount.hashCode ^
+      summaryCount.hashCode ^
+      summaryRules.hashCode ^
+      image.hashCode ^
+      audio.hashCode ^
+      video.hashCode ^
+      googleSearch.hashCode ^
+      claudeCache.hashCode ^
+      toolCall.hashCode ^
+      requestLimit.hashCode ^
+      concurrentLimit.hashCode ^
+      mnnForward.hashCode ^
+      mnnThreads.hashCode ^
+      llamaThreads.hashCode ^
+      llamaContext.hashCode ^
+      llamaBatch.hashCode ^
+      llamaMicroBatch.hashCode ^
+      llamaGpuLayers.hashCode ^
+      llamaMmap.hashCode ^
+      llamaFlashAttention.hashCode ^
+      llamaKvUnified.hashCode ^
+      llamaOffloadKqv.hashCode ^
+      parameters.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelOptions &&
+          runtimeType == other.runtimeType &&
+          contextLength == other.contextLength &&
+          maxContextLength == other.maxContextLength &&
+          maxContextMode == other.maxContextMode &&
+          summaryEnabled == other.summaryEnabled &&
+          summaryThreshold == other.summaryThreshold &&
+          summaryByCount == other.summaryByCount &&
+          summaryCount == other.summaryCount &&
+          summaryRules == other.summaryRules &&
+          image == other.image &&
+          audio == other.audio &&
+          video == other.video &&
+          googleSearch == other.googleSearch &&
+          claudeCache == other.claudeCache &&
+          toolCall == other.toolCall &&
+          requestLimit == other.requestLimit &&
+          concurrentLimit == other.concurrentLimit &&
+          mnnForward == other.mnnForward &&
+          mnnThreads == other.mnnThreads &&
+          llamaThreads == other.llamaThreads &&
+          llamaContext == other.llamaContext &&
+          llamaBatch == other.llamaBatch &&
+          llamaMicroBatch == other.llamaMicroBatch &&
+          llamaGpuLayers == other.llamaGpuLayers &&
+          llamaMmap == other.llamaMmap &&
+          llamaFlashAttention == other.llamaFlashAttention &&
+          llamaKvUnified == other.llamaKvUnified &&
+          llamaOffloadKqv == other.llamaOffloadKqv &&
+          parameters == other.parameters;
+}
+
+class ModelParameter {
+  final String name;
+  final bool enabled;
+  final String valueType;
+  final String value;
+  final String category;
+
+  const ModelParameter({
+    required this.name,
+    required this.enabled,
+    required this.valueType,
+    required this.value,
+    required this.category,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      enabled.hashCode ^
+      valueType.hashCode ^
+      value.hashCode ^
+      category.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelParameter &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          enabled == other.enabled &&
+          valueType == other.valueType &&
+          value == other.value &&
+          category == other.category;
 }
 
 class PromptCatalog {

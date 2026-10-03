@@ -4,6 +4,7 @@ pub mod diary;
 pub mod graph;
 pub mod knowledge;
 pub mod memory_search;
+pub mod models;
 pub mod prompts;
 pub mod runtime;
 mod storage;

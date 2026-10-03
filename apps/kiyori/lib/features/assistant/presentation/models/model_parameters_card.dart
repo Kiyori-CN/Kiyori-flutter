@@ -2,8 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'model_settings_components.dart';
+import 'model_edit_session.dart';
+import 'model_options_editing.dart';
 
 const _categories = ['生成参数', '创造性参数', '重复控制参数', '自定义参数'];
 const _types = ['整数', '小数', '文本', '布尔值', '对象(JSON)'];
@@ -109,7 +112,8 @@ class _ParameterDraft {
 }
 
 class ModelParametersCard extends StatefulWidget {
-  const ModelParametersCard({super.key});
+  const ModelParametersCard({this.session, super.key});
+  final ModelEditSession? session;
   @override
   State<ModelParametersCard> createState() => _ModelParametersCardState();
 }
@@ -121,10 +125,52 @@ class _ModelParametersCardState extends State<ModelParametersCard>
   final values = [
     for (final definition in _definitions) _ParameterDraft(definition),
   ];
+  final custom = <ModelParameter>[];
   @override
   void initState() {
     super.initState();
     tabs.addListener(changed);
+    final s = widget.session;
+    if (s == null) return;
+    for (final p in s.draft.options.parameters) {
+      final target = values
+          .where((v) => v.definition.api == p.name)
+          .firstOrNull;
+      if (target == null) {
+        custom.add(p);
+      } else {
+        target.value.text = p.value;
+        target.enabled = p.enabled;
+      }
+    }
+    for (final v in values) {
+      v.value.addListener(s.changed);
+    }
+    s.readers[this] = () => s.update(
+      options: s.draft.options.copyWith(
+        parameters: [
+          for (final v in values)
+            ModelParameter(
+              name: v.definition.api,
+              enabled: v.enabled,
+              valueType: v.definition.integer ? 'integer' : 'decimal',
+              value: v.value.text,
+              category: [
+                'generation',
+                'creativity',
+                'repetition',
+              ][v.definition.tab],
+            ),
+          ...custom,
+        ],
+      ),
+    );
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    widget.session?.changed();
   }
 
   void changed() {
@@ -133,6 +179,7 @@ class _ModelParametersCardState extends State<ModelParametersCard>
 
   @override
   void dispose() {
+    widget.session?.readers.remove(this);
     tabs.removeListener(changed);
     tabs.dispose();
     for (final value in values) {
@@ -187,7 +234,17 @@ class _ModelParametersCardState extends State<ModelParametersCard>
               ),
           ],
         ),
-        if (tabs.index == 3)
+        if (tabs.index == 3 && custom.isNotEmpty)
+          for (final p in custom)
+            ListTile(
+              title: Text(p.name),
+              subtitle: Text(p.value),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => setState(() => custom.remove(p)),
+              ),
+            )
+        else if (tabs.index == 3)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             decoration: BoxDecoration(
@@ -240,15 +297,34 @@ class _ModelParametersCardState extends State<ModelParametersCard>
         Row(
           children: [
             Expanded(
-              child: FilledButton(onPressed: () {}, child: const Text('重置')),
+              child: FilledButton(
+                onPressed: () => setState(() {
+                  for (final v in values) {
+                    v.enabled = false;
+                    v.value.text = v.definition.initial;
+                  }
+                  custom.clear();
+                }),
+                child: const Text('重置'),
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => const _CustomParameterDialog(),
-                ),
+                onPressed: () async {
+                  final value = await showDialog<ModelParameter>(
+                    context: context,
+                    builder: (_) => _CustomParameterDialog(
+                      names: {
+                        ...values.map((v) => v.definition.api),
+                        ...custom.map((p) => p.name),
+                      },
+                    ),
+                  );
+                  if (mounted && value != null) {
+                    setState(() => custom.add(value));
+                  }
+                },
                 child: const Text('添加'),
               ),
             ),
@@ -352,7 +428,8 @@ class _ModelParametersCardState extends State<ModelParametersCard>
 }
 
 class _CustomParameterDialog extends StatefulWidget {
-  const _CustomParameterDialog();
+  const _CustomParameterDialog({this.names = const {}});
+  final Set<String> names;
   @override
   State<_CustomParameterDialog> createState() => _CustomParameterDialogState();
 }
@@ -369,7 +446,11 @@ class _CustomParameterDialogState extends State<_CustomParameterDialog> {
   }
 
   void validate() => setState(() {
-    nameError = name.text.trim().isEmpty ? '参数名称不能为空' : null;
+    nameError = name.text.trim().isEmpty
+        ? '参数名称不能为空'
+        : widget.names.contains(name.text.trim())
+        ? '参数名称已存在'
+        : null;
     valueError = switch (type) {
       0 => int.tryParse(value.text) == null ? '必须是整数' : null,
       1 => double.tryParse(value.text)?.isFinite != true ? '必须是浮点数' : null,
@@ -380,6 +461,22 @@ class _CustomParameterDialogState extends State<_CustomParameterDialog> {
       4 => _validJson(value.text) ? null : '必须是有效的 JSON',
       _ => null,
     };
+    if (nameError == null && valueError == null) {
+      Navigator.of(context).pop(
+        ModelParameter(
+          name: name.text.trim(),
+          enabled: true,
+          valueType: ['integer', 'decimal', 'text', 'boolean', 'json'][type],
+          value: type == 3 ? value.text.toLowerCase() : value.text,
+          category: [
+            'generation',
+            'creativity',
+            'repetition',
+            'custom',
+          ][category],
+        ),
+      );
+    }
   });
   bool _validJson(String text) {
     try {

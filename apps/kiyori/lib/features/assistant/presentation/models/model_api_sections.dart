@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'model_settings_components.dart';
+import 'model_edit_session.dart';
+import 'model_credentials.dart';
+import 'model_options_editing.dart';
 
 class ModelApiContextCards extends StatefulWidget {
-  const ModelApiContextCards({super.key});
+  const ModelApiContextCards({this.session, super.key});
+  final ModelEditSession? session;
   @override
   State<ModelApiContextCards> createState() => _ModelApiContextCardsState();
 }
@@ -22,7 +26,41 @@ class _ModelApiContextCardsState extends State<ModelApiContextCards> {
   final contextError = ValueNotifier<String?>(null),
       summaryError = ValueNotifier<String?>(null);
   @override
+  void initState() {
+    super.initState();
+    final s = widget.session;
+    if (s == null) return;
+    final o = s.draft.options;
+    length.text = o.contextLength.toString();
+    maximum.text = o.maxContextLength.toString();
+    threshold.text = o.summaryThreshold.toString();
+    count.text = o.summaryCount.toString();
+    summary = o.summaryEnabled;
+    byCount = o.summaryByCount;
+    s.readers[this] = () => s.update(
+      options: s.draft.options.copyWith(
+        contextLength: double.parse(length.text),
+        maxContextLength: double.parse(maximum.text),
+        summaryThreshold: double.parse(threshold.text),
+        summaryCount: int.parse(count.text),
+        summaryEnabled: summary,
+        summaryByCount: byCount,
+      ),
+    );
+    for (final c in [length, maximum, threshold, count]) {
+      c.addListener(s.changed);
+    }
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    widget.session?.changed();
+  }
+
+  @override
   void dispose() {
+    widget.session?.readers.remove(this);
     for (final controller in [length, maximum, threshold, count]) {
       controller.dispose();
     }
@@ -160,7 +198,8 @@ class _ModelApiContextCardsState extends State<ModelApiContextCards> {
 }
 
 class ModelHeadersCard extends StatefulWidget {
-  const ModelHeadersCard({super.key});
+  const ModelHeadersCard({this.session, super.key});
+  final ModelEditSession? session;
   @override
   State<ModelHeadersCard> createState() => _ModelHeadersCardState();
 }
@@ -179,6 +218,53 @@ class _HeaderDraft {
 class _ModelHeadersCardState extends State<ModelHeadersCard> {
   bool expanded = false;
   final headers = <_HeaderDraft>[];
+  void watch(_HeaderDraft h) {
+    h.name.addListener(changed);
+    h.value.addListener(changed);
+  }
+
+  void changed() => widget.session?.changed();
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.session;
+    if (s == null) return;
+    for (final e in s.credentials.headers.entries) {
+      final h = _HeaderDraft(e.key, e.value);
+      watch(h);
+      headers.add(h);
+    }
+    s.readers[this] = () {
+      final values = <String, String>{};
+      for (final h in headers) {
+        if (values.keys.any(
+          (k) => k.toLowerCase() == h.name.text.toLowerCase(),
+        )) {
+          throw const FormatException('请求头名称重复');
+        }
+        values[h.name.text] = h.value.text;
+      }
+      final old = s.credentials;
+      s.credentials = ModelCredentials(
+        apiKey: old.apiKey,
+        headers: values,
+        usePool: old.usePool,
+        keys: old.keys,
+        rotation: old.rotation,
+      );
+    };
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    final before = headers.toSet();
+    super.setState(fn);
+    for (final h in headers.where((h) => !before.contains(h))) {
+      watch(h);
+    }
+    changed();
+  }
+
   static const presets = <(String, Map<String, String>)>[
     (
       '伪装成安卓浏览器',
@@ -212,6 +298,7 @@ class _ModelHeadersCardState extends State<ModelHeadersCard> {
   });
   @override
   void dispose() {
+    widget.session?.readers.remove(this);
     for (final header in headers) {
       header.dispose();
     }
@@ -311,7 +398,8 @@ class _HeaderAction extends StatelessWidget {
 }
 
 class ModelAdvancedCard extends StatefulWidget {
-  const ModelAdvancedCard({super.key});
+  const ModelAdvancedCard({this.session, super.key});
+  final ModelEditSession? session;
   @override
   State<ModelAdvancedCard> createState() => _ModelAdvancedCardState();
 }
@@ -320,8 +408,47 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
   bool queue = false, pool = false;
   final limit = TextEditingController(text: '0'),
       concurrent = TextEditingController(text: '0');
+  final keys = <String>[];
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.session;
+    if (s == null) return;
+    limit.text = s.draft.options.requestLimit.toString();
+    concurrent.text = s.draft.options.concurrentLimit.toString();
+    pool = s.credentials.usePool;
+    keys.addAll(s.credentials.keys);
+    limit.addListener(s.changed);
+    concurrent.addListener(s.changed);
+    s.readers[this] = () {
+      s.update(
+        options: s.draft.options.copyWith(
+          requestLimit: limit.text.isEmpty ? 0 : int.parse(limit.text),
+          concurrentLimit: concurrent.text.isEmpty
+              ? 0
+              : int.parse(concurrent.text),
+        ),
+      );
+      final old = s.credentials;
+      s.credentials = ModelCredentials(
+        apiKey: old.apiKey,
+        headers: old.headers,
+        usePool: pool,
+        keys: List.of(keys),
+        rotation: old.rotation,
+      );
+    };
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    widget.session?.changed();
+  }
+
   @override
   void dispose() {
+    widget.session?.readers.remove(this);
     limit.dispose();
     concurrent.dispose();
     super.dispose();
@@ -432,17 +559,20 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
       if (pool) ...[
         const Divider(height: 32),
         Text(
-          'API密钥池为空，点击下方按钮添加密钥',
+          keys.isEmpty ? 'API密钥池为空，点击下方按钮添加密钥' : '已保存 ${keys.length} 个API密钥',
           style: TextStyle(
             fontSize: 14,
             color: PrimaryColors.of(context).secondary,
           ),
         ),
         OutlinedButton.icon(
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) => const _PoolKeyDialog(),
-          ),
+          onPressed: () async {
+            final value = await showDialog<String>(
+              context: context,
+              builder: (_) => const _PoolKeyDialog(),
+            );
+            if (mounted && value != null) setState(() => keys.add(value));
+          },
           icon: const Icon(Icons.add),
           label: const Text('添加API密钥'),
         ),
@@ -498,7 +628,14 @@ class _PoolKeyDialogState extends State<_PoolKeyDialog> {
         onPressed: () => Navigator.of(context).pop(),
         child: const Text('取消'),
       ),
-      TextButton(onPressed: () {}, child: const Text('保存')),
+      TextButton(
+        onPressed: () {
+          if (value.text.trim().isNotEmpty) {
+            Navigator.of(context).pop(value.text.trim());
+          }
+        },
+        child: const Text('保存'),
+      ),
     ],
   );
 }

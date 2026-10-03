@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -5,9 +7,56 @@ import 'package:integration_test/integration_test.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:kiyori_platform/src/windows_secret_store.dart';
+import 'package:kiyori/features/assistant/presentation/models/models_controller.dart';
+import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'packaged model configuration uses native DPAPI and reopens the same reference',
+    (tester) async {
+      final support = await getApplicationSupportDirectory();
+      final directory = await support.createTemp('kiyori-integration-models-');
+      final runtime = await NativeRuntimeClient.open(
+        dataDirectory: directory.path,
+      );
+      final store = WindowsSecretStore(Directory('${directory.path}/secrets'));
+      final owner = ModelsController(() async => runtime, () async => store);
+      try {
+        await owner.load();
+        final base = owner.catalog!.configs.single;
+        final saved = await owner.save(
+          base,
+          base.draft,
+          const ModelCredentials(),
+          const ModelCredentials(apiKey: 'integration-model-fixture'),
+        );
+        expect(
+          (await owner.readCredentials(saved)).apiKey,
+          'integration-model-fixture',
+        );
+        await runtime.close();
+        final reopened = await NativeRuntimeClient.open(
+          dataDirectory: directory.path,
+        );
+        try {
+          expect(
+            (await reopened.modelCatalog()).configs.single.secretReference,
+            saved.secretReference,
+          );
+        } finally {
+          await reopened.close();
+        }
+      } finally {
+        owner.dispose();
+        await runtime.close();
+        await directory.delete(recursive: true);
+      }
+    },
+    skip: !Platform.isWindows,
+  );
 
   testWidgets(
     'platform support directory and packaged SQLite survive runtime reopening',

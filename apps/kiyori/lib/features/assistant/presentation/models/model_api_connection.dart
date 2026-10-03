@@ -6,9 +6,17 @@ import 'api_provider_drawers.dart';
 import 'api_provider_presentation.dart';
 import 'model_settings_components.dart';
 import 'model_tags_editor.dart';
+import 'model_edit_session.dart';
+import 'model_credentials.dart';
+import 'model_options_editing.dart';
 
 class ModelApiConnection extends StatefulWidget {
-  const ModelApiConnection({this.onOpenLocalModels = emptyAction, super.key});
+  const ModelApiConnection({
+    this.onOpenLocalModels = emptyAction,
+    this.session,
+    super.key,
+  });
+  final ModelEditSession? session;
   final VoidCallback onOpenLocalModels;
   @override
   State<ModelApiConnection> createState() => _ModelApiConnectionState();
@@ -39,11 +47,88 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
   );
   static const compute = ['CPU', 'OpenCL', 'Auto', 'OpenGL', 'Vulkan'];
 
+  @override
+  void initState() {
+    super.initState();
+    final session = widget.session;
+    if (session == null) return;
+    final d = session.draft, o = d.options;
+    protocol = ModelApiProtocol.values.byName(d.protocol);
+    provider =
+        builtInApiProviders.where((p) => p.id == d.provider).firstOrNull ??
+        ApiProviderPresentation(d.provider, d.provider, '', protocol, [
+          ProviderProtocolPresentation(protocol, '', d.endpoint),
+        ]);
+    endpoint.text = d.endpoint;
+    apiKey.text = session.credentials.apiKey;
+    models = List.of(d.models);
+    threads.text = o.mnnThreads.toString();
+    llamaThreads.text = o.llamaThreads.toString();
+    llamaContext.text = o.llamaContext.toString();
+    llamaGpu.text = o.llamaGpuLayers.toString();
+    forward = o.mnnForward;
+    image = o.image;
+    audio = o.audio;
+    video = o.video;
+    googleSearch = o.googleSearch;
+    claudeCache = o.claudeCache;
+    toolCall = o.toolCall;
+    session.readers[this] = capture;
+    for (final c in [
+      endpoint,
+      apiKey,
+      threads,
+      llamaThreads,
+      llamaContext,
+      llamaGpu,
+    ]) {
+      c.addListener(session.changed);
+    }
+  }
+
+  void capture() {
+    final s = widget.session!;
+    s.update(
+      provider: provider.id,
+      protocol: protocol.name,
+      endpoint: endpoint.text,
+      models: List.of(models),
+      options: s.draft.options.copyWith(
+        mnnForward: forward,
+        mnnThreads: int.parse(threads.text),
+        llamaThreads: int.parse(llamaThreads.text),
+        llamaContext: int.parse(llamaContext.text),
+        llamaGpuLayers: int.parse(llamaGpu.text),
+        image: image,
+        audio: audio,
+        video: video,
+        googleSearch: googleSearch,
+        claudeCache: claudeCache,
+        toolCall: toolCall,
+      ),
+    );
+    final old = s.credentials;
+    s.credentials = ModelCredentials(
+      apiKey: apiKey.text,
+      headers: old.headers,
+      usePool: old.usePool,
+      keys: old.keys,
+      rotation: old.rotation,
+    );
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    widget.session?.changed();
+  }
+
   ProviderProtocolPresentation get route =>
       provider.protocols.firstWhere((entry) => entry.protocol == protocol);
 
   @override
   void dispose() {
+    widget.session?.readers.remove(this);
     for (final controller in [
       endpoint,
       apiKey,
