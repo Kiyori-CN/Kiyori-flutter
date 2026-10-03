@@ -73,6 +73,124 @@ fn body() -> String {
         "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":2,\"completion_tokens\":1,\"total_tokens\":3}}\n\n",
         "data: [DONE]\n\n").into()
 }
+
+fn responses_body(status: &str, reason: Option<&str>, text: &str) -> String {
+    let mut events = vec![
+        json!({"type":"response.created"}),
+        json!({"type":"response.output_item.added","item":{"type":"reasoning","id":"r"}}),
+        json!({"type":"response.reasoning_text.delta","delta":"private-reasoning-fixture"}),
+        json!({"type":"response.output_item.added","item":{"type":"message","role":"assistant","id":"m","content":[]}}),
+    ];
+    for delta in ["你", "好"] {
+        events.push(json!({"type":"response.output_text.delta","item_id":"m","output_index":1,"content_index":0,"delta":delta}));
+    }
+    events.push(json!({"type":"response.output_text.done","text":"你好"}));
+    events.push(json!({"type":format!("response.{status}"),"response":{
+        "status":status,"error":null,"incomplete_details":reason.map(|r| json!({"reason":r})),
+        "output":[{"type":"reasoning","id":"r"},{"type":"message","role":"assistant","id":"m","content":[{"type":"output_text","text":text}]}],
+        "usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}}));
+    events
+        .into_iter()
+        .enumerate()
+        .map(|(sequence, mut value)| {
+            value["sequence_number"] = json!(sequence);
+            format!(
+                "event: {}\ndata: {value}\n\n",
+                value["type"].as_str().unwrap()
+            )
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn responses_request_stream_and_usage_do_not_require_chat_done() {
+    let (endpoint, worker) = serve(
+        "200 OK",
+        responses_body("completed", None, "你好"),
+        "text/event-stream",
+    );
+    let runtime = Runtime::new();
+    let mut input = request(endpoint);
+    input.protocol = "responses".into();
+    input.parameters = r#"{"max_tokens":64,"reasoning":{"effort":"none"}}"#.into();
+    input.messages.insert(
+        0,
+        ChatMessage {
+            role: "system".into(),
+            content: "Be concise".into(),
+        },
+    );
+    let events = collect(&runtime.start_chat(input).unwrap()).await;
+    assert_eq!(
+        events,
+        [
+            ChatEvent::Started,
+            ChatEvent::Text("你".into()),
+            ChatEvent::Text("好".into()),
+            ChatEvent::Usage {
+                input: 2,
+                output: 3,
+                total: 5
+            },
+            ChatEvent::Completed {
+                reason: "stop".into(),
+                verified: None
+            }
+        ]
+    );
+    assert!(!format!("{events:?}").contains("private-reasoning-fixture"));
+    let received = worker.join().unwrap();
+    assert!(received.starts_with("POST /v1/responses HTTP/1.1"));
+    let posted: Value = serde_json::from_str(received.split("\r\n\r\n").nth(1).unwrap()).unwrap();
+    assert_eq!(posted["input"][0]["role"], "system");
+    assert_eq!(posted["max_output_tokens"], 64);
+    assert_eq!(posted["reasoning"]["effort"], "none");
+    assert_eq!(posted["store"], false);
+    assert_eq!(posted["background"], false);
+    assert!(
+        posted.get("messages").is_none()
+            && posted.get("n").is_none()
+            && posted.get("max_tokens").is_none()
+    );
+}
+
+#[test]
+fn responses_endpoint_completes_base_and_preserves_exact_paths() {
+    for base in ["https://example.test", "https://example.test/v1/"] {
+        assert_eq!(endpoint(base, "responses").unwrap().path(), "/v1/responses");
+    }
+    assert_eq!(
+        endpoint("https://example.test/custom#", "responses")
+            .unwrap()
+            .path(),
+        "/custom"
+    );
+}
+
+#[tokio::test]
+async fn responses_incomplete_errors_tools_and_missing_terminal_are_explicit() {
+    for (body, expected) in [
+        (responses_body("incomplete", Some("max_output_tokens"), "你好"), None),
+        (responses_body("completed", None, "替换"), Some(ChatFailureKind::Interrupted)),
+        (responses_body("completed", None, ""), Some(ChatFailureKind::Interrupted)),
+        ("data: {\"type\":\"response.failed\",\"error\":\"private-error\"}\n\n".into(), Some(ChatFailureKind::Protocol)),
+        ("data: {\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\"}}\n\n".into(), Some(ChatFailureKind::Unsupported)),
+        ("data: {\"type\":\"response.created\"}\n\n".into(), Some(ChatFailureKind::Interrupted)),
+        ("data: [DONE]\n\n".into(), Some(ChatFailureKind::Protocol)),
+    ] {
+        let (endpoint, worker) = serve("200 OK", body, "text/event-stream");
+        let runtime = Runtime::new();
+        let mut input = request(endpoint);
+        input.protocol = "responses".into();
+        let events = collect(&runtime.start_chat(input).unwrap()).await;
+        match expected {
+            None => assert!(matches!(events.last(), Some(ChatEvent::Completed {reason,..}) if reason=="length")),
+            Some(expected) => assert!(matches!(events.last(), Some(ChatEvent::Failed(f)) if f.kind==expected), "{events:?}"),
+        }
+        assert!(!format!("{events:?}").contains("private-error"));
+        worker.join().unwrap();
+    }
+}
 async fn collect(run: &ChatRun) -> Vec<ChatEvent> {
     let mut events = vec![];
     while let Some(event) = tokio::time::timeout(Duration::from_secs(5), run.next_event())
@@ -150,15 +268,17 @@ async fn redirect_and_http_errors_are_not_retried_or_exposed() {
 #[test]
 fn endpoint_completion_and_credentials_boundaries() {
     assert_eq!(
-        endpoint("https://example.test").unwrap().path(),
+        endpoint("https://example.test", "chat").unwrap().path(),
         "/v1/chat/completions"
     );
     assert_eq!(
-        endpoint("https://example.test/v1/").unwrap().path(),
+        endpoint("https://example.test/v1/", "chat").unwrap().path(),
         "/v1/chat/completions"
     );
     assert_eq!(
-        endpoint("https://example.test/custom#").unwrap().path(),
+        endpoint("https://example.test/custom#", "chat")
+            .unwrap()
+            .path(),
         "/custom"
     );
     for raw in [
@@ -168,9 +288,9 @@ fn endpoint_completion_and_credentials_boundaries() {
         "https://example.test/#fragment",
         "file:///tmp/a",
     ] {
-        assert!(endpoint(raw).is_err());
+        assert!(endpoint(raw, "chat").is_err());
     }
-    assert!(endpoint("http://[::1]:8080").is_ok());
+    assert!(endpoint("http://[::1]:8080", "chat").is_ok());
 }
 
 #[tokio::test]

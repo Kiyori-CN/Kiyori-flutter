@@ -5,6 +5,8 @@ ModelConfigConnectionTester的Hi与SystemInstructionCapabilityProbe随机口令�
 映射到models/model_connection_test.dart、model_test_results.dart及core/chat。
 仅聊天和system探测接入真实请求，工具/媒体明确未验证，池调度仍待实现；
 取消与迟到代次隔离、协议与TLS边界见[ADR0007](../decisions/0007-chat-request-runtime.md)。
+旧OpenAIResponsesProvider的input与max_output_tokens映射现由core/chat/responses实现文本切片；
+终态不依赖DONE，思考/工具/媒体和后台续连仍有明确未实现边界，不以文本成功推断全部能力。
 
 产品来源固定为只读 Kiyori-Android revision
 `6b03b03aa082803bb279db5e78773583e2d91154`。下列旧路径相对

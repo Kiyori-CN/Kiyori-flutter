@@ -1,5 +1,6 @@
 pub mod pool;
 pub mod probe;
+mod responses;
 mod sse;
 #[cfg(test)]
 mod tests;
@@ -186,7 +187,7 @@ pub(crate) fn start(
     }
 }
 
-fn endpoint(value: &str) -> Result<Url, ChatFailure> {
+fn endpoint(value: &str, protocol: &str) -> Result<Url, ChatFailure> {
     let raw = value.trim();
     let exact = raw.ends_with('#');
     let raw = raw.strip_suffix('#').unwrap_or(raw);
@@ -211,11 +212,16 @@ fn endpoint(value: &str) -> Result<Url, ChatFailure> {
         ));
     }
     if !exact {
+        let suffix = if protocol == "responses" {
+            "responses"
+        } else {
+            "chat/completions"
+        };
         let path = url.path().trim_end_matches('/');
         if path.is_empty() {
-            url.set_path("/v1/chat/completions");
+            url.set_path(&format!("/v1/{suffix}"));
         } else if path.to_ascii_lowercase().ends_with("/v1") {
-            url.set_path(&format!("{path}/chat/completions"));
+            url.set_path(&format!("{path}/{suffix}"));
         }
     }
     Ok(url)
@@ -226,7 +232,7 @@ async fn execute(
     mut input: ChatRequest,
     sender: &mpsc::Sender<ChatEvent>,
 ) -> Result<(), ChatFailure> {
-    if input.protocol != "chat" {
+    if !matches!(input.protocol.as_str(), "chat" | "responses") {
         return Err(ChatFailure::new(
             ChatFailureKind::Unsupported,
             "该模型协议的请求执行尚未接入",
@@ -243,7 +249,8 @@ async fn execute(
             "模型、消息或超时参数无效",
         ));
     }
-    let url = endpoint(&input.endpoint)?;
+    let is_responses = input.protocol == "responses";
+    let url = endpoint(&input.endpoint, &input.protocol)?;
     let mut body: Value = serde_json::from_str(&input.parameters)
         .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "请求参数必须为JSON对象"))?;
     let object = body
@@ -266,6 +273,12 @@ async fn execute(
         "tool_choice",
         "functions",
         "function_call",
+        "input",
+        "instructions",
+        "previous_response_id",
+        "conversation",
+        "store",
+        "background",
     ] {
         if object.contains_key(reserved) {
             return Err(ChatFailure::new(
@@ -275,9 +288,13 @@ async fn execute(
         }
     }
     object.insert("model".into(), json!(input.model));
-    object.insert("messages".into(), json!(input.messages));
+    if is_responses {
+        responses::prepare(object, &input.messages)?;
+    } else {
+        object.insert("messages".into(), json!(input.messages));
+        object.insert("n".into(), json!(1));
+    }
     object.insert("stream".into(), json!(true));
-    object.insert("n".into(), json!(1));
     let bytes = serde_json::to_vec(&body).map_err(|_| ChatFailure::protocol())?;
     if bytes.len() > 8 * 1024 * 1024 {
         return Err(ChatFailure::new(
@@ -361,9 +378,21 @@ async fn execute(
         }
         let mut sse = sse::Sse::new();
         let mut finish: Option<String> = None;
+        let mut responses = responses::Decoder::default();
         while let Some(chunk) = response.chunk().await.map_err(transport)? {
             for byte in chunk {
                 if let Some(data) = sse.push(byte)? {
+                    if is_responses {
+                        if let Some(reason) =
+                            responses.decode(&data, &mut input.probe, sender).await?
+                        {
+                            let verified =
+                                input.probe.as_ref().map(|probe| probe.verified(&reason));
+                            let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
+                            return Ok(());
+                        }
+                        continue;
+                    }
                     if data == "[DONE]" {
                         let reason = finish.ok_or_else(|| {
                             ChatFailure::new(

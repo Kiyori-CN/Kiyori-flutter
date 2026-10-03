@@ -83,8 +83,10 @@ schema4保存空间检索权重、自动记录间隔/规则和图谱偏好；图
 页面700ms去抖和离开前刷写串行保存；错误留草稿，成功后刷新失败不重复提交。
 密钥/key池/headers由kiyori_platform安全存储保护，SQLite只有不可变reference；
 普通参数与端点不属于加密数据。供应商端点仍是旧默认值；模型测试使用core/chat执行真实
-Chat SSE，Runtime单client、无重试/重定向、直接连接、固定Mozilla根。其他协议明确不支持。
-8事件队列背压、单事件1 MiB；finish与DONE共同确认完成。请求取消等待worker释放，
+Chat/Responses SSE，Runtime单client、无重试/重定向、直接连接、固定Mozilla根。Messages/native不支持。
+8事件队列背压、单事件1 MiB；Chat需finish与DONE，Responses需completed/incomplete终态及快照一致性。
+Responses使用input、store=false/background=false，max_tokens映射输出限制；思考不混入正文。
+请求取消等待worker释放，
 错误不回显凭据/URL/正文；模型探测按配置和执行代次隔离，工具/媒体尚未验证。
 契约与依赖见[ADR 0007](docs/decisions/0007-chat-request-runtime.md)。
 pending/active/retired状态由跨进程lease保护恢复；安全payload v3保存密钥池稳定ID、启用状态及

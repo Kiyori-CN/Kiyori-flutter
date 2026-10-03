@@ -54,7 +54,25 @@ bridge-final五文件一致；Android34.5s、普通Windows10.5s串行Debug通过
 D639735C6A39A6D93C01348945C19CF8761A2B19A5682FC56CA99C621C9D4841；Windows84文件157277928字节。
 Rust DLL9808896字节，SHA256 AA0755DDFF2F707C87D3FE04845C4AC29CD2453358D18EB081D4C652673D241D。
 85副本hash、APK身份/ARM64/v2/ZIP16K/ELF与Windows x64/Flutter DLL pin通过；562文件树审计无发现。
-准备精确提交普通推送；未调用供应商或设备。池轮换与会话仍未实现，总Goal保持active。
+已提交并普通推送c4422a2215d8a16c7cbe2875df6490c10e05cb4d，0/0干净；该批未调用供应商或设备。
+池轮换与会话仍未实现，总Goal保持active。
+
+用户随后明确授权指定DeepSeek Responses端点与deepseek-flash实测，下一批改为先接Responses文本流。
+首个HTTP请求16输出token被默认思考用尽，真实返回incomplete；关闭思考后HTTP200/completed/KIYORI_OK。
+随后work/responses-live-v1.log记录项目NativeRuntimeClient→FFI→Rust两轮真实请求均KIYORI_OK/stop，
+各一个终态，usage分别11输入5输出、32输入5输出；第二轮显式带历史。密钥只经内存/stdin使用，未写文件。
+Responses复用同一请求核心；input/token参数映射、终态/usage/输出快照校验、思考隔离已实现。
+responses-ui-v1两协议聊天/system回归及两PNG通过，暗色结果卡已审阅。完整responses-verify-v2通过
+55文档/4脚本、Rust55/fmt/Clippy、314 Dart格式/analyze、Flutter523（10捕获跳过）、platform5、FFI18、
+Windows引擎4。v1因忽略目录实测脚本被analyzer纳入、命名/依赖归属lint失败；脚本保留为dart.txt，
+不改检查规则，v2完整通过。最终移除校验后的unwrap，定向responses-rust-final十一项与Clippy通过。
+无依赖/公共FFI变化。Android59.8s、普通Windows34.3s串行Debug通过。
+固定artifacts/ui-preview/20261003-164625：APK117661340字节，SHA256
+F157ACAF1949B27BB81CDB8DF640ED181F021823A12755D1CF96E1CE2892EAB2；Windows84文件157328104字节。
+Rust DLL9859072字节，SHA256 E2AE5B29352F5261427495F8EA0F296679D3D7ADCDF4257422D241D6EEADC9F5。
+85副本hash、APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过；563文件审计无发现。
+实测脚本/日志及交付树无密钥模式残留。准备精确提交普通推送，随后继续轮换与会话。
+真实供应商核心链路已验证，但聊天页发送/会话持久化仍未实现，设备/Apple仍未验收。
 
 模型配置基础批次已提交并普通推送029128357a2a38b360c404d03ffed67a215cb738。
 schema7扩展本机验收通过：跨进程凭据lease/崩溃pending恢复、密钥池稳定ID编辑与payload迁移、

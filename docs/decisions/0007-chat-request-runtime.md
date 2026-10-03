@@ -5,8 +5,8 @@
 ## 需求与选择
 
 模型测试、密钥池探测和后续会话使用同一Rust请求核心，Dart仅投影执行状态。
-首个切片实现OpenAI兼容Chat Completions；Responses、Messages和本地native协议
-在接入前返回明确unsupported。不能以配置保存成功推断该协议已能执行。
+已实现OpenAI兼容Chat Completions与Responses文本流；Messages和本地native协议
+返回明确unsupported。不能以配置保存成功推断该协议已能执行。
 
 每个Runtime惰性建立一个reqwest Client并复用连接池；不创建平行浏览器、下载服务或
 文件数据库。reqwest 0.13.5（MIT OR Apache-2.0）关闭默认features，启用
@@ -15,13 +15,14 @@ rustls-no-provider/json；Rustls 0.23采用ring/std/tls12；webpki-root-certs 1.
 使用完整DER根和ClientBuilder.tls_certs_only，避免Android依赖未初始化JNI verifier。
 保留TLS证书与主机校验，不读取SSLKEYLOGFILE，不接自签名绕过；此版本不使用用户安装根。
 系统与应用代理尚未接入，当前请求路径为直接连接；未来代理必须作为同一network策略接入，
-不能在代理失败后静默改为直连。未进行真实供应商或Apple验收。
+不能在代理失败后静默改为直连。指定DeepSeek供应商已做授权文本验证，其余供应商与Apple未验收。
 
 ## 请求契约
 
 仅显式测试动作触发请求。端点解析后要求HTTPS；本机loopback允许HTTP以支持本地模型
 和测试。拒绝userinfo/query/fragment；末尾单个#沿用旧完整端点标记。空path补
 /v1/chat/completions，末尾/v1补/chat/completions，其他path原样。
+Responses分别补/v1/responses或/responses，完整端点和末尾#不改路径。
 关闭自动重试和全部重定向；网络失败不能推断服务端未执行，错误注明未自动重试。
 
 认证和自定义headers只持有本次内存快照，不写SQLite或日志，不在错误中回显URL、
@@ -63,6 +64,25 @@ Dart按稳定ID、原key和enabled核对后逐项保存，暂停等待在途保�
 全未标记时候选全部启用项，池空才可回退单key。RANDOM字段未被该旧provider消费。
 此批仅实现可用性测试，上述真实轮换与游标持久化仍待后续共享模型执行切片。
 
+## Responses文本切片
+
+2026-10-03用户授权指定DeepSeek Responses端点和deepseek-flash进行真实验证，因此先补此协议。
+复用原HTTP client、认证、TLS、SSE、取消与背压，不建第二请求运行时。旧OpenAIResponsesProvider
+的max_tokens映射仍保留；文本消息改用input，显式store=false/background=false。不接旧后台续连
+和previous_response_id；本切片每轮显式传完整消息，不启用服务端状态或自动重试。
+协议保留字段禁止自定义覆盖。输出限制重复配置明确失败，reasoning参数按用户配置发送。
+供应商默认思考可能消耗全部输出额度，incomplete/max_output_tokens映射length，不计探测通过。
+
+只投影response.output_text.delta；reasoning事件不进入正文或日志，当前不支持其展示与不透明回传。
+按item/part ID保存长度和增量指纹，终态output必须与收到的文本一致，避免最终快照重复追加或
+缺失片段仍假装成功。只保留有界元数据，不累计完整聊天回复；终态快照仍受单事件1 MiB限制。
+存在sequence_number时要求递增；completed/incomplete状态须匹配事件，失败/拒绝/工具及未知输出
+明确报错。Responses终态不需要[DONE]，仅EOF不能证明完成。工具/媒体与思考多轮兼容仍未完成。
+
+真实测试先用HTTP确认指定服务，再用NativeRuntimeClient→生成FFI→Rust发送两轮，均收到
+KIYORI_OK/stop且仅一个终态；第二轮带前轮消息。只记录非敏感结果，凭据经stdin临时传入且未保存。
+这不证明聊天页发送/会话持久化或Android设备网络已完成。具体证据以当前状态为准。
+
 ## 验证与回滚
 
 loopback真实HTTP验证请求路径/认证/参数、中文拆流、usage尾块、HTTP错误、重定向、
@@ -78,3 +98,5 @@ Chat基础批次无schema变化，可回退到e859ad7。池测试扩展会写安
 [Chat delta与usage示例](https://developers.openai.com/cookbook/examples/how_to_stream_completions)、
 [reqwest ClientBuilder](https://docs.rs/reqwest/0.13.5/reqwest/struct.ClientBuilder.html)。
 依赖版本与许可证另由cargo info实查；不使用官方示例中的具体模型名作为产品默认值。
+Responses另核验[DeepSeek端点契约](https://api-docs.deepseek.com/api/create-response/)与
+[Responses指南](https://api-docs.deepseek.com/guides/responses_api/)。指定实测模型未替换旧产品默认值。
