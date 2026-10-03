@@ -9,6 +9,7 @@ class KnowledgeController extends ChangeNotifier {
   MemoryRecord? detail;
   DiaryDocument? diary;
   MemoryGraph? graph;
+  MemorySearchSettings? searchSettings;
   bool graphVisible = false;
   static const initialQuery = MemoryQuery(
     kind: 'memory',
@@ -87,9 +88,33 @@ class KnowledgeController extends ChangeNotifier {
 
   Future<void> showGraph(bool visible) async {
     if (saving || _disposed || graphVisible == visible) return;
-    graphVisible = visible;
-    if (!visible) graph = null;
-    await load();
+    final space = snapshot?.activeSpace;
+    if (space == null) return;
+    await _mutate((client) => client.setMemoryGraphVisible(space, visible));
+  }
+
+  Future<void> _refreshSettings(
+    RuntimeClient client,
+    String space,
+    int generation,
+  ) async {
+    final value = await client.memorySearchSettings(space);
+    if (_disposed || generation != _generation) return;
+    searchSettings = value;
+    graphVisible = value.graphVisible;
+    if (!graphVisible) graph = null;
+  }
+
+  Future<bool> saveSearchSettings(String space, MemorySearchSettings value) =>
+      _mutate((client) => client.saveMemorySearchSettings(space, value));
+
+  Future<MemorySearchReport> simulateSearch(
+    String space,
+    MemoryQuery request,
+  ) async {
+    final client = await _connect();
+    if (_disposed) throw StateError('Knowledge page closed.');
+    return client.simulateMemorySearch(space, request);
   }
 
   Future<void> _refreshGraph(
@@ -128,6 +153,7 @@ class KnowledgeController extends ChangeNotifier {
       final value = await client.queryKnowledge(request);
       if (!_disposed && generation == _generation) {
         await _refreshDetail(client, value, generation);
+        await _refreshSettings(client, value.activeSpace, generation);
         await _refreshGraph(client, generation, value.activeSpace);
         if (_disposed || generation != _generation) return;
         final records = more && snapshot?.activeSpace == value.activeSpace
@@ -223,6 +249,7 @@ class KnowledgeController extends ChangeNotifier {
       committed = true;
       final value = await client.queryKnowledge(query);
       await _refreshDetail(client, value, _generation);
+      await _refreshSettings(client, value.activeSpace, _generation);
       await _refreshGraph(client, _generation, value.activeSpace);
       if (!_disposed) snapshot = value;
     } catch (failure) {

@@ -8,3 +8,4 @@ publish.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 rusqlite.workspace = true
+jieba-rs.workspace = true

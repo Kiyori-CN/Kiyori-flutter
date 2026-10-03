@@ -236,6 +236,109 @@ impl From<kiyori_core::graph::MemoryGraph> for MemoryGraph {
     }
 }
 
+pub struct MemorySearchSettings {
+    pub graph_visible: bool,
+    pub score_mode: String,
+    pub keyword_weight: f64,
+    pub tag_weight: f64,
+    pub vector_weight: f64,
+    pub edge_weight: f64,
+    pub auto_interval: u32,
+    pub extraction_rules: String,
+}
+impl From<kiyori_core::memory_search::MemorySearchSettings> for MemorySearchSettings {
+    fn from(v: kiyori_core::memory_search::MemorySearchSettings) -> Self {
+        Self {
+            graph_visible: v.graph_visible,
+            score_mode: v.score_mode,
+            keyword_weight: v.keyword_weight,
+            tag_weight: v.tag_weight,
+            vector_weight: v.vector_weight,
+            edge_weight: v.edge_weight,
+            auto_interval: v.auto_interval,
+            extraction_rules: v.extraction_rules,
+        }
+    }
+}
+impl From<MemorySearchSettings> for kiyori_core::memory_search::MemorySearchSettings {
+    fn from(v: MemorySearchSettings) -> Self {
+        Self {
+            graph_visible: v.graph_visible,
+            score_mode: v.score_mode,
+            keyword_weight: v.keyword_weight,
+            tag_weight: v.tag_weight,
+            vector_weight: v.vector_weight,
+            edge_weight: v.edge_weight,
+            auto_interval: v.auto_interval,
+            extraction_rules: v.extraction_rules,
+        }
+    }
+}
+pub struct MemorySearchCandidate {
+    pub id: String,
+    pub title: String,
+    pub folder: String,
+    pub matched_tokens: u32,
+    pub keyword_score: f64,
+    pub tag_score: f64,
+    pub reverse_score: f64,
+    pub edge_score: f64,
+    pub total_score: f64,
+    pub passed: bool,
+}
+impl From<kiyori_core::memory_search::MemorySearchCandidate> for MemorySearchCandidate {
+    fn from(v: kiyori_core::memory_search::MemorySearchCandidate) -> Self {
+        Self {
+            id: v.id,
+            title: v.title,
+            folder: v.folder,
+            matched_tokens: v.matched_tokens,
+            keyword_score: v.keyword_score,
+            tag_score: v.tag_score,
+            reverse_score: v.reverse_score,
+            edge_score: v.edge_score,
+            total_score: v.total_score,
+            passed: v.passed,
+        }
+    }
+}
+pub struct MemorySearchReport {
+    pub space_id: String,
+    pub tokens: Vec<String>,
+    pub scope_count: u32,
+    pub keyword_matches: u32,
+    pub tag_matches: u32,
+    pub reverse_matches: u32,
+    pub edges_traversed: u32,
+    pub passed_count: u32,
+    pub keyword_weight: f64,
+    pub tag_weight: f64,
+    pub edge_weight: f64,
+    pub vector_unavailable: bool,
+    pub has_more: bool,
+    pub candidates: Vec<MemorySearchCandidate>,
+}
+impl From<kiyori_core::memory_search::MemorySearchReport> for MemorySearchReport {
+    fn from(v: kiyori_core::memory_search::MemorySearchReport) -> Self {
+        Self {
+            space_id: v.space_id,
+            tokens: v.tokens,
+            scope_count: v.scope_count,
+            keyword_matches: v.keyword_matches,
+            tag_matches: v.tag_matches,
+            reverse_matches: v.reverse_matches,
+            edges_traversed: v.edges_traversed,
+            passed_count: v.passed_count,
+            keyword_weight: v.keyword_weight,
+            tag_weight: v.tag_weight,
+            edge_weight: v.edge_weight,
+            vector_unavailable: v.vector_unavailable,
+            has_more: v.has_more,
+            candidates: v.candidates.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 #[frb(opaque)]
 pub struct RuntimeHandle {
     inner: Arc<runtime::Runtime>,
@@ -259,6 +362,39 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn memory_search_settings(
+        &self,
+        space: String,
+    ) -> Result<MemorySearchSettings, BridgeError> {
+        Ok(self.inner.memory_search_settings(space)?.into())
+    }
+    pub fn save_memory_search_settings(
+        &self,
+        space: String,
+        value: MemorySearchSettings,
+    ) -> Result<(), BridgeError> {
+        Ok(self
+            .inner
+            .save_memory_search_settings(space, value.into())?)
+    }
+    pub fn set_memory_graph_visible(
+        &self,
+        space: String,
+        visible: bool,
+    ) -> Result<(), BridgeError> {
+        Ok(self.inner.set_memory_graph_visible(space, visible)?)
+    }
+    pub fn simulate_memory_search(
+        &self,
+        space: String,
+        query: MemoryQuery,
+    ) -> Result<MemorySearchReport, BridgeError> {
+        Ok(self
+            .inner
+            .simulate_memory_search(space, query.into())?
+            .into())
+    }
+
     pub fn memory_graph(&self, query: MemoryQuery) -> Result<MemoryGraph, BridgeError> {
         Ok(self.inner.memory_graph(query.into())?.into())
     }

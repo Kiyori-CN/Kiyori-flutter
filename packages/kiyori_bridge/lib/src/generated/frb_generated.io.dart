@@ -90,6 +90,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MemoryRecord dco_decode_box_autoadd_memory_record(dynamic raw);
 
   @protected
+  MemorySearchSettings dco_decode_box_autoadd_memory_search_settings(
+    dynamic raw,
+  );
+
+  @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw);
 
   @protected
@@ -150,6 +155,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MemoryRecord> dco_decode_list_memory_record(dynamic raw);
 
   @protected
+  List<MemorySearchCandidate> dco_decode_list_memory_search_candidate(
+    dynamic raw,
+  );
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -172,6 +182,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryRecord dco_decode_memory_record(dynamic raw);
+
+  @protected
+  MemorySearchCandidate dco_decode_memory_search_candidate(dynamic raw);
+
+  @protected
+  MemorySearchReport dco_decode_memory_search_report(dynamic raw);
+
+  @protected
+  MemorySearchSettings dco_decode_memory_search_settings(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -279,6 +298,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  MemorySearchSettings sse_decode_box_autoadd_memory_search_settings(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer);
 
   @protected
@@ -343,6 +367,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<MemorySearchCandidate> sse_decode_list_memory_search_candidate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -367,6 +396,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MemoryRecord sse_decode_memory_record(SseDeserializer deserializer);
+
+  @protected
+  MemorySearchCandidate sse_decode_memory_search_candidate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MemorySearchReport sse_decode_memory_search_report(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MemorySearchSettings sse_decode_memory_search_settings(
+    SseDeserializer deserializer,
+  );
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -495,6 +539,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_memory_search_settings(
+    MemorySearchSettings self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
@@ -582,6 +632,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_memory_search_candidate(
+    List<MemorySearchCandidate> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -613,6 +669,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_memory_record(MemoryRecord self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_memory_search_candidate(
+    MemorySearchCandidate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_memory_search_report(
+    MemorySearchReport self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_memory_search_settings(
+    MemorySearchSettings self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);

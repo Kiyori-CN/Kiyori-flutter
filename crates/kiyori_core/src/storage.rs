@@ -2,7 +2,7 @@ use crate::runtime::{CoreError, ErrorCode};
 use rusqlite::Connection;
 use std::{path::Path, sync::Mutex};
 
-const SCHEMA_VERSION: i32 = 3;
+const SCHEMA_VERSION: i32 = 4;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -82,6 +82,23 @@ impl AppStore {
                  PRAGMA user_version = 3;",
                 )
                 .map_err(|_| error("Cannot migrate memory relationships."))?;
+        }
+        if version < 4 {
+            transaction
+                .execute_batch(
+                    "CREATE TABLE memory_search_settings (
+                  space_id TEXT PRIMARY KEY REFERENCES knowledge_spaces(id) ON DELETE CASCADE,
+                  graph_visible INTEGER NOT NULL DEFAULT 0,
+                  score_mode TEXT NOT NULL DEFAULT 'balanced',
+                  keyword_weight REAL NOT NULL DEFAULT 10,
+                  tag_weight REAL NOT NULL DEFAULT 0,
+                  vector_weight REAL NOT NULL DEFAULT 0,
+                  edge_weight REAL NOT NULL DEFAULT 0.4,
+                  auto_interval INTEGER NOT NULL DEFAULT 5,
+                  extraction_rules TEXT NOT NULL DEFAULT '');
+                 PRAGMA user_version = 4;",
+                )
+                .map_err(|_| error("Cannot migrate memory search preferences."))?;
         }
         transaction
             .commit()

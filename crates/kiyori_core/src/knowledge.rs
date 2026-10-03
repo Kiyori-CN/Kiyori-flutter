@@ -77,7 +77,7 @@ fn now_ms() -> i64 {
 }
 
 // 逻辑目录不映射宿主路径，仍拒绝点段，避免未来资源适配错误地解析为跨目录访问。
-fn folder_path(path: &str) -> Result<String, CoreError> {
+pub(crate) fn folder_path(path: &str) -> Result<String, CoreError> {
     if path.chars().any(char::is_control) {
         return Err(invalid("Invalid folder path."));
     }
@@ -96,7 +96,7 @@ fn folder_path(path: &str) -> Result<String, CoreError> {
     }
     Ok(normalized.join("/"))
 }
-fn require_space(connection: &Connection, id: &str) -> Result<(), CoreError> {
+pub(crate) fn require_space(connection: &Connection, id: &str) -> Result<(), CoreError> {
     if !connection
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM knowledge_spaces WHERE id=?1)",

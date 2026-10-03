@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -339713826;
+  int get rustContentHash => -617760685;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -177,6 +177,11 @@ abstract class RustLibApi extends BaseApi {
     required MemoryQuery query,
   });
 
+  Future<MemorySearchSettings> crateApiRuntimeHandleMemorySearchSettings({
+    required RuntimeHandle that,
+    required String space,
+  });
+
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -209,9 +214,27 @@ abstract class RustLibApi extends BaseApi {
     required MemoryLinkDraft draft,
   });
 
+  Future<void> crateApiRuntimeHandleSaveMemorySearchSettings({
+    required RuntimeHandle that,
+    required String space,
+    required MemorySearchSettings value,
+  });
+
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
     required RuntimeHandle that,
     required String id,
+  });
+
+  Future<void> crateApiRuntimeHandleSetMemoryGraphVisible({
+    required RuntimeHandle that,
+    required String space,
+    required bool visible,
+  });
+
+  Future<MemorySearchReport> crateApiRuntimeHandleSimulateMemorySearch({
+    required RuntimeHandle that,
+    required String space,
+    required MemoryQuery query,
   });
 
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
@@ -965,6 +988,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<MemorySearchSettings> crateApiRuntimeHandleMemorySearchSettings({
+    required RuntimeHandle that,
+    required String space,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_memory_search_settings,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleMemorySearchSettingsConstMeta,
+        argValues: [that, space],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleMemorySearchSettingsConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_memory_search_settings",
+        argNames: ["that", "space"],
+      );
+
+  @override
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -981,7 +1042,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -1023,7 +1084,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -1063,7 +1124,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -1105,7 +1166,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1147,7 +1208,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1169,6 +1230,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRuntimeHandleSaveMemorySearchSettings({
+    required RuntimeHandle that,
+    required String space,
+    required MemorySearchSettings value,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_box_autoadd_memory_search_settings(value, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSaveMemorySearchSettingsConstMeta,
+        argValues: [that, space, value],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSaveMemorySearchSettingsConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_memory_search_settings",
+        argNames: ["that", "space", "value"],
+      );
+
+  @override
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
     required RuntimeHandle that,
     required String id,
@@ -1185,7 +1286,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1207,6 +1308,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRuntimeHandleSetMemoryGraphVisible({
+    required RuntimeHandle that,
+    required String space,
+    required bool visible,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_bool(visible, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSetMemoryGraphVisibleConstMeta,
+        argValues: [that, space, visible],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSetMemoryGraphVisibleConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_set_memory_graph_visible",
+        argNames: ["that", "space", "visible"],
+      );
+
+  @override
+  Future<MemorySearchReport> crateApiRuntimeHandleSimulateMemorySearch({
+    required RuntimeHandle that,
+    required String space,
+    required MemoryQuery query,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(space, serializer);
+          sse_encode_box_autoadd_memory_query(query, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_memory_search_report,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSimulateMemorySearchConstMeta,
+        argValues: [that, space, query],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSimulateMemorySearchConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_simulate_memory_search",
+        argNames: ["that", "space", "query"],
+      );
+
+  @override
   Future<TaskHandle> crateApiRuntimeHandleStartDiagnostic({
     required RuntimeHandle that,
     required int steps,
@@ -1225,7 +1406,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1270,7 +1451,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1304,7 +1485,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1335,7 +1516,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1365,7 +1546,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1396,7 +1577,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 34,
             port: port_,
           );
         },
@@ -1428,7 +1609,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1562,6 +1743,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MemoryRecord dco_decode_box_autoadd_memory_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_memory_record(raw);
+  }
+
+  @protected
+  MemorySearchSettings dco_decode_box_autoadd_memory_search_settings(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_memory_search_settings(raw);
   }
 
   @protected
@@ -1745,6 +1934,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MemorySearchCandidate> dco_decode_list_memory_search_candidate(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_memory_search_candidate)
+        .toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -1850,6 +2049,68 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       createdAt: dco_decode_i_64(arr[4]),
       updatedAt: dco_decode_i_64(arr[5]),
       diary: dco_decode_opt_box_autoadd_diary_summary(arr[6]),
+    );
+  }
+
+  @protected
+  MemorySearchCandidate dco_decode_memory_search_candidate(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    return MemorySearchCandidate(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      folder: dco_decode_String(arr[2]),
+      matchedTokens: dco_decode_u_32(arr[3]),
+      keywordScore: dco_decode_f_64(arr[4]),
+      tagScore: dco_decode_f_64(arr[5]),
+      reverseScore: dco_decode_f_64(arr[6]),
+      edgeScore: dco_decode_f_64(arr[7]),
+      totalScore: dco_decode_f_64(arr[8]),
+      passed: dco_decode_bool(arr[9]),
+    );
+  }
+
+  @protected
+  MemorySearchReport dco_decode_memory_search_report(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 14)
+      throw Exception('unexpected arr length: expect 14 but see ${arr.length}');
+    return MemorySearchReport(
+      spaceId: dco_decode_String(arr[0]),
+      tokens: dco_decode_list_String(arr[1]),
+      scopeCount: dco_decode_u_32(arr[2]),
+      keywordMatches: dco_decode_u_32(arr[3]),
+      tagMatches: dco_decode_u_32(arr[4]),
+      reverseMatches: dco_decode_u_32(arr[5]),
+      edgesTraversed: dco_decode_u_32(arr[6]),
+      passedCount: dco_decode_u_32(arr[7]),
+      keywordWeight: dco_decode_f_64(arr[8]),
+      tagWeight: dco_decode_f_64(arr[9]),
+      edgeWeight: dco_decode_f_64(arr[10]),
+      vectorUnavailable: dco_decode_bool(arr[11]),
+      hasMore: dco_decode_bool(arr[12]),
+      candidates: dco_decode_list_memory_search_candidate(arr[13]),
+    );
+  }
+
+  @protected
+  MemorySearchSettings dco_decode_memory_search_settings(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return MemorySearchSettings(
+      graphVisible: dco_decode_bool(arr[0]),
+      scoreMode: dco_decode_String(arr[1]),
+      keywordWeight: dco_decode_f_64(arr[2]),
+      tagWeight: dco_decode_f_64(arr[3]),
+      vectorWeight: dco_decode_f_64(arr[4]),
+      edgeWeight: dco_decode_f_64(arr[5]),
+      autoInterval: dco_decode_u_32(arr[6]),
+      extractionRules: dco_decode_String(arr[7]),
     );
   }
 
@@ -2088,6 +2349,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MemorySearchSettings sse_decode_box_autoadd_memory_search_settings(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_memory_search_settings(deserializer));
+  }
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_task_event(deserializer));
@@ -2304,6 +2573,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MemorySearchCandidate> sse_decode_list_memory_search_candidate(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MemorySearchCandidate>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_memory_search_candidate(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -2437,6 +2720,97 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       createdAt: var_createdAt,
       updatedAt: var_updatedAt,
       diary: var_diary,
+    );
+  }
+
+  @protected
+  MemorySearchCandidate sse_decode_memory_search_candidate(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_folder = sse_decode_String(deserializer);
+    var var_matchedTokens = sse_decode_u_32(deserializer);
+    var var_keywordScore = sse_decode_f_64(deserializer);
+    var var_tagScore = sse_decode_f_64(deserializer);
+    var var_reverseScore = sse_decode_f_64(deserializer);
+    var var_edgeScore = sse_decode_f_64(deserializer);
+    var var_totalScore = sse_decode_f_64(deserializer);
+    var var_passed = sse_decode_bool(deserializer);
+    return MemorySearchCandidate(
+      id: var_id,
+      title: var_title,
+      folder: var_folder,
+      matchedTokens: var_matchedTokens,
+      keywordScore: var_keywordScore,
+      tagScore: var_tagScore,
+      reverseScore: var_reverseScore,
+      edgeScore: var_edgeScore,
+      totalScore: var_totalScore,
+      passed: var_passed,
+    );
+  }
+
+  @protected
+  MemorySearchReport sse_decode_memory_search_report(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_spaceId = sse_decode_String(deserializer);
+    var var_tokens = sse_decode_list_String(deserializer);
+    var var_scopeCount = sse_decode_u_32(deserializer);
+    var var_keywordMatches = sse_decode_u_32(deserializer);
+    var var_tagMatches = sse_decode_u_32(deserializer);
+    var var_reverseMatches = sse_decode_u_32(deserializer);
+    var var_edgesTraversed = sse_decode_u_32(deserializer);
+    var var_passedCount = sse_decode_u_32(deserializer);
+    var var_keywordWeight = sse_decode_f_64(deserializer);
+    var var_tagWeight = sse_decode_f_64(deserializer);
+    var var_edgeWeight = sse_decode_f_64(deserializer);
+    var var_vectorUnavailable = sse_decode_bool(deserializer);
+    var var_hasMore = sse_decode_bool(deserializer);
+    var var_candidates = sse_decode_list_memory_search_candidate(deserializer);
+    return MemorySearchReport(
+      spaceId: var_spaceId,
+      tokens: var_tokens,
+      scopeCount: var_scopeCount,
+      keywordMatches: var_keywordMatches,
+      tagMatches: var_tagMatches,
+      reverseMatches: var_reverseMatches,
+      edgesTraversed: var_edgesTraversed,
+      passedCount: var_passedCount,
+      keywordWeight: var_keywordWeight,
+      tagWeight: var_tagWeight,
+      edgeWeight: var_edgeWeight,
+      vectorUnavailable: var_vectorUnavailable,
+      hasMore: var_hasMore,
+      candidates: var_candidates,
+    );
+  }
+
+  @protected
+  MemorySearchSettings sse_decode_memory_search_settings(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_graphVisible = sse_decode_bool(deserializer);
+    var var_scoreMode = sse_decode_String(deserializer);
+    var var_keywordWeight = sse_decode_f_64(deserializer);
+    var var_tagWeight = sse_decode_f_64(deserializer);
+    var var_vectorWeight = sse_decode_f_64(deserializer);
+    var var_edgeWeight = sse_decode_f_64(deserializer);
+    var var_autoInterval = sse_decode_u_32(deserializer);
+    var var_extractionRules = sse_decode_String(deserializer);
+    return MemorySearchSettings(
+      graphVisible: var_graphVisible,
+      scoreMode: var_scoreMode,
+      keywordWeight: var_keywordWeight,
+      tagWeight: var_tagWeight,
+      vectorWeight: var_vectorWeight,
+      edgeWeight: var_edgeWeight,
+      autoInterval: var_autoInterval,
+      extractionRules: var_extractionRules,
     );
   }
 
@@ -2720,6 +3094,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_memory_search_settings(
+    MemorySearchSettings self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_memory_search_settings(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
@@ -2908,6 +3291,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_memory_search_candidate(
+    List<MemorySearchCandidate> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_memory_search_candidate(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -2997,6 +3392,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_64(self.createdAt, serializer);
     sse_encode_i_64(self.updatedAt, serializer);
     sse_encode_opt_box_autoadd_diary_summary(self.diary, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_search_candidate(
+    MemorySearchCandidate self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.folder, serializer);
+    sse_encode_u_32(self.matchedTokens, serializer);
+    sse_encode_f_64(self.keywordScore, serializer);
+    sse_encode_f_64(self.tagScore, serializer);
+    sse_encode_f_64(self.reverseScore, serializer);
+    sse_encode_f_64(self.edgeScore, serializer);
+    sse_encode_f_64(self.totalScore, serializer);
+    sse_encode_bool(self.passed, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_search_report(
+    MemorySearchReport self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.spaceId, serializer);
+    sse_encode_list_String(self.tokens, serializer);
+    sse_encode_u_32(self.scopeCount, serializer);
+    sse_encode_u_32(self.keywordMatches, serializer);
+    sse_encode_u_32(self.tagMatches, serializer);
+    sse_encode_u_32(self.reverseMatches, serializer);
+    sse_encode_u_32(self.edgesTraversed, serializer);
+    sse_encode_u_32(self.passedCount, serializer);
+    sse_encode_f_64(self.keywordWeight, serializer);
+    sse_encode_f_64(self.tagWeight, serializer);
+    sse_encode_f_64(self.edgeWeight, serializer);
+    sse_encode_bool(self.vectorUnavailable, serializer);
+    sse_encode_bool(self.hasMore, serializer);
+    sse_encode_list_memory_search_candidate(self.candidates, serializer);
+  }
+
+  @protected
+  void sse_encode_memory_search_settings(
+    MemorySearchSettings self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.graphVisible, serializer);
+    sse_encode_String(self.scoreMode, serializer);
+    sse_encode_f_64(self.keywordWeight, serializer);
+    sse_encode_f_64(self.tagWeight, serializer);
+    sse_encode_f_64(self.vectorWeight, serializer);
+    sse_encode_f_64(self.edgeWeight, serializer);
+    sse_encode_u_32(self.autoInterval, serializer);
+    sse_encode_String(self.extractionRules, serializer);
   }
 
   @protected
@@ -3266,6 +3717,12 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
       .api
       .crateApiRuntimeHandleMemoryGraph(that: this, query: query);
 
+  Future<MemorySearchSettings> memorySearchSettings({required String space}) =>
+      RustLib.instance.api.crateApiRuntimeHandleMemorySearchSettings(
+        that: this,
+        space: space,
+      );
+
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query}) =>
       RustLib.instance.api.crateApiRuntimeHandleQueryKnowledge(
         that: this,
@@ -3312,10 +3769,37 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     draft: draft,
   );
 
+  Future<void> saveMemorySearchSettings({
+    required String space,
+    required MemorySearchSettings value,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSaveMemorySearchSettings(
+    that: this,
+    space: space,
+    value: value,
+  );
+
   Future<void> selectKnowledgeSpace({required String id}) => RustLib
       .instance
       .api
       .crateApiRuntimeHandleSelectKnowledgeSpace(that: this, id: id);
+
+  Future<void> setMemoryGraphVisible({
+    required String space,
+    required bool visible,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSetMemoryGraphVisible(
+    that: this,
+    space: space,
+    visible: visible,
+  );
+
+  Future<MemorySearchReport> simulateMemorySearch({
+    required String space,
+    required MemoryQuery query,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSimulateMemorySearch(
+    that: this,
+    space: space,
+    query: query,
+  );
 
   Future<TaskHandle> startDiagnostic({
     required int steps,

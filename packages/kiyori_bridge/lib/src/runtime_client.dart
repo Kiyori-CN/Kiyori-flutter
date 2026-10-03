@@ -5,6 +5,16 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<api.MemorySearchSettings> memorySearchSettings(String space);
+  Future<void> saveMemorySearchSettings(
+    String space,
+    api.MemorySearchSettings value,
+  );
+  Future<void> setMemoryGraphVisible(String space, bool visible);
+  Future<api.MemorySearchReport> simulateMemorySearch(
+    String space,
+    api.MemoryQuery query,
+  );
   Future<api.RuntimeInfo> info();
   Future<DiagnosticRun> startDiagnostic({int steps = 20, int intervalMs = 100});
   Future<void> close();
@@ -60,6 +70,36 @@ abstract interface class DiagnosticRun {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  @override
+  Future<api.MemorySearchSettings> memorySearchSettings(String space) {
+    _ensureOpen();
+    return _handle.memorySearchSettings(space: space);
+  }
+
+  @override
+  Future<void> saveMemorySearchSettings(
+    String space,
+    api.MemorySearchSettings value,
+  ) {
+    _ensureOpen();
+    return _handle.saveMemorySearchSettings(space: space, value: value);
+  }
+
+  @override
+  Future<void> setMemoryGraphVisible(String space, bool visible) {
+    _ensureOpen();
+    return _handle.setMemoryGraphVisible(space: space, visible: visible);
+  }
+
+  @override
+  Future<api.MemorySearchReport> simulateMemorySearch(
+    String space,
+    api.MemoryQuery query,
+  ) {
+    _ensureOpen();
+    return _handle.simulateMemorySearch(space: space, query: query);
+  }
+
   @override
   Future<api.MemoryGraph> memoryGraph(api.MemoryQuery query) {
     _ensureOpen();

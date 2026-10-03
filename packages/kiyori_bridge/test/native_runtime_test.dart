@@ -5,6 +5,81 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'search preferences and real ranking cross FFI and survive reopen',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-search-ffi-',
+      );
+      final client = await NativeRuntimeClient.open(
+        dataDirectory: directory.path,
+      );
+      try {
+        const draft = MemoryDraft(
+          kind: 'memory',
+          title: '桥接检索',
+          content: '全文事实',
+          category: 'other',
+          source: 'user_input',
+          folder: '',
+          credibility: .8,
+          importance: .5,
+          tags: ['测试'],
+        );
+        final id = await client.saveMemory('default', null, draft);
+        await client.setMemoryGraphVisible('default', true);
+        await client.saveMemorySearchSettings(
+          'default',
+          const MemorySearchSettings(
+            graphVisible: false,
+            scoreMode: 'keyword_first',
+            keywordWeight: 10,
+            tagWeight: 4,
+            vectorWeight: 0,
+            edgeWeight: .4,
+            autoInterval: 8,
+            extractionRules: '保留事实',
+          ),
+        );
+        final settings = await client.memorySearchSettings('default');
+        expect(settings.graphVisible, isTrue);
+        expect(settings.autoInterval, 8);
+        final report = await client.simulateMemorySearch(
+          'default',
+          const MemoryQuery(
+            kind: 'memory',
+            folder: '',
+            text: '全文事实',
+            archived: false,
+            sortTitle: false,
+            offset: 0,
+          ),
+        );
+        expect(report.candidates.single.id, id);
+        expect(report.candidates.single.keywordScore, greaterThan(0));
+        expect(report.keywordWeight, 13);
+        await client.close();
+        final reopened = await NativeRuntimeClient.open(
+          dataDirectory: directory.path,
+        );
+        try {
+          expect(
+            (await reopened.memorySearchSettings('default')).extractionRules,
+            '保留事实',
+          );
+        } finally {
+          await reopened.close();
+        }
+        await expectLater(
+          () => client.memorySearchSettings('default'),
+          throwsA(isA<BridgeError>()),
+        );
+      } finally {
+        await client.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
   test('graph relationships persist descriptions, isolate spaces and cascade across FFI', () async {
     final directory = await Directory.systemTemp.createTemp(
       'kiyori-graph-ffi-',

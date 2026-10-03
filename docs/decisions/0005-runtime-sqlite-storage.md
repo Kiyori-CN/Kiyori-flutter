@@ -38,6 +38,13 @@ UI投影只在目录读取成功后发布，写入后的读取失败单独提示
 
 ## 依赖与平台
 
+schema4增加空间检索偏好表，不改写正文/关系。图谱选择单独列更新，权重设置不覆盖该列。
+schema3旧二进制拒绝schema4；保留迁移后目录，代码回退需恢复迁移前一致副本，不删除偏好表降级。
+本地分词新增[jieba-rs 0.11.0](https://docs.rs/crate/jieba-rs/0.11.0)，MIT，
+2026-10-03由官方文档和cargo info核验。旧源使用Jieba搜索模式，采用跨平台Rust版本以
+保留中文分词召回，不引入Java服务或Dart第二评分器。默认词典经include-flate压缩打包，
+传递zstd/libflate及构建依赖由Cargo.lock锁定；双端实际构建仍需验证，不以纯Rust测试代替。
+
 [rusqlite 官方项目](https://github.com/rusqlite/rusqlite)采用 MIT，bundled SQLite由
 libsqlite3-sys编译，SQLite为public domain；避免依赖宿主系统SQLite版本。
 [path_provider](https://pub.dev/packages/path_provider)为Flutter维护、BSD-3-Clause；

@@ -13,6 +13,8 @@ import 'diary_detail.dart';
 import 'diary_status.dart';
 import 'diary_labels.dart';
 import 'knowledge_graph.dart';
+import 'memory_search_sheet.dart';
+import 'memory_search_simulation.dart';
 
 class KnowledgePage extends StatefulWidget {
   const KnowledgePage({
@@ -782,7 +784,35 @@ class KnowledgePageState extends State<KnowledgePage> {
       onMenu: widget.onMenu,
       actionWidth: 160,
       actions: [
-        ShellAction(Icons.settings_outlined, '记忆与检索设置'),
+        ShellAction(
+          Icons.settings_outlined,
+          '记忆与检索设置',
+          onTap: () {
+            final settings = state.searchSettings;
+            final space = state.snapshot?.activeSpace;
+            if (settings == null || space == null || state.saving) return;
+            unawaited(
+              _drawer(
+                '记忆与检索设置',
+                (_, dismiss) => MemorySearchSheet(
+                  controller: state,
+                  space: space,
+                  initial: settings,
+                  dismiss: dismiss,
+                  onSimulate: () => unawaited(
+                    _dialog<void>(
+                      (_) => MemorySearchSimulation(
+                        controller: state,
+                        space: space,
+                        scope: _query,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
         ShellAction(Icons.tune_outlined, '筛选', onTap: _filters),
         ShellAction(
           state.graphVisible ? Icons.list_alt : Icons.account_tree_outlined,

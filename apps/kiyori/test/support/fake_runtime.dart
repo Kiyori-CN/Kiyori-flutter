@@ -24,6 +24,48 @@ class FakeRun implements DiagnosticRun {
 }
 
 class FakeClient implements RuntimeClient {
+  final searchSettings = <String, MemorySearchSettings>{};
+  @override
+  Future<MemorySearchSettings> memorySearchSettings(String space) async =>
+      searchSettings[space] ??
+      const MemorySearchSettings(
+        graphVisible: false,
+        scoreMode: 'balanced',
+        keywordWeight: 10,
+        tagWeight: 0,
+        vectorWeight: 0,
+        edgeWeight: .4,
+        autoInterval: 5,
+        extractionRules: '',
+      );
+  @override
+  Future<void> saveMemorySearchSettings(
+    String space,
+    MemorySearchSettings value,
+  ) async {
+    searchSettings[space] = value;
+  }
+
+  @override
+  Future<void> setMemoryGraphVisible(String space, bool visible) async {
+    final old = await memorySearchSettings(space);
+    searchSettings[space] = MemorySearchSettings(
+      graphVisible: visible,
+      scoreMode: old.scoreMode,
+      keywordWeight: old.keywordWeight,
+      tagWeight: old.tagWeight,
+      vectorWeight: old.vectorWeight,
+      edgeWeight: old.edgeWeight,
+      autoInterval: old.autoInterval,
+      extractionRules: old.extractionRules,
+    );
+  }
+
+  @override
+  Future<MemorySearchReport> simulateMemorySearch(
+    String space,
+    MemoryQuery query,
+  ) => throw UnimplementedError();
   @override
   Future<MemoryGraph> memoryGraph(MemoryQuery query) =>
       throw UnimplementedError();

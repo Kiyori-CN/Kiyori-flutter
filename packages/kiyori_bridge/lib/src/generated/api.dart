@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -83,6 +83,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<MemoryGraph> memoryGraph({required MemoryQuery query});
 
+  Future<MemorySearchSettings> memorySearchSettings({required String space});
+
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
 
   Future<void> renameKnowledgeFolder({
@@ -105,7 +107,22 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required MemoryLinkDraft draft,
   });
 
+  Future<void> saveMemorySearchSettings({
+    required String space,
+    required MemorySearchSettings value,
+  });
+
   Future<void> selectKnowledgeSpace({required String id});
+
+  Future<void> setMemoryGraphVisible({
+    required String space,
+    required bool visible,
+  });
+
+  Future<MemorySearchReport> simulateMemorySearch({
+    required String space,
+    required MemoryQuery query,
+  });
 
   Future<TaskHandle> startDiagnostic({
     required int steps,
@@ -570,6 +587,179 @@ class MemoryRecord {
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
           diary == other.diary;
+}
+
+class MemorySearchCandidate {
+  final String id;
+  final String title;
+  final String folder;
+  final int matchedTokens;
+  final double keywordScore;
+  final double tagScore;
+  final double reverseScore;
+  final double edgeScore;
+  final double totalScore;
+  final bool passed;
+
+  const MemorySearchCandidate({
+    required this.id,
+    required this.title,
+    required this.folder,
+    required this.matchedTokens,
+    required this.keywordScore,
+    required this.tagScore,
+    required this.reverseScore,
+    required this.edgeScore,
+    required this.totalScore,
+    required this.passed,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      folder.hashCode ^
+      matchedTokens.hashCode ^
+      keywordScore.hashCode ^
+      tagScore.hashCode ^
+      reverseScore.hashCode ^
+      edgeScore.hashCode ^
+      totalScore.hashCode ^
+      passed.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemorySearchCandidate &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          folder == other.folder &&
+          matchedTokens == other.matchedTokens &&
+          keywordScore == other.keywordScore &&
+          tagScore == other.tagScore &&
+          reverseScore == other.reverseScore &&
+          edgeScore == other.edgeScore &&
+          totalScore == other.totalScore &&
+          passed == other.passed;
+}
+
+class MemorySearchReport {
+  final String spaceId;
+  final List<String> tokens;
+  final int scopeCount;
+  final int keywordMatches;
+  final int tagMatches;
+  final int reverseMatches;
+  final int edgesTraversed;
+  final int passedCount;
+  final double keywordWeight;
+  final double tagWeight;
+  final double edgeWeight;
+  final bool vectorUnavailable;
+  final bool hasMore;
+  final List<MemorySearchCandidate> candidates;
+
+  const MemorySearchReport({
+    required this.spaceId,
+    required this.tokens,
+    required this.scopeCount,
+    required this.keywordMatches,
+    required this.tagMatches,
+    required this.reverseMatches,
+    required this.edgesTraversed,
+    required this.passedCount,
+    required this.keywordWeight,
+    required this.tagWeight,
+    required this.edgeWeight,
+    required this.vectorUnavailable,
+    required this.hasMore,
+    required this.candidates,
+  });
+
+  @override
+  int get hashCode =>
+      spaceId.hashCode ^
+      tokens.hashCode ^
+      scopeCount.hashCode ^
+      keywordMatches.hashCode ^
+      tagMatches.hashCode ^
+      reverseMatches.hashCode ^
+      edgesTraversed.hashCode ^
+      passedCount.hashCode ^
+      keywordWeight.hashCode ^
+      tagWeight.hashCode ^
+      edgeWeight.hashCode ^
+      vectorUnavailable.hashCode ^
+      hasMore.hashCode ^
+      candidates.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemorySearchReport &&
+          runtimeType == other.runtimeType &&
+          spaceId == other.spaceId &&
+          tokens == other.tokens &&
+          scopeCount == other.scopeCount &&
+          keywordMatches == other.keywordMatches &&
+          tagMatches == other.tagMatches &&
+          reverseMatches == other.reverseMatches &&
+          edgesTraversed == other.edgesTraversed &&
+          passedCount == other.passedCount &&
+          keywordWeight == other.keywordWeight &&
+          tagWeight == other.tagWeight &&
+          edgeWeight == other.edgeWeight &&
+          vectorUnavailable == other.vectorUnavailable &&
+          hasMore == other.hasMore &&
+          candidates == other.candidates;
+}
+
+class MemorySearchSettings {
+  final bool graphVisible;
+  final String scoreMode;
+  final double keywordWeight;
+  final double tagWeight;
+  final double vectorWeight;
+  final double edgeWeight;
+  final int autoInterval;
+  final String extractionRules;
+
+  const MemorySearchSettings({
+    required this.graphVisible,
+    required this.scoreMode,
+    required this.keywordWeight,
+    required this.tagWeight,
+    required this.vectorWeight,
+    required this.edgeWeight,
+    required this.autoInterval,
+    required this.extractionRules,
+  });
+
+  @override
+  int get hashCode =>
+      graphVisible.hashCode ^
+      scoreMode.hashCode ^
+      keywordWeight.hashCode ^
+      tagWeight.hashCode ^
+      vectorWeight.hashCode ^
+      edgeWeight.hashCode ^
+      autoInterval.hashCode ^
+      extractionRules.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemorySearchSettings &&
+          runtimeType == other.runtimeType &&
+          graphVisible == other.graphVisible &&
+          scoreMode == other.scoreMode &&
+          keywordWeight == other.keywordWeight &&
+          tagWeight == other.tagWeight &&
+          vectorWeight == other.vectorWeight &&
+          edgeWeight == other.edgeWeight &&
+          autoInterval == other.autoInterval &&
+          extractionRules == other.extractionRules;
 }
 
 class RuntimeInfo {

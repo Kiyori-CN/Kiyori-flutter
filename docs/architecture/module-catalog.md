@@ -8,6 +8,8 @@
 
 core/storage拥有SQLite连接和统一迁移，runtime拥有关闭边界；core/workflows和core/knowledge
 分别实现定义目录与空间/记忆事务，FFI只映射DTO。不得为每个领域打开第二数据库。
+core/diary从正文推导阶段，core/graph管理关系，core/memory_search拥有检索偏好与本地评分；
+三者均复用knowledge空间与storage连接，坐标和临时输入仍属于Dart投影。
 feature/workflows/presentation负责不可变目录、读取代次、提交互斥和页面/弹层。
 app通过path_provider取得应用支持目录，并把同一runtime的client注入工作流controller；
 HomeShell消费该投影更新抽屉计数与内部导航。定义CRUD不包含节点、执行器或调度器。

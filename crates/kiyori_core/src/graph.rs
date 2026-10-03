@@ -230,7 +230,7 @@ mod tests {
             .connection
             .lock()
             .unwrap()
-            .execute_batch("DROP TABLE memory_links; PRAGMA user_version=2;")
+            .execute_batch("DROP TABLE memory_search_settings; DROP TABLE memory_links; PRAGMA user_version=2;")
             .unwrap();
         drop(store);
         let store = AppStore::open(&dir.0).unwrap();

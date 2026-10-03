@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -339713826;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -617760685;
 
 // Section: executor
 
@@ -1012,6 +1012,59 @@ fn wire__crate__api__RuntimeHandle_memory_graph_impl(
         },
     )
 }
+fn wire__crate__api__RuntimeHandle_memory_search_settings_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RuntimeHandle_memory_search_settings",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_space = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::BridgeError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::RuntimeHandle::memory_search_settings(
+                        &*api_that_guard,
+                        api_space,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__RuntimeHandle_query_knowledge_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1289,6 +1342,61 @@ fn wire__crate__api__RuntimeHandle_save_memory_link_impl(
         },
     )
 }
+fn wire__crate__api__RuntimeHandle_save_memory_search_settings_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RuntimeHandle_save_memory_search_settings",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_space = <String>::sse_decode(&mut deserializer);
+            let api_value = <crate::api::MemorySearchSettings>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::BridgeError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::RuntimeHandle::save_memory_search_settings(
+                        &*api_that_guard,
+                        api_space,
+                        api_value,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1335,6 +1443,116 @@ fn wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
                     let output_ok = crate::api::RuntimeHandle::select_knowledge_space(
                         &*api_that_guard,
                         api_id,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__RuntimeHandle_set_memory_graph_visible_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RuntimeHandle_set_memory_graph_visible",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_space = <String>::sse_decode(&mut deserializer);
+            let api_visible = <bool>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::BridgeError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::RuntimeHandle::set_memory_graph_visible(
+                        &*api_that_guard,
+                        api_space,
+                        api_visible,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__RuntimeHandle_simulate_memory_search_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RuntimeHandle_simulate_memory_search",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_space = <String>::sse_decode(&mut deserializer);
+            let api_query = <crate::api::MemoryQuery>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::BridgeError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::RuntimeHandle::simulate_memory_search(
+                        &*api_that_guard,
+                        api_space,
+                        api_query,
                     )?;
                     std::result::Result::Ok(output_ok)
                 })())
@@ -1967,6 +2185,20 @@ impl SseDecode for Vec<crate::api::MemoryRecord> {
     }
 }
 
+impl SseDecode for Vec<crate::api::MemorySearchCandidate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::MemorySearchCandidate>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2109,6 +2341,94 @@ impl SseDecode for crate::api::MemoryRecord {
             created_at: var_createdAt,
             updated_at: var_updatedAt,
             diary: var_diary,
+        };
+    }
+}
+
+impl SseDecode for crate::api::MemorySearchCandidate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_folder = <String>::sse_decode(deserializer);
+        let mut var_matchedTokens = <u32>::sse_decode(deserializer);
+        let mut var_keywordScore = <f64>::sse_decode(deserializer);
+        let mut var_tagScore = <f64>::sse_decode(deserializer);
+        let mut var_reverseScore = <f64>::sse_decode(deserializer);
+        let mut var_edgeScore = <f64>::sse_decode(deserializer);
+        let mut var_totalScore = <f64>::sse_decode(deserializer);
+        let mut var_passed = <bool>::sse_decode(deserializer);
+        return crate::api::MemorySearchCandidate {
+            id: var_id,
+            title: var_title,
+            folder: var_folder,
+            matched_tokens: var_matchedTokens,
+            keyword_score: var_keywordScore,
+            tag_score: var_tagScore,
+            reverse_score: var_reverseScore,
+            edge_score: var_edgeScore,
+            total_score: var_totalScore,
+            passed: var_passed,
+        };
+    }
+}
+
+impl SseDecode for crate::api::MemorySearchReport {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_spaceId = <String>::sse_decode(deserializer);
+        let mut var_tokens = <Vec<String>>::sse_decode(deserializer);
+        let mut var_scopeCount = <u32>::sse_decode(deserializer);
+        let mut var_keywordMatches = <u32>::sse_decode(deserializer);
+        let mut var_tagMatches = <u32>::sse_decode(deserializer);
+        let mut var_reverseMatches = <u32>::sse_decode(deserializer);
+        let mut var_edgesTraversed = <u32>::sse_decode(deserializer);
+        let mut var_passedCount = <u32>::sse_decode(deserializer);
+        let mut var_keywordWeight = <f64>::sse_decode(deserializer);
+        let mut var_tagWeight = <f64>::sse_decode(deserializer);
+        let mut var_edgeWeight = <f64>::sse_decode(deserializer);
+        let mut var_vectorUnavailable = <bool>::sse_decode(deserializer);
+        let mut var_hasMore = <bool>::sse_decode(deserializer);
+        let mut var_candidates = <Vec<crate::api::MemorySearchCandidate>>::sse_decode(deserializer);
+        return crate::api::MemorySearchReport {
+            space_id: var_spaceId,
+            tokens: var_tokens,
+            scope_count: var_scopeCount,
+            keyword_matches: var_keywordMatches,
+            tag_matches: var_tagMatches,
+            reverse_matches: var_reverseMatches,
+            edges_traversed: var_edgesTraversed,
+            passed_count: var_passedCount,
+            keyword_weight: var_keywordWeight,
+            tag_weight: var_tagWeight,
+            edge_weight: var_edgeWeight,
+            vector_unavailable: var_vectorUnavailable,
+            has_more: var_hasMore,
+            candidates: var_candidates,
+        };
+    }
+}
+
+impl SseDecode for crate::api::MemorySearchSettings {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_graphVisible = <bool>::sse_decode(deserializer);
+        let mut var_scoreMode = <String>::sse_decode(deserializer);
+        let mut var_keywordWeight = <f64>::sse_decode(deserializer);
+        let mut var_tagWeight = <f64>::sse_decode(deserializer);
+        let mut var_vectorWeight = <f64>::sse_decode(deserializer);
+        let mut var_edgeWeight = <f64>::sse_decode(deserializer);
+        let mut var_autoInterval = <u32>::sse_decode(deserializer);
+        let mut var_extractionRules = <String>::sse_decode(deserializer);
+        return crate::api::MemorySearchSettings {
+            graph_visible: var_graphVisible,
+            score_mode: var_scoreMode,
+            keyword_weight: var_keywordWeight,
+            tag_weight: var_tagWeight,
+            vector_weight: var_vectorWeight,
+            edge_weight: var_edgeWeight,
+            auto_interval: var_autoInterval,
+            extraction_rules: var_extractionRules,
         };
     }
 }
@@ -2320,44 +2640,68 @@ fn pde_ffi_dispatcher_primary_impl(
             wire__crate__api__RuntimeHandle_list_workflows_impl(port, ptr, rust_vec_len, data_len)
         }
         18 => wire__crate__api__RuntimeHandle_memory_graph_impl(port, ptr, rust_vec_len, data_len),
-        19 => {
+        19 => wire__crate__api__RuntimeHandle_memory_search_settings_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        20 => {
             wire__crate__api__RuntimeHandle_query_knowledge_impl(port, ptr, rust_vec_len, data_len)
         }
-        20 => wire__crate__api__RuntimeHandle_rename_knowledge_folder_impl(
+        21 => wire__crate__api__RuntimeHandle_rename_knowledge_folder_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__RuntimeHandle_save_knowledge_space_impl(
+        22 => wire__crate__api__RuntimeHandle_save_knowledge_space_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__RuntimeHandle_save_memory_impl(port, ptr, rust_vec_len, data_len),
-        23 => {
+        23 => wire__crate__api__RuntimeHandle_save_memory_impl(port, ptr, rust_vec_len, data_len),
+        24 => {
             wire__crate__api__RuntimeHandle_save_memory_link_impl(port, ptr, rust_vec_len, data_len)
         }
-        24 => wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
+        25 => wire__crate__api__RuntimeHandle_save_memory_search_settings_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => {
+        26 => wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        27 => wire__crate__api__RuntimeHandle_set_memory_graph_visible_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        28 => wire__crate__api__RuntimeHandle_simulate_memory_search_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        29 => {
             wire__crate__api__RuntimeHandle_start_diagnostic_impl(port, ptr, rust_vec_len, data_len)
         }
-        26 => {
+        30 => {
             wire__crate__api__RuntimeHandle_update_workflow_impl(port, ptr, rust_vec_len, data_len)
         }
-        27 => wire__crate__api__TaskHandle_cancel_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__TaskHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__create_runtime_impl(port, ptr, rust_vec_len, data_len),
-        30 => {
+        31 => wire__crate__api__TaskHandle_cancel_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__TaskHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__create_runtime_impl(port, ptr, rust_vec_len, data_len),
+        34 => {
             wire__crate__api__create_runtime_with_data_dir_impl(port, ptr, rust_vec_len, data_len)
         }
-        31 => wire__crate__api__parse_diary_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__parse_diary_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2690,6 +3034,95 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::MemoryRecord> for crate::api:
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::MemorySearchCandidate {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.folder.into_into_dart().into_dart(),
+            self.matched_tokens.into_into_dart().into_dart(),
+            self.keyword_score.into_into_dart().into_dart(),
+            self.tag_score.into_into_dart().into_dart(),
+            self.reverse_score.into_into_dart().into_dart(),
+            self.edge_score.into_into_dart().into_dart(),
+            self.total_score.into_into_dart().into_dart(),
+            self.passed.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::MemorySearchCandidate
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::MemorySearchCandidate>
+    for crate::api::MemorySearchCandidate
+{
+    fn into_into_dart(self) -> crate::api::MemorySearchCandidate {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::MemorySearchReport {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.space_id.into_into_dart().into_dart(),
+            self.tokens.into_into_dart().into_dart(),
+            self.scope_count.into_into_dart().into_dart(),
+            self.keyword_matches.into_into_dart().into_dart(),
+            self.tag_matches.into_into_dart().into_dart(),
+            self.reverse_matches.into_into_dart().into_dart(),
+            self.edges_traversed.into_into_dart().into_dart(),
+            self.passed_count.into_into_dart().into_dart(),
+            self.keyword_weight.into_into_dart().into_dart(),
+            self.tag_weight.into_into_dart().into_dart(),
+            self.edge_weight.into_into_dart().into_dart(),
+            self.vector_unavailable.into_into_dart().into_dart(),
+            self.has_more.into_into_dart().into_dart(),
+            self.candidates.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::MemorySearchReport
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::MemorySearchReport>
+    for crate::api::MemorySearchReport
+{
+    fn into_into_dart(self) -> crate::api::MemorySearchReport {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::MemorySearchSettings {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.graph_visible.into_into_dart().into_dart(),
+            self.score_mode.into_into_dart().into_dart(),
+            self.keyword_weight.into_into_dart().into_dart(),
+            self.tag_weight.into_into_dart().into_dart(),
+            self.vector_weight.into_into_dart().into_dart(),
+            self.edge_weight.into_into_dart().into_dart(),
+            self.auto_interval.into_into_dart().into_dart(),
+            self.extraction_rules.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::MemorySearchSettings
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::MemorySearchSettings>
+    for crate::api::MemorySearchSettings
+{
+    fn into_into_dart(self) -> crate::api::MemorySearchSettings {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::RuntimeInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2998,6 +3431,16 @@ impl SseEncode for Vec<crate::api::MemoryRecord> {
     }
 }
 
+impl SseEncode for Vec<crate::api::MemorySearchCandidate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::MemorySearchCandidate>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3088,6 +3531,56 @@ impl SseEncode for crate::api::MemoryRecord {
         <i64>::sse_encode(self.created_at, serializer);
         <i64>::sse_encode(self.updated_at, serializer);
         <Option<crate::api::DiarySummary>>::sse_encode(self.diary, serializer);
+    }
+}
+
+impl SseEncode for crate::api::MemorySearchCandidate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.folder, serializer);
+        <u32>::sse_encode(self.matched_tokens, serializer);
+        <f64>::sse_encode(self.keyword_score, serializer);
+        <f64>::sse_encode(self.tag_score, serializer);
+        <f64>::sse_encode(self.reverse_score, serializer);
+        <f64>::sse_encode(self.edge_score, serializer);
+        <f64>::sse_encode(self.total_score, serializer);
+        <bool>::sse_encode(self.passed, serializer);
+    }
+}
+
+impl SseEncode for crate::api::MemorySearchReport {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.space_id, serializer);
+        <Vec<String>>::sse_encode(self.tokens, serializer);
+        <u32>::sse_encode(self.scope_count, serializer);
+        <u32>::sse_encode(self.keyword_matches, serializer);
+        <u32>::sse_encode(self.tag_matches, serializer);
+        <u32>::sse_encode(self.reverse_matches, serializer);
+        <u32>::sse_encode(self.edges_traversed, serializer);
+        <u32>::sse_encode(self.passed_count, serializer);
+        <f64>::sse_encode(self.keyword_weight, serializer);
+        <f64>::sse_encode(self.tag_weight, serializer);
+        <f64>::sse_encode(self.edge_weight, serializer);
+        <bool>::sse_encode(self.vector_unavailable, serializer);
+        <bool>::sse_encode(self.has_more, serializer);
+        <Vec<crate::api::MemorySearchCandidate>>::sse_encode(self.candidates, serializer);
+    }
+}
+
+impl SseEncode for crate::api::MemorySearchSettings {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.graph_visible, serializer);
+        <String>::sse_encode(self.score_mode, serializer);
+        <f64>::sse_encode(self.keyword_weight, serializer);
+        <f64>::sse_encode(self.tag_weight, serializer);
+        <f64>::sse_encode(self.vector_weight, serializer);
+        <f64>::sse_encode(self.edge_weight, serializer);
+        <u32>::sse_encode(self.auto_interval, serializer);
+        <String>::sse_encode(self.extraction_rules, serializer);
     }
 }
 
