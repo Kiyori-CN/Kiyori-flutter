@@ -4,6 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
 
 void main() {
+  test('text import trims lines and BOM without merging repeated values', () {
+    final values = ModelPoolKey.importLines(
+      '\uFEFF first \r\n\nsecond\rfirst\n',
+    );
+    expect(values.map((k) => k.key), ['first', 'second', 'first']);
+    expect(values.map((k) => k.id).toSet(), hasLength(3));
+  });
   test(
     'legacy pool migrates without merging duplicate values or changing order',
     () {

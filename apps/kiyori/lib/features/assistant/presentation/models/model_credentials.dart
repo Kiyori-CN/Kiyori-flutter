@@ -2,6 +2,12 @@ import 'dart:convert';
 import 'dart:math';
 
 class ModelPoolKey {
+  static List<ModelPoolKey> importLines(String text) => const LineSplitter()
+      .convert(text.startsWith('\uFEFF') ? text.substring(1) : text)
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .map(ModelPoolKey.create)
+      .toList();
   const ModelPoolKey({
     required this.id,
     required this.key,

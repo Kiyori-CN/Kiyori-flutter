@@ -74,13 +74,26 @@ save_context_settings在Immediate事务校验聊天绑定、模型revision、历
 
 ## 验证与后续
 
+密钥文本交换采用现有kiyori_platform的TextExchange。Windows COM Common Item Dialog在后台
+isolate执行，限定本应用模态owner，取消不读写、不添加最近文档；Android ACTION_OPEN_DOCUMENT/
+ACTION_CREATE_DOCUMENT直接流式读写选定URI，不申请全盘权限，不持久化URI、不复制明文缓存。
+Activity解绑返回detached并取消provider/关闭流；已经开始的目标写入不能宣称撤销，失败可能留下
+目标文件的部分内容。接口错误不包含路径、URI或原异常；iOS返回unsupported，未伪造成功。
+UTF-8严格解码，原文件上限1 MiB；去BOM、逐行trim、忽略空行、追加且保留重复值与顺序。
+合并后连同条目元数据也校验1 MiB，超限不改草稿。导出仅用户显式选择时写明文api_keys.txt。
+安全payload仍走不可变引用协议；选择未结束时页面flush等待，移除宿主后不回填迟到结果。
+本机注入选定路径测试验证真实I/O；未自动操作原生选择器、Android设备或Apple，不能由mock
+或编译证明系统交互验收。无新依赖，复用win32 6.4.0和Android平台API。
+
 核心测试覆盖迁移/重开、默认保护、稳定引用/显式替代、revision和安全引用状态；
 真实Windows DPAPI测试覆盖密文、损坏保留与拒覆盖。models_business_test使用真实FFI
 和DPAPI验证写入失败、清理失败、旧值可读、SQLite无凭据夹具明文、保存中输入及页面新建。
 Android真实构建与Windows引擎验收按验证策略执行；真实供应商、设备和Apple另列。
 真实子进程测试验证活跃锁拒绝恢复、进程终止后回收；上下文测试验证全局媒体、局部更新、
-绑定切换、陈旧revision、非法输入回滚与schema6迁移。模型请求、文件导入导出、池测试/轮换继续推进。
+绑定切换、陈旧revision、非法输入回滚与schema6迁移。模型请求与池测试/轮换继续推进。
 
 来源：[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)、
 [CryptProtectData](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata)、
 [CryptUnprotectData](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptunprotectdata)。
+文本交换来源：[Common Item Dialog](https://learn.microsoft.com/en-us/windows/win32/shell/common-file-dialog)、
+[Android SAF](https://developer.android.com/training/data-storage/shared/documents-files)。

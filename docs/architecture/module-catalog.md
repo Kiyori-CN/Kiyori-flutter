@@ -8,6 +8,8 @@ core/models拥有schema7配置、功能绑定、参数验证与安全引用账�
 上下文选项与全局媒体偏好按各自revision在同一事务保存。native安全存储只保护
 不可变payload，Dart的ModelsController/ModelEditSession编排保存和短期草稿，不另建数据库。
 凭据不得进入目录DTO，双存储失败/恢复限制见[ADR 0006](../decisions/0006-model-secrets-and-configurations.md)。
+native的TextExchange提供用户选中的单次文本读写，不缓存路径或另建资源数据库；
+Windows使用COM/后台isolate，Android使用SAF与受控I/O生命周期，iOS当前返回unsupported。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

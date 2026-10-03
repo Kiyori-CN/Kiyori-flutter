@@ -111,7 +111,8 @@ ActivePromptManager的CRUD/复制/组合调用链，复用Runtime schema5。角�
 ContextSummarySettingsScreen的聊天功能绑定与ApiPreferences媒体保留现映射到core/context；
 模型字段局部更新与全局history_retention保持不同revision，页面使用ContextEditSession串行保存。
 ModelConfigManager的密钥池条目保留稳定ID，v1字符串payload兼容迁移；跨进程锁覆盖native写入。
-上下文压缩执行、密钥池测试/轮换及文件交换仍未实现，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
+Windows/Android密钥文本交换通过同一native adapter接入；上下文压缩执行与密钥池测试/轮换
+仍未实现，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
 
 ## 验收证据入口
 

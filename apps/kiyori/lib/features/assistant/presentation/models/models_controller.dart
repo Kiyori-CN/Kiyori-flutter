@@ -6,7 +6,9 @@ import 'model_credentials.dart';
 
 /// Rust配置事实的投影；安全值只在显式编辑期间读取。
 class ModelsController extends ChangeNotifier {
-  ModelsController(this.connect, this.openSecrets);
+  ModelsController(this.connect, this.openSecrets, {TextExchange? exchange})
+    : exchange = exchange ?? createTextExchange();
+  final TextExchange exchange;
   final Future<RuntimeClient> Function() connect;
   final Future<SecretStore> Function() openSecrets;
   ModelCatalog? catalog;

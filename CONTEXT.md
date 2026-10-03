@@ -85,6 +85,10 @@ schema4保存空间检索权重、自动记录间隔/规则和图谱偏好；图
 普通参数与端点不属于加密数据。供应商端点仍是旧默认值，未执行真实请求。
 pending/active/retired状态由跨进程lease保护恢复；安全payload v2保存密钥池稳定ID与启用状态，
 兼容v1字符串列表。执行期引用生命周期仍待请求层接入，见[ADR 0006](docs/decisions/0006-model-secrets-and-configurations.md)。
+密钥池的TextExchange只处理单次用户选择的文本，不暴露路径给feature或建立文件库。
+导入UTF-8逐行追加，空行忽略、重复值保留；原文件和合并payload上限1 MiB，超限不改草稿。
+Windows COM不添加最近文档，Android SAF不持久授权/缓存；导出为用户选择位置的明文文件。
+取消不变更；flush等待未完选择，宿主移除抑制迟到回填。iOS当前明确unsupported。
 模型配置缓存的直接子节点按配置 ID 标识，重排保留同一实体草稿，删除释放，重新加入不
 复活已释放草稿。异步选择返回后按当前目录解析 ID，不能用弹层打开时的索引写回。
 角色卡/提示词目录由PromptsController从同一Runtime/SQLite schema5投影；

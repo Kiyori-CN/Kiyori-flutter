@@ -5,6 +5,22 @@
 
 ## 当前任务：设置全树与AI真实业务连续开发
 
+上下文与凭据恢复批次已交付687fb21d527d4cbbe28faf309a7dd6b6c983cf3f，普通推送后0/0干净。
+密钥池文本导入导出本机实现与构建验证通过：Windows COM系统选择器、Android SAF单次URI读写，无明文缓存；
+1 MiB与严格UTF-8检查、取消/脱敏错误、全池导出、逐行追加和大池清空确认已经实现。
+导入未完成时返回/切换的flush等待，宿主退出忽略迟到结果；iOS明确返回不支持，尚未实现。
+完整work/text-exchange-verify-v1.log通过54文档/4脚本、Rust45/fmt/Clippy、307 Dart格式/
+analyze、Flutter518（10捕获跳过）、platform5、FFI13。整行按钮按旧源校正后定向15项通过，
+work/text-exchange-ui-final.log；暗色大池截图work/text-exchange-capture-v2已审阅，最终analyze通过。
+Android31.1s、Windows19.9s串行构建通过，native系统选择器/Android provider仍待实际交互验收。
+未改依赖/Rust API/桥，Windows引擎最近证据仍是前一批4项，本批平台真实文件I/O单独验证。
+固定artifacts/ui-preview/20261003-144455：APK117610606字节，SHA256
+BE5A2F571483DE805F161579F033188ECFF23A4A98E52CD788C64235DE43F0ED；Windows84文件153949256字节。
+85份复制hash、APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过，549文件审计无发现。
+准备精确提交并普通推送；历史产物保留。
+业务首轮假时钟等待停滞，仅终止该测试子进程；修测试推进原生事件及帧后原断言通过。
+模型连接/轮换执行与会话业务继续推进，总Goal保持active。
+
 模型配置基础批次已提交并普通推送029128357a2a38b360c404d03ffed67a215cb738。
 schema7扩展本机验收通过：跨进程凭据lease/崩溃pending恢复、密钥池稳定ID编辑与payload迁移、
 独立上下文页和全局媒体偏好已接入。上下文按chat绑定读取；模型/媒体revision同事务校验，
@@ -21,7 +37,7 @@ bridge-final Check五文件一致；Android94.2s、普通Windows20.0s串行Debug
 F980D68E13BE044BF3D131987FD558019CFD9FB10A9068C8F7F6D9235A094C93；Windows84文件153928928字节，
 Rust DLL6621696字节，SHA256 8467A69269D49FDBE0FCF3514080C2826BAB244471D994DA3D0EA6B1BFA87314。
 85份复制hash、APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过；544文件审计
-无发现。源树未改依赖；旧仓库干净。准备精确提交并普通推送；设备/Profile/供应商/Apple未验证。
+无发现。该批未改依赖；旧仓库干净。已精确提交并普通推送687fb21；设备/Profile/供应商/Apple未验证。
 
 基础批次的schema6配置、完整选项、稳定模型名引用、
 功能选择/事务重置、角色模型选择、安全引用退役已接FFI与页面。700ms自动保存串行排空，

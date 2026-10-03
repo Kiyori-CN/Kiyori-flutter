@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_platform/kiyori_platform.dart';
 
 import 'model_settings_components.dart';
 import 'model_edit_session.dart';
@@ -398,13 +401,66 @@ class _HeaderAction extends StatelessWidget {
 }
 
 class ModelAdvancedCard extends StatefulWidget {
-  const ModelAdvancedCard({this.session, super.key});
+  const ModelAdvancedCard({this.session, this.exchange, super.key});
   final ModelEditSession? session;
+  final TextExchange? exchange;
   @override
   State<ModelAdvancedCard> createState() => _ModelAdvancedCardState();
 }
 
 class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
+  bool exchanging = false;
+  String? exchangeError;
+  Future<void> exchangeKeys(bool save) async {
+    final adapter = widget.exchange ?? widget.session?.owner.exchange;
+    if (adapter == null || exchanging) return;
+    final done = Completer<void>();
+    widget.session?.exchange = done.future;
+    setState(() {
+      exchanging = true;
+      exchangeError = null;
+    });
+    try {
+      if (save) {
+        await adapter.exportText(
+          keys.map((k) => k.key).join('\n'),
+          suggestedName: 'api_keys.txt',
+        );
+      } else {
+        final text = await adapter.importText();
+        if (!mounted || text == null) return;
+        final imported = ModelPoolKey.importLines(text);
+        // 安全payload上限包含条目元数据，必须在替换草稿前整体校验。
+        final previous =
+            widget.session?.credentials ?? const ModelCredentials();
+        final after = ModelCredentials(
+          apiKey: previous.apiKey,
+          headers: previous.headers,
+          usePool: pool,
+          keys: [...keys, ...imported],
+          rotation: previous.rotation,
+        );
+        validateTextExport(after.encode(), 'api_keys.txt');
+        setState(() => keys.addAll(imported));
+      }
+    } catch (failure) {
+      if (mounted) {
+        setState(
+          () => exchangeError =
+              failure is TextExchangeException && failure.code == 'unsupported'
+              ? '当前平台尚不支持文件导入导出'
+              : failure is TextExchangeException && failure.code == 'too_large'
+              ? '密钥文件或合并后的配置超过1 MiB，请拆分后重试'
+              : '文件操作失败，请检查文本编码和访问权限后重试',
+        );
+      }
+    } finally {
+      done.complete();
+      widget.session?.exchange = null;
+      if (mounted) setState(() => exchanging = false);
+    }
+  }
+
   DialogRoute<String>? _keyRoute;
   Future<void> clearPool() async {
     if (_keyRoute != null) return;
@@ -672,24 +728,32 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
           OutlinedButton(onPressed: () {}, child: const Text('清除测试标记')),
         ],
         if (keys.length <= 20)
-          OutlinedButton.icon(
+          FilledButton.icon(
             onPressed: () async {
               final value = await editKey();
               if (mounted && value != null) {
                 setState(() => keys.add(ModelPoolKey.create(value)));
               }
             },
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, size: 18),
             label: const Text('添加API密钥'),
           ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton(onPressed: () {}, child: const Text('批量导入密钥')),
-            OutlinedButton(onPressed: () {}, child: const Text('导出密钥')),
-          ],
+        OutlinedButton.icon(
+          onPressed: exchanging ? null : () => exchangeKeys(false),
+          icon: const Icon(Icons.file_upload_outlined, size: 18),
+          label: const Text('批量导入密钥'),
         ),
+        OutlinedButton.icon(
+          onPressed: exchanging ? null : () => exchangeKeys(true),
+          icon: const Icon(Icons.file_download_outlined, size: 18),
+          label: const Text('导出密钥'),
+        ),
+        if (exchanging) const LinearProgressIndicator(),
+        if (exchangeError != null)
+          Text(
+            exchangeError!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         if (keys.length > 20)
           OutlinedButton.icon(
             onPressed: clearPool,

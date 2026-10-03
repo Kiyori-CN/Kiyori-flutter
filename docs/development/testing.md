@@ -28,6 +28,9 @@ apps/kiyori/test/models_business_test.dart在Windows使用真实FFI和DPAPI验�
 schema7恢复测试只终止测试自己启动的专用子进程，验证真实文件锁释放与pending回收。
 context_business_test.dart通过真实FFI验证上下文保存、媒体独立重置、并发草稿和返回前刷写；
 models核心补绑定切换拒绝、事务回滚与迁移，model_credentials_test.dart验证payload迁移与脱敏。
+text_exchange_test.dart使用Windows真实文件I/O与注入的选择结果验证取消、大小/编码和脱敏；
+mobile通道mock只验证契约。model_pool_test.dart覆盖导入/导出/清空和迟到结果，models_business
+补选择完成前flush等待及真实DPAPI密文。原生选择器交互和Android provider生命周期需设备验证。
 
 页面迭代可从根目录运行 `tools/test-ui.ps1 -Test <name>_test.dart`；指定 `-Capture`
 复用真实 app 资源和本机字体捕获。脚本不会替代完整 verify，详见

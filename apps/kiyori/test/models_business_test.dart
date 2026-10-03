@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_edit_session.dart';
+import 'package:kiyori/features/assistant/presentation/models/model_api_sections.dart';
 import 'package:kiyori/features/assistant/presentation/models/models_controller.dart';
 import 'package:kiyori/features/assistant/presentation/models/persistent_models_page.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
@@ -38,6 +39,99 @@ class ControlledSecrets implements SecretStore {
 }
 
 void main() {
+  testWidgets(
+    'imported pool is encrypted and flush waits for an unfinished picker',
+    (tester) async {
+      tester.view.physicalSize = const Size(440, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final directory = Directory.systemTemp.createTempSync(
+        'kiyori-pool-import-',
+      );
+      final runtime = (await tester.runAsync(
+        () => NativeRuntimeClient.open(dataDirectory: directory.path),
+      ))!;
+      final secrets = WindowsSecretStore(
+        Directory('${directory.path}/secrets'),
+      );
+      final exchange = DelayedPoolExchange();
+      final owner = ModelsController(
+        () async => runtime,
+        () async => secrets,
+        exchange: exchange,
+      );
+      final catalog = (await tester.runAsync(runtime.modelCatalog))!;
+      final session = ModelEditSession(
+        owner,
+        catalog.configs.single,
+        const ModelCredentials(),
+      );
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ModelAdvancedCard(session: session),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byType(Switch));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('批量导入密钥'));
+        await tester.pump();
+        var finished = false;
+        final flush = session.flush().then((value) {
+          finished = true;
+          return value;
+        });
+        await tester.pump(const Duration(milliseconds: 800));
+        expect(finished, isFalse);
+        exchange.result.complete(
+          '\uFEFFfixture-import-one\nfixture-import-one\nfixture-import-two',
+        );
+        await tester.pump();
+        for (var i = 0; i < 100 && !finished; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(finished, isTrue);
+        expect(await flush, isTrue);
+        await tester.pumpAndSettle();
+        expect(finished, isTrue);
+        expect(session.error, isNull);
+        final saved = (await tester.runAsync(runtime.modelCatalog))!
+            .configs
+            .single;
+        final credentials = (await tester.runAsync(
+          () => owner.readCredentials(saved),
+        ))!;
+        expect(credentials.keys.map((k) => k.key), [
+          'fixture-import-one',
+          'fixture-import-one',
+          'fixture-import-two',
+        ]);
+        expect(credentials.keys.map((k) => k.id).toSet(), hasLength(3));
+        expect(credentials.usePool, isTrue);
+        final raw = File(
+          '${directory.path}/secrets/${saved.secretReference}.dpapi',
+        ).readAsBytesSync();
+        expect(
+          String.fromCharCodes(raw),
+          isNot(contains('fixture-import-one')),
+        );
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        session.dispose();
+        owner.dispose();
+        await tester.runAsync(runtime.close);
+        directory.deleteSync(recursive: true);
+      }
+    },
+  );
   const output = String.fromEnvironment('KIYORI_CAPTURE');
   test('real native configuration and DPAPI rollback, retry, stale revisions and reopen', () async {
     final directory = Directory.systemTemp.createTempSync(
@@ -279,4 +373,13 @@ void main() {
       }
     },
   );
+}
+
+class DelayedPoolExchange implements TextExchange {
+  final result = Completer<String?>();
+  @override
+  Future<String?> importText() => result.future;
+  @override
+  Future<bool> exportText(String text, {required String suggestedName}) async =>
+      false;
 }

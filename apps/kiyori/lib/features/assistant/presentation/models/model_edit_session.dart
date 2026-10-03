@@ -24,6 +24,7 @@ class ModelEditSession extends ChangeNotifier {
   late String _saved;
   Timer? _timer;
   Future<bool>? _flight;
+  Future<void>? exchange;
   bool _disposed = false;
   int _edits = 0;
   String? error;
@@ -70,6 +71,7 @@ class ModelEditSession extends ChangeNotifier {
 
   Future<bool> flush() async {
     _timer?.cancel();
+    await exchange;
     if (_flight != null) {
       final succeeded = await _flight!;
       if (!succeeded || _disposed) return succeeded;
