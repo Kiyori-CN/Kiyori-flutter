@@ -234,6 +234,28 @@ impl Runtime {
             self.cancellation.child_token(),
         ))
     }
+
+    pub fn start_pool_test(
+        &self,
+        draft: crate::models::ModelConfigDraft,
+        keys: Vec<crate::chat::pool::PoolKey>,
+        headers: Vec<(String, String)>,
+        concurrency: u32,
+    ) -> Result<crate::chat::ChatRun, CoreError> {
+        self.ensure_open()?;
+        let client = self
+            .chat_client
+            .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))
+            .clone()?;
+        crate::chat::pool::start_pool(
+            client,
+            draft,
+            keys,
+            headers,
+            concurrency,
+            self.cancellation.child_token(),
+        )
+    }
 }
 
 impl Drop for Runtime {

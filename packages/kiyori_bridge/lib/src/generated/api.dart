@@ -237,6 +237,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String kind,
   });
 
+  Future<ChatHandle> startPoolTest({
+    required ModelConfigDraft draft,
+    required List<PoolKey> keys,
+    required List<ChatHeader> headers,
+    required int concurrency,
+  });
+
   Future<WorkflowRecord> updateWorkflow({
     required String id,
     required String name,
@@ -366,6 +373,7 @@ class CharacterDraft {
 }
 
 class ChatEvent {
+  final String keyId;
   final bool? verified;
   final ChatPhase phase;
   final String text;
@@ -378,6 +386,7 @@ class ChatEvent {
   final BigInt totalTokens;
 
   const ChatEvent({
+    required this.keyId,
     this.verified,
     required this.phase,
     required this.text,
@@ -392,6 +401,7 @@ class ChatEvent {
 
   @override
   int get hashCode =>
+      keyId.hashCode ^
       verified.hashCode ^
       phase.hashCode ^
       text.hashCode ^
@@ -408,6 +418,7 @@ class ChatEvent {
       identical(this, other) ||
       other is ChatEvent &&
           runtimeType == other.runtimeType &&
+          keyId == other.keyId &&
           verified == other.verified &&
           phase == other.phase &&
           text == other.text &&
@@ -456,7 +467,15 @@ class ChatMessage {
           content == other.content;
 }
 
-enum ChatPhase { started, text, usage, completed, failed, cancelled }
+enum ChatPhase {
+  poolResult,
+  started,
+  text,
+  usage,
+  completed,
+  failed,
+  cancelled,
+}
 
 class ChatRequest {
   final String protocol;
@@ -1464,6 +1483,34 @@ class ModelParameter {
           valueType == other.valueType &&
           value == other.value &&
           category == other.category;
+}
+
+class PoolKey {
+  final String id;
+  final String key;
+  final bool enabled;
+  final String availability;
+
+  const PoolKey({
+    required this.id,
+    required this.key,
+    required this.enabled,
+    required this.availability,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ key.hashCode ^ enabled.hashCode ^ availability.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PoolKey &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          key == other.key &&
+          enabled == other.enabled &&
+          availability == other.availability;
 }
 
 class PromptCatalog {

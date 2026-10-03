@@ -3,6 +3,7 @@ library;
 export 'src/generated/api.dart'
     show
         ChatMessage,
+        PoolKey,
         ChatHeader,
         ChatRequest,
         ChatEvent,

@@ -39,8 +39,22 @@ Android141.1s、普通Windows40.7s串行Debug通过，未声称设备TLS、触�
 8232990C911F3BC875AC72C4B2E7D307B5F66D1DE238E349A1B6EA1B2B965C58；Windows84文件157121400字节。
 Rust DLL9684480字节，SHA256 86D1B5661616709E799C73AC955F8A548403ECBC4A935CCFA054FBC701E26311。
 85副本hash、APK身份/网络权限/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过；
-ARM64 Rust库8733696字节，新增网络实现已进入包。558文件审计无发现。准备精确提交与普通推送。
-后续继续密钥池测试/轮换与会话；这些关键业务尚未实现，总Goal保持active。
+ARM64 Rust库8733696字节，新增网络实现已进入包。558文件审计无发现。已精确提交并普通推送
+b1125f47162d3ba3d07220c77be9cf4292e24ff2，恢复时fetch核对0/0；旧源HEAD与干净状态未变。
+
+密钥池可用性测试扩展本机验收通过：Rust复用共享请求与5并发，enabled+UNTESTED筛选，
+逐ID加密保存结果、暂停等待worker与在途保存、清标记、输入失效和宿主移除取消。
+安全payload v3兼容v1/v2读取但旧二进制不能读v3，回滚边界见ADR0006；SQLite仍schema7。
+work/pool-ffi-v1.log两项真实FFI、pool-clippy-v2通过；pool-ui-v4八项及两张截图通过，暗色已审阅，
+新增暂停等待保存回归pool-ui-v5两项通过。UI v1/v2失败是夹具删除仍被绑定的默认模型导致保存正确拒绝，
+修为保留模型后真实请求与原断言通过。pool-verify-v1通过55文档/4脚本、Rust52/fmt/Clippy、
+314 Dart格式/analyze、Flutter522（10捕获跳过）、platform5、真实FFI18、Windows引擎4。
+bridge-final五文件一致；Android34.5s、普通Windows10.5s串行Debug通过。
+固定artifacts/ui-preview/20261003-161740：APK117661891字节，SHA256
+D639735C6A39A6D93C01348945C19CF8761A2B19A5682FC56CA99C621C9D4841；Windows84文件157277928字节。
+Rust DLL9808896字节，SHA256 AA0755DDFF2F707C87D3FE04845C4AC29CD2453358D18EB081D4C652673D241D。
+85副本hash、APK身份/ARM64/v2/ZIP16K/ELF与Windows x64/Flutter DLL pin通过；562文件树审计无发现。
+准备精确提交普通推送；未调用供应商或设备。池轮换与会话仍未实现，总Goal保持active。
 
 模型配置基础批次已提交并普通推送029128357a2a38b360c404d03ffed67a215cb738。
 schema7扩展本机验收通过：跨进程凭据lease/崩溃pending恢复、密钥池稳定ID编辑与payload迁移、

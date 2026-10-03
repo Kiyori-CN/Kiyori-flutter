@@ -56,6 +56,7 @@ class _ModelApiPageState extends State<ModelApiPage> {
   Future<bool> flush() async {
     if (pending.isNotEmpty) return false;
     for (final session in sessions.values.toList()) {
+      await session.poolTest.pause();
       if (!await session.flush()) return false;
     }
     return true;
@@ -429,15 +430,18 @@ class _ModelApiPageState extends State<ModelApiPage> {
                           _testAction(session.connectionTest.running, () async {
                             if (session.connectionTest.running) {
                               await session.connectionTest.cancel();
-                            } else if (await session.flush() &&
-                                mounted &&
-                                identical(sessions[config.id], session)) {
-                              unawaited(
-                                session.connectionTest.start(
-                                  session.draft,
-                                  session.credentials,
-                                ),
-                              );
+                            } else {
+                              await session.poolTest.pause();
+                              if (await session.flush() &&
+                                  mounted &&
+                                  identical(sessions[config.id], session)) {
+                                unawaited(
+                                  session.connectionTest.start(
+                                    session.draft,
+                                    session.credentials,
+                                  ),
+                                );
+                              }
                             }
                           }),
                     )

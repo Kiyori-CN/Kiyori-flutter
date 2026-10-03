@@ -409,11 +409,55 @@ class ModelAdvancedCard extends StatefulWidget {
 }
 
 class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
+  void poolProgress() {
+    if (mounted) super.setState(() {});
+  }
+
+  Future<void> pausePool() async {
+    await widget.session?.poolTest.pause();
+  }
+
+  Future<void> testPool() async {
+    final session = widget.session;
+    if (session == null || session.poolTest.running || exchanging) return;
+    if (!await session.flush() || !mounted) return;
+    await session.poolTest.start(session.draft, session.credentials, (
+      original,
+      availability,
+    ) async {
+      if (!mounted) return;
+      final index = keys.indexWhere(
+        (key) =>
+            key.id == original.id &&
+            key.key == original.key &&
+            key.enabled == original.enabled,
+      );
+      if (index < 0) return;
+      super.setState(
+        () => keys[index] = keys[index].withAvailability(availability),
+      );
+      session.changed(userEdit: false);
+      if (!await session.flush()) throw StateError('pool-save-failed');
+    });
+  }
+
+  Future<void> clearMarks() async {
+    await pausePool();
+    if (!mounted) return;
+    setState(() {
+      for (var i = 0; i < keys.length; i++) {
+        keys[i] = keys[i].withAvailability('UNTESTED');
+      }
+    });
+  }
+
   bool exchanging = false;
   String? exchangeError;
   Future<void> exchangeKeys(bool save) async {
     final adapter = widget.exchange ?? widget.session?.owner.exchange;
     if (adapter == null || exchanging) return;
+    await pausePool();
+    if (!mounted) return;
     final done = Completer<void>();
     widget.session?.exchange = done.future;
     setState(() {
@@ -463,6 +507,8 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
 
   DialogRoute<String>? _keyRoute;
   Future<void> clearPool() async {
+    await pausePool();
+    if (!mounted) return;
     if (_keyRoute != null) return;
     final route = DialogRoute<String>(
       context: context,
@@ -488,6 +534,8 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
   }
 
   Future<String?> editKey([String initial = '']) async {
+    await pausePool();
+    if (!mounted) return null;
     if (_keyRoute != null) return null;
     final route = DialogRoute<String>(
       context: context,
@@ -512,6 +560,7 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
     concurrent.text = s.draft.options.concurrentLimit.toString();
     pool = s.credentials.usePool;
     keys.addAll(s.credentials.keys);
+    s.poolTest.addListener(poolProgress);
     limit.addListener(s.changed);
     concurrent.addListener(s.changed);
     s.readers[this] = () {
@@ -543,6 +592,8 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
   @override
   void dispose() {
     widget.session?.readers.remove(this);
+    widget.session?.poolTest.removeListener(poolProgress);
+    unawaited(pausePool());
     limit.dispose();
     concurrent.dispose();
     final route = _keyRoute;
@@ -628,7 +679,10 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
         ),
       ),
       InkWell(
-        onTap: () => setState(() => pool = !pool),
+        onTap: () async {
+          await pausePool();
+          if (mounted) setState(() => pool = !pool);
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
@@ -650,7 +704,10 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
               ),
               Switch(
                 value: pool,
-                onChanged: (value) => setState(() => pool = value),
+                onChanged: (value) async {
+                  await pausePool();
+                  if (mounted) setState(() => pool = value);
+                },
               ),
             ],
           ),
@@ -679,7 +736,14 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                       style: const TextStyle(fontSize: 14),
                     ),
                   ),
-                  const Icon(Icons.help_outline, size: 16),
+                  Icon(
+                    key.availability == 'AVAILABLE'
+                        ? Icons.check_circle
+                        : key.availability == 'UNAVAILABLE'
+                        ? Icons.error
+                        : Icons.help_outline,
+                    size: 16,
+                  ),
                   IconButton(
                     tooltip: '编辑API密钥',
                     icon: const Icon(Icons.edit_outlined, size: 16),
@@ -695,8 +759,12 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
                   IconButton(
                     tooltip: '删除API密钥',
                     icon: const Icon(Icons.delete_outline, size: 16),
-                    onPressed: () =>
-                        setState(() => keys.removeWhere((k) => k.id == key.id)),
+                    onPressed: () async {
+                      await pausePool();
+                      if (mounted) {
+                        setState(() => keys.removeWhere((k) => k.id == key.id));
+                      }
+                    },
                   ),
                 ],
               ),
@@ -705,27 +773,34 @@ class _ModelAdvancedCardState extends State<ModelAdvancedCard> {
           const Text('密钥数量超过 20 个时，不再显示逐条编辑列表', style: TextStyle(fontSize: 12)),
         if (keys.isNotEmpty) ...[
           Text(
-            '可用 0 · 不可用 0 · 未测试 ${keys.length}',
+            '可用 ${keys.where((k) => k.availability == 'AVAILABLE').length} · 不可用 ${keys.where((k) => k.availability == 'UNAVAILABLE').length} · 未测试 ${keys.where((k) => k.availability == 'UNTESTED').length}',
             style: const TextStyle(fontSize: 12),
           ),
           Row(
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: () {},
+                  onPressed: () => unawaited(testPool()),
                   child: const Text('开始测试'),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: pausePool,
                   child: const Text('暂停'),
                 ),
               ),
             ],
           ),
-          OutlinedButton(onPressed: () {}, child: const Text('清除测试标记')),
+          OutlinedButton(onPressed: clearMarks, child: const Text('清除测试标记')),
+          if (widget.session?.poolTest.running == true)
+            const LinearProgressIndicator(),
+          if (widget.session?.poolTest.error case final error?)
+            Text(
+              error,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
         ],
         if (keys.length <= 20)
           FilledButton.icon(

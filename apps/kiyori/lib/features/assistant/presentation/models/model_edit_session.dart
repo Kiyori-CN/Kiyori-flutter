@@ -6,6 +6,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'model_credentials.dart';
 import 'model_connection_test.dart';
+import 'model_pool_test_controller.dart';
 import 'model_options_editing.dart';
 import 'models_controller.dart';
 
@@ -13,12 +14,14 @@ import 'models_controller.dart';
 class ModelEditSession extends ChangeNotifier {
   ModelEditSession(this.owner, this.base, this.credentials) {
     connectionTest = ModelConnectionTest(owner.connect);
+    poolTest = ModelPoolTestController(owner.connect);
     draft = base.draft;
     _saved = _fingerprint();
     _persistedCredentials = credentials;
   }
   final ModelsController owner;
   late final ModelConnectionTest connectionTest;
+  late final ModelPoolTestController poolTest;
   ModelConfig base;
   late ModelConfigDraft draft;
   ModelCredentials credentials;
@@ -63,8 +66,10 @@ class ModelEditSession extends ChangeNotifier {
     );
   }
 
-  void changed() {
+  void changed({bool userEdit = true}) {
     if (_disposed) return;
+    // 输入变化立刻废弃运行代次；逐项测试结果保存不能反过来取消自身。
+    if (userEdit && poolTest.running) unawaited(poolTest.pause());
     _edits++;
     _timer?.cancel();
     _timer = Timer(const Duration(milliseconds: 700), () {
@@ -141,6 +146,7 @@ class ModelEditSession extends ChangeNotifier {
   @override
   void dispose() {
     connectionTest.dispose();
+    poolTest.dispose();
     _disposed = true;
     _timer?.cancel();
     readers.clear();

@@ -13,6 +13,7 @@ class ModelPoolKey {
     required this.key,
     required this.name,
     this.enabled = true,
+    this.availability = 'UNTESTED',
   });
   factory ModelPoolKey.create(String key) {
     final random = Random.secure();
@@ -27,6 +28,14 @@ class ModelPoolKey {
   }
   final String id, key, name;
   final bool enabled;
+  final String availability;
+  ModelPoolKey withAvailability(String value) => ModelPoolKey(
+    id: id,
+    key: key,
+    name: name,
+    enabled: enabled,
+    availability: value,
+  );
   ModelPoolKey edited(String value) => ModelPoolKey(
     id: id,
     key: value,
@@ -38,6 +47,7 @@ class ModelPoolKey {
     'key': key,
     'name': name,
     'enabled': enabled,
+    'availability': availability,
   };
 }
 
@@ -68,12 +78,19 @@ class ModelCredentials {
     }
     final identities = <String>{};
     for (final key in keys) {
-      if (key.id.isEmpty || key.key.trim().isEmpty || !identities.add(key.id)) {
+      if (key.id.isEmpty ||
+          key.key.trim().isEmpty ||
+          !identities.add(key.id) ||
+          !const [
+            'UNTESTED',
+            'AVAILABLE',
+            'UNAVAILABLE',
+          ].contains(key.availability)) {
         throw const FormatException('密钥条目无效');
       }
     }
     return jsonEncode({
-      'version': 2,
+      'version': 3,
       'apiKey': apiKey,
       'headers': headers,
       'usePool': usePool,
@@ -85,7 +102,9 @@ class ModelCredentials {
   static ModelCredentials decode(String value) {
     try {
       final data = jsonDecode(value) as Map<String, dynamic>;
-      if (data['version'] != 1 && data['version'] != 2) {
+      if (data['version'] != 1 &&
+          data['version'] != 2 &&
+          data['version'] != 3) {
         throw const FormatException();
       }
       final result = ModelCredentials(
@@ -106,6 +125,9 @@ class ModelCredentials {
                 key: entry.$2['key'] as String,
                 name: entry.$2['name'] as String,
                 enabled: entry.$2['enabled'] as bool,
+                availability: data['version'] == 3
+                    ? entry.$2['availability'] as String
+                    : 'UNTESTED',
               ),
         ],
         rotation: data['rotation'] as String,

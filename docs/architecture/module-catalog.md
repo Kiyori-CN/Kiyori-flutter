@@ -10,6 +10,8 @@ core/models拥有schema7配置、功能绑定、参数验证与安全引用账�
 凭据不得进入目录DTO，双存储失败/恢复限制见[ADR 0006](../decisions/0006-model-secrets-and-configurations.md)。
 native的TextExchange提供用户选中的单次文本读写，不缓存路径或另建资源数据库；
 Windows使用COM/后台isolate，Android使用SAF与受控I/O生命周期，iOS当前返回unsupported。
+core/chat/pool使用同一请求client做有界并发可用性探测，Dart的ModelPoolTestController仅管理
+页面执行代次和逐项安全保存；池轮换尚未实现，不能由UI自行选择首个密钥。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

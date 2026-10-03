@@ -1,3 +1,4 @@
+pub mod pool;
 pub mod probe;
 mod sse;
 #[cfg(test)]
@@ -65,6 +66,10 @@ pub struct ChatRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatEvent {
+    PoolResult {
+        id: String,
+        available: bool,
+    },
     Started,
     Text(String),
     Usage {

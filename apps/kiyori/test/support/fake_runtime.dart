@@ -25,6 +25,13 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ChatRun> startPoolTest(
+    ModelConfigDraft draft,
+    List<PoolKey> keys,
+    List<ChatHeader> headers,
+    int concurrency,
+  ) async => throw UnimplementedError('Use real pool runtime.');
+  @override
   Future<ChatRun> startModelProbe(
     ModelConfigDraft draft,
     String apiKey,

@@ -87,8 +87,12 @@ Chat SSE，Runtime单client、无重试/重定向、直接连接、固定Mozilla
 8事件队列背压、单事件1 MiB；finish与DONE共同确认完成。请求取消等待worker释放，
 错误不回显凭据/URL/正文；模型探测按配置和执行代次隔离，工具/媒体尚未验证。
 契约与依赖见[ADR 0007](docs/decisions/0007-chat-request-runtime.md)。
-pending/active/retired状态由跨进程lease保护恢复；安全payload v2保存密钥池稳定ID与启用状态，
-兼容v1字符串列表。执行期引用生命周期仍待请求层接入，见[ADR 0006](docs/decisions/0006-model-secrets-and-configurations.md)。
+pending/active/retired状态由跨进程lease保护恢复；安全payload v3保存密钥池稳定ID、启用状态及
+可用性，兼容v1字符串列表/v2无标记条目。旧二进制不支持v3，不能直接降级读取。
+core/chat/pool拥有enabled+UNTESTED筛选、5并发探测和结果判定；UI逐ID加密保存结果。
+暂停等待worker与在途保存；输入改变使旧执行代次失效，取消不标不可用。已保存标记属于测试时
+快照，变更端点/模型后由用户清标记重测。轮换及执行期引用保护仍待接入，
+见[ADR 0006](docs/decisions/0006-model-secrets-and-configurations.md)。
 密钥池的TextExchange只处理单次用户选择的文本，不暴露路径给feature或建立文件库。
 导入UTF-8逐行追加，空行忽略、重复值保留；原文件和合并payload上限1 MiB，超限不改草稿。
 Windows COM不添加最近文档，Android SAF不持久授权/缓存；导出为用户选择位置的明文文件。

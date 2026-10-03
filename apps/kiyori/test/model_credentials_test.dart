@@ -4,6 +4,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
 
 void main() {
+  test('v2 pool defaults untested and v3 persists status until key edit', () {
+    final original = ModelPoolKey.create('fixture-old')
+        .withAvailability('AVAILABLE');
+    final encoded = ModelCredentials(keys: [original]).encode();
+    expect(
+      ModelCredentials.decode(encoded).keys.single.availability,
+      'AVAILABLE',
+    );
+    final v2 = jsonDecode(encoded) as Map<String, dynamic>;
+    v2['version'] = 2;
+    expect(
+      ModelCredentials.decode(jsonEncode(v2)).keys.single.availability,
+      'UNTESTED',
+    );
+    final edited = original.edited('fixture-new');
+    expect(edited.id, original.id);
+    expect(edited.availability, 'UNTESTED');
+  });
   test('text import trims lines and BOM without merging repeated values', () {
     final values = ModelPoolKey.importLines(
       '\uFEFF first \r\n\nsecond\rfirst\n',
@@ -29,7 +47,7 @@ void main() {
         'fixture-b',
       ]);
       expect(migrated.keys.map((k) => k.id).toSet(), hasLength(3));
-      expect(jsonDecode(migrated.encode())['version'], 2);
+      expect(jsonDecode(migrated.encode())['version'], 3);
       final reopened = ModelCredentials.decode(migrated.encode());
       expect(reopened.encode(), migrated.encode());
       expect(reopened.apiKey, 'fixture-primary');

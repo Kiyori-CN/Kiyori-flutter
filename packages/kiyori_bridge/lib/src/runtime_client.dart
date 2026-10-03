@@ -5,6 +5,12 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<ChatRun> startPoolTest(
+    api.ModelConfigDraft draft,
+    List<api.PoolKey> keys,
+    List<api.ChatHeader> headers,
+    int concurrency,
+  );
   Future<ChatRun> startChat(api.ChatRequest request);
   Future<ChatRun> startModelProbe(
     api.ModelConfigDraft draft,
@@ -631,6 +637,24 @@ final class NativeRuntimeClient implements RuntimeClient {
     run = _NativeChatRun(handle, () => _chatRuns.remove(run));
     _chatRuns.add(run);
     return run;
+  }
+
+  @override
+  Future<ChatRun> startPoolTest(
+    api.ModelConfigDraft draft,
+    List<api.PoolKey> keys,
+    List<api.ChatHeader> headers,
+    int concurrency,
+  ) async {
+    _ensureOpen();
+    return _trackChat(
+      await _handle.startPoolTest(
+        draft: draft,
+        keys: keys,
+        headers: headers,
+        concurrency: concurrency,
+      ),
+    );
   }
 }
 

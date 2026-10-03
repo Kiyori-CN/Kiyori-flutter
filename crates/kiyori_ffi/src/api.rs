@@ -10,6 +10,12 @@ pub struct ChatHeader {
     pub name: String,
     pub value: String,
 }
+pub struct PoolKey {
+    pub id: String,
+    pub key: String,
+    pub enabled: bool,
+    pub availability: String,
+}
 pub struct ChatRequest {
     pub protocol: String,
     pub endpoint: String,
@@ -21,6 +27,7 @@ pub struct ChatRequest {
     pub timeout_ms: u32,
 }
 pub enum ChatPhase {
+    PoolResult,
     Started,
     Text,
     Usage,
@@ -29,6 +36,7 @@ pub enum ChatPhase {
     Cancelled,
 }
 pub struct ChatEvent {
+    pub key_id: String,
     pub verified: Option<bool>,
     pub phase: ChatPhase,
     pub text: String,
@@ -51,6 +59,7 @@ impl ChatHandle {
     pub async fn next_event(&self) -> Result<Option<ChatEvent>, BridgeError> {
         Ok(self.inner.next_event().await?.map(|event| {
             let mut result = ChatEvent {
+                key_id: String::new(),
                 verified: None,
                 phase: ChatPhase::Started,
                 text: String::new(),
@@ -64,6 +73,11 @@ impl ChatHandle {
             };
             use kiyori_core::chat::ChatEvent as E;
             match event {
+                E::PoolResult { id, available } => {
+                    result.phase = ChatPhase::PoolResult;
+                    result.key_id = id;
+                    result.verified = Some(available);
+                }
                 E::Started => {}
                 E::Text(text) => {
                     result.phase = ChatPhase::Text;
@@ -965,6 +979,31 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub async fn start_pool_test(
+        &self,
+        draft: ModelConfigDraft,
+        keys: Vec<PoolKey>,
+        headers: Vec<ChatHeader>,
+        concurrency: u32,
+    ) -> Result<ChatHandle, BridgeError> {
+        Ok(ChatHandle {
+            inner: Arc::new(
+                self.inner.start_pool_test(
+                    draft.into(),
+                    keys.into_iter()
+                        .map(|k| kiyori_core::chat::pool::PoolKey {
+                            id: k.id,
+                            key: k.key,
+                            enabled: k.enabled,
+                            availability: k.availability,
+                        })
+                        .collect(),
+                    headers.into_iter().map(|h| (h.name, h.value)).collect(),
+                    concurrency,
+                )?,
+            ),
+        })
+    }
     pub async fn start_model_probe(
         &self,
         draft: ModelConfigDraft,

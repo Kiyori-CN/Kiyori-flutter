@@ -53,15 +53,19 @@ schema6增加model_configs/model_names/function_models/model_secrets，不改写
 lease显式close或Drop释放，已关闭/跨库lease不能预留；native删除失败保留retired供重试。
 schema7提高协议版本，阻止v6二进制重新打开数据库；无法关闭已经运行的v6进程，升级前
 必须退出旧实例。目录canonicalize用于lease归属，错误文案不带明文、路径或native原异常。
-未来请求借用凭据时须补执行期引用保护，当前尚无真实请求，不能称该生命周期已经验证。
+当前模型/池测试使用编辑会话的内存快照；未来从配置引用启动正式请求时须补执行期引用保护，
+不能把编辑会话探测当作该生命周期已经验证。
 
 旧页面700ms去抖和切换前刷写保留；同配置串行提交，提交中输入进入下一次。
 失败保留草稿，离开可显式放弃；成功后目录刷新失败单独显示，不重复提交已成功命令。
 Windows native buffer清零，Dart String无法保证内存清零，关闭编辑会话释放引用。
 
-安全payload v2以id/key/name/enabled保存池条目，编辑保留ID和启用状态；读取v1按原顺序
+安全payload v3以id/key/name/enabled/availability保存池条目，编辑保留ID和启用状态并重置标记；读取v1按原顺序
 分配legacy索引ID，重复值仍为独立条目。非法/重复ID或损坏payload拒绝读取，错误不包含正文。
-接口测试和轮换策略尚未执行，不把未测试条目展示为可用。
+v2无可用性字段时迁移为UNTESTED；v3只接受UNTESTED/AVAILABLE/UNAVAILABLE。
+池测试已经执行并逐结果保存，轮换尚未实现。v3不能由旧v1/v2二进制读取；本批不改SQLite schema，
+但写入v3后不可仅回退代码。回滚须恢复升级前整套数据库与安全存储备份，或另行实现显式降级迁移；
+不得删除不可读凭据或假装恢复成功。升级仍须先退出旧进程。
 
 ## 独立上下文设置
 
@@ -90,7 +94,7 @@ UTF-8严格解码，原文件上限1 MiB；去BOM、逐行trim、忽略空行、
 和DPAPI验证写入失败、清理失败、旧值可读、SQLite无凭据夹具明文、保存中输入及页面新建。
 Android真实构建与Windows引擎验收按验证策略执行；真实供应商、设备和Apple另列。
 真实子进程测试验证活跃锁拒绝恢复、进程终止后回收；上下文测试验证全局媒体、局部更新、
-绑定切换、陈旧revision、非法输入回滚与schema6迁移。模型请求与池测试/轮换继续推进。
+绑定切换、陈旧revision、非法输入回滚与schema6迁移。请求/池测试见ADR0007，轮换继续推进。
 
 来源：[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)、
 [CryptProtectData](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata)、

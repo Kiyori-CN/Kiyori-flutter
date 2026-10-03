@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 960102791;
+  int get rustContentHash => 599738380;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -391,6 +391,14 @@ abstract class RustLibApi extends BaseApi {
     required String apiKey,
     required List<ChatHeader> headers,
     required String kind,
+  });
+
+  Future<ChatHandle> crateApiRuntimeHandleStartPoolTest({
+    required RuntimeHandle that,
+    required ModelConfigDraft draft,
+    required List<PoolKey> keys,
+    required List<ChatHeader> headers,
+    required int concurrency,
   });
 
   Future<WorkflowRecord> crateApiRuntimeHandleUpdateWorkflow({
@@ -2669,6 +2677,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<ChatHandle> crateApiRuntimeHandleStartPoolTest({
+    required RuntimeHandle that,
+    required ModelConfigDraft draft,
+    required List<PoolKey> keys,
+    required List<ChatHeader> headers,
+    required int concurrency,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_model_config_draft(draft, serializer);
+          sse_encode_list_pool_key(keys, serializer);
+          sse_encode_list_chat_header(headers, serializer);
+          sse_encode_u_32(concurrency, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 57,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleStartPoolTestConstMeta,
+        argValues: [that, draft, keys, headers, concurrency],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleStartPoolTestConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_start_pool_test",
+        argNames: ["that", "draft", "keys", "headers", "concurrency"],
+      );
+
+  @override
   Future<WorkflowRecord> crateApiRuntimeHandleUpdateWorkflow({
     required RuntimeHandle that,
     required String id,
@@ -2691,7 +2744,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 57,
+            funcId: 58,
             port: port_,
           );
         },
@@ -2725,7 +2778,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 58,
+            funcId: 59,
             port: port_,
           );
         },
@@ -2756,7 +2809,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 59,
+            funcId: 60,
             port: port_,
           );
         },
@@ -2786,7 +2839,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 60,
+            funcId: 61,
             port: port_,
           );
         },
@@ -2817,7 +2870,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 61,
+            funcId: 62,
             port: port_,
           );
         },
@@ -2849,7 +2902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 62,
+            funcId: 63,
             port: port_,
           );
         },
@@ -3182,19 +3235,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChatEvent dco_decode_chat_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
     return ChatEvent(
-      verified: dco_decode_opt_box_autoadd_bool(arr[0]),
-      phase: dco_decode_chat_phase(arr[1]),
-      text: dco_decode_String(arr[2]),
-      reason: dco_decode_String(arr[3]),
-      errorKind: dco_decode_String(arr[4]),
-      errorMessage: dco_decode_String(arr[5]),
-      httpStatus: dco_decode_opt_box_autoadd_u_16(arr[6]),
-      inputTokens: dco_decode_u_64(arr[7]),
-      outputTokens: dco_decode_u_64(arr[8]),
-      totalTokens: dco_decode_u_64(arr[9]),
+      keyId: dco_decode_String(arr[0]),
+      verified: dco_decode_opt_box_autoadd_bool(arr[1]),
+      phase: dco_decode_chat_phase(arr[2]),
+      text: dco_decode_String(arr[3]),
+      reason: dco_decode_String(arr[4]),
+      errorKind: dco_decode_String(arr[5]),
+      errorMessage: dco_decode_String(arr[6]),
+      httpStatus: dco_decode_opt_box_autoadd_u_16(arr[7]),
+      inputTokens: dco_decode_u_64(arr[8]),
+      outputTokens: dco_decode_u_64(arr[9]),
+      totalTokens: dco_decode_u_64(arr[10]),
     );
   }
 
@@ -3501,6 +3555,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<ModelParameter> dco_decode_list_model_parameter(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_model_parameter).toList();
+  }
+
+  @protected
+  List<PoolKey> dco_decode_list_pool_key(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_pool_key).toList();
   }
 
   @protected
@@ -3839,6 +3899,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
+  PoolKey dco_decode_pool_key(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PoolKey(
+      id: dco_decode_String(arr[0]),
+      key: dco_decode_String(arr[1]),
+      enabled: dco_decode_bool(arr[2]),
+      availability: dco_decode_String(arr[3]),
+    );
   }
 
   @protected
@@ -4350,6 +4424,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   ChatEvent sse_decode_chat_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_keyId = sse_decode_String(deserializer);
     var var_verified = sse_decode_opt_box_autoadd_bool(deserializer);
     var var_phase = sse_decode_chat_phase(deserializer);
     var var_text = sse_decode_String(deserializer);
@@ -4361,6 +4436,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_outputTokens = sse_decode_u_64(deserializer);
     var var_totalTokens = sse_decode_u_64(deserializer);
     return ChatEvent(
+      keyId: var_keyId,
       verified: var_verified,
       phase: var_phase,
       text: var_text,
@@ -4755,6 +4831,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ModelParameter>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_model_parameter(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<PoolKey> sse_decode_list_pool_key(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PoolKey>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_pool_key(deserializer));
     }
     return ans_;
   }
@@ -5253,6 +5341,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  PoolKey sse_decode_pool_key(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_key = sse_decode_String(deserializer);
+    var var_enabled = sse_decode_bool(deserializer);
+    var var_availability = sse_decode_String(deserializer);
+    return PoolKey(
+      id: var_id,
+      key: var_key,
+      enabled: var_enabled,
+      availability: var_availability,
+    );
   }
 
   @protected
@@ -5788,6 +5891,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_chat_event(ChatEvent self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.keyId, serializer);
     sse_encode_opt_box_autoadd_bool(self.verified, serializer);
     sse_encode_chat_phase(self.phase, serializer);
     sse_encode_String(self.text, serializer);
@@ -6118,6 +6222,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_model_parameter(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_pool_key(List<PoolKey> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_pool_key(item, serializer);
     }
   }
 
@@ -6483,6 +6596,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_autoadd_u_32(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_pool_key(PoolKey self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.key, serializer);
+    sse_encode_bool(self.enabled, serializer);
+    sse_encode_String(self.availability, serializer);
   }
 
   @protected
@@ -7092,6 +7214,19 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     apiKey: apiKey,
     headers: headers,
     kind: kind,
+  );
+
+  Future<ChatHandle> startPoolTest({
+    required ModelConfigDraft draft,
+    required List<PoolKey> keys,
+    required List<ChatHeader> headers,
+    required int concurrency,
+  }) => RustLib.instance.api.crateApiRuntimeHandleStartPoolTest(
+    that: this,
+    draft: draft,
+    keys: keys,
+    headers: headers,
+    concurrency: concurrency,
   );
 
   Future<WorkflowRecord> updateWorkflow({
