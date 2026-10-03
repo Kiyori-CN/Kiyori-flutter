@@ -76,6 +76,23 @@ ARM64/身份/v2签名/ZIP16K/ELF LOAD、Windows x64/DLL pin/native资产与84份
 ARM64/签名/ZIP16K/ELF LOAD和Windows x64/DLL pin/native资产与84份复制哈希通过。
 审计500文件无发现，无新依赖或schema变化；日记、图谱、导入及记忆设置继续实施。
 
+目录/标签批次已交付be6a8d0bf76b7438c23c9e36f5372629db290f6d，远端一致0/0干净。
+日记批次实施中：Rust正文阶段解析、开篇、原子追加、完结/恢复与列表摘要、状态筛选已接；
+Flutter开篇阶段、时间线、续写/结束、全文编辑提示、日期组和状态筛选已投影。
+diary-core-v5共22通过，含独立runtime并发追加和103条状态跨页。后续补真实日期校验、
+全文编辑前续写确认、失败收尾总结保留/重试、状态徽章、日期计数和时间线连线。
+最终diary-ui-v15六通过、17PNG，真实Native开篇→续写→全文编辑→状态筛选贯通；
+记忆18项在v13通过，代表明暗/320/横屏/桌面、开篇/列表/筛选截图已审阅。
+完整diary-verify-v2通过：Rust fmt/Clippy/22、276 Dart格式/analyze、Flutter494（10捕获
+跳过）、真实FFI9、Windows引擎3；bridge-check-v1五文件一致。早期DTO漏字段、测试
+定位/帧等待、小屏溢出与v1花括号lint均已修，失败证据保留。505文件交付树审计无发现。
+串行Android/Windows普通产品Debug构建通过，分别72.0s/19.0s；固定产物
+artifacts/ui-preview/20261003-102209。APK112881267字节，SHA256
+B557FB0F433F5EF4B5AD3FF0F4490D2F7F49D9ED8896672ACAC686F773BFE605；Windows83文件130511265字节。
+ARM64/身份/v2签名/ZIP16K/ELF LOAD和Windows x64/DLL pin/native资产与84份复制哈希通过。
+本批24文件精确交付后继续图谱关系；没有依赖/schema变更。设备/Profile/Apple仍待验证，
+全文单节超长布局和大规模状态扫描尚无Profile证据，日期分组只覆盖已加载页。
+
 已确认一级12项顺序一致；AI虚拟形象入口已补接并覆盖模型空态/启用/预览/Mood/导入说明，
 账号页已补已连接/失效状态，
 角色与群组同源紧凑字段已归并，账号状态和设置映射已实施。当前批次已通过账号、形象、

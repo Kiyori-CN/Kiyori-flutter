@@ -9,6 +9,9 @@ import 'memory_editor.dart';
 import 'knowledge_dialogs.dart';
 import 'knowledge_folder_tree.dart';
 import 'knowledge_filter_sheet.dart';
+import 'diary_detail.dart';
+import 'diary_status.dart';
+import 'diary_labels.dart';
 
 class KnowledgePage extends StatefulWidget {
   const KnowledgePage({
@@ -26,6 +29,7 @@ class KnowledgePageState extends State<KnowledgePage> {
   String kind = 'memory', folder = '', query = '';
   String? category, tag;
   bool archived = false, sortTitle = false;
+  bool? diaryClosed;
   final search = TextEditingController();
   final _routes = <ModalRoute<dynamic>>[];
   String? _space;
@@ -41,6 +45,7 @@ class KnowledgePageState extends State<KnowledgePage> {
     archived: archived,
     sortTitle: sortTitle,
     offset: 0,
+    diaryClosed: diaryClosed,
   );
   void _change(VoidCallback change) {
     if (state.saving) return;
@@ -83,6 +88,7 @@ class KnowledgePageState extends State<KnowledgePage> {
       category = null;
       tag = null;
       archived = false;
+      diaryClosed = null;
       sortTitle = false;
       _removeRoutes();
     }
@@ -115,6 +121,7 @@ class KnowledgePageState extends State<KnowledgePage> {
     category = value.category;
     tag = value.tag;
     archived = value.archived;
+    diaryClosed = value.diaryClosed;
     sortTitle = value.sortTitle;
     state.addListener(_changed);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -273,8 +280,13 @@ class KnowledgePageState extends State<KnowledgePage> {
     }
   }
 
-  Future<void> _recordMenu(BuildContext context, MemoryRecord record) async {
+  Future<void> _recordMenu(
+    BuildContext context,
+    MemoryRecord record, {
+    Future<bool> Function()? canLeave,
+  }) async {
     final choice = await _menu(context, [
+      if (record.draft.kind == 'diary') ('edit', '编辑全文'),
       ('archive', record.archived ? '恢复' : '归档'),
       ('delete', '删除'),
     ]);
@@ -284,13 +296,29 @@ class KnowledgePageState extends State<KnowledgePage> {
       return;
     }
     if (choice == 'archive') unawaited(state.archive(record));
+    if (choice == 'edit') {
+      if (canLeave != null && !await canLeave()) return;
+      if (!mounted ||
+          state.detail?.id != record.id ||
+          state.detail?.spaceId != record.spaceId) {
+        return;
+      }
+      if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        // 菜单关闭后详情仍在上层；先移除详情，再打开同一身份的全文编辑。
+        final detailRoute = _routes.lastOrNull;
+        if (detailRoute?.isActive ?? false) {
+          detailRoute!.navigator?.removeRoute(detailRoute);
+        }
+        _edit(record);
+      }
+    }
     if (choice == 'delete') {
       _confirm('删除', '删除后无法恢复，确定删除此条目及其关联吗？', () => state.delete(record));
     }
   }
 
   void _edit([MemoryRecord? record]) async {
-    if (_opening || state.saving || state.snapshot == null || kind == 'diary') {
+    if (_opening || state.saving || state.snapshot == null) {
       return;
     }
     _opening = true;
@@ -555,6 +583,16 @@ class KnowledgePageState extends State<KnowledgePage> {
             WidgetsBinding.instance.ensureVisualUpdate();
             return const SizedBox.shrink();
           }
+          if (record.draft.kind == 'diary' && state.diary != null) {
+            return DiaryDetail(
+              key: ValueKey('${record.spaceId}/${record.id}'),
+              controller: state,
+              record: record,
+              document: state.diary!,
+              onMenu: (anchor, canLeave) =>
+                  unawaited(_recordMenu(anchor, record, canLeave: canLeave)),
+            );
+          }
           return Dialog(
             insetPadding: const EdgeInsets.all(16),
             child: ConstrainedBox(
@@ -657,6 +695,8 @@ class KnowledgePageState extends State<KnowledgePage> {
           tag: tag,
           archived: archived,
           sortTitle: sortTitle,
+          diaryClosed: diaryClosed,
+          onDiaryStatus: (value) => _change(() => diaryClosed = value),
           onCategory: (value) => _change(() => category = value),
           onTag: (value) => _change(() => tag = value),
           onArchived: (value) => _change(() => archived = value),
@@ -665,6 +705,7 @@ class KnowledgePageState extends State<KnowledgePage> {
             category = null;
             tag = null;
             archived = false;
+            diaryClosed = null;
             sortTitle = false;
           }),
           onDone: () => unawaited(dismiss()),
@@ -679,14 +720,45 @@ class KnowledgePageState extends State<KnowledgePage> {
           .toLocal()
           .toString()
           .substring(0, 16);
+  String _diaryDay(MemoryRecord record) =>
+      record.diary?.firstDay ?? _date(record.createdAt).substring(0, 10);
+  String _dayLabel(String day) {
+    final now = DateTime.now();
+    if (day == now.toString().substring(0, 10)) return '今天';
+    if (day ==
+        DateTime(
+          now.year,
+          now.month,
+          now.day - 1,
+        ).toString().substring(0, 10)) {
+      return '昨天';
+    }
+    return day;
+  }
+
   void _search() => _change(() => query = search.text.trim());
   @override
   Widget build(BuildContext context) {
     final snapshot = state.snapshot;
     final busy = state.saving;
     final filtered =
-        query.isNotEmpty || category != null || tag != null || archived;
-    final entries = snapshot?.records ?? <MemoryRecord>[];
+        query.isNotEmpty ||
+        category != null ||
+        tag != null ||
+        archived ||
+        diaryClosed != null;
+    final entries = [...?snapshot?.records];
+    final dayCounts = <String, int>{};
+    if (kind == 'diary' && !filtered) {
+      for (final record in entries) {
+        final day = _diaryDay(record);
+        dayCounts[day] = (dayCounts[day] ?? 0) + 1;
+      }
+      entries.sort((a, b) {
+        final day = _diaryDay(b).compareTo(_diaryDay(a));
+        return day != 0 ? day : b.updatedAt.compareTo(a.updatedAt);
+      });
+    }
     final folders = filtered
         ? <String>[]
         : (snapshot?.folders ?? <String>[])
@@ -757,6 +829,7 @@ class KnowledgePageState extends State<KnowledgePage> {
                           kind = value.first;
                           category = null;
                           tag = null;
+                          diaryClosed = null;
                         }),
                 );
                 return MediaQuery.textScalerOf(context).scale(12) > 18
@@ -885,6 +958,7 @@ class KnowledgePageState extends State<KnowledgePage> {
                               category = null;
                               tag = null;
                               archived = false;
+                              diaryClosed = null;
                             }),
                             child: const Text('重置筛选'),
                           )
@@ -893,7 +967,7 @@ class KnowledgePageState extends State<KnowledgePage> {
                               FilledButton.icon(
                                 onPressed: snapshot == null || busy
                                     ? null
-                                    : kind == 'knowledge' || kind == 'diary'
+                                    : kind == 'knowledge'
                                     ? () {}
                                     : () => _edit(),
                                 icon: Icon(
@@ -948,49 +1022,101 @@ class KnowledgePageState extends State<KnowledgePage> {
                             );
                           }
                           final record = entries[index - folders.length];
-                          return Card(
-                            child: InkWell(
-                              onTap: () => _details(record),
-                              borderRadius: BorderRadius.circular(16),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  spacing: 8,
-                                  children: [
-                                    Text(
-                                      record.draft.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    Text(
-                                      record.draft.content,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      '${memoryCategories[record.draft.category]} · ${_source(record.draft.source)} · ${_date(record.updatedAt)}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                    if (record.draft.tags.isNotEmpty)
-                                      Text(
-                                        record.draft.tags
-                                            .take(3)
-                                            .map((t) => '#$t')
-                                            .join('  '),
+                          final firstOfDay =
+                              kind == 'diary' &&
+                              !filtered &&
+                              (index == folders.length ||
+                                  _diaryDay(
+                                        entries[index - folders.length - 1],
+                                      ) !=
+                                      _diaryDay(record));
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (firstOfDay)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 8,
+                                    bottom: 2,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _dayLabel(_diaryDay(record)),
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
                                       ),
-                                    if (filtered &&
-                                        record.draft.folder.isNotEmpty)
-                                      Text(record.draft.folder),
-                                  ],
+                                      Text('${dayCounts[_diaryDay(record)]} 项'),
+                                    ],
+                                  ),
+                                ),
+                              Card(
+                                child: InkWell(
+                                  onTap: () => _details(record),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      spacing: 8,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                record.draft.title,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium,
+                                              ),
+                                            ),
+                                            if (record.diary != null) ...[
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: DiaryStatus(
+                                                  closed: record.diary!.closed,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        Text(
+                                          record.draft.content,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          record.diary != null
+                                              ? '${record.diary!.entryCount} 条记录 · ${diaryPhaseLabel(record.diary!.lastPhase ?? 'note', record.diary!.lastRawPhase)} · ${_date(record.updatedAt)}'
+                                              : '${memoryCategories[record.draft.category]} · ${_source(record.draft.source)} · ${_date(record.updatedAt)}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                        if (record.draft.tags.isNotEmpty)
+                                          Text(
+                                            record.draft.tags
+                                                .take(3)
+                                                .map((t) => '#$t')
+                                                .join('  '),
+                                          ),
+                                        if (filtered &&
+                                            record.draft.folder.isNotEmpty)
+                                          Text(record.draft.folder),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           );
                         },
                       ),

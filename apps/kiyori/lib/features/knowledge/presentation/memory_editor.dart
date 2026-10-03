@@ -6,6 +6,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'knowledge_controller.dart';
+import 'diary_labels.dart';
 
 const memoryCategories = {
   'other': '其他',
@@ -53,6 +54,7 @@ class MemoryEditorState extends State<MemoryEditor> {
   late double credibility = widget.record?.draft.credibility ?? .8,
       importance = widget.record?.draft.importance ?? .5;
   bool advanced = false, _accepted = false;
+  String diaryPhase = 'plan';
   DialogRoute<bool>? _discard;
   final _popups = <ModalRoute<dynamic>>[];
   bool _invalidated = false;
@@ -91,6 +93,9 @@ class MemoryEditorState extends State<MemoryEditor> {
       credibility != (widget.record?.draft.credibility ?? .8) ||
       importance != (widget.record?.draft.importance ?? .5) ||
       !listEquals(tags, widget.record?.draft.tags ?? const []) ||
+      (widget.kind == 'diary' &&
+          widget.record == null &&
+          diaryPhase != 'plan') ||
       tagDraft.text.trim().isNotEmpty;
   bool canDismiss() {
     if (widget.controller.saving) return false;
@@ -198,24 +203,23 @@ class MemoryEditorState extends State<MemoryEditor> {
         !(ModalRoute.of(context)?.isCurrent ?? false)) {
       return;
     }
-    final saved = await widget.controller.save(
-      widget.space,
-      widget.record?.id,
-      MemoryDraft(
-        kind: widget.kind,
-        title: title.text,
-        content: content.text,
-        category: category,
-        source: source.text,
-        folder: folder.text,
-        credibility: credibility,
-        importance: importance,
-        tags: {
-          ...tags,
-          if (tagDraft.text.trim().isNotEmpty) tagDraft.text.trim(),
-        }.toList(),
-      ),
+    final draft = MemoryDraft(
+      kind: widget.kind,
+      title: title.text,
+      content: content.text,
+      category: category,
+      source: source.text,
+      folder: folder.text,
+      credibility: credibility,
+      importance: importance,
+      tags: {
+        ...tags,
+        if (tagDraft.text.trim().isNotEmpty) tagDraft.text.trim(),
+      }.toList(),
     );
+    final saved = widget.kind == 'diary' && widget.record == null
+        ? await widget.controller.createDiary(widget.space, draft, diaryPhase)
+        : await widget.controller.save(widget.space, widget.record?.id, draft);
     if (saved && mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
       _accepted = true;
       await widget.dismiss();
@@ -275,9 +279,13 @@ class MemoryEditorState extends State<MemoryEditor> {
                   Expanded(
                     child: Text(
                       widget.record != null
-                          ? '编辑记忆'
+                          ? widget.kind == 'diary'
+                                ? '编辑全文'
+                                : '编辑记忆'
                           : widget.kind == 'knowledge'
                           ? '新建笔记'
+                          : widget.kind == 'diary'
+                          ? '新建日记'
                           : '新建记忆',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
@@ -306,24 +314,59 @@ class MemoryEditorState extends State<MemoryEditor> {
                         minHeight: 160,
                         maxHeight: 280,
                       ),
-                      child: field(content, '内容', minLines: 6, maxLines: 10),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Builder(
-                        builder: (context) => OutlinedButton(
-                          onPressed: busy
-                              ? null
-                              : () => unawaited(
-                                  _choose(context, [
-                                    for (final item in memoryCategories.entries)
-                                      (item.key, item.value),
-                                  ], (value) => category = value),
-                                ),
-                          child: Text('主题 · ${memoryCategories[category]}'),
-                        ),
+                      child: field(
+                        content,
+                        widget.kind == 'diary' && widget.record == null
+                            ? '开篇'
+                            : '内容',
+                        minLines: 6,
+                        maxLines: 10,
                       ),
                     ),
+                    if (widget.kind == 'diary') ...[
+                      Text(
+                        widget.record == null
+                            ? '先写下这次要做什么、判断依据是什么，之后逐条续写。'
+                            : '编辑全文会改写历史记录。日常记录请用下方的续写。',
+                      ),
+                      if (widget.record == null) ...[
+                        const Text('阶段'),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final entry in diaryPhases.entries)
+                              ChoiceChip(
+                                label: Text(entry.value),
+                                selected: diaryPhase == entry.key,
+                                onSelected: busy
+                                    ? null
+                                    : (_) => setState(
+                                        () => diaryPhase = entry.key,
+                                      ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                    if (widget.kind != 'diary')
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Builder(
+                          builder: (context) => OutlinedButton(
+                            onPressed: busy
+                                ? null
+                                : () => unawaited(
+                                    _choose(context, [
+                                      for (final item
+                                          in memoryCategories.entries)
+                                        (item.key, item.value),
+                                    ], (value) => category = value),
+                                  ),
+                            child: Text('主题 · ${memoryCategories[category]}'),
+                          ),
+                        ),
+                      ),
                     if (widget.controller.error != null)
                       Text(
                         widget.controller.error!,

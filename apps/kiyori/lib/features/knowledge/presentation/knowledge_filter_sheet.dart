@@ -12,6 +12,8 @@ class KnowledgeFilterSheet extends StatefulWidget {
     required this.tag,
     required this.archived,
     required this.sortTitle,
+    required this.diaryClosed,
+    required this.onDiaryStatus,
     required this.onCategory,
     required this.onTag,
     required this.onArchived,
@@ -24,6 +26,8 @@ class KnowledgeFilterSheet extends StatefulWidget {
   final String kind;
   final String? category, tag;
   final bool archived, sortTitle;
+  final bool? diaryClosed;
+  final ValueChanged<bool?> onDiaryStatus;
   final ValueChanged<String?> onCategory, onTag;
   final ValueChanged<bool> onArchived, onSort;
   final VoidCallback onReset, onDone;
@@ -106,6 +110,29 @@ class _KnowledgeFilterSheetState extends State<KnowledgeFilterSheet> {
                           ),
                         ],
                         const Divider(),
+                        if (widget.kind == 'diary') ...[
+                          Text('日记状态', style: style),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              ChoiceChip(
+                                label: const Text('全部状态'),
+                                selected: widget.diaryClosed == null,
+                                onSelected: (_) => widget.onDiaryStatus(null),
+                              ),
+                              ChoiceChip(
+                                label: const Text('进行中'),
+                                selected: widget.diaryClosed == false,
+                                onSelected: (_) => widget.onDiaryStatus(false),
+                              ),
+                              ChoiceChip(
+                                label: const Text('已完结'),
+                                selected: widget.diaryClosed == true,
+                                onSelected: (_) => widget.onDiaryStatus(true),
+                              ),
+                            ],
+                          ),
+                        ],
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('只看已归档'),

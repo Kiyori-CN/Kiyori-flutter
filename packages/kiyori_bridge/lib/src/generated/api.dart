@@ -9,6 +9,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`
 
+Future<DiaryDocument> parseDiary({required String content}) =>
+    RustLib.instance.api.crateApiParseDiary(content: content);
+
 Future<RuntimeHandle> createRuntime() =>
     RustLib.instance.api.crateApiCreateRuntime();
 
@@ -17,6 +20,14 @@ Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>>
 abstract class RuntimeHandle implements RustOpaqueInterface {
+  Future<void> appendDiary({
+    required String space,
+    required String id,
+    required String body,
+    required String phase,
+    required String stamp,
+  });
+
   Future<void> archiveMemory({
     required String space,
     required String id,
@@ -24,6 +35,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   });
 
   Future<void> close();
+
+  Future<String> createDiary({
+    required String space,
+    required MemoryDraft draft,
+    required String phase,
+    required String stamp,
+  });
 
   Future<void> createKnowledgeFolder({
     required String space,
@@ -134,6 +152,94 @@ class Capability {
           id == other.id &&
           available == other.available &&
           reason == other.reason;
+}
+
+class DiaryDocument {
+  final String preface;
+  final List<DiaryEntry> entries;
+
+  const DiaryDocument({required this.preface, required this.entries});
+
+  @override
+  int get hashCode => preface.hashCode ^ entries.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiaryDocument &&
+          runtimeType == other.runtimeType &&
+          preface == other.preface &&
+          entries == other.entries;
+}
+
+class DiaryEntry {
+  final String date;
+  final String time;
+  final String phase;
+  final String? rawPhase;
+  final String body;
+
+  const DiaryEntry({
+    required this.date,
+    required this.time,
+    required this.phase,
+    this.rawPhase,
+    required this.body,
+  });
+
+  @override
+  int get hashCode =>
+      date.hashCode ^
+      time.hashCode ^
+      phase.hashCode ^
+      rawPhase.hashCode ^
+      body.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiaryEntry &&
+          runtimeType == other.runtimeType &&
+          date == other.date &&
+          time == other.time &&
+          phase == other.phase &&
+          rawPhase == other.rawPhase &&
+          body == other.body;
+}
+
+class DiarySummary {
+  final bool closed;
+  final int entryCount;
+  final String? firstDay;
+  final String? lastPhase;
+  final String? lastRawPhase;
+
+  const DiarySummary({
+    required this.closed,
+    required this.entryCount,
+    this.firstDay,
+    this.lastPhase,
+    this.lastRawPhase,
+  });
+
+  @override
+  int get hashCode =>
+      closed.hashCode ^
+      entryCount.hashCode ^
+      firstDay.hashCode ^
+      lastPhase.hashCode ^
+      lastRawPhase.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiarySummary &&
+          runtimeType == other.runtimeType &&
+          closed == other.closed &&
+          entryCount == other.entryCount &&
+          firstDay == other.firstDay &&
+          lastPhase == other.lastPhase &&
+          lastRawPhase == other.lastRawPhase;
 }
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
@@ -255,6 +361,7 @@ class MemoryQuery {
   final bool archived;
   final bool sortTitle;
   final int offset;
+  final bool? diaryClosed;
 
   const MemoryQuery({
     this.kind,
@@ -265,6 +372,7 @@ class MemoryQuery {
     required this.archived,
     required this.sortTitle,
     required this.offset,
+    this.diaryClosed,
   });
 
   @override
@@ -276,7 +384,8 @@ class MemoryQuery {
       tag.hashCode ^
       archived.hashCode ^
       sortTitle.hashCode ^
-      offset.hashCode;
+      offset.hashCode ^
+      diaryClosed.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -290,7 +399,8 @@ class MemoryQuery {
           tag == other.tag &&
           archived == other.archived &&
           sortTitle == other.sortTitle &&
-          offset == other.offset;
+          offset == other.offset &&
+          diaryClosed == other.diaryClosed;
 }
 
 class MemoryRecord {
@@ -300,6 +410,7 @@ class MemoryRecord {
   final bool archived;
   final PlatformInt64 createdAt;
   final PlatformInt64 updatedAt;
+  final DiarySummary? diary;
 
   const MemoryRecord({
     required this.id,
@@ -308,6 +419,7 @@ class MemoryRecord {
     required this.archived,
     required this.createdAt,
     required this.updatedAt,
+    this.diary,
   });
 
   @override
@@ -317,7 +429,8 @@ class MemoryRecord {
       draft.hashCode ^
       archived.hashCode ^
       createdAt.hashCode ^
-      updatedAt.hashCode;
+      updatedAt.hashCode ^
+      diary.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -329,7 +442,8 @@ class MemoryRecord {
           draft == other.draft &&
           archived == other.archived &&
           createdAt == other.createdAt &&
-          updatedAt == other.updatedAt;
+          updatedAt == other.updatedAt &&
+          diary == other.diary;
 }
 
 class RuntimeInfo {

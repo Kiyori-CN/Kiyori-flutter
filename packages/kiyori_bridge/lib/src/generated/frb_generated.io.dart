@@ -72,6 +72,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  DiarySummary dco_decode_box_autoadd_diary_summary(dynamic raw);
+
+  @protected
   MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw);
 
   @protected
@@ -88,6 +94,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Capability dco_decode_capability(dynamic raw);
+
+  @protected
+  DiaryDocument dco_decode_diary_document(dynamic raw);
+
+  @protected
+  DiaryEntry dco_decode_diary_entry(dynamic raw);
+
+  @protected
+  DiarySummary dco_decode_diary_summary(dynamic raw);
 
   @protected
   ErrorCode dco_decode_error_code(dynamic raw);
@@ -114,6 +129,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Capability> dco_decode_list_capability(dynamic raw);
 
   @protected
+  List<DiaryEntry> dco_decode_list_diary_entry(dynamic raw);
+
+  @protected
   List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw);
 
   @protected
@@ -136,6 +154,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+
+  @protected
+  DiarySummary? dco_decode_opt_box_autoadd_diary_summary(dynamic raw);
 
   @protected
   MemoryRecord? dco_decode_opt_box_autoadd_memory_record(dynamic raw);
@@ -210,6 +234,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  DiarySummary sse_decode_box_autoadd_diary_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MemoryDraft sse_decode_box_autoadd_memory_draft(SseDeserializer deserializer);
 
   @protected
@@ -228,6 +260,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Capability sse_decode_capability(SseDeserializer deserializer);
+
+  @protected
+  DiaryDocument sse_decode_diary_document(SseDeserializer deserializer);
+
+  @protected
+  DiaryEntry sse_decode_diary_entry(SseDeserializer deserializer);
+
+  @protected
+  DiarySummary sse_decode_diary_summary(SseDeserializer deserializer);
 
   @protected
   ErrorCode sse_decode_error_code(SseDeserializer deserializer);
@@ -252,6 +293,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer);
+
+  @protected
+  List<DiaryEntry> sse_decode_list_diary_entry(SseDeserializer deserializer);
 
   @protected
   List<KnowledgeSpace> sse_decode_list_knowledge_space(
@@ -282,6 +326,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  DiarySummary? sse_decode_opt_box_autoadd_diary_summary(
+    SseDeserializer deserializer,
+  );
 
   @protected
   MemoryRecord? sse_decode_opt_box_autoadd_memory_record(
@@ -366,6 +418,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_diary_summary(
+    DiarySummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_memory_draft(
     MemoryDraft self,
     SseSerializer serializer,
@@ -394,6 +455,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_capability(Capability self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_diary_document(DiaryDocument self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_diary_entry(DiaryEntry self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_diary_summary(DiarySummary self, SseSerializer serializer);
 
   @protected
   void sse_encode_error_code(ErrorCode self, SseSerializer serializer);
@@ -425,6 +495,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_capability(
     List<Capability> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_diary_entry(
+    List<DiaryEntry> self,
     SseSerializer serializer,
   );
 
@@ -463,6 +539,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_diary_summary(
+    DiarySummary? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_memory_record(

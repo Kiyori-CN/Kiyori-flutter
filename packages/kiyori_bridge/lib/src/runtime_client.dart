@@ -11,6 +11,20 @@ abstract interface class RuntimeClient {
   Future<api.KnowledgeSnapshot> knowledgeSnapshot();
   Future<api.KnowledgeSnapshot> queryKnowledge(api.MemoryQuery query);
   Future<api.MemoryRecord?> getMemory(String space, String id);
+  Future<api.DiaryDocument> parseDiary(String content);
+  Future<String> createDiary(
+    String space,
+    api.MemoryDraft draft,
+    String phase,
+    String stamp,
+  );
+  Future<void> appendDiary(
+    String space,
+    String id,
+    String body,
+    String phase,
+    String stamp,
+  );
   Future<String> saveKnowledgeSpace(String? id, String name);
   Future<void> selectKnowledgeSpace(String id);
   Future<bool> deleteKnowledgeSpace(String id);
@@ -84,6 +98,46 @@ final class NativeRuntimeClient implements RuntimeClient {
   Future<api.MemoryRecord?> getMemory(String space, String id) {
     _ensureOpen();
     return _handle.getMemory(space: space, id: id);
+  }
+
+  @override
+  Future<api.DiaryDocument> parseDiary(String content) {
+    _ensureOpen();
+    return api.parseDiary(content: content);
+  }
+
+  @override
+  Future<String> createDiary(
+    String space,
+    api.MemoryDraft draft,
+    String phase,
+    String stamp,
+  ) {
+    _ensureOpen();
+    return _handle.createDiary(
+      space: space,
+      draft: draft,
+      phase: phase,
+      stamp: stamp,
+    );
+  }
+
+  @override
+  Future<void> appendDiary(
+    String space,
+    String id,
+    String body,
+    String phase,
+    String stamp,
+  ) {
+    _ensureOpen();
+    return _handle.appendDiary(
+      space: space,
+      id: id,
+      body: body,
+      phase: phase,
+      stamp: stamp,
+    );
   }
 
   @override

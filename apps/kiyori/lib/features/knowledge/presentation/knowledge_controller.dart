@@ -7,6 +7,7 @@ class KnowledgeController extends ChangeNotifier {
   final Future<RuntimeClient> Function() _connect;
   KnowledgeSnapshot? snapshot;
   MemoryRecord? detail;
+  DiaryDocument? diary;
   static const initialQuery = MemoryQuery(
     kind: 'memory',
     folder: '',
@@ -29,6 +30,9 @@ class KnowledgeController extends ChangeNotifier {
     try {
       final client = await _connect();
       final value = await client.getMemory(record.spaceId, record.id);
+      final document = value?.draft.kind == 'diary'
+          ? await client.parseDiary(value!.draft.content)
+          : null;
       if (_disposed ||
           generation != _detailGeneration ||
           catalogGeneration != _generation ||
@@ -36,6 +40,7 @@ class KnowledgeController extends ChangeNotifier {
         return null;
       }
       detail = value;
+      diary = document;
       return value;
     } catch (_) {
       if (!_disposed &&
@@ -58,11 +63,16 @@ class KnowledgeController extends ChangeNotifier {
     if (current == null) return;
     if (current.spaceId != value.activeSpace) {
       detail = null;
+      diary = null;
       return;
     }
     final refreshed = await client.getMemory(current.spaceId, current.id);
+    final document = refreshed?.draft.kind == 'diary'
+        ? await client.parseDiary(refreshed!.draft.content)
+        : null;
     if (!_disposed && generation == _generation && identical(detail, current)) {
       detail = refreshed;
+      diary = document;
     }
   }
 
@@ -88,6 +98,7 @@ class KnowledgeController extends ChangeNotifier {
         archived: query.archived,
         sortTitle: query.sortTitle,
         offset: more ? (snapshot?.records.length ?? 0) : 0,
+        diaryClosed: query.diaryClosed,
       );
       final value = await client.queryKnowledge(request);
       if (!_disposed && generation == _generation) {
@@ -136,6 +147,21 @@ class KnowledgeController extends ChangeNotifier {
   Future<bool> save(String space, String? id, MemoryDraft draft) =>
       _mutate((client) async {
         await client.saveMemory(space, id, draft);
+      });
+  String _stamp() => DateTime.now().toString().substring(0, 16);
+  Future<bool> createDiary(String space, MemoryDraft draft, String phase) =>
+      _mutate((client) async {
+        await client.createDiary(space, draft, phase, _stamp());
+      });
+  Future<bool> appendDiary(MemoryRecord record, String body, String phase) =>
+      _mutate((client) async {
+        await client.appendDiary(
+          record.spaceId,
+          record.id,
+          body,
+          phase,
+          _stamp(),
+        );
       });
   Future<bool> archive(MemoryRecord record) => _mutate(
     (client) =>

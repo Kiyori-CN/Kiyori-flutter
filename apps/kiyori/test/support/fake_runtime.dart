@@ -25,6 +25,24 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<DiaryDocument> parseDiary(String content) =>
+      throw UnimplementedError();
+  @override
+  Future<String> createDiary(
+    String space,
+    MemoryDraft draft,
+    String phase,
+    String stamp,
+  ) => throw UnimplementedError();
+  @override
+  Future<void> appendDiary(
+    String space,
+    String id,
+    String body,
+    String phase,
+    String stamp,
+  ) => throw UnimplementedError();
+  @override
   Future<KnowledgeSnapshot> queryKnowledge(MemoryQuery query) =>
       knowledgeSnapshot();
   @override

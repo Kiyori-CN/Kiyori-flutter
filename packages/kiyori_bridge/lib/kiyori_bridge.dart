@@ -13,5 +13,8 @@ export 'src/generated/api.dart'
         MemoryDraft,
         MemoryQuery,
         MemoryRecord,
+        DiarySummary,
+        DiaryDocument,
+        DiaryEntry,
         WorkflowRecord;
 export 'src/runtime_client.dart';

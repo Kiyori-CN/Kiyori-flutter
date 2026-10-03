@@ -96,6 +96,42 @@ pub struct MemoryRecord {
     pub archived: bool,
     pub created_at: i64,
     pub updated_at: i64,
+    pub diary: Option<DiarySummary>,
+}
+pub struct DiarySummary {
+    pub closed: bool,
+    pub entry_count: u32,
+    pub first_day: Option<String>,
+    pub last_phase: Option<String>,
+    pub last_raw_phase: Option<String>,
+}
+pub struct DiaryEntry {
+    pub date: String,
+    pub time: String,
+    pub phase: String,
+    pub raw_phase: Option<String>,
+    pub body: String,
+}
+pub struct DiaryDocument {
+    pub preface: String,
+    pub entries: Vec<DiaryEntry>,
+}
+pub fn parse_diary(content: String) -> DiaryDocument {
+    let value = kiyori_core::diary::parse(&content);
+    DiaryDocument {
+        preface: value.preface,
+        entries: value
+            .entries
+            .into_iter()
+            .map(|entry| DiaryEntry {
+                date: entry.date,
+                time: entry.time,
+                phase: entry.phase,
+                raw_phase: entry.raw_phase,
+                body: entry.body,
+            })
+            .collect(),
+    }
 }
 pub struct KnowledgeSnapshot {
     pub spaces: Vec<KnowledgeSpace>,
@@ -114,6 +150,7 @@ pub struct MemoryQuery {
     pub archived: bool,
     pub sort_title: bool,
     pub offset: u32,
+    pub diary_closed: Option<bool>,
 }
 
 #[frb(opaque)]
@@ -139,6 +176,25 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn create_diary(
+        &self,
+        space: String,
+        draft: MemoryDraft,
+        phase: String,
+        stamp: String,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.create_diary(space, draft.into(), phase, stamp)?)
+    }
+    pub fn append_diary(
+        &self,
+        space: String,
+        id: String,
+        body: String,
+        phase: String,
+        stamp: String,
+    ) -> Result<(), BridgeError> {
+        Ok(self.inner.append_diary(space, id, body, phase, stamp)?)
+    }
     pub fn query_knowledge(&self, query: MemoryQuery) -> Result<KnowledgeSnapshot, BridgeError> {
         Ok(self
             .inner
@@ -151,6 +207,7 @@ impl RuntimeHandle {
                 archived: query.archived,
                 sort_title: query.sort_title,
                 offset: query.offset,
+                diary_closed: query.diary_closed,
             })?
             .into())
     }
@@ -337,18 +394,7 @@ impl From<kiyori_core::knowledge::KnowledgeSnapshot> for KnowledgeSnapshot {
             folders: v.folders,
             has_more: v.has_more,
             available_tags: v.available_tags,
-            records: v
-                .records
-                .into_iter()
-                .map(|r| MemoryRecord {
-                    id: r.id,
-                    space_id: r.space_id,
-                    draft: r.draft.into(),
-                    archived: r.archived,
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
-                })
-                .collect(),
+            records: v.records.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -362,6 +408,13 @@ impl From<kiyori_core::knowledge::MemoryRecord> for MemoryRecord {
             archived: r.archived,
             created_at: r.created_at,
             updated_at: r.updated_at,
+            diary: r.diary.map(|value| DiarySummary {
+                closed: value.closed,
+                entry_count: value.entry_count,
+                first_day: value.first_day,
+                last_phase: value.last_phase,
+                last_raw_phase: value.last_raw_phase,
+            }),
         }
     }
 }

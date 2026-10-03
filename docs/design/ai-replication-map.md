@@ -19,7 +19,7 @@
 | main.packages | PackageManagerScreen，PACKAGES、PLUGINS、SKILLS、MCP 四标签 | extensions；包环境、市场、增删/刷新、MCP启动和错误；尚未接入 |
 | main.toolbox | ToolboxCatalog 及对应 ScreenRouteRegistry 工具目录 | 复用 toolbox 一级页，AI 内部导航保持原来源，不能跳底栏 |
 | main.workflow | WorkflowListScreen、WorkflowDetailScreen、WorkflowViewModel、WorkflowRepository | workflows；定义目录→创建→详情→删除，模板/节点/执行/调度另按旧源推进 |
-| main.memory_base | MemoryScreen、空间/文件夹导航和导入目标身份 | knowledge；空间、目录、手工记忆/笔记、归档与删除接入同一SQLite；日记/导入/图谱另行推进 |
+| main.memory_base | MemoryScreen、空间/文件夹导航和导入目标身份 | knowledge；空间、目录、手工记忆/笔记、日记、归档与删除接入同一SQLite；导入/图谱另行推进 |
 | 动态插件 | KiyoriNavigationDrawerContent、plugin keepAlive 策略 | 只消费正式插件目录，不注入产品演示插件 |
 | main.settings | KiyoriDrawerFooter → 设置主目录 | SettingsNavigation，压栈后返回准确 AI 根目的地 |
 
@@ -62,8 +62,16 @@ EditMemoryDialog与MemoryInfoDialog。空间默认ID为default，禁止删除；
 目录抽屉按空间保存展开状态，惰性行显示直接层级，缩进最多五级；根目录没有管理菜单。
 长按或更多菜单的新建子目录固定所选父路径。标签候选来自分页前的查询范围，主题/标签
 过滤不删掉其它候选；抽屉按旧单选列表与超过8项时的搜索投影，选中项空结果时仍可取消。
-日记类型需要阶段和追加记录语义，本切片不把普通文本CRUD包装成日记；导入资料、图谱、
-语义检索及云设置动作仍保持未接入边界。存储及迁移只在core/storage统一维护。
+日记正文阶段依据MemoryDiaryPolicy和DiaryViewDialog：开篇默认plan，续写默认progress，
+closed末节决定完结；恢复后续写会重新进行中，归档拒绝追加。Rust在Immediate事务内读
+最新正文并追加，UTF-16单条20000单位上限与旧源一致；全文编辑为独立显式操作。
+列表元信息/最近有内容小节摘要、详情时间线都从正文解析，不存第二状态字段。状态筛选
+逐条扫描并在筛选后分页，只保留一页摘要；复杂长日记解析成本仍需后续Profile量测。
+日期组目前在已加载页内按开篇日期排列，加载更多可能调整组内位置，不宣称全库日期游标。
+MemoryDiaryList的状态徽章、日期计数与DiaryViewDialog的开始时间、阶段色块、时间线连线
+由同一投影呈现。全文编辑前确认续写/收尾草稿；收尾保存失败保留总结，成功后才清除。
+新追加校验真实年月日及时间，解析旧正文仍保留原自由文本兼容；没有schema或依赖变更。
+导入资料、图谱、语义检索及云设置动作仍保持未接入边界。存储及迁移只在core/storage统一维护。
 
 会话/消息及流式请求沿 AIChatScreen 的实际调用链继续清点，至少追踪历史、模型配置、
 取消/错误、角色/群组/提示词、上下文、附件和工具授权的真实 owner；不凭功能名称生成假实现。

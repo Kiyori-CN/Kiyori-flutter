@@ -6,6 +6,101 @@ import 'package:test/test.dart';
 
 void main() {
   test(
+    'diary seed append close and reopen preserve full history across FFI',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-diary-ffi-',
+      );
+      NativeRuntimeClient? client;
+      try {
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        const draft = MemoryDraft(
+          kind: 'diary',
+          title: '推进记录',
+          content: '开篇计划',
+          category: 'other',
+          source: 'user_input',
+          folder: '',
+          credibility: .8,
+          importance: .5,
+          tags: ['进展'],
+        );
+        final id = await client.createDiary(
+          'default',
+          draft,
+          'plan',
+          '2026-10-03 09:40',
+        );
+        await client.appendDiary(
+          'default',
+          id,
+          '新增证据',
+          'evidence',
+          '2026-10-03 09:41',
+        );
+        await client.appendDiary(
+          'default',
+          id,
+          '',
+          'closed',
+          '2026-10-03 09:42',
+        );
+        await client.close();
+        client = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        final list = await client.queryKnowledge(
+          const MemoryQuery(
+            kind: 'diary',
+            folder: '',
+            text: '',
+            archived: false,
+            sortTitle: false,
+            offset: 0,
+          ),
+        );
+        expect(list.records.single.draft.content, '新增证据');
+        expect(list.records.single.diary!.closed, isTrue);
+        expect(list.records.single.diary!.entryCount, 3);
+        final activeOnly = await client.queryKnowledge(
+          const MemoryQuery(
+            kind: 'diary',
+            folder: '',
+            text: '',
+            archived: false,
+            sortTitle: false,
+            offset: 0,
+            diaryClosed: false,
+          ),
+        );
+        expect(activeOnly.records, isEmpty);
+        final full = (await client.getMemory('default', id))!;
+        final parsed = await client.parseDiary(full.draft.content);
+        expect(parsed.entries.map((e) => e.phase), [
+          'plan',
+          'evidence',
+          'closed',
+        ]);
+        expect(parsed.entries.first.body, '开篇计划');
+        await client.archiveMemory('default', id, true);
+        await expectLater(
+          client.appendDiary('default', id, '拒绝', 'note', '2026-10-03 09:43'),
+          throwsA(isA<BridgeError>()),
+        );
+        await client.archiveMemory('default', id, false);
+        await client.appendDiary(
+          'default',
+          id,
+          '继续推进',
+          'progress',
+          '2026-10-03 09:44',
+        );
+        expect((await client.getMemory('default', id))!.diary!.closed, isFalse);
+      } finally {
+        await client?.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'knowledge DTOs preserve space identity, Unicode and committed state',
     () async {
       final directory = await Directory.systemTemp.createTemp(
