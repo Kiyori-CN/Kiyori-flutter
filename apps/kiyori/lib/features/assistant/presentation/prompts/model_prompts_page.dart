@@ -8,16 +8,19 @@ import 'group_card_editor.dart';
 import 'group_card_tile.dart';
 import 'prompt_dialog.dart';
 import 'prompt_presentation.dart';
+import 'prompts_controller.dart';
 import 'tag_export_dialog.dart';
 
 class ModelPromptsPage extends StatefulWidget {
   const ModelPromptsPage({
     this.snapshot = const PromptsPresentation(),
+    this.controller,
     this.onOpenTagMarket = emptyAction,
     this.onOpenPersona = emptyAction,
     super.key,
   });
   final PromptsPresentation snapshot;
+  final PromptsController? controller;
   final VoidCallback onOpenTagMarket;
   final VoidCallback onOpenPersona;
   @override
@@ -124,6 +127,7 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
         key: ValueKey(card.id),
         card: card,
         session: session,
+        onSave: widget.controller?.saveCharacter,
       ),
     );
   }
@@ -134,19 +138,33 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
     String action, {
     String? identity,
     Object? token,
+    Future<void> Function()? onConfirm,
   }) => _dialog(
     identity: identity,
     token: token,
-    builder: (context, _) => AlertDialog(
+    builder: (context, session) => AlertDialog(
       scrollable: true,
       title: Text(title),
-      content: Text(message),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message),
+          if (session.error != null)
+            Text(
+              session.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('取消'),
         ),
-        FilledButton(onPressed: () {}, child: Text(action)),
+        FilledButton(
+          onPressed: () => session.submit(onConfirm),
+          child: Text(session.saving ? '处理中…' : action),
+        ),
       ],
     ),
   );
@@ -160,8 +178,12 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
       _dialog(
         identity: identity,
         token: token,
-        builder: (_, session) =>
-            GroupCardEditor(key: ValueKey(id), group: group, session: session),
+        builder: (_, session) => GroupCardEditor(
+          key: ValueKey(id),
+          group: group,
+          session: session,
+          onSave: widget.controller?.saveGroup,
+        ),
       );
     } else if (action == '删除') {
       _confirmation(
@@ -170,9 +192,15 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
         '删除',
         identity: identity,
         token: token,
+        onConfirm: widget.controller == null
+            ? null
+            : () => widget.controller!.delete('group', id, group.revision),
       );
+    } else if (action == '复制') {
+      _run(() => widget.controller?.duplicate('group', id, group.revision));
+    } else if (action == '设为活跃') {
+      _run(() => widget.controller?.activate('group', id));
     }
-    // 创建、复制、激活与最终删除等待业务 owner，不修改展示目录。
   }
 
   void _cardAction(String id, Object token, String action) {
@@ -189,6 +217,9 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
           '删除',
           identity: 'card:$id',
           token: token,
+          onConfirm: widget.controller == null
+              ? null
+              : () => widget.controller!.delete('character', id, card.revision),
         );
       case '重置':
         _confirmation(
@@ -197,6 +228,9 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
           '重置',
           identity: 'card:$id',
           token: token,
+          onConfirm: widget.controller == null
+              ? null
+              : () => widget.controller!.reset(card.revision),
         );
       case '导出':
         _dialog(
@@ -215,9 +249,26 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
             },
           ),
         );
-      // 复制与激活必须等待领域 owner 回流；不以本地列表或徽章伪装业务事实。
+      case '复制':
+        _run(
+          () => widget.controller?.duplicate('character', id, card.revision),
+        );
+      case '设为活跃':
+        _run(() => widget.controller?.activate('character', id));
       default:
         break;
+    }
+  }
+
+  Future<void> _run(Future<void>? Function() operation) async {
+    try {
+      await operation();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('操作失败，内容可能已变化，请重新加载后重试。')));
+      }
     }
   }
 
@@ -482,6 +533,13 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                                   '删除',
                                   identity: 'tag:${tag.id}',
                                   token: _identities['tag:${tag.id}'],
+                                  onConfirm: widget.controller == null
+                                      ? null
+                                      : () => widget.controller!.delete(
+                                          'tag',
+                                          tag.id,
+                                          tag.revision,
+                                        ),
                                 ),
                               ),
                             ],
@@ -505,7 +563,19 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
                               ),
                             ),
                           ),
-                          _icon(Icons.add, '创建群组', () {}),
+                          _icon(Icons.add, '创建群组', () {
+                            if (widget.controller == null) return;
+                            _dialog(
+                              builder: (_, session) => GroupCardEditor(
+                                group: const GroupPresentation(
+                                  id: '',
+                                  name: '',
+                                ),
+                                session: session,
+                                onSave: widget.controller?.saveGroup,
+                              ),
+                            );
+                          }),
                         ],
                       ),
                       Expanded(
@@ -621,7 +691,12 @@ class _ModelPromptsPageState extends State<ModelPromptsPage> {
   void _tag(PromptTagPresentation tag) => _dialog(
     identity: tag.id.isEmpty ? null : 'tag:${tag.id}',
     token: _identities['tag:${tag.id}'],
-    builder: (_, _) => _TagEditor(key: ValueKey(tag.id), tag: tag),
+    builder: (_, session) => _TagEditor(
+      key: ValueKey(tag.id),
+      tag: tag,
+      session: session,
+      onSave: widget.controller?.saveTag,
+    ),
   );
 
   void _exportTags() {
@@ -839,8 +914,15 @@ class _CharacterTile extends StatelessWidget {
 }
 
 class _TagEditor extends StatefulWidget {
-  const _TagEditor({required this.tag, super.key});
+  const _TagEditor({
+    required this.tag,
+    required this.session,
+    this.onSave,
+    super.key,
+  });
   final PromptTagPresentation tag;
+  final PromptDialogState session;
+  final Future<void> Function(PromptTagPresentation)? onSave;
   @override
   State<_TagEditor> createState() => _TagEditorState();
 }
@@ -884,6 +966,11 @@ class _TagEditorState extends State<_TagEditor> {
                 ),
               ),
             ),
+          if (widget.session.error != null)
+            Text(
+              widget.session.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
         ],
       ),
     ),
@@ -892,7 +979,22 @@ class _TagEditorState extends State<_TagEditor> {
         onPressed: () => Navigator.pop(context),
         child: const Text('取消'),
       ),
-      FilledButton(onPressed: () {}, child: const Text('保存')),
+      FilledButton(
+        onPressed: () => widget.session.submit(
+          widget.onSave == null
+              ? null
+              : () => widget.onSave!(
+                  PromptTagPresentation(
+                    id: widget.tag.id,
+                    revision: widget.tag.revision,
+                    name: fields[0].text,
+                    description: fields[1].text,
+                    content: fields[2].text,
+                  ),
+                ),
+        ),
+        child: Text(widget.session.saving ? '保存中…' : '保存'),
+      ),
     ],
   );
 }

@@ -5,6 +5,30 @@
 
 ## 当前任务：设置全树与AI真实业务连续开发
 
+角色/标签/群组持久化批次本地验收闭环，基线main/3ec6223。schema5共享Runtime/SQLite，
+角色八字段/标签/绑定、标签CRUD、群组有序成员、复制/激活/默认角色重置与市场添加
+已接真实命令。revision拒绝过期覆盖，级联推进关联revision，活跃删除回默认；完整提示
+组合提供真实接口。头像主题/形象/表情克隆、导入导出、会话关联、人设生成与模型执行
+仍未实现，不能把本批当AI阶段完成。下一批推进模型配置、安全凭据与共享目录。
+
+验证日志work/prompts-verify-v1.log：53文档/4桥脚本夹具、Rust37/Clippy、286 Dart
+格式/analyze、Flutter506（10捕获跳过）通过。新增FFI最后关闭断言误写StateError而失败；
+改为实际BridgeError/runtimeClosed后work/prompts-ffi-v2.log十二项通过，未降低断言。
+Windows引擎三项通过，work/prompts-windows-integration-v1.log；bridge Check五文件一致。
+联合角色/群组/市场46项通过（work/prompts-ui-v2.log），26张捕获保存在
+work/prompts-capture-v2，真实目录与320暗色双倍字键盘弹窗已审阅。完整verify随后还验证
+新增群组菜单复制/激活/删除回退。首轮预览模式创建接线与市场测试选择器错误已修复，
+失败日志保留。默认语音资源632字符与已有完整中文常量逐字一致。
+
+双端普通Debug构建通过：Android55.1s、Windows18.6s。固定目录
+artifacts/ui-preview/20261003-122250：APK113015932字节，
+SHA256 F1566F13EFD3E30348DBDCFE6ED647D432D85B4546EF4B9427222E9B4A14E46D；
+Windows83文件134515905字节，Rust DLL6259712字节、
+SHA256 2CADBC07AD274E049BC091AAF05DF267EB4A92C0C9FE303E0544ADDFF8FAACDF。
+84文件复制哈希、APK身份/ARM64/v2签名/ZIP16KB/ELF对齐和Windows x64/Flutter DLL pin
+审计通过；历史产物均保留。521文件树审计无敏感路径/异常大文件/相对导入环发现，
+临时日志/脚本/产物全部忽略。设备/Profile/真实供应商/Apple尚未验证；无新增依赖。
+
 当前正式Goal为active、无预算。开工实查main/HEAD及fetch后的origin/main均为
 `4a69550bc5e2489c02d144b3a4eb45e5266870fa`，左右差异0/0，工作区与暂存区干净。
 只读旧仓库HEAD为`6b03b03aa082803bb279db5e78773583e2d91154`且干净。

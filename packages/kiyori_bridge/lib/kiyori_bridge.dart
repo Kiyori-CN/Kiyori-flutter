@@ -2,6 +2,14 @@ library;
 
 export 'src/generated/api.dart'
     show
+        PromptTool,
+        CharacterDraft,
+        PromptCharacter,
+        TagDraft,
+        PromptTag,
+        GroupDraft,
+        PromptGroup,
+        PromptCatalog,
         BridgeError,
         ErrorCode,
         RuntimeInfo,

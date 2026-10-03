@@ -24,6 +24,59 @@ class FakeRun implements DiagnosticRun {
 }
 
 class FakeClient implements RuntimeClient {
+  @override
+  Future<PromptCatalog> promptCatalog() async => throw UnimplementedError(
+    'Use a real runtime for prompt persistence tests.',
+  );
+  @override
+  Future<String> saveCharacter(
+    String? id,
+    int? revision,
+    CharacterDraft draft,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for prompt persistence tests.',
+  );
+  @override
+  Future<String> savePromptTag(
+    String? id,
+    int? revision,
+    TagDraft draft,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for prompt persistence tests.',
+  );
+  @override
+  Future<String> savePromptGroup(
+    String? id,
+    int? revision,
+    GroupDraft draft,
+  ) async => throw UnimplementedError(
+    'Use a real runtime for prompt persistence tests.',
+  );
+  @override
+  Future<void> activatePrompt(String kind, String id) async =>
+      throw UnimplementedError(
+        'Use a real runtime for prompt persistence tests.',
+      );
+  @override
+  Future<void> deletePrompt(String kind, String id, int revision) async =>
+      throw UnimplementedError(
+        'Use a real runtime for prompt persistence tests.',
+      );
+  @override
+  Future<String> duplicatePrompt(String kind, String id, int revision) async =>
+      throw UnimplementedError(
+        'Use a real runtime for prompt persistence tests.',
+      );
+  @override
+  Future<void> resetDefaultCharacter(int revision) async =>
+      throw UnimplementedError(
+        'Use a real runtime for prompt persistence tests.',
+      );
+  @override
+  Future<String> composeCharacterPrompt(String id, bool voice) async =>
+      throw UnimplementedError(
+        'Use a real runtime for prompt persistence tests.',
+      );
   final searchSettings = <String, MemorySearchSettings>{};
   @override
   Future<MemorySearchSettings> memorySearchSettings(String space) async =>

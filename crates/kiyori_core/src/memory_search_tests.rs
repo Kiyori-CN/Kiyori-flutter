@@ -245,6 +245,7 @@ fn schema_three_migration_and_runtime_close_keep_storage_contract() {
     let id = store
         .save_memory("default".into(), None, memory("迁移保留", "正文", ""))
         .unwrap();
+    crate::prompts::remove_schema_five_for_fixture(&store.connection.lock().unwrap());
     store
         .connection
         .lock()

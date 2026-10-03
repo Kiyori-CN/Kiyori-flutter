@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -20,6 +20,8 @@ Future<RuntimeHandle> createRuntimeWithDataDir({required String dataDir}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>>
 abstract class RuntimeHandle implements RustOpaqueInterface {
+  Future<void> activatePrompt({required String kind, required String id});
+
   Future<void> appendDiary({
     required String space,
     required String id,
@@ -35,6 +37,11 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   });
 
   Future<void> close();
+
+  Future<String> composeCharacterPrompt({
+    required String id,
+    required bool voice,
+  });
 
   Future<String> createDiary({
     required String space,
@@ -69,9 +76,21 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<bool> deleteMemoryLink({required String space, required String id});
 
+  Future<void> deletePrompt({
+    required String kind,
+    required String id,
+    required int revision,
+  });
+
   Future<bool> deleteWorkflow({required String id});
 
   Future<int> deleteWorkflows({required List<String> ids});
+
+  Future<String> duplicatePrompt({
+    required String kind,
+    required String id,
+    required int revision,
+  });
 
   Future<MemoryRecord?> getMemory({required String space, required String id});
 
@@ -85,12 +104,22 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<MemorySearchSettings> memorySearchSettings({required String space});
 
+  Future<PromptCatalog> promptCatalog();
+
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
 
   Future<void> renameKnowledgeFolder({
     required String space,
     required String old,
     required String new_,
+  });
+
+  Future<void> resetDefaultCharacter({required int revision});
+
+  Future<String> saveCharacter({
+    String? id,
+    int? revision,
+    required CharacterDraft draft,
   });
 
   Future<String> saveKnowledgeSpace({String? id, required String name});
@@ -110,6 +139,18 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<void> saveMemorySearchSettings({
     required String space,
     required MemorySearchSettings value,
+  });
+
+  Future<String> savePromptGroup({
+    String? id,
+    int? revision,
+    required GroupDraft draft,
+  });
+
+  Future<String> savePromptTag({
+    String? id,
+    int? revision,
+    required TagDraft draft,
   });
 
   Future<void> selectKnowledgeSpace({required String id});
@@ -184,6 +225,77 @@ class Capability {
           id == other.id &&
           available == other.available &&
           reason == other.reason;
+}
+
+class CharacterDraft {
+  final String name;
+  final String description;
+  final String setting;
+  final String opening;
+  final String chat;
+  final String voice;
+  final String custom;
+  final String marks;
+  final List<String> tagIds;
+  final String? modelConfig;
+  final String? modelName;
+  final String? memorySpace;
+  final bool toolsEnabled;
+  final List<PromptTool> tools;
+
+  const CharacterDraft({
+    required this.name,
+    required this.description,
+    required this.setting,
+    required this.opening,
+    required this.chat,
+    required this.voice,
+    required this.custom,
+    required this.marks,
+    required this.tagIds,
+    this.modelConfig,
+    this.modelName,
+    this.memorySpace,
+    required this.toolsEnabled,
+    required this.tools,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      description.hashCode ^
+      setting.hashCode ^
+      opening.hashCode ^
+      chat.hashCode ^
+      voice.hashCode ^
+      custom.hashCode ^
+      marks.hashCode ^
+      tagIds.hashCode ^
+      modelConfig.hashCode ^
+      modelName.hashCode ^
+      memorySpace.hashCode ^
+      toolsEnabled.hashCode ^
+      tools.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CharacterDraft &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          description == other.description &&
+          setting == other.setting &&
+          opening == other.opening &&
+          chat == other.chat &&
+          voice == other.voice &&
+          custom == other.custom &&
+          marks == other.marks &&
+          tagIds == other.tagIds &&
+          modelConfig == other.modelConfig &&
+          modelName == other.modelName &&
+          memorySpace == other.memorySpace &&
+          toolsEnabled == other.toolsEnabled &&
+          tools == other.tools;
 }
 
 class DiaryDocument {
@@ -298,6 +410,30 @@ class GraphNode {
           id == other.id &&
           title == other.title &&
           nodeType == other.nodeType;
+}
+
+class GroupDraft {
+  final String name;
+  final String description;
+  final List<String> members;
+
+  const GroupDraft({
+    required this.name,
+    required this.description,
+    required this.members,
+  });
+
+  @override
+  int get hashCode => name.hashCode ^ description.hashCode ^ members.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GroupDraft &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          description == other.description &&
+          members == other.members;
 }
 
 class KnowledgeSnapshot {
@@ -762,6 +898,143 @@ class MemorySearchSettings {
           extractionRules == other.extractionRules;
 }
 
+class PromptCatalog {
+  final List<PromptCharacter> characters;
+  final List<PromptTag> tags;
+  final List<PromptGroup> groups;
+  final String? activeCharacter;
+  final String? activeGroup;
+
+  const PromptCatalog({
+    required this.characters,
+    required this.tags,
+    required this.groups,
+    this.activeCharacter,
+    this.activeGroup,
+  });
+
+  @override
+  int get hashCode =>
+      characters.hashCode ^
+      tags.hashCode ^
+      groups.hashCode ^
+      activeCharacter.hashCode ^
+      activeGroup.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PromptCatalog &&
+          runtimeType == other.runtimeType &&
+          characters == other.characters &&
+          tags == other.tags &&
+          groups == other.groups &&
+          activeCharacter == other.activeCharacter &&
+          activeGroup == other.activeGroup;
+}
+
+class PromptCharacter {
+  final String id;
+  final int revision;
+  final PlatformInt64 updatedAt;
+  final CharacterDraft draft;
+
+  const PromptCharacter({
+    required this.id,
+    required this.revision,
+    required this.updatedAt,
+    required this.draft,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ revision.hashCode ^ updatedAt.hashCode ^ draft.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PromptCharacter &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          revision == other.revision &&
+          updatedAt == other.updatedAt &&
+          draft == other.draft;
+}
+
+class PromptGroup {
+  final String id;
+  final int revision;
+  final PlatformInt64 updatedAt;
+  final GroupDraft draft;
+
+  const PromptGroup({
+    required this.id,
+    required this.revision,
+    required this.updatedAt,
+    required this.draft,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ revision.hashCode ^ updatedAt.hashCode ^ draft.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PromptGroup &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          revision == other.revision &&
+          updatedAt == other.updatedAt &&
+          draft == other.draft;
+}
+
+class PromptTag {
+  final String id;
+  final int revision;
+  final PlatformInt64 updatedAt;
+  final TagDraft draft;
+
+  const PromptTag({
+    required this.id,
+    required this.revision,
+    required this.updatedAt,
+    required this.draft,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ revision.hashCode ^ updatedAt.hashCode ^ draft.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PromptTag &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          revision == other.revision &&
+          updatedAt == other.updatedAt &&
+          draft == other.draft;
+}
+
+class PromptTool {
+  final String kind;
+  final String name;
+
+  const PromptTool({required this.kind, required this.name});
+
+  @override
+  int get hashCode => kind.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PromptTool &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          name == other.name;
+}
+
 class RuntimeInfo {
   final String coreVersion;
   final String hostPlatform;
@@ -785,6 +1058,30 @@ class RuntimeInfo {
           coreVersion == other.coreVersion &&
           hostPlatform == other.hostPlatform &&
           capabilities == other.capabilities;
+}
+
+class TagDraft {
+  final String name;
+  final String description;
+  final String content;
+
+  const TagDraft({
+    required this.name,
+    required this.description,
+    required this.content,
+  });
+
+  @override
+  int get hashCode => name.hashCode ^ description.hashCode ^ content.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TagDraft &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          description == other.description &&
+          content == other.content;
 }
 
 class TaskEvent {

@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -617760685;
+  int get rustContentHash => 1947879079;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +79,12 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<void> crateApiRuntimeHandleActivatePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+  });
+
   Future<void> crateApiRuntimeHandleAppendDiary({
     required RuntimeHandle that,
     required String space,
@@ -96,6 +102,12 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<void> crateApiRuntimeHandleClose({required RuntimeHandle that});
+
+  Future<String> crateApiRuntimeHandleComposeCharacterPrompt({
+    required RuntimeHandle that,
+    required String id,
+    required bool voice,
+  });
 
   Future<String> crateApiRuntimeHandleCreateDiary({
     required RuntimeHandle that,
@@ -146,6 +158,13 @@ abstract class RustLibApi extends BaseApi {
     required String id,
   });
 
+  Future<void> crateApiRuntimeHandleDeletePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+    required int revision,
+  });
+
   Future<bool> crateApiRuntimeHandleDeleteWorkflow({
     required RuntimeHandle that,
     required String id,
@@ -154,6 +173,13 @@ abstract class RustLibApi extends BaseApi {
   Future<int> crateApiRuntimeHandleDeleteWorkflows({
     required RuntimeHandle that,
     required List<String> ids,
+  });
+
+  Future<String> crateApiRuntimeHandleDuplicatePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+    required int revision,
   });
 
   Future<MemoryRecord?> crateApiRuntimeHandleGetMemory({
@@ -182,6 +208,10 @@ abstract class RustLibApi extends BaseApi {
     required String space,
   });
 
+  Future<PromptCatalog> crateApiRuntimeHandlePromptCatalog({
+    required RuntimeHandle that,
+  });
+
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -192,6 +222,18 @@ abstract class RustLibApi extends BaseApi {
     required String space,
     required String old,
     required String new_,
+  });
+
+  Future<void> crateApiRuntimeHandleResetDefaultCharacter({
+    required RuntimeHandle that,
+    required int revision,
+  });
+
+  Future<String> crateApiRuntimeHandleSaveCharacter({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required CharacterDraft draft,
   });
 
   Future<String> crateApiRuntimeHandleSaveKnowledgeSpace({
@@ -218,6 +260,20 @@ abstract class RustLibApi extends BaseApi {
     required RuntimeHandle that,
     required String space,
     required MemorySearchSettings value,
+  });
+
+  Future<String> crateApiRuntimeHandleSavePromptGroup({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required GroupDraft draft,
+  });
+
+  Future<String> crateApiRuntimeHandleSavePromptTag({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required TagDraft draft,
   });
 
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
@@ -290,6 +346,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<void> crateApiRuntimeHandleActivatePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(kind, serializer);
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleActivatePromptConstMeta,
+        argValues: [that, kind, id],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleActivatePromptConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_activate_prompt",
+        argNames: ["that", "kind", "id"],
+      );
+
+  @override
   Future<void> crateApiRuntimeHandleAppendDiary({
     required RuntimeHandle that,
     required String space,
@@ -314,7 +410,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -356,7 +452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -390,7 +486,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -407,6 +503,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiRuntimeHandleCloseConstMeta =>
       const TaskConstMeta(debugName: "RuntimeHandle_close", argNames: ["that"]);
+
+  @override
+  Future<String> crateApiRuntimeHandleComposeCharacterPrompt({
+    required RuntimeHandle that,
+    required String id,
+    required bool voice,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_bool(voice, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleComposeCharacterPromptConstMeta,
+        argValues: [that, id, voice],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleComposeCharacterPromptConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_compose_character_prompt",
+        argNames: ["that", "id", "voice"],
+      );
 
   @override
   Future<String> crateApiRuntimeHandleCreateDiary({
@@ -431,7 +567,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 6,
             port: port_,
           );
         },
@@ -471,7 +607,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -511,7 +647,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -551,7 +687,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -589,7 +725,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -629,7 +765,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -669,7 +805,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -709,7 +845,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -731,6 +867,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRuntimeHandleDeletePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+    required int revision,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(kind, serializer);
+          sse_encode_String(id, serializer);
+          sse_encode_u_32(revision, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDeletePromptConstMeta,
+        argValues: [that, kind, id, revision],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDeletePromptConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_delete_prompt",
+        argNames: ["that", "kind", "id", "revision"],
+      );
+
+  @override
   Future<bool> crateApiRuntimeHandleDeleteWorkflow({
     required RuntimeHandle that,
     required String id,
@@ -747,7 +925,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -785,7 +963,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 16,
             port: port_,
           );
         },
@@ -807,6 +985,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiRuntimeHandleDuplicatePrompt({
+    required RuntimeHandle that,
+    required String kind,
+    required String id,
+    required int revision,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_String(kind, serializer);
+          sse_encode_String(id, serializer);
+          sse_encode_u_32(revision, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleDuplicatePromptConstMeta,
+        argValues: [that, kind, id, revision],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleDuplicatePromptConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_duplicate_prompt",
+        argNames: ["that", "kind", "id", "revision"],
+      );
+
+  @override
   Future<MemoryRecord?> crateApiRuntimeHandleGetMemory({
     required RuntimeHandle that,
     required String space,
@@ -825,7 +1045,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 18,
             port: port_,
           );
         },
@@ -859,7 +1079,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 19,
             port: port_,
           );
         },
@@ -892,7 +1112,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 20,
             port: port_,
           );
         },
@@ -928,7 +1148,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 21,
             port: port_,
           );
         },
@@ -966,7 +1186,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 22,
             port: port_,
           );
         },
@@ -1004,7 +1224,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1026,6 +1246,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<PromptCatalog> crateApiRuntimeHandlePromptCatalog({
+    required RuntimeHandle that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_prompt_catalog,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandlePromptCatalogConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandlePromptCatalogConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_prompt_catalog",
+        argNames: ["that"],
+      );
+
+  @override
   Future<KnowledgeSnapshot> crateApiRuntimeHandleQueryKnowledge({
     required RuntimeHandle that,
     required MemoryQuery query,
@@ -1042,7 +1298,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1084,7 +1340,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1106,6 +1362,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRuntimeHandleResetDefaultCharacter({
+    required RuntimeHandle that,
+    required int revision,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_u_32(revision, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleResetDefaultCharacterConstMeta,
+        argValues: [that, revision],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleResetDefaultCharacterConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_reset_default_character",
+        argNames: ["that", "revision"],
+      );
+
+  @override
+  Future<String> crateApiRuntimeHandleSaveCharacter({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required CharacterDraft draft,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_opt_String(id, serializer);
+          sse_encode_opt_box_autoadd_u_32(revision, serializer);
+          sse_encode_box_autoadd_character_draft(draft, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSaveCharacterConstMeta,
+        argValues: [that, id, revision, draft],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSaveCharacterConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_character",
+        argNames: ["that", "id", "revision", "draft"],
+      );
+
+  @override
   Future<String> crateApiRuntimeHandleSaveKnowledgeSpace({
     required RuntimeHandle that,
     String? id,
@@ -1124,7 +1460,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1166,7 +1502,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1208,7 +1544,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1248,7 +1584,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1270,6 +1606,90 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiRuntimeHandleSavePromptGroup({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required GroupDraft draft,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_opt_String(id, serializer);
+          sse_encode_opt_box_autoadd_u_32(revision, serializer);
+          sse_encode_box_autoadd_group_draft(draft, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 33,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSavePromptGroupConstMeta,
+        argValues: [that, id, revision, draft],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSavePromptGroupConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_prompt_group",
+        argNames: ["that", "id", "revision", "draft"],
+      );
+
+  @override
+  Future<String> crateApiRuntimeHandleSavePromptTag({
+    required RuntimeHandle that,
+    String? id,
+    int? revision,
+    required TagDraft draft,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeHandle(
+            that,
+            serializer,
+          );
+          sse_encode_opt_String(id, serializer);
+          sse_encode_opt_box_autoadd_u_32(revision, serializer);
+          sse_encode_box_autoadd_tag_draft(draft, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 34,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_bridge_error,
+        ),
+        constMeta: kCrateApiRuntimeHandleSavePromptTagConstMeta,
+        argValues: [that, id, revision, draft],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRuntimeHandleSavePromptTagConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeHandle_save_prompt_tag",
+        argNames: ["that", "id", "revision", "draft"],
+      );
+
+  @override
   Future<void> crateApiRuntimeHandleSelectKnowledgeSpace({
     required RuntimeHandle that,
     required String id,
@@ -1286,7 +1706,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1326,7 +1746,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1366,7 +1786,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1406,7 +1826,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 38,
             port: port_,
           );
         },
@@ -1451,7 +1871,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 39,
             port: port_,
           );
         },
@@ -1485,7 +1905,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 40,
             port: port_,
           );
         },
@@ -1516,7 +1936,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 41,
             port: port_,
           );
         },
@@ -1546,7 +1966,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 42,
             port: port_,
           );
         },
@@ -1577,7 +1997,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 43,
             port: port_,
           );
         },
@@ -1609,7 +2029,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 44,
             port: port_,
           );
         },
@@ -1716,9 +2136,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CharacterDraft dco_decode_box_autoadd_character_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_character_draft(raw);
+  }
+
+  @protected
   DiarySummary dco_decode_box_autoadd_diary_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_diary_summary(raw);
+  }
+
+  @protected
+  GroupDraft dco_decode_box_autoadd_group_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_group_draft(raw);
   }
 
   @protected
@@ -1754,9 +2186,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TagDraft dco_decode_box_autoadd_tag_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_tag_draft(raw);
+  }
+
+  @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_task_event(raw);
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -1781,6 +2225,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       id: dco_decode_String(arr[0]),
       available: dco_decode_bool(arr[1]),
       reason: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  CharacterDraft dco_decode_character_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 14)
+      throw Exception('unexpected arr length: expect 14 but see ${arr.length}');
+    return CharacterDraft(
+      name: dco_decode_String(arr[0]),
+      description: dco_decode_String(arr[1]),
+      setting: dco_decode_String(arr[2]),
+      opening: dco_decode_String(arr[3]),
+      chat: dco_decode_String(arr[4]),
+      voice: dco_decode_String(arr[5]),
+      custom: dco_decode_String(arr[6]),
+      marks: dco_decode_String(arr[7]),
+      tagIds: dco_decode_list_String(arr[8]),
+      modelConfig: dco_decode_opt_String(arr[9]),
+      modelName: dco_decode_opt_String(arr[10]),
+      memorySpace: dco_decode_opt_String(arr[11]),
+      toolsEnabled: dco_decode_bool(arr[12]),
+      tools: dco_decode_list_prompt_tool(arr[13]),
     );
   }
 
@@ -1848,6 +2316,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       id: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       nodeType: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  GroupDraft dco_decode_group_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return GroupDraft(
+      name: dco_decode_String(arr[0]),
+      description: dco_decode_String(arr[1]),
+      members: dco_decode_list_String(arr[2]),
     );
   }
 
@@ -1947,6 +2428,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<PromptCharacter> dco_decode_list_prompt_character(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_prompt_character).toList();
+  }
+
+  @protected
+  List<PromptGroup> dco_decode_list_prompt_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_prompt_group).toList();
+  }
+
+  @protected
+  List<PromptTag> dco_decode_list_prompt_tag(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_prompt_tag).toList();
+  }
+
+  @protected
+  List<PromptTool> dco_decode_list_prompt_tool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_prompt_tool).toList();
   }
 
   @protected
@@ -2145,6 +2650,81 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
+  PromptCatalog dco_decode_prompt_catalog(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return PromptCatalog(
+      characters: dco_decode_list_prompt_character(arr[0]),
+      tags: dco_decode_list_prompt_tag(arr[1]),
+      groups: dco_decode_list_prompt_group(arr[2]),
+      activeCharacter: dco_decode_opt_String(arr[3]),
+      activeGroup: dco_decode_opt_String(arr[4]),
+    );
+  }
+
+  @protected
+  PromptCharacter dco_decode_prompt_character(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PromptCharacter(
+      id: dco_decode_String(arr[0]),
+      revision: dco_decode_u_32(arr[1]),
+      updatedAt: dco_decode_i_64(arr[2]),
+      draft: dco_decode_character_draft(arr[3]),
+    );
+  }
+
+  @protected
+  PromptGroup dco_decode_prompt_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PromptGroup(
+      id: dco_decode_String(arr[0]),
+      revision: dco_decode_u_32(arr[1]),
+      updatedAt: dco_decode_i_64(arr[2]),
+      draft: dco_decode_group_draft(arr[3]),
+    );
+  }
+
+  @protected
+  PromptTag dco_decode_prompt_tag(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PromptTag(
+      id: dco_decode_String(arr[0]),
+      revision: dco_decode_u_32(arr[1]),
+      updatedAt: dco_decode_i_64(arr[2]),
+      draft: dco_decode_tag_draft(arr[3]),
+    );
+  }
+
+  @protected
+  PromptTool dco_decode_prompt_tool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PromptTool(
+      kind: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   RuntimeInfo dco_decode_runtime_info(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -2154,6 +2734,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       coreVersion: dco_decode_String(arr[0]),
       hostPlatform: dco_decode_String(arr[1]),
       capabilities: dco_decode_list_capability(arr[2]),
+    );
+  }
+
+  @protected
+  TagDraft dco_decode_tag_draft(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return TagDraft(
+      name: dco_decode_String(arr[0]),
+      description: dco_decode_String(arr[1]),
+      content: dco_decode_String(arr[2]),
     );
   }
 
@@ -2309,11 +2902,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CharacterDraft sse_decode_box_autoadd_character_draft(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_character_draft(deserializer));
+  }
+
+  @protected
   DiarySummary sse_decode_box_autoadd_diary_summary(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_diary_summary(deserializer));
+  }
+
+  @protected
+  GroupDraft sse_decode_box_autoadd_group_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_group_draft(deserializer));
   }
 
   @protected
@@ -2357,9 +2964,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TagDraft sse_decode_box_autoadd_tag_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_tag_draft(deserializer));
+  }
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_task_event(deserializer));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
   }
 
   @protected
@@ -2377,6 +2996,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_available = sse_decode_bool(deserializer);
     var var_reason = sse_decode_String(deserializer);
     return Capability(id: var_id, available: var_available, reason: var_reason);
+  }
+
+  @protected
+  CharacterDraft sse_decode_character_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_description = sse_decode_String(deserializer);
+    var var_setting = sse_decode_String(deserializer);
+    var var_opening = sse_decode_String(deserializer);
+    var var_chat = sse_decode_String(deserializer);
+    var var_voice = sse_decode_String(deserializer);
+    var var_custom = sse_decode_String(deserializer);
+    var var_marks = sse_decode_String(deserializer);
+    var var_tagIds = sse_decode_list_String(deserializer);
+    var var_modelConfig = sse_decode_opt_String(deserializer);
+    var var_modelName = sse_decode_opt_String(deserializer);
+    var var_memorySpace = sse_decode_opt_String(deserializer);
+    var var_toolsEnabled = sse_decode_bool(deserializer);
+    var var_tools = sse_decode_list_prompt_tool(deserializer);
+    return CharacterDraft(
+      name: var_name,
+      description: var_description,
+      setting: var_setting,
+      opening: var_opening,
+      chat: var_chat,
+      voice: var_voice,
+      custom: var_custom,
+      marks: var_marks,
+      tagIds: var_tagIds,
+      modelConfig: var_modelConfig,
+      modelName: var_modelName,
+      memorySpace: var_memorySpace,
+      toolsEnabled: var_toolsEnabled,
+      tools: var_tools,
+    );
   }
 
   @protected
@@ -2441,6 +3095,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_title = sse_decode_String(deserializer);
     var var_nodeType = sse_decode_String(deserializer);
     return GraphNode(id: var_id, title: var_title, nodeType: var_nodeType);
+  }
+
+  @protected
+  GroupDraft sse_decode_group_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_description = sse_decode_String(deserializer);
+    var var_members = sse_decode_list_String(deserializer);
+    return GroupDraft(
+      name: var_name,
+      description: var_description,
+      members: var_members,
+    );
   }
 
   @protected
@@ -2591,6 +3258,56 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<PromptCharacter> sse_decode_list_prompt_character(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PromptCharacter>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_prompt_character(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<PromptGroup> sse_decode_list_prompt_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PromptGroup>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_prompt_group(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<PromptTag> sse_decode_list_prompt_tag(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PromptTag>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_prompt_tag(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<PromptTool> sse_decode_list_prompt_tool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PromptTool>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_prompt_tool(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -2876,6 +3593,87 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  PromptCatalog sse_decode_prompt_catalog(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_characters = sse_decode_list_prompt_character(deserializer);
+    var var_tags = sse_decode_list_prompt_tag(deserializer);
+    var var_groups = sse_decode_list_prompt_group(deserializer);
+    var var_activeCharacter = sse_decode_opt_String(deserializer);
+    var var_activeGroup = sse_decode_opt_String(deserializer);
+    return PromptCatalog(
+      characters: var_characters,
+      tags: var_tags,
+      groups: var_groups,
+      activeCharacter: var_activeCharacter,
+      activeGroup: var_activeGroup,
+    );
+  }
+
+  @protected
+  PromptCharacter sse_decode_prompt_character(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_revision = sse_decode_u_32(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    var var_draft = sse_decode_character_draft(deserializer);
+    return PromptCharacter(
+      id: var_id,
+      revision: var_revision,
+      updatedAt: var_updatedAt,
+      draft: var_draft,
+    );
+  }
+
+  @protected
+  PromptGroup sse_decode_prompt_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_revision = sse_decode_u_32(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    var var_draft = sse_decode_group_draft(deserializer);
+    return PromptGroup(
+      id: var_id,
+      revision: var_revision,
+      updatedAt: var_updatedAt,
+      draft: var_draft,
+    );
+  }
+
+  @protected
+  PromptTag sse_decode_prompt_tag(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_revision = sse_decode_u_32(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    var var_draft = sse_decode_tag_draft(deserializer);
+    return PromptTag(
+      id: var_id,
+      revision: var_revision,
+      updatedAt: var_updatedAt,
+      draft: var_draft,
+    );
+  }
+
+  @protected
+  PromptTool sse_decode_prompt_tool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    return PromptTool(kind: var_kind, name: var_name);
+  }
+
+  @protected
   RuntimeInfo sse_decode_runtime_info(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_coreVersion = sse_decode_String(deserializer);
@@ -2885,6 +3683,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       coreVersion: var_coreVersion,
       hostPlatform: var_hostPlatform,
       capabilities: var_capabilities,
+    );
+  }
+
+  @protected
+  TagDraft sse_decode_tag_draft(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_description = sse_decode_String(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    return TagDraft(
+      name: var_name,
+      description: var_description,
+      content: var_content,
     );
   }
 
@@ -3049,12 +3860,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_character_draft(
+    CharacterDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_character_draft(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_diary_summary(
     DiarySummary self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_diary_summary(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_group_draft(
+    GroupDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_group_draft(self, serializer);
   }
 
   @protected
@@ -3103,12 +3932,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_tag_draft(
+    TagDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_tag_draft(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_task_event(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
   }
 
   @protected
@@ -3124,6 +3968,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.id, serializer);
     sse_encode_bool(self.available, serializer);
     sse_encode_String(self.reason, serializer);
+  }
+
+  @protected
+  void sse_encode_character_draft(
+    CharacterDraft self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.description, serializer);
+    sse_encode_String(self.setting, serializer);
+    sse_encode_String(self.opening, serializer);
+    sse_encode_String(self.chat, serializer);
+    sse_encode_String(self.voice, serializer);
+    sse_encode_String(self.custom, serializer);
+    sse_encode_String(self.marks, serializer);
+    sse_encode_list_String(self.tagIds, serializer);
+    sse_encode_opt_String(self.modelConfig, serializer);
+    sse_encode_opt_String(self.modelName, serializer);
+    sse_encode_opt_String(self.memorySpace, serializer);
+    sse_encode_bool(self.toolsEnabled, serializer);
+    sse_encode_list_prompt_tool(self.tools, serializer);
   }
 
   @protected
@@ -3171,6 +4037,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.id, serializer);
     sse_encode_String(self.title, serializer);
     sse_encode_String(self.nodeType, serializer);
+  }
+
+  @protected
+  void sse_encode_group_draft(GroupDraft self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.description, serializer);
+    sse_encode_list_String(self.members, serializer);
   }
 
   @protected
@@ -3310,6 +4184,54 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_prompt_character(
+    List<PromptCharacter> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_prompt_character(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prompt_group(
+    List<PromptGroup> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_prompt_group(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prompt_tag(
+    List<PromptTag> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_prompt_tag(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prompt_tool(
+    List<PromptTool> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_prompt_tool(item, serializer);
+    }
   }
 
   @protected
@@ -3510,11 +4432,76 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_prompt_catalog(PromptCatalog self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prompt_character(self.characters, serializer);
+    sse_encode_list_prompt_tag(self.tags, serializer);
+    sse_encode_list_prompt_group(self.groups, serializer);
+    sse_encode_opt_String(self.activeCharacter, serializer);
+    sse_encode_opt_String(self.activeGroup, serializer);
+  }
+
+  @protected
+  void sse_encode_prompt_character(
+    PromptCharacter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_u_32(self.revision, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+    sse_encode_character_draft(self.draft, serializer);
+  }
+
+  @protected
+  void sse_encode_prompt_group(PromptGroup self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_u_32(self.revision, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+    sse_encode_group_draft(self.draft, serializer);
+  }
+
+  @protected
+  void sse_encode_prompt_tag(PromptTag self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_u_32(self.revision, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+    sse_encode_tag_draft(self.draft, serializer);
+  }
+
+  @protected
+  void sse_encode_prompt_tool(PromptTool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.name, serializer);
+  }
+
+  @protected
   void sse_encode_runtime_info(RuntimeInfo self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.coreVersion, serializer);
     sse_encode_String(self.hostPlatform, serializer);
     sse_encode_list_capability(self.capabilities, serializer);
+  }
+
+  @protected
+  void sse_encode_tag_draft(TagDraft self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.description, serializer);
+    sse_encode_String(self.content, serializer);
   }
 
   @protected
@@ -3589,6 +4576,13 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
         RustLib.instance.api.rust_arc_decrement_strong_count_RuntimeHandlePtr,
   );
 
+  Future<void> activatePrompt({required String kind, required String id}) =>
+      RustLib.instance.api.crateApiRuntimeHandleActivatePrompt(
+        that: this,
+        kind: kind,
+        id: id,
+      );
+
   Future<void> appendDiary({
     required String space,
     required String id,
@@ -3617,6 +4611,15 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
 
   Future<void> close() =>
       RustLib.instance.api.crateApiRuntimeHandleClose(that: this);
+
+  Future<String> composeCharacterPrompt({
+    required String id,
+    required bool voice,
+  }) => RustLib.instance.api.crateApiRuntimeHandleComposeCharacterPrompt(
+    that: this,
+    id: id,
+    voice: voice,
+  );
 
   Future<String> createDiary({
     required String space,
@@ -3686,6 +4689,17 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
         id: id,
       );
 
+  Future<void> deletePrompt({
+    required String kind,
+    required String id,
+    required int revision,
+  }) => RustLib.instance.api.crateApiRuntimeHandleDeletePrompt(
+    that: this,
+    kind: kind,
+    id: id,
+    revision: revision,
+  );
+
   Future<bool> deleteWorkflow({required String id}) => RustLib.instance.api
       .crateApiRuntimeHandleDeleteWorkflow(that: this, id: id);
 
@@ -3693,6 +4707,17 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
       .instance
       .api
       .crateApiRuntimeHandleDeleteWorkflows(that: this, ids: ids);
+
+  Future<String> duplicatePrompt({
+    required String kind,
+    required String id,
+    required int revision,
+  }) => RustLib.instance.api.crateApiRuntimeHandleDuplicatePrompt(
+    that: this,
+    kind: kind,
+    id: id,
+    revision: revision,
+  );
 
   Future<MemoryRecord?> getMemory({
     required String space,
@@ -3723,6 +4748,9 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
         space: space,
       );
 
+  Future<PromptCatalog> promptCatalog() =>
+      RustLib.instance.api.crateApiRuntimeHandlePromptCatalog(that: this);
+
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query}) =>
       RustLib.instance.api.crateApiRuntimeHandleQueryKnowledge(
         that: this,
@@ -3738,6 +4766,23 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     space: space,
     old: old,
     new_: new_,
+  );
+
+  Future<void> resetDefaultCharacter({required int revision}) =>
+      RustLib.instance.api.crateApiRuntimeHandleResetDefaultCharacter(
+        that: this,
+        revision: revision,
+      );
+
+  Future<String> saveCharacter({
+    String? id,
+    int? revision,
+    required CharacterDraft draft,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSaveCharacter(
+    that: this,
+    id: id,
+    revision: revision,
+    draft: draft,
   );
 
   Future<String> saveKnowledgeSpace({String? id, required String name}) =>
@@ -3776,6 +4821,28 @@ class RuntimeHandleImpl extends RustOpaque implements RuntimeHandle {
     that: this,
     space: space,
     value: value,
+  );
+
+  Future<String> savePromptGroup({
+    String? id,
+    int? revision,
+    required GroupDraft draft,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSavePromptGroup(
+    that: this,
+    id: id,
+    revision: revision,
+    draft: draft,
+  );
+
+  Future<String> savePromptTag({
+    String? id,
+    int? revision,
+    required TagDraft draft,
+  }) => RustLib.instance.api.crateApiRuntimeHandleSavePromptTag(
+    that: this,
+    id: id,
+    revision: revision,
+    draft: draft,
   );
 
   Future<void> selectKnowledgeSpace({required String id}) => RustLib

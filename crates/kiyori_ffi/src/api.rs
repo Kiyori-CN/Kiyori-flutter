@@ -38,6 +38,243 @@ impl From<runtime::CoreError> for BridgeError {
     }
 }
 
+pub struct PromptTool {
+    pub kind: String,
+    pub name: String,
+}
+impl From<kiyori_core::prompts::PromptTool> for PromptTool {
+    fn from(v: kiyori_core::prompts::PromptTool) -> Self {
+        Self {
+            kind: v.kind,
+            name: v.name,
+        }
+    }
+}
+impl From<PromptTool> for kiyori_core::prompts::PromptTool {
+    fn from(v: PromptTool) -> Self {
+        Self {
+            kind: v.kind,
+            name: v.name,
+        }
+    }
+}
+
+pub struct CharacterDraft {
+    pub name: String,
+    pub description: String,
+    pub setting: String,
+    pub opening: String,
+    pub chat: String,
+    pub voice: String,
+    pub custom: String,
+    pub marks: String,
+    pub tag_ids: Vec<String>,
+    pub model_config: Option<String>,
+    pub model_name: Option<String>,
+    pub memory_space: Option<String>,
+    pub tools_enabled: bool,
+    pub tools: Vec<PromptTool>,
+}
+impl From<kiyori_core::prompts::CharacterDraft> for CharacterDraft {
+    fn from(v: kiyori_core::prompts::CharacterDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            setting: v.setting,
+            opening: v.opening,
+            chat: v.chat,
+            voice: v.voice,
+            custom: v.custom,
+            marks: v.marks,
+            tag_ids: v.tag_ids,
+            model_config: v.model_config,
+            model_name: v.model_name,
+            memory_space: v.memory_space,
+            tools_enabled: v.tools_enabled,
+            tools: v.tools.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+impl From<CharacterDraft> for kiyori_core::prompts::CharacterDraft {
+    fn from(v: CharacterDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            setting: v.setting,
+            opening: v.opening,
+            chat: v.chat,
+            voice: v.voice,
+            custom: v.custom,
+            marks: v.marks,
+            tag_ids: v.tag_ids,
+            model_config: v.model_config,
+            model_name: v.model_name,
+            memory_space: v.memory_space,
+            tools_enabled: v.tools_enabled,
+            tools: v.tools.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+pub struct PromptCharacter {
+    pub id: String,
+    pub revision: u32,
+    pub updated_at: i64,
+    pub draft: CharacterDraft,
+}
+impl From<kiyori_core::prompts::PromptCharacter> for PromptCharacter {
+    fn from(v: kiyori_core::prompts::PromptCharacter) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+impl From<PromptCharacter> for kiyori_core::prompts::PromptCharacter {
+    fn from(v: PromptCharacter) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+
+pub struct TagDraft {
+    pub name: String,
+    pub description: String,
+    pub content: String,
+}
+impl From<kiyori_core::prompts::TagDraft> for TagDraft {
+    fn from(v: kiyori_core::prompts::TagDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            content: v.content,
+        }
+    }
+}
+impl From<TagDraft> for kiyori_core::prompts::TagDraft {
+    fn from(v: TagDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            content: v.content,
+        }
+    }
+}
+
+pub struct PromptTag {
+    pub id: String,
+    pub revision: u32,
+    pub updated_at: i64,
+    pub draft: TagDraft,
+}
+impl From<kiyori_core::prompts::PromptTag> for PromptTag {
+    fn from(v: kiyori_core::prompts::PromptTag) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+impl From<PromptTag> for kiyori_core::prompts::PromptTag {
+    fn from(v: PromptTag) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+
+pub struct GroupDraft {
+    pub name: String,
+    pub description: String,
+    pub members: Vec<String>,
+}
+impl From<kiyori_core::prompts::GroupDraft> for GroupDraft {
+    fn from(v: kiyori_core::prompts::GroupDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            members: v.members,
+        }
+    }
+}
+impl From<GroupDraft> for kiyori_core::prompts::GroupDraft {
+    fn from(v: GroupDraft) -> Self {
+        Self {
+            name: v.name,
+            description: v.description,
+            members: v.members,
+        }
+    }
+}
+
+pub struct PromptGroup {
+    pub id: String,
+    pub revision: u32,
+    pub updated_at: i64,
+    pub draft: GroupDraft,
+}
+impl From<kiyori_core::prompts::PromptGroup> for PromptGroup {
+    fn from(v: kiyori_core::prompts::PromptGroup) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+impl From<PromptGroup> for kiyori_core::prompts::PromptGroup {
+    fn from(v: PromptGroup) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            draft: v.draft.into(),
+        }
+    }
+}
+
+pub struct PromptCatalog {
+    pub characters: Vec<PromptCharacter>,
+    pub tags: Vec<PromptTag>,
+    pub groups: Vec<PromptGroup>,
+    pub active_character: Option<String>,
+    pub active_group: Option<String>,
+}
+impl From<kiyori_core::prompts::PromptCatalog> for PromptCatalog {
+    fn from(v: kiyori_core::prompts::PromptCatalog) -> Self {
+        Self {
+            characters: v.characters.into_iter().map(Into::into).collect(),
+            tags: v.tags.into_iter().map(Into::into).collect(),
+            groups: v.groups.into_iter().map(Into::into).collect(),
+            active_character: v.active_character,
+            active_group: v.active_group,
+        }
+    }
+}
+impl From<PromptCatalog> for kiyori_core::prompts::PromptCatalog {
+    fn from(v: PromptCatalog) -> Self {
+        Self {
+            characters: v.characters.into_iter().map(Into::into).collect(),
+            tags: v.tags.into_iter().map(Into::into).collect(),
+            groups: v.groups.into_iter().map(Into::into).collect(),
+            active_character: v.active_character,
+            active_group: v.active_group,
+        }
+    }
+}
+
 pub struct RuntimeInfo {
     pub core_version: String,
     pub host_platform: String,
@@ -362,6 +599,58 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn prompt_catalog(&self) -> Result<PromptCatalog, BridgeError> {
+        Ok(self.inner.prompt_catalog()?.into())
+    }
+    pub fn save_character(
+        &self,
+        id: Option<String>,
+        revision: Option<u32>,
+        draft: CharacterDraft,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.save_character(id, revision, draft.into())?)
+    }
+    pub fn save_prompt_tag(
+        &self,
+        id: Option<String>,
+        revision: Option<u32>,
+        draft: TagDraft,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.save_prompt_tag(id, revision, draft.into())?)
+    }
+    pub fn save_prompt_group(
+        &self,
+        id: Option<String>,
+        revision: Option<u32>,
+        draft: GroupDraft,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.save_prompt_group(id, revision, draft.into())?)
+    }
+    pub fn activate_prompt(&self, kind: String, id: String) -> Result<(), BridgeError> {
+        Ok(self.inner.activate_prompt(kind, id)?)
+    }
+    pub fn delete_prompt(
+        &self,
+        kind: String,
+        id: String,
+        revision: u32,
+    ) -> Result<(), BridgeError> {
+        Ok(self.inner.delete_prompt(kind, id, revision)?)
+    }
+    pub fn duplicate_prompt(
+        &self,
+        kind: String,
+        id: String,
+        revision: u32,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.duplicate_prompt(kind, id, revision)?)
+    }
+    pub fn reset_default_character(&self, revision: u32) -> Result<(), BridgeError> {
+        Ok(self.inner.reset_default_character(revision)?)
+    }
+    pub fn compose_character_prompt(&self, id: String, voice: bool) -> Result<String, BridgeError> {
+        Ok(self.inner.compose_character_prompt(id, voice)?)
+    }
     pub fn memory_search_settings(
         &self,
         space: String,

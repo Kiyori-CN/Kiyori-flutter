@@ -37,12 +37,14 @@ class GroupPresentation {
   const GroupPresentation({
     required this.id,
     required this.name,
+    this.revision = 0,
     this.description = '',
     this.members = const [],
     this.updatedAt = 0,
     this.avatarAsset,
   });
   final String id, name, description;
+  final int revision;
   final List<GroupMemberPresentation> members;
   final int updatedAt;
   final String? avatarAsset;
@@ -58,6 +60,7 @@ class CharacterPresentation {
   const CharacterPresentation({
     required this.id,
     required this.name,
+    this.revision = 0,
     this.description = '',
     this.setting = '',
     this.opening = '',
@@ -102,6 +105,7 @@ class CharacterPresentation {
       custom,
       marks;
   final List<String> tagIds;
+  final int revision;
   final bool isDefault, fixedModel, fixedMemory;
   final String? avatarAsset, modelConfigId, modelName, memoryId;
   final int updatedAt;
@@ -112,10 +116,12 @@ class PromptTagPresentation {
   const PromptTagPresentation({
     required this.id,
     required this.name,
+    this.revision = 0,
     this.description = '',
     this.content = '',
   });
   final String id, name, description, content;
+  final int revision;
 }
 
 class PromptOption {

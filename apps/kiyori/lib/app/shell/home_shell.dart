@@ -14,6 +14,7 @@ import '../../features/toolbox/presentation/toolbox_presentation.dart';
 import '../../features/workflows/presentation/workflow_controller.dart';
 import '../../features/workflows/presentation/workflow_page.dart';
 import '../../features/knowledge/presentation/knowledge_controller.dart';
+import '../../features/assistant/presentation/prompts/prompts_controller.dart';
 import '../../features/knowledge/presentation/knowledge_page.dart';
 import 'settings_navigation.dart';
 import 'bottom_navigation.dart';
@@ -21,7 +22,8 @@ import 'home_page.dart';
 import 'minus_one_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({this.workflows, this.knowledge, super.key});
+  const HomeShell({this.workflows, this.knowledge, this.prompts, super.key});
+  final PromptsController? prompts;
   final WorkflowController? workflows;
   final KnowledgeController? knowledge;
   @override
@@ -30,7 +32,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   SettingsNavigation get navigation =>
-      SettingsNavigation(Navigator.of(context));
+      SettingsNavigation(Navigator.of(context), prompts: widget.prompts);
 
   final pager = PageController(initialPage: 1);
   int settled = 1;

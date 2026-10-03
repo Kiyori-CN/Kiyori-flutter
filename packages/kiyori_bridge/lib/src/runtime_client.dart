@@ -5,6 +5,23 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<api.PromptCatalog> promptCatalog();
+  Future<String> saveCharacter(
+    String? id,
+    int? revision,
+    api.CharacterDraft draft,
+  );
+  Future<String> savePromptTag(String? id, int? revision, api.TagDraft draft);
+  Future<String> savePromptGroup(
+    String? id,
+    int? revision,
+    api.GroupDraft draft,
+  );
+  Future<void> activatePrompt(String kind, String id);
+  Future<void> deletePrompt(String kind, String id, int revision);
+  Future<String> duplicatePrompt(String kind, String id, int revision);
+  Future<void> resetDefaultCharacter(int revision);
+  Future<String> composeCharacterPrompt(String id, bool voice);
   Future<api.MemorySearchSettings> memorySearchSettings(String space);
   Future<void> saveMemorySearchSettings(
     String space,
@@ -70,6 +87,68 @@ abstract interface class DiagnosticRun {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  @override
+  Future<api.PromptCatalog> promptCatalog() {
+    _ensureOpen();
+    return _handle.promptCatalog();
+  }
+
+  @override
+  Future<String> saveCharacter(
+    String? id,
+    int? revision,
+    api.CharacterDraft draft,
+  ) {
+    _ensureOpen();
+    return _handle.saveCharacter(id: id, revision: revision, draft: draft);
+  }
+
+  @override
+  Future<String> savePromptTag(String? id, int? revision, api.TagDraft draft) {
+    _ensureOpen();
+    return _handle.savePromptTag(id: id, revision: revision, draft: draft);
+  }
+
+  @override
+  Future<String> savePromptGroup(
+    String? id,
+    int? revision,
+    api.GroupDraft draft,
+  ) {
+    _ensureOpen();
+    return _handle.savePromptGroup(id: id, revision: revision, draft: draft);
+  }
+
+  @override
+  Future<void> activatePrompt(String kind, String id) {
+    _ensureOpen();
+    return _handle.activatePrompt(kind: kind, id: id);
+  }
+
+  @override
+  Future<void> deletePrompt(String kind, String id, int revision) {
+    _ensureOpen();
+    return _handle.deletePrompt(kind: kind, id: id, revision: revision);
+  }
+
+  @override
+  Future<String> duplicatePrompt(String kind, String id, int revision) {
+    _ensureOpen();
+    return _handle.duplicatePrompt(kind: kind, id: id, revision: revision);
+  }
+
+  @override
+  Future<void> resetDefaultCharacter(int revision) {
+    _ensureOpen();
+    return _handle.resetDefaultCharacter(revision: revision);
+  }
+
+  @override
+  Future<String> composeCharacterPrompt(String id, bool voice) {
+    _ensureOpen();
+    return _handle.composeCharacterPrompt(id: id, voice: voice);
+  }
+
   @override
   Future<api.MemorySearchSettings> memorySearchSettings(String space) {
     _ensureOpen();

@@ -562,6 +562,8 @@ impl AppStore {
                 [&id],
             )
             .map_err(storage)?;
+        // 清理绑定会改变角色事实，同时推进revision，拒绝旧编辑器回写失效空间。
+        transaction.execute("UPDATE prompt_characters SET revision=revision+1,updated_at=max(?1,updated_at+1) WHERE memory_space=?2",params![now_ms(),id]).map_err(storage)?;
         let deleted = transaction
             .execute("DELETE FROM knowledge_spaces WHERE id=?1", [id])
             .map_err(storage)?;

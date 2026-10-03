@@ -226,6 +226,7 @@ mod tests {
             .unwrap();
         store.create("工作流".into(), "保留".into()).unwrap();
         // 构造精确schema2：关系表尚不存在，正文和工作流已经有内容。
+        crate::prompts::remove_schema_five_for_fixture(&store.connection.lock().unwrap());
         store
             .connection
             .lock()

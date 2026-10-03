@@ -9,10 +9,12 @@ class CharacterCardEditor extends StatefulWidget {
   const CharacterCardEditor({
     required this.card,
     required this.session,
+    this.onSave,
     super.key,
   });
   final CharacterPresentation card;
   final PromptDialogState session;
+  final Future<void> Function(CharacterPresentation)? onSave;
   @override
   State<CharacterCardEditor> createState() => _CharacterCardEditorState();
 }
@@ -372,7 +374,13 @@ class _CharacterCardEditorState extends State<CharacterCardEditor> {
                 color: Theme.of(context).colorScheme.error,
               ),
             ),
+          if (widget.session.error != null)
+            Text(
+              widget.session.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           PromptActions(
+            label: widget.session.saving ? '保存中…' : '保存',
             onConfirm: () {
               final external = CharacterToolKind.values
                   .where((e) => e != CharacterToolKind.builtin)
@@ -387,6 +395,36 @@ class _CharacterCardEditorState extends State<CharacterCardEditor> {
                             false)
                     ? '当前已允许包 / Skill / MCP，但未允许 use_package，请先在内建工具中开启 use_package'
                     : null,
+              );
+              if (validationError != null || widget.onSave == null) return;
+              if (fields[0].text.trim().isEmpty ||
+                  (fixedModel && (modelId == null || modelName == null)) ||
+                  (fixedMemory && memoryId == null)) {
+                setState(() => validationError = '请填写名称并完成启用的绑定选择。');
+                return;
+              }
+              widget.session.submit(
+                () => widget.onSave!(
+                  CharacterPresentation(
+                    id: widget.card.id,
+                    revision: widget.card.revision,
+                    name: fields[0].text,
+                    description: fields[1].text,
+                    setting: fields[2].text,
+                    opening: fields[3].text,
+                    chat: fields[4].text,
+                    voice: fields[5].text,
+                    custom: fields[6].text,
+                    marks: fields[7].text,
+                    tagIds: tags.toList(),
+                    fixedModel: fixedModel,
+                    modelConfigId: modelId,
+                    modelName: modelName,
+                    fixedMemory: fixedMemory,
+                    memoryId: memoryId,
+                    toolAccess: access,
+                  ),
+                ),
               );
             },
           ),

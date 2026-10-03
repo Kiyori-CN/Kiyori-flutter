@@ -3,9 +3,15 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'tag_market_presentation.dart';
 import 'tag_market_presets.dart';
+import 'prompt_presentation.dart';
 
 class TagMarketPage extends StatefulWidget {
-  const TagMarketPage({this.presets = tagMarketPresets, super.key});
+  const TagMarketPage({
+    this.presets = tagMarketPresets,
+    this.onSave,
+    super.key,
+  });
+  final Future<void> Function(PromptTagPresentation)? onSave;
   final List<TagMarketPreset> presets;
   @override
   State<TagMarketPage> createState() => _TagMarketPageState();
@@ -39,6 +45,7 @@ class _TagMarketPageState extends State<TagMarketPage> {
         valueListenable: catalog,
         builder: (_, values, _) => SettingsTheme(
           child: _AddMarketTag(
+            onSave: widget.onSave,
             preset:
                 values.where((item) => item.id == preset.id).firstOrNull ??
                 preset,
@@ -228,13 +235,41 @@ class _PresetCard extends StatelessWidget {
 }
 
 class _AddMarketTag extends StatefulWidget {
-  const _AddMarketTag({required this.preset});
+  const _AddMarketTag({required this.preset, this.onSave});
+  final Future<void> Function(PromptTagPresentation)? onSave;
   final TagMarketPreset preset;
   @override
   State<_AddMarketTag> createState() => _AddMarketTagState();
 }
 
 class _AddMarketTagState extends State<_AddMarketTag> {
+  bool saving = false;
+  String? error;
+  Future<void> save() async {
+    if (saving || widget.onSave == null) return;
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      await widget.onSave!(
+        PromptTagPresentation(
+          id: '',
+          name: name.text,
+          description: widget.preset.description,
+          content: widget.preset.content,
+        ),
+      );
+      if (!mounted) return;
+      final route = ModalRoute.of(context);
+      if (route != null && route.isActive) route.navigator?.removeRoute(route);
+    } catch (_) {
+      if (mounted) setState(() => error = '添加失败，请检查名称后重试。');
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   late final name = TextEditingController(text: widget.preset.name);
   @override
   void dispose() {
@@ -243,30 +278,43 @@ class _AddMarketTagState extends State<_AddMarketTag> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('添加标签'),
-    scrollable: true,
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text("将 '${widget.preset.name}' 添加到你的标签库中。"),
-        const SizedBox(height: 16),
-        TextField(
-          controller: name,
-          maxLines: 1,
-          decoration: InputDecoration(
-            labelText: '标签名称',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-          ),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !saving,
+    child: AbsorbPointer(
+      absorbing: saving,
+      child: AlertDialog(
+        title: const Text('添加标签'),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("将 '${widget.preset.name}' 添加到你的标签库中。"),
+            const SizedBox(height: 16),
+            TextField(
+              controller: name,
+              maxLines: 1,
+              decoration: InputDecoration(
+                labelText: '标签名称',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+            if (error != null)
+              Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
         ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('取消'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(onPressed: save, child: Text(saving ? '添加中…' : '添加')),
+        ],
       ),
-      const FilledButton(onPressed: emptyAction, child: Text('添加')),
-    ],
+    ),
   );
 }

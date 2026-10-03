@@ -102,6 +102,12 @@ Jieba Rust词典与旧Java词典不保证所有分词逐字一致；典型中文
 数据与权限遵守[存储设计](data-and-security.md)，所有工具共用一个执行与授权边界；
 浏览器、下载、文件、记忆不因 AI 再建立平行服务。供应商请求需要独立凭据与本任务授权边界。
 
+角色业务依据CharacterCardManager、PromptTagManager、CharacterGroupCardManager和
+ActivePromptManager的CRUD/复制/组合调用链，复用Runtime schema5。角色八字段、标签、
+群组有序成员和活跃目标真实持久，revision冲突拒绝覆盖；市场添加保存完整预设。
+工具偏好不授予执行，模型目录尚未接入，记忆绑定验证真实空间。导入导出、头像/主题/
+形象/表情克隆、会话关联更新和人设生成仍未实现；细节见[角色契约](character-prompts.md)。
+
 ## 验收证据入口
 
 `apps/kiyori/test/ai_drawer_test.dart` 覆盖尺寸/明暗/大字、返回/遮罩/同项、工具箱/设置来源、

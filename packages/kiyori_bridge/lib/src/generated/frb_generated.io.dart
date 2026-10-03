@@ -75,7 +75,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_box_autoadd_bool(dynamic raw);
 
   @protected
+  CharacterDraft dco_decode_box_autoadd_character_draft(dynamic raw);
+
+  @protected
   DiarySummary dco_decode_box_autoadd_diary_summary(dynamic raw);
+
+  @protected
+  GroupDraft dco_decode_box_autoadd_group_draft(dynamic raw);
 
   @protected
   MemoryDraft dco_decode_box_autoadd_memory_draft(dynamic raw);
@@ -95,13 +101,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TagDraft dco_decode_box_autoadd_tag_draft(dynamic raw);
+
+  @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
   BridgeError dco_decode_bridge_error(dynamic raw);
 
   @protected
   Capability dco_decode_capability(dynamic raw);
+
+  @protected
+  CharacterDraft dco_decode_character_draft(dynamic raw);
 
   @protected
   DiaryDocument dco_decode_diary_document(dynamic raw);
@@ -120,6 +135,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   GraphNode dco_decode_graph_node(dynamic raw);
+
+  @protected
+  GroupDraft dco_decode_group_draft(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -161,6 +179,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<PromptCharacter> dco_decode_list_prompt_character(dynamic raw);
+
+  @protected
+  List<PromptGroup> dco_decode_list_prompt_group(dynamic raw);
+
+  @protected
+  List<PromptTag> dco_decode_list_prompt_tag(dynamic raw);
+
+  @protected
+  List<PromptTool> dco_decode_list_prompt_tool(dynamic raw);
 
   @protected
   List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw);
@@ -208,7 +238,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskEvent? dco_decode_opt_box_autoadd_task_event(dynamic raw);
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  PromptCatalog dco_decode_prompt_catalog(dynamic raw);
+
+  @protected
+  PromptCharacter dco_decode_prompt_character(dynamic raw);
+
+  @protected
+  PromptGroup dco_decode_prompt_group(dynamic raw);
+
+  @protected
+  PromptTag dco_decode_prompt_tag(dynamic raw);
+
+  @protected
+  PromptTool dco_decode_prompt_tool(dynamic raw);
+
+  @protected
   RuntimeInfo dco_decode_runtime_info(dynamic raw);
+
+  @protected
+  TagDraft dco_decode_tag_draft(dynamic raw);
 
   @protected
   TaskEvent dco_decode_task_event(dynamic raw);
@@ -277,9 +328,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
 
   @protected
+  CharacterDraft sse_decode_box_autoadd_character_draft(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DiarySummary sse_decode_box_autoadd_diary_summary(
     SseDeserializer deserializer,
   );
+
+  @protected
+  GroupDraft sse_decode_box_autoadd_group_draft(SseDeserializer deserializer);
 
   @protected
   MemoryDraft sse_decode_box_autoadd_memory_draft(SseDeserializer deserializer);
@@ -303,13 +362,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TagDraft sse_decode_box_autoadd_tag_draft(SseDeserializer deserializer);
+
+  @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
   BridgeError sse_decode_bridge_error(SseDeserializer deserializer);
 
   @protected
   Capability sse_decode_capability(SseDeserializer deserializer);
+
+  @protected
+  CharacterDraft sse_decode_character_draft(SseDeserializer deserializer);
 
   @protected
   DiaryDocument sse_decode_diary_document(SseDeserializer deserializer);
@@ -328,6 +396,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   GraphNode sse_decode_graph_node(SseDeserializer deserializer);
+
+  @protected
+  GroupDraft sse_decode_group_draft(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -373,6 +444,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<PromptCharacter> sse_decode_list_prompt_character(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<PromptGroup> sse_decode_list_prompt_group(SseDeserializer deserializer);
+
+  @protected
+  List<PromptTag> sse_decode_list_prompt_tag(SseDeserializer deserializer);
+
+  @protected
+  List<PromptTool> sse_decode_list_prompt_tool(SseDeserializer deserializer);
 
   @protected
   List<WorkflowRecord> sse_decode_list_workflow_record(
@@ -434,7 +519,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  PromptCatalog sse_decode_prompt_catalog(SseDeserializer deserializer);
+
+  @protected
+  PromptCharacter sse_decode_prompt_character(SseDeserializer deserializer);
+
+  @protected
+  PromptGroup sse_decode_prompt_group(SseDeserializer deserializer);
+
+  @protected
+  PromptTag sse_decode_prompt_tag(SseDeserializer deserializer);
+
+  @protected
+  PromptTool sse_decode_prompt_tool(SseDeserializer deserializer);
+
+  @protected
   RuntimeInfo sse_decode_runtime_info(SseDeserializer deserializer);
+
+  @protected
+  TagDraft sse_decode_tag_draft(SseDeserializer deserializer);
 
   @protected
   TaskEvent sse_decode_task_event(SseDeserializer deserializer);
@@ -509,8 +615,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_character_draft(
+    CharacterDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_diary_summary(
     DiarySummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_group_draft(
+    GroupDraft self,
     SseSerializer serializer,
   );
 
@@ -545,16 +663,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_tag_draft(
+    TagDraft self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
     SseSerializer serializer,
   );
 
   @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bridge_error(BridgeError self, SseSerializer serializer);
 
   @protected
   void sse_encode_capability(Capability self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_character_draft(
+    CharacterDraft self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_diary_document(DiaryDocument self, SseSerializer serializer);
@@ -573,6 +706,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_graph_node(GraphNode self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_group_draft(GroupDraft self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -640,6 +776,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prompt_character(
+    List<PromptCharacter> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prompt_group(
+    List<PromptGroup> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prompt_tag(
+    List<PromptTag> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prompt_tool(
+    List<PromptTool> self,
     SseSerializer serializer,
   );
 
@@ -713,7 +873,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_prompt_catalog(PromptCatalog self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_prompt_character(
+    PromptCharacter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_prompt_group(PromptGroup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_prompt_tag(PromptTag self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_prompt_tool(PromptTool self, SseSerializer serializer);
+
+  @protected
   void sse_encode_runtime_info(RuntimeInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_tag_draft(TagDraft self, SseSerializer serializer);
 
   @protected
   void sse_encode_task_event(TaskEvent self, SseSerializer serializer);

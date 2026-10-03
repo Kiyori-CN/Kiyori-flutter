@@ -6,6 +6,89 @@ import 'package:test/test.dart';
 
 void main() {
   test(
+    'prompt CRUD revisions composition and cascades survive FFI reopen',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'kiyori-prompts-ffi-',
+      );
+      final client = await NativeRuntimeClient.open(
+        dataDirectory: directory.path,
+      );
+      try {
+        final tag = await client.savePromptTag(
+          null,
+          null,
+          const TagDraft(name: '标签', description: '描述', content: '标签正文'),
+        );
+        final draft = CharacterDraft(
+          name: '角色',
+          description: '描述',
+          setting: '设定',
+          opening: '开场',
+          chat: '聊天',
+          voice: '语音',
+          custom: '附加',
+          marks: '私人备注',
+          tagIds: [tag],
+          toolsEnabled: true,
+          tools: const [PromptTool(kind: 'builtin', name: 'use_package')],
+          memorySpace: 'default',
+        );
+        final id = await client.saveCharacter(null, null, draft);
+        final group = await client.savePromptGroup(
+          null,
+          null,
+          GroupDraft(name: '群组', description: '群描述', members: [id, id]),
+        );
+        expect((await client.promptCatalog()).activeGroup, group);
+        expect(
+          await client.composeCharacterPrompt(id, false),
+          '设定\n\n聊天\n\n标签正文\n\n附加',
+        );
+        await client.activatePrompt('character', id);
+        await client.deletePrompt('tag', tag, 1);
+        final catalog = await client.promptCatalog();
+        final card = catalog.characters.singleWhere((c) => c.id == id);
+        expect(card.revision, 2);
+        expect(card.draft.tagIds, isEmpty);
+        await expectLater(
+          client.saveCharacter(id, 1, draft),
+          throwsA(isA<BridgeError>()),
+        );
+        final copy = await client.duplicatePrompt('character', id, 2);
+        expect(copy, isNot(id));
+        await client.close();
+        final reopened = await NativeRuntimeClient.open(
+          dataDirectory: directory.path,
+        );
+        try {
+          expect((await reopened.promptCatalog()).activeCharacter, id);
+          await reopened.deletePrompt('character', id, 2);
+          final after = await reopened.promptCatalog();
+          expect(after.activeCharacter, 'default_character');
+          expect(after.groups.single.draft.members, isEmpty);
+          expect(after.groups.single.revision, 2);
+          await reopened.resetDefaultCharacter(1);
+        } finally {
+          await reopened.close();
+        }
+        expect(
+          () => client.promptCatalog(),
+          throwsA(
+            isA<BridgeError>().having(
+              (error) => error.code,
+              'code',
+              ErrorCode.runtimeClosed,
+            ),
+          ),
+        );
+      } finally {
+        await client.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'search preferences and real ranking cross FFI and survive reopen',
     () async {
       final directory = await Directory.systemTemp.createTemp(

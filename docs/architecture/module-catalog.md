@@ -10,6 +10,8 @@ core/storage拥有SQLite连接和统一迁移，runtime拥有关闭边界；core
 分别实现定义目录与空间/记忆事务，FFI只映射DTO。不得为每个领域打开第二数据库。
 core/diary从正文推导阶段，core/graph管理关系，core/memory_search拥有检索偏好与本地评分；
 三者均复用knowledge空间与storage连接，坐标和临时输入仍属于Dart投影。
+core/prompts拥有角色八字段、标签、群组有序成员和活跃选择，schema5复用storage迁移；
+引用验证、revision冲突、级联和提示词组合在Rust实现，FFI提供类型化DTO/命令。
 feature/workflows/presentation负责不可变目录、读取代次、提交互斥和页面/弹层。
 app通过path_provider取得应用支持目录，并把同一runtime的client注入工作流controller；
 HomeShell消费该投影更新抽屉计数与内部导航。定义CRUD不包含节点、执行器或调度器。
@@ -74,7 +76,8 @@ assistant/presentation/models 目前投影11功能的模型分配卡片与配置
 assistant/presentation/prompts 包含角色/标签目录快照、中文默认角色、编辑与嵌套绑定弹层。
 复用 models 的配置摘要，不持有角色、标签、群组或活跃目标的业务存储；弹层仅有局部
 草稿与自己的路由释放责任。group_card_tile/editor 投影群组列表、成员下拉与编辑草稿；
-群组无独立模型/记忆/工具配置，成员引用角色 ID。真实 CRUD 仍待后续领域接入。
+群组无独立模型/记忆/工具配置，成员引用角色ID。PromptsController复用app的Runtime连接，
+投影真实CRUD、复制、激活和市场添加；编辑器保存中隔离返回，失败保留草稿。
 assistant/presentation/permissions 投影工具目录与授权草稿，允许/禁止例外共用一个映射；
 不建立权限裁决器。assistant/presentation/profile 包含资料编辑、语法颜色与静态 Markdown
 预览；AST 仅随正文变化解析，不加载外部媒体，不替代未来共享流式聊天 renderer。

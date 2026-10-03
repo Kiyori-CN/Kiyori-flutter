@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_bridge/kiyori_bridge.dart' show BridgeError;
 
 import 'prompt_presentation.dart';
 
@@ -22,6 +23,36 @@ class PromptDialog extends StatefulWidget {
 }
 
 class PromptDialogState extends State<PromptDialog> {
+  bool saving = false;
+  String? error;
+
+  Future<void> submit(Future<void> Function()? operation) async {
+    if (operation == null || saving || !valid) return;
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      await operation();
+      if (!mounted || !valid) return;
+      final route = ModalRoute.of(context);
+      // 精确移除所属路由，迟到的保存不能 pop 新页面。
+      if (route != null && route.isActive) route.navigator?.removeRoute(route);
+    } catch (failure) {
+      if (valid) {
+        setState(() {
+          error = failure is BridgeError
+              ? (failure.message.contains('reload')
+                    ? '内容已变化或已删除，请重新打开后再保存。'
+                    : '保存失败，请检查名称、绑定和引用后重试。')
+              : '操作失败，请重试。';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   final _children = <ModalRoute<dynamic>>[];
   bool _invalidated = false;
   bool get valid =>
@@ -133,7 +164,13 @@ class PromptDialogState extends State<PromptDialog> {
 
   @override
   Widget build(BuildContext context) => SettingsTheme(
-    child: Builder(builder: (context) => widget.builder(context, this)),
+    child: PopScope(
+      canPop: !saving,
+      child: AbsorbPointer(
+        absorbing: saving,
+        child: Builder(builder: (context) => widget.builder(context, this)),
+      ),
+    ),
   );
 }
 

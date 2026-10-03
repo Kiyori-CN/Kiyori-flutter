@@ -2,7 +2,7 @@ use crate::runtime::{CoreError, ErrorCode};
 use rusqlite::Connection;
 use std::{path::Path, sync::Mutex};
 
-const SCHEMA_VERSION: i32 = 4;
+const SCHEMA_VERSION: i32 = 5;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -99,6 +99,44 @@ impl AppStore {
                  PRAGMA user_version = 4;",
                 )
                 .map_err(|_| error("Cannot migrate memory search preferences."))?;
+        }
+        if version < 5 {
+            transaction
+                .execute_batch(
+                    "CREATE TABLE prompt_characters (
+                  id TEXT PRIMARY KEY, revision INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+                  name TEXT NOT NULL, description TEXT NOT NULL, setting TEXT NOT NULL,
+                  opening TEXT NOT NULL, chat TEXT NOT NULL, voice TEXT NOT NULL,
+                  custom TEXT NOT NULL, marks TEXT NOT NULL,
+                  model_config TEXT, model_name TEXT,
+                  memory_space TEXT REFERENCES knowledge_spaces(id) ON DELETE SET NULL,
+                  tools_enabled INTEGER NOT NULL DEFAULT 0);
+                 CREATE TABLE prompt_tags (
+                  id TEXT PRIMARY KEY, revision INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+                  name TEXT NOT NULL, description TEXT NOT NULL, content TEXT NOT NULL);
+                 CREATE TABLE prompt_character_tags (
+                  character_id TEXT REFERENCES prompt_characters(id) ON DELETE CASCADE,
+                  tag_id TEXT REFERENCES prompt_tags(id) ON DELETE CASCADE,
+                  position INTEGER NOT NULL, PRIMARY KEY(character_id,tag_id));
+                 CREATE TABLE prompt_character_tools (
+                  character_id TEXT REFERENCES prompt_characters(id) ON DELETE CASCADE,
+                  kind TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY(character_id,kind,name));
+                 CREATE TABLE prompt_groups (
+                  id TEXT PRIMARY KEY, revision INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+                  name TEXT NOT NULL, description TEXT NOT NULL);
+                 CREATE TABLE prompt_group_members (
+                  group_id TEXT REFERENCES prompt_groups(id) ON DELETE CASCADE,
+                  character_id TEXT REFERENCES prompt_characters(id) ON DELETE CASCADE,
+                  position INTEGER NOT NULL, PRIMARY KEY(group_id,position));
+                 CREATE TABLE prompt_active (
+                  id INTEGER PRIMARY KEY CHECK(id=1),
+                  character_id TEXT REFERENCES prompt_characters(id),
+                  group_id TEXT REFERENCES prompt_groups(id),
+                  CHECK((character_id IS NULL)<>(group_id IS NULL)));
+                 PRAGMA user_version=5;",
+                )
+                .map_err(|_| error("Cannot migrate prompt storage."))?;
+            crate::prompts::initialize(&transaction)?;
         }
         transaction
             .commit()

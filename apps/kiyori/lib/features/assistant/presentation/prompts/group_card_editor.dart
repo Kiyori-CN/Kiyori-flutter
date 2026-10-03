@@ -8,10 +8,12 @@ class GroupCardEditor extends StatefulWidget {
   const GroupCardEditor({
     required this.group,
     required this.session,
+    this.onSave,
     super.key,
   });
   final GroupPresentation group;
   final PromptDialogState session;
+  final Future<void> Function(GroupPresentation)? onSave;
   @override
   State<GroupCardEditor> createState() => _GroupCardEditorState();
 }
@@ -260,7 +262,38 @@ class _GroupCardEditorState extends State<GroupCardEditor> {
         media.size.height - media.viewInsets.bottom < 650 ||
         media.textScaler.scale(1) > 1.3;
     return PromptFormDialog(
-      actions: const PromptActions(),
+      actions: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.session.error != null)
+            Text(
+              widget.session.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          PromptActions(
+            label: widget.session.saving ? '保存中…' : '保存',
+            onConfirm: () => widget.session.submit(
+              widget.onSave == null
+                  ? null
+                  : () => widget.onSave!(
+                      GroupPresentation(
+                        id: widget.group.id,
+                        revision: widget.group.revision,
+                        name: name.text,
+                        description: description.text,
+                        members: [
+                          for (final entry in members.indexed)
+                            GroupMemberPresentation(
+                              entry.$2.id,
+                              orderIndex: entry.$1,
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

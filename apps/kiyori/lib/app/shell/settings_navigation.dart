@@ -27,6 +27,8 @@ import '../../features/settings/presentation/data_settings_page.dart';
 import '../../features/assistant/presentation/assistant_settings_page.dart';
 import '../../features/assistant/presentation/avatar_settings_page.dart';
 import '../../features/assistant/presentation/prompts/model_prompts_page.dart';
+import '../../features/assistant/presentation/prompts/persistent_prompts_page.dart';
+import '../../features/assistant/presentation/prompts/prompts_controller.dart';
 import '../../features/assistant/presentation/prompts/tag_market_page.dart';
 import '../../features/assistant/presentation/prompts/persona_generation_page.dart';
 import '../../features/assistant/presentation/history/chat_history_page.dart';
@@ -57,7 +59,8 @@ import '../../features/browser/presentation/adblock_settings_page.dart';
 
 /// 详情路由的装配层；只借用现有 Navigator，不持有目的地或业务状态。
 class SettingsNavigation {
-  SettingsNavigation(this.navigator);
+  SettingsNavigation(this.navigator, {this.prompts});
+  final PromptsController? prompts;
   final NavigatorState navigator;
 
   void openModels() => openPage(
@@ -79,10 +82,19 @@ class SettingsNavigation {
             openModels();
           } else if (section == AssistantSettingsSection.roles) {
             openPage(
-              ModelPromptsPage(
-                onOpenTagMarket: () => openPage(const TagMarketPage()),
-                onOpenPersona: () => openPage(const PersonaGenerationPage()),
-              ),
+              prompts == null
+                  ? ModelPromptsPage(
+                      onOpenTagMarket: () => openPage(const TagMarketPage()),
+                      onOpenPersona: () =>
+                          openPage(const PersonaGenerationPage()),
+                    )
+                  : PersistentPromptsPage(
+                      controller: prompts!,
+                      onOpenTagMarket: () =>
+                          openPage(TagMarketPage(onSave: prompts!.saveTag)),
+                      onOpenPersona: () =>
+                          openPage(const PersonaGenerationPage()),
+                    ),
             );
           } else if (section == AssistantSettingsSection.avatar) {
             openPage(const AvatarSettingsPage());
