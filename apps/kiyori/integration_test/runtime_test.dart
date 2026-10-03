@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -10,9 +11,122 @@ import 'package:path_provider/path_provider.dart';
 import 'package:kiyori_platform/src/windows_secret_store.dart';
 import 'package:kiyori/features/assistant/presentation/models/models_controller.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
+import 'package:kiyori/features/assistant/presentation/chat_controller.dart';
+import 'package:kiyori/features/assistant/presentation/chat_page.dart';
+import 'package:kiyori_ui/kiyori_ui.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'packaged chat UI sends two persisted turns with native credentials and restores history',
+    (tester) async {
+      // Integration binding默认不接管键盘；显式模拟文本通道，避免原生IME与enterText互相覆盖。
+      // 此用例证明打包后的UI/FFI/DPAPI链路，不把模拟输入称为物理键盘验收。
+      tester.testTextInput.register();
+      final support = await getApplicationSupportDirectory();
+      final directory = await support.createTemp('kiyori-integration-chat-');
+      var runtime = await NativeRuntimeClient.open(
+        dataDirectory: directory.path,
+      );
+      final store = WindowsSecretStore(Directory('${directory.path}/secrets'));
+      final models = ModelsController(() async => runtime, () async => store);
+      final chat = ChatController(() async => runtime, () async => store);
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final requests = <Map>[];
+      final authentications = <String?>[];
+      server.listen((request) async {
+        requests.add(
+          jsonDecode(await utf8.decoder.bind(request).join()) as Map,
+        );
+        authentications.add(request.headers.value('authorization'));
+        request.response.headers.contentType = ContentType(
+          'text',
+          'event-stream',
+        );
+        request.response.write(
+          'data: {"choices":[{"index":0,"delta":{"content":"DESKTOP_OK"},"finish_reason":null}]}\n\ndata: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+        );
+        await request.response.close();
+      });
+      try {
+        await models.load();
+        final base = models.catalog!.configs.single;
+        await models.save(
+          base,
+          ModelConfigDraft(
+            name: 'Desktop fixture',
+            provider: 'OPENAI_GENERIC',
+            protocol: 'chat',
+            endpoint: 'http://127.0.0.1:${server.port}',
+            models: ['desktop-model'],
+            options: base.draft.options,
+          ),
+          const ModelCredentials(),
+          const ModelCredentials(apiKey: 'desktop-fixture'),
+          replacement: 'desktop-model',
+        );
+        await chat.load();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(body: ChatPage(controller: chat)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 100 && chat.loading; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+        }
+        for (var turn = 1; turn <= 2; turn++) {
+          await tester.enterText(
+            find.byKey(const Key('chat-draft')),
+            'Synthetic turn $turn',
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(
+            find.byWidgetPredicate((w) => w is ShellAction && w.label == '发送'),
+          );
+          for (
+            var i = 0;
+            i < 200 &&
+                (chat.busy || chat.snapshot?.messages.length != turn * 2);
+            i++
+          ) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            await tester.pump();
+          }
+          expect(chat.snapshot!.messages.last.state, 'completed');
+          expect(chat.snapshot!.messages.last.content, 'DESKTOP_OK');
+          await tester.pumpAndSettle();
+        }
+        expect(requests.length, 2);
+        expect(authentications, [
+          'Bearer desktop-fixture',
+          'Bearer desktop-fixture',
+        ]);
+        expect(requests.last['model'], 'desktop-model');
+        expect((requests.last['messages'] as List).length, 4);
+        final id = chat.snapshot!.conversation.id;
+        await tester.pumpWidget(const SizedBox());
+        await chat.shutdown();
+        await runtime.close();
+        runtime = await NativeRuntimeClient.open(dataDirectory: directory.path);
+        expect((await runtime.conversation(id)).messages.length, 4);
+        expect((await runtime.conversationCatalog()).activeId, id);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await chat.shutdown();
+        chat.dispose();
+        models.dispose();
+        await runtime.close();
+        await server.close(force: true);
+        await directory.delete(recursive: true);
+        tester.testTextInput.unregister();
+      }
+    },
+    skip: !Platform.isWindows,
+  );
 
   testWidgets(
     'packaged model configuration uses native DPAPI and reopens the same reference',

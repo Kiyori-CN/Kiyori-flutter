@@ -74,7 +74,7 @@ pub fn prepare(
     for parameter in draft.options.parameters.iter().filter(|p| p.enabled) {
         parameters.insert(
             parameter.name.clone(),
-            if parameter.value_type == "string" {
+            if parameter.value_type == "text" {
                 Value::String(parameter.value.clone())
             } else {
                 serde_json::from_str(&parameter.value).map_err(|_| invalid())?

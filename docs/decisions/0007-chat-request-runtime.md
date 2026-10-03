@@ -19,7 +19,7 @@ rustls-no-provider/json；Rustls 0.23采用ring/std/tls12；webpki-root-certs 1.
 
 ## 请求契约
 
-仅显式测试动作触发请求。端点解析后要求HTTPS；本机loopback允许HTTP以支持本地模型
+仅显式测试或聊天发送动作触发请求。端点解析后要求HTTPS；本机loopback允许HTTP以支持本地模型
 和测试。拒绝userinfo/query/fragment；末尾单个#沿用旧完整端点标记。空path补
 /v1/chat/completions，末尾/v1补/chat/completions，其他path原样。
 Responses分别补/v1/responses或/responses，完整端点和末尾#不改路径。
@@ -49,7 +49,7 @@ FFI同时读取被拒绝，Dart订阅暂停停止继续拉取，关闭处理未�
 SystemInstructionCapabilityProbe用随机口令只放system检查实际遵循情况。新探测的提示词、
 参数转换、64000字符限制和结果判定全部归Rust，Dart不另行判断服务输出。
 新实现沿用此流程；聊天结束length不计完全通过。工具和启用媒体在探测实现前标未验证。
-模型综合测试在池轮换未接入前仍拒绝任取第一项；独立池可用性测试逐条探测，不消费轮换游标。
+模型综合测试现用已保存配置revision执行轮换；独立池可用性测试逐条探测，不消费轮换游标。
 
 ## 密钥池可用性
 
@@ -62,7 +62,11 @@ Dart按稳定ID、原key和enabled核对后逐项保存，暂停等待在途保�
 标记是测试时配置的观察，不是持续健康状态；变更端点/模型需手工清标记。安全payload升级至v3。
 旧ApiKeyProvider实用轮询：启用项有任一标记时只候选AVAILABLE，无可用项则失败；
 全未标记时候选全部启用项，池空才可回退单key。RANDOM字段未被该旧provider消费。
-此批仅实现可用性测试，上述真实轮换与游标持久化仍待后续共享模型执行切片。
+后续core/model_execution已实现此候选规则和持久轮询，模型综合测试每次请求取一次候选。
+RANDOM历史字段现按其明确语义执行安全随机候选选择；这是对旧provider未消费字段的补全，
+默认ROUND_ROBIN行为保持。随机模式不推进轮询游标；无新UI或新依赖。选择失败不发送请求。
+游标只记录候选序号，无明文凭据；编辑/重排候选后按当前候选数取模。配置删除级联游标，
+陈旧revision与非法输入拒绝；网络失败或取消消耗已选位置，不回滚为重复候选。
 
 ## Responses文本切片
 
@@ -83,7 +87,33 @@ Dart按稳定ID、原key和enabled核对后逐项保存，暂停等待在途保�
 KIYORI_OK/stop且仅一个终态；第二轮带前轮消息。只记录非敏感结果，凭据经stdin临时传入且未保存。
 这不证明聊天页发送/会话持久化或Android设备网络已完成。具体证据以当前状态为准。
 
-## 验证与回滚
+## 正式文字会话
+
+schema9的conversations、conversation_messages、conversation_runs与活跃选择复用同一SQLite。
+会话创建绑定当前单角色，群组自动执行明确拒绝；发送时解析角色当前组合提示词与固定模型，
+否则使用chat功能绑定。历史按position读取，包含已收到的取消/失败正文，不把空助手消息送入请求。
+配置参数包括text/json的类型在Rust转换。没有通用tokenizer时以UTF-8字节作为保守预算，
+同时限制1000消息、8 MiB请求/回复；超限明确失败，保留原文，不静默压缩。
+
+准备句柄持有安全引用短lease，启动时重新校验配置/角色/提示词；同事务推进密钥游标、
+保存用户消息/空助手/Run。网络后再释放的只有会话OS锁；安全lease在请求冻结后释放。
+文本与终态先保存再投影，空回复和incomplete为失败，取消保留已保存正文。
+每会话仅一个running；读取时仅在取得该会话OS锁后恢复遗留running为interrupted。
+切换界面不换执行归属，删除/编辑活跃会话由核心拒绝；关闭Runtime传播取消，worker保留
+同一store至终态结束。突然杀进程不保证最后未提交字节，重开不重发请求。
+
+编辑重发/重新生成使用同事务尾部替换，凭据/配置验证失败不先删除历史；普通消息编辑、
+删除、回滚和会话重命名/删除校验revision。当前不提供旧版回复变体/修订审计恢复。
+ChatPage保留CURSOR用户卡与AGENT输入几何，按消息ID懒加载；流中32ms合并局部正文通知，
+完成后解析Markdown，历史正文缓存不随每个token解析；上翻停止跟随，切会话重新定位尾部。
+Markdown不加载外部图片，代码块复制写系统剪贴板；工具/媒体/完整思考展示仍为非目标。
+
+chat_business_test覆盖真实DPAPI/FFI/SQLite/loopback与UI两轮、取消、失败、切换、重复发送、
+重开、消息编辑/删除、事务重发和短lease并发。chat_live_test默认跳过，只接受显式环境注入
+授权端点/模型/凭据，且不截图/打印凭据；2026-10-03指定服务两轮与重开通过，见当前状态。
+Windows组件测试不等于Android设备、Profile或Apple验收。schema9须恢复一致备份回滚。
+
+## 验证与回滚边界
 
 loopback真实HTTP验证请求路径/认证/参数、中文拆流、usage尾块、HTTP错误、重定向、
 错误内容不回显、断流、取消、超时、FFI释放和无订阅关闭。UI验证真实两次探测与结果卡；

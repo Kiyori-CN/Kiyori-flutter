@@ -5,6 +5,39 @@
 
 ## 当前任务：设置全树与AI真实业务连续开发
 
+当前收敛切片为“配置API并正常基本文字对话”，基线main/21044e8，承接未提交密钥轮换与
+会话核心。schema9、正式ChatPage发送/停止、历史、新建/切换/重命名/删除、基础消息菜单、
+角色与模型选择、安全短lease和多轮持久化已实现；本机验证通过，正在最终构建交付。
+core/conversations复用Runtime/SQLite，先保存后投影、OS锁恢复中断、不自动重试；重发先校验
+配置与凭据，再事务替换历史。流式局部32ms合并，上翻停止跟随。默认UI按旧CURSOR/AGENT。
+
+work/conversation-verify-v2完整通过：55文档/4脚本、Rust65及fmt/Clippy、319 Dart格式/analyze、
+Flutter529（11跳过，其中10捕获/1需凭据）、platform5、独立FFI18、Windows引擎4。
+随后补模型选择/消息编辑/重命名实际菜单回归，conversation-menu-final七项通过；
+最终七PNG在work/conversation-capture-final，明暗/长文/历史/320大字键盘/横屏/桌面均已审阅。
+角色条统计位置已修，弹窗controller随组件释放。最终analyze及文档核验见交付日志。
+Windows集成新增真实打包ChatPage/DPAPI/FFI/两轮/重开用例，conversation-windows-integration-v5五项通过。
+初轮原生IME与测试文本注入竞争、回调expect与pump冲突均为夹具问题，已按Flutter本机源码
+显式注册本用例模拟文本通道并保留断言；不声称物理键盘验收。失败日志保留。
+真实供应商conversation-live-v3通过：正式API密钥控件输入→
+Windows DPAPI保存→重开→ChatPage两轮发送→Rust/SQLite→重开，均KIYORI_OK/completed，4条消息恢复。
+只发两次合成请求；没有上传仓库或日志，凭据未写源码/日志/截图，临时加密测试数据已清理。
+最初夹具编码/入场动画及跨假时钟等待失败保留；控制器收尾提前解除busy已修。
+新发现请求参数text误作string处理已修且新增回归通过，重发先删后验证改为同事务并经真实FFI验证。
+
+最终Android ARM64 Debug（55.8s）与Windows普通产品入口Debug（13.8s）串行构建通过，
+日志conversation-android.log / conversation-windows.log。固定artifacts/ui-preview/20261003-223817：
+APK117724820字节，SHA256 B404E08AF9C5FE5810DCC5DBAAF08C6FBB6C80EBAEE229CE63247D5F7312ACD2；
+Windows84文件157829664字节；Rust DLL10179072字节，SHA256
+8FB32B2BE06734332D4E19384BA3DBE4A646A5F2D9971BCFF90713616F274D64。
+85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及Windows x64/Flutter DLL pin通过，
+证据work/chat-artifacts-20261003-223817。Windows原生EXE增量复用，最新Dart由kernel哈希确认。
+572文件/315人工Dart交付树审计无warning、大文件或相对导入环；授权凭据精确扫描无残留。
+本批按精确清单提交普通推送main，提交与远端状态以Git及固定包manifest的sourceCommit为准。
+设备安装/触摸/Profile/Android安全存储实机、Apple、其它供应商未验证；历史文件夹/置顶/
+批量导入导出、回复变体、修订审计、工具/媒体/复杂群组属于后续范围，不宣称整个AI阶段完成。
+当前恢复日记7bfbbfa8-2c43-4cbc-a19d-26c39690a2f8，独立本机记录，未改旧聊天Goal。
+
 上下文与凭据恢复批次已交付687fb21d527d4cbbe28faf309a7dd6b6c983cf3f，普通推送后0/0干净。
 密钥池文本导入导出本机实现与构建验证通过：Windows COM系统选择器、Android SAF单次URI读写，无明文缓存；
 1 MiB与严格UTF-8检查、取消/脱敏错误、全池导出、逐行追加和大池清空确认已经实现。
@@ -71,8 +104,16 @@ Windows引擎4。v1因忽略目录实测脚本被analyzer纳入、命名/依赖�
 F157ACAF1949B27BB81CDB8DF640ED181F021823A12755D1CF96E1CE2892EAB2；Windows84文件157328104字节。
 Rust DLL9859072字节，SHA256 E2AE5B29352F5261427495F8EA0F296679D3D7ADCDF4257422D241D6EEADC9F5。
 85副本hash、APK身份/ARM64/v2/ZIP16K/ELF、Windows x64/Flutter DLL pin通过；563文件审计无发现。
-实测脚本/日志及交付树无密钥模式残留。准备精确提交普通推送，随后继续轮换与会话。
+实测脚本/日志及交付树无密钥模式残留。已提交并普通推送21044e82190e96f10f25bf705e41c1963673dc2e，0/0干净。
 真实供应商核心链路已验证，但聊天页发送/会话持久化仍未实现，设备/Apple仍未验收。
+
+配置探测的密钥轮换已实现，正在完整验证。schema8新增独立游标且不推进配置revision，
+Rust按旧启用/可用性规则选择候选；已标记且无可用项明确失败，全未标记池空才允许单key回退。
+ROUND_ROBIN持久轮询，RANDOM补全旧字段未被消费的行为；默认行为和UI不变。
+首次SQLite u64读取编译失败已改为有界u32；rotation-rust-v3四项含重开、并发、删除/迁移通过。
+rotation-rust-all-v1的58项与Clippy通过（最后补的边界测试另定向通过）；桥生成v1通过。
+rotation-ui-v1四项与三PNG通过，真实Chat/Responses请求分别发送两个不同候选；未额外调用供应商。
+完整验证与双端构建尚未完成。正式会话的凭据读取短lease、会话持久化和聊天页发送仍未实现。
 
 模型配置基础批次已提交并普通推送029128357a2a38b360c404d03ffed67a215cb738。
 schema7扩展本机验收通过：跨进程凭据lease/崩溃pending恢复、密钥池稳定ID编辑与payload迁移、

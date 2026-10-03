@@ -53,8 +53,9 @@ schema6增加model_configs/model_names/function_models/model_secrets，不改写
 lease显式close或Drop释放，已关闭/跨库lease不能预留；native删除失败保留retired供重试。
 schema7提高协议版本，阻止v6二进制重新打开数据库；无法关闭已经运行的v6进程，升级前
 必须退出旧实例。目录canonicalize用于lease归属，错误文案不带明文、路径或native原异常。
-当前模型/池测试使用编辑会话的内存快照；未来从配置引用启动正式请求时须补执行期引用保护，
-不能把编辑会话探测当作该生命周期已经验证。
+模型/池测试使用编辑会话的内存快照；正式会话取得同一短lease，再解析当前配置及安全引用，
+native读取后由Rust复核配置/角色/提示词并冻结请求，网络开始前释放lease。读取编辑凭据和
+所有retired清理路径也取得同一锁，防止在native读取期间替换并删除引用。
 
 旧页面700ms去抖和切换前刷写保留；同配置串行提交，提交中输入进入下一次。
 失败保留草稿，离开可显式放弃；成功后目录刷新失败单独显示，不重复提交已成功命令。
@@ -63,9 +64,17 @@ Windows native buffer清零，Dart String无法保证内存清零，关闭编辑
 安全payload v3以id/key/name/enabled/availability保存池条目，编辑保留ID和启用状态并重置标记；读取v1按原顺序
 分配legacy索引ID，重复值仍为独立条目。非法/重复ID或损坏payload拒绝读取，错误不包含正文。
 v2无可用性字段时迁移为UNTESTED；v3只接受UNTESTED/AVAILABLE/UNAVAILABLE。
-池测试已经执行并逐结果保存，轮换尚未实现。v3不能由旧v1/v2二进制读取；本批不改SQLite schema，
+池测试已经执行并逐结果保存，配置探测轮换已由core/model_execution执行。v3不能由旧v1/v2二进制读取；池测试批次不改SQLite schema，
 但写入v3后不可仅回退代码。回滚须恢复升级前整套数据库与安全存储备份，或另行实现显式降级迁移；
 不得删除不可读凭据或假装恢复成功。升级仍须先退出旧进程。
+
+后续轮换切片将SQLite升至schema8，仅新增model_key_cursors(config_id,next_index)，FK级联删除。
+Immediate事务校验配置revision、读取游标、选择候选并提交下一索引，不推进配置revision；
+网络发生在事务之后，网络失败/取消不回退游标，不自动重试。编辑会话将已持有的v3快照传入
+Rust解析，限制1 MiB且不Debug/记录；正式会话从native引用获取凭据采用上述短lease保护。
+schema7二进制拒绝schema8，代码回退须保留新库并恢复
+升级前一致备份，不能手改user_version。迁移只加表，无现有内容重写。
+正式会话进一步升级至schema9，新增会话/消息/Run表；schema8旧程序同样不能重新打开新库。
 
 ## 独立上下文设置
 

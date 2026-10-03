@@ -21,6 +21,12 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+chat_business_test.dart使用真实DPAPI、生成FFI、SQLite和loopback验证界面发送/多轮/取消/
+错误/切换/重开、原子重发、消息修改与短凭据lease。带Capture可生成明暗/320大字键盘/
+横屏/桌面与历史截图。chat_live_test.dart默认跳过，只有用户明确授权并向进程内存注入
+KIYORI_LIVE_KEY、KIYORI_LIVE_ENDPOINT、KIYORI_LIVE_MODEL时才执行两轮合成请求；
+不得将实际值写命令历史、源码、日志、截图或Git。供应商验收与设备验收分别记录。
+
 core/chat通过真实loopback HTTP覆盖POST、拆流、结束/usage、错误/重定向与取消；
 packages/kiyori_bridge/test/chat_runtime_test.dart覆盖真实FFI事件、取消等待、未订阅关闭和超时。
 model_connection_test.dart用真实Rust及loopback探测聊天和system口令并捕获结果卡。
@@ -29,6 +35,9 @@ incomplete、工具/失败/断流、思考不进入正文及最终快照不一�
 密钥不得写入测试源码/日志；单个端点的成功不泛化为其他供应商或完整聊天页验收。
 pool_runtime_test.dart验证真实并发上限、启用/未标记筛选、重复值独立ID、401和取消不污染标记。
 model_pool_business_test.dart验证DPAPI逐项保存/重开、清标记、输入失效、宿主移除以及暂停等待在途保存。
+model_execution_tests.rs验证轮询重开、revision隔离、标记/回退规则、随机候选边界、schema7迁移、
+10个独立连接的原子分配及删除级联。model_connection_test.dart通过真实FFI/loopback验证Chat与
+Responses聊天/system探测分别发送第一、第二候选；不以配置里存在密钥池字段宣称轮换已执行。
 这些不替代真实供应商、TLS根/代理、Android设备或Apple环境验收。
 
 模型配置补充：core/models测试迁移、模型名引用/显式替代和安全引用状态；

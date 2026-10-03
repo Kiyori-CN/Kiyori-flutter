@@ -103,9 +103,9 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
-    cancellation: CancellationToken,
-    store: std::sync::Mutex<Option<AppStore>>,
-    chat_client: std::sync::OnceLock<Result<std::sync::Arc<reqwest::Client>, CoreError>>,
+    pub(crate) cancellation: CancellationToken,
+    store: std::sync::Mutex<Option<std::sync::Arc<AppStore>>>,
+    pub(crate) chat_client: std::sync::OnceLock<Result<std::sync::Arc<reqwest::Client>, CoreError>>,
 }
 
 impl Default for Runtime {
@@ -126,7 +126,7 @@ impl Runtime {
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
             cancellation: CancellationToken::new(),
-            store: std::sync::Mutex::new(Some(AppStore::open(path)?)),
+            store: std::sync::Mutex::new(Some(std::sync::Arc::new(AppStore::open(path)?))),
             chat_client: std::sync::OnceLock::new(),
         })
     }
@@ -145,6 +145,19 @@ impl Runtime {
             message: "Persistent application storage is not configured.".into(),
         })?;
         operation(store)
+    }
+
+    // 执行worker持有同一存储，关闭入口后仍能提交取消终态；不重新打开第二个数据库。
+    pub(crate) fn persistent_store(&self) -> Result<std::sync::Arc<AppStore>, CoreError> {
+        let store = self.store.lock().map_err(|_| CoreError {
+            code: ErrorCode::Storage,
+            message: "Application storage lock failed.".into(),
+        })?;
+        self.ensure_open()?;
+        store.clone().ok_or_else(|| CoreError {
+            code: ErrorCode::Storage,
+            message: "Persistent application storage is not configured.".into(),
+        })
     }
 
     pub fn list_workflows(&self) -> Result<Vec<crate::workflows::WorkflowRecord>, CoreError> {

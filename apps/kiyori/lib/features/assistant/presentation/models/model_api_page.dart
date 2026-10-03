@@ -439,6 +439,7 @@ class _ModelApiPageState extends State<ModelApiPage> {
                                   session.connectionTest.start(
                                     session.draft,
                                     session.credentials,
+                                    config: session.base,
                                   ),
                                 );
                               }

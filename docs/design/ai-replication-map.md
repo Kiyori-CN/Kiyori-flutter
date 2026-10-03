@@ -3,7 +3,7 @@
 模型请求切片：旧ModelConfigScreen的flush/测试/取消/内嵌结果卡、
 ModelConfigConnectionTester的Hi与SystemInstructionCapabilityProbe随机口令，
 映射到models/model_connection_test.dart、model_test_results.dart及core/chat。
-仅聊天和system探测接入真实请求，工具/媒体明确未验证，池调度仍待实现；
+聊天/system探测及正式基本文字会话接入真实请求，工具/媒体明确未验证，均消费Rust池轮换；
 取消与迟到代次隔离、协议与TLS边界见[ADR0007](../decisions/0007-chat-request-runtime.md)。
 旧OpenAIResponsesProvider的input与max_output_tokens映射现由core/chat/responses实现文本切片；
 终态不依赖DONE，思考/工具/媒体和后台续连仍有明确未实现边界，不以文本成功推断全部能力。
@@ -23,7 +23,7 @@ ModelConfigConnectionTester的Hi与SystemInstructionCapabilityProbe随机口令�
 
 | ID / 入口 | 旧来源 / 子树 | 新 owner 与验收 |
 | --- | --- | --- |
-| main.ai_chat | AIChatScreen、ChatHistorySelector、聊天详情及角色选择 | assistant；草稿跨抽屉切换保留，后续会话/消息由 Rust 持久化 |
+| main.ai_chat | AIChatScreen、ChatHistorySelector、聊天详情及角色选择 | assistant；草稿跨抽屉切换保留，基本会话/消息由 Rust 持久化 |
 | main.packages | PackageManagerScreen，PACKAGES、PLUGINS、SKILLS、MCP 四标签 | extensions；包环境、市场、增删/刷新、MCP启动和错误；尚未接入 |
 | main.toolbox | ToolboxCatalog 及对应 ScreenRouteRegistry 工具目录 | 复用 toolbox 一级页，AI 内部导航保持原来源，不能跳底栏 |
 | main.workflow | WorkflowListScreen、WorkflowDetailScreen、WorkflowViewModel、WorkflowRepository | workflows；定义目录→创建→详情→删除，模板/节点/执行/调度另按旧源推进 |
@@ -121,7 +121,24 @@ ContextSummarySettingsScreen的聊天功能绑定与ApiPreferences媒体保留�
 ModelConfigManager的密钥池条目保留稳定ID，v1字符串payload兼容迁移；跨进程锁覆盖native写入。
 Windows/Android密钥文本交换通过同一native adapter接入；ApiKeyPoolAvailabilityTester映射到
 core/chat/pool及ModelPoolTestController，复用Chat探测并逐项安全保存。开始/暂停/清标记及
-取消释放已接入；上下文压缩执行与池轮换仍未实现，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
+取消释放已接入；ApiKeyProvider候选规则和轮询映射到core/model_execution与SQLite游标，
+上下文压缩执行尚未实现；正式文字会话已接入，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
+
+## 基本聊天垂直切片
+
+旧源revision仍为6b03b03，默认偏好为CURSOR消息和AGENT输入；并非bubble默认。
+
+| 旧源 | 新实现 | 行为与证据 |
+| --- | --- | --- |
+| AIChatScreen / ChatScreenContent / AgentChatInputSection | ChatPage + HomeShell装配 | 原64px顶栏、历史/角色条、圆角输入、模型选择和发送/停止；真实输入发送两轮 |
+| cursor/UserMessageComposable、AiMessageComposable | ChatMessages + ProfileMarkdownPreview | 用户Prompt卡16px内边距/8px圆角，助手正文、Markdown代码复制；七张视口截图 |
+| ChatArea基础菜单 | chat_page.messageAction + Rust事务 | 复制、用户编辑重发/回滚、助手编辑/重新生成及删除；冲突拒绝与失败不删历史 |
+| ChatHistorySelector | chat_dialogs.showChatHistory | 历史、新建、切换、重命名/删除确认；目录来自Rust，不建Dart历史库 |
+| ChatViewModel / ChatHistoryManager | core/conversations + ChatController | 多轮、唯一终态、取消/失败内容、锁恢复、活跃会话重开；真实FFI测试 |
+| ModelConfigManager / ApiKeyProvider / 活跃角色组合 | PreparedSend + model_execution | 当前绑定/参数/角色/system、安全lease、池轮换；指定供应商两轮实证 |
+
+本批为基本文字链路；历史文件夹/置顶/批量导入导出、回复变体、完整修订审计、工具媒体与群组
+执行未实现，不将此表视为整页全功能或像素级验收。详细日志与截图路径以当前状态为准。
 
 ## 验收证据入口
 

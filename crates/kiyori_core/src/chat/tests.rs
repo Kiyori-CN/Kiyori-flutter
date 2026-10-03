@@ -1,4 +1,36 @@
 use super::*;
+
+#[test]
+fn saved_text_and_json_parameters_keep_their_declared_types() {
+    let mut draft = crate::models::ModelConfigDraft {
+        name: "test".into(),
+        provider: "OPENAI_GENERIC".into(),
+        protocol: "chat".into(),
+        endpoint: "http://127.0.0.1".into(),
+        models: vec!["fixture".into()],
+        options: crate::models::ModelOptions::default(),
+    };
+    draft.options.parameters = vec![
+        crate::models::ModelParameter {
+            name: "user".into(),
+            enabled: true,
+            value_type: "text".into(),
+            value: "synthetic user".into(),
+            category: "custom".into(),
+        },
+        crate::models::ModelParameter {
+            name: "reasoning".into(),
+            enabled: true,
+            value_type: "json".into(),
+            value: r#"{"effort":"none"}"#.into(),
+            category: "custom".into(),
+        },
+    ];
+    let prepared = super::probe::prepare(draft, String::new(), vec![], "chat").unwrap();
+    let value: serde_json::Value = serde_json::from_str(&prepared.parameters).unwrap();
+    assert_eq!(value["user"], "synthetic user");
+    assert_eq!(value["reasoning"]["effort"], "none");
+}
 use crate::runtime::Runtime;
 use std::io::{Read, Write};
 use std::net::TcpListener;

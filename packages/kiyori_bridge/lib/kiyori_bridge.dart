@@ -2,6 +2,10 @@ library;
 
 export 'src/generated/api.dart'
     show
+        Conversation,
+        ConversationCatalog,
+        ConversationMessage,
+        ConversationSnapshot,
         ChatMessage,
         PoolKey,
         ChatHeader,

@@ -25,6 +25,42 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ConversationCatalog> conversationCatalog() async =>
+      const ConversationCatalog(activeId: null, conversations: []);
+  @override
+  Future<ConversationSnapshot> conversation(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<String> createConversation() async => throw UnimplementedError();
+  @override
+  Future<void> selectConversation(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<void> changeConversation(
+    String id,
+    int revision,
+    String action,
+    String value,
+  ) async => throw UnimplementedError();
+  @override
+  Future<void> changeMessage(
+    String id,
+    int revision,
+    String message,
+    String action,
+    String text,
+  ) async => throw UnimplementedError();
+  @override
+  Future<PreparedConversation> prepareConversation(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<ChatRun> startConfiguredProbe(
+    String id,
+    int revision,
+    String payload,
+    String kind,
+  ) async => throw UnimplementedError('Use real configured probe runtime.');
+  @override
   Future<ChatRun> startPoolTest(
     ModelConfigDraft draft,
     List<PoolKey> keys,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
@@ -12,6 +13,7 @@ import '../features/workflows/presentation/workflow_controller.dart';
 import '../features/knowledge/presentation/knowledge_controller.dart';
 import '../features/assistant/presentation/prompts/prompts_controller.dart';
 import '../features/assistant/presentation/models/models_controller.dart';
+import '../features/assistant/presentation/chat_controller.dart';
 
 class KiyoriApp extends StatefulWidget {
   const KiyoriApp({required this.connect, this.diagnostics = false, super.key});
@@ -23,15 +25,17 @@ class KiyoriApp extends StatefulWidget {
   State<KiyoriApp> createState() => _KiyoriAppState();
 }
 
-class _KiyoriAppState extends State<KiyoriApp> {
+class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
   late final RuntimeController controller;
   late final WorkflowController workflows;
   late final KnowledgeController knowledge;
   late final PromptsController prompts;
   late final ModelsController models;
+  late final ChatController chat;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     controller = RuntimeController(widget.connect);
     workflows = WorkflowController(controller.connectedClient);
     knowledge = KnowledgeController(controller.connectedClient);
@@ -40,15 +44,25 @@ class _KiyoriAppState extends State<KiyoriApp> {
       controller.connectedClient,
       openNativeSecretStore,
     );
+    chat = ChatController(controller.connectedClient, openNativeSecretStore);
     unawaited(controller.initialize());
   }
 
   @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    await chat.shutdown();
+    await controller.shutdown();
+    return AppExitResponse.exit;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     workflows.dispose();
     knowledge.dispose();
     prompts.dispose();
     models.dispose();
+    chat.dispose();
     controller.dispose();
     super.dispose();
   }
@@ -79,6 +93,7 @@ class _KiyoriAppState extends State<KiyoriApp> {
             knowledge: knowledge,
             prompts: prompts,
             models: models,
+            chat: chat,
           ),
   );
 }

@@ -23,7 +23,7 @@ impl ModelSecretsLease {
             file.take();
         }
     }
-    fn with_store<T>(
+    pub(crate) fn with_store<T>(
         &self,
         store: &AppStore,
         operation: impl FnOnce() -> Result<T, CoreError>,
@@ -48,6 +48,7 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) fn remove_schema_six_for_fixture(connection: &Connection) {
+    crate::conversations::remove_schema_for_fixture(connection);
     connection.execute_batch("DROP TABLE function_models; DROP TABLE model_names; DROP TABLE model_secrets; DROP TABLE model_configs;").unwrap();
 }
 pub const FUNCTIONS: [&str; 11] = [

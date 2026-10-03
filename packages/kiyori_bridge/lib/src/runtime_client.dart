@@ -5,6 +5,30 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<api.ConversationCatalog> conversationCatalog();
+  Future<api.ConversationSnapshot> conversation(String id);
+  Future<String> createConversation();
+  Future<void> selectConversation(String id);
+  Future<void> changeConversation(
+    String id,
+    int revision,
+    String action,
+    String value,
+  );
+  Future<void> changeMessage(
+    String id,
+    int revision,
+    String message,
+    String action,
+    String text,
+  );
+  Future<PreparedConversation> prepareConversation(String id);
+  Future<ChatRun> startConfiguredProbe(
+    String id,
+    int revision,
+    String payload,
+    String kind,
+  );
   Future<ChatRun> startPoolTest(
     api.ModelConfigDraft draft,
     List<api.PoolKey> keys,
@@ -136,6 +160,52 @@ abstract interface class ChatRun {
   Future<void> cancel();
 }
 
+abstract interface class PreparedConversation {
+  Future<String?> secretReference();
+  Future<ChatRun> start(
+    String text,
+    String payload, {
+    String? replaceFrom,
+    int? revision,
+  });
+  Future<void> close();
+}
+
+final class _NativePreparedConversation implements PreparedConversation {
+  _NativePreparedConversation(this.handle, this.owner);
+  final api.ConversationPreparation handle;
+  final NativeRuntimeClient owner;
+  bool closed = false;
+  @override
+  Future<String?> secretReference() => handle.secretReference();
+  @override
+  Future<ChatRun> start(
+    String text,
+    String payload, {
+    String? replaceFrom,
+    int? revision,
+  }) async {
+    owner._ensureOpen();
+    return owner._trackChat(
+      await handle.start(
+        text: text,
+        payload: payload,
+        replaceFrom: replaceFrom,
+        revision: revision,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    if (closed) return;
+    closed = true;
+    await handle.close();
+    handle.dispose();
+    owner._preparations.remove(this);
+  }
+}
+
 abstract interface class ModelSecretsWrite {
   Future<String> reserve(String id, int revision);
   Future<void> close();
@@ -152,6 +222,79 @@ final class _NativeModelSecretsWrite implements ModelSecretsWrite {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  final _preparations = <_NativePreparedConversation>{};
+  @override
+  Future<api.ConversationCatalog> conversationCatalog() {
+    _ensureOpen();
+    return _handle.conversationCatalog();
+  }
+
+  @override
+  Future<api.ConversationSnapshot> conversation(String id) {
+    _ensureOpen();
+    return _handle.conversation(id: id);
+  }
+
+  @override
+  Future<String> createConversation() {
+    _ensureOpen();
+    return _handle.createConversation();
+  }
+
+  @override
+  Future<void> selectConversation(String id) {
+    _ensureOpen();
+    return _handle.selectConversation(id: id);
+  }
+
+  @override
+  Future<void> changeConversation(
+    String id,
+    int revision,
+    String action,
+    String value,
+  ) {
+    _ensureOpen();
+    return _handle.changeConversation(
+      id: id,
+      revision: revision,
+      action: action,
+      value: value,
+    );
+  }
+
+  @override
+  Future<void> changeMessage(
+    String id,
+    int revision,
+    String message,
+    String action,
+    String text,
+  ) {
+    _ensureOpen();
+    return _handle.changeMessage(
+      id: id,
+      revision: revision,
+      message: message,
+      action: action,
+      text: text,
+    );
+  }
+
+  @override
+  Future<PreparedConversation> prepareConversation(String id) async {
+    _ensureOpen();
+    final handle = await _handle.prepareConversation(id: id);
+    if (_closing != null) {
+      await handle.close();
+      handle.dispose();
+      _ensureOpen();
+    }
+    final preparation = _NativePreparedConversation(handle, this);
+    _preparations.add(preparation);
+    return preparation;
+  }
+
   @override
   Future<void> resetFunctionModels() {
     _ensureOpen();
@@ -597,6 +740,7 @@ final class NativeRuntimeClient implements RuntimeClient {
 
   Future<void> _close() async {
     await _handle.close();
+    await Future.wait(_preparations.toList().map((item) => item.close()));
     await Future.wait(_chatRuns.toList().map((run) => run.stop()));
     await Future.wait(_runs.toList().map((run) => run.stop()));
     _handle.dispose();
@@ -607,6 +751,24 @@ final class NativeRuntimeClient implements RuntimeClient {
     _ensureOpen();
     final handle = await _handle.startChat(request: request);
     return _trackChat(handle);
+  }
+
+  @override
+  Future<ChatRun> startConfiguredProbe(
+    String id,
+    int revision,
+    String payload,
+    String kind,
+  ) async {
+    _ensureOpen();
+    return _trackChat(
+      await _handle.startConfiguredProbe(
+        id: id,
+        revision: revision,
+        payload: payload,
+        kind: kind,
+      ),
+    );
   }
 
   @override

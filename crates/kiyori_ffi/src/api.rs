@@ -6,6 +6,121 @@ pub struct ChatMessage {
     pub role: String,
     pub content: String,
 }
+
+pub struct Conversation {
+    pub id: String,
+    pub title: String,
+    pub character_id: String,
+    pub character_name: String,
+    pub revision: u32,
+    pub updated_at: i64,
+    pub message_count: u32,
+}
+impl From<kiyori_core::conversations::Conversation> for Conversation {
+    fn from(v: kiyori_core::conversations::Conversation) -> Self {
+        Self {
+            id: v.id,
+            title: v.title,
+            character_id: v.character_id,
+            character_name: v.character_name,
+            revision: v.revision,
+            updated_at: v.updated_at,
+            message_count: v.message_count,
+        }
+    }
+}
+pub struct ConversationMessage {
+    pub id: String,
+    pub run_id: String,
+    pub role: String,
+    pub content: String,
+    pub state: String,
+    pub error: String,
+    pub model: String,
+}
+pub struct ConversationSnapshot {
+    pub conversation: Conversation,
+    pub messages: Vec<ConversationMessage>,
+}
+impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnapshot {
+    fn from(v: kiyori_core::conversations::ConversationSnapshot) -> Self {
+        Self {
+            conversation: v.conversation.into(),
+            messages: v
+                .messages
+                .into_iter()
+                .map(|m| ConversationMessage {
+                    id: m.id,
+                    run_id: m.run_id,
+                    role: m.role,
+                    content: m.content,
+                    state: m.state,
+                    error: m.error,
+                    model: m.model,
+                })
+                .collect(),
+        }
+    }
+}
+pub struct ConversationCatalog {
+    pub active_id: Option<String>,
+    pub conversations: Vec<Conversation>,
+}
+
+#[frb(opaque)]
+pub struct ConversationPreparation {
+    prepared: std::sync::Mutex<Option<kiyori_core::conversations::PreparedSend>>,
+    runtime: Arc<runtime::Runtime>,
+}
+impl ConversationPreparation {
+    pub fn secret_reference(&self) -> Result<Option<String>, BridgeError> {
+        let guard = self.prepared.lock().map_err(|_| BridgeError {
+            code: ErrorCode::Storage,
+            message: "请求准备锁不可用".into(),
+        })?;
+        Ok(guard
+            .as_ref()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "请求准备已释放".into(),
+            })?
+            .secret_reference())
+    }
+    pub async fn start(
+        &self,
+        text: String,
+        payload: String,
+        replace_from: Option<String>,
+        revision: Option<u32>,
+    ) -> Result<ChatHandle, BridgeError> {
+        let prepared = self
+            .prepared
+            .lock()
+            .map_err(|_| BridgeError {
+                code: ErrorCode::Storage,
+                message: "请求准备锁不可用".into(),
+            })?
+            .take()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "请求准备已使用或释放".into(),
+            })?;
+        Ok(ChatHandle {
+            inner: Arc::new(self.runtime.start_conversation_replacing(
+                prepared,
+                text,
+                payload,
+                replace_from,
+                revision,
+            )?),
+        })
+    }
+    pub fn close(&self) {
+        if let Ok(mut guard) = self.prepared.lock() {
+            guard.take();
+        }
+    }
+}
 pub struct ChatHeader {
     pub name: String,
     pub value: String,
@@ -979,6 +1094,65 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn conversation_catalog(&self) -> Result<ConversationCatalog, BridgeError> {
+        let value = self.inner.conversation_catalog()?;
+        Ok(ConversationCatalog {
+            active_id: value.active_id,
+            conversations: value.conversations.into_iter().map(Into::into).collect(),
+        })
+    }
+    pub fn conversation(&self, id: String) -> Result<ConversationSnapshot, BridgeError> {
+        Ok(self.inner.conversation(id)?.into())
+    }
+    pub fn create_conversation(&self) -> Result<String, BridgeError> {
+        Ok(self.inner.create_conversation()?)
+    }
+    pub fn select_conversation(&self, id: String) -> Result<(), BridgeError> {
+        Ok(self.inner.select_conversation(id)?)
+    }
+    pub fn change_conversation(
+        &self,
+        id: String,
+        revision: u32,
+        action: String,
+        value: String,
+    ) -> Result<(), BridgeError> {
+        Ok(self
+            .inner
+            .change_conversation(id, revision, action, value)?)
+    }
+    pub fn change_message(
+        &self,
+        id: String,
+        revision: u32,
+        message: String,
+        action: String,
+        text: String,
+    ) -> Result<(), BridgeError> {
+        Ok(self
+            .inner
+            .change_message(id, revision, message, action, text)?)
+    }
+    pub fn prepare_conversation(&self, id: String) -> Result<ConversationPreparation, BridgeError> {
+        Ok(ConversationPreparation {
+            prepared: std::sync::Mutex::new(Some(self.inner.prepare_conversation(id)?)),
+            runtime: self.inner.clone(),
+        })
+    }
+    pub async fn start_configured_probe(
+        &self,
+        id: String,
+        revision: u32,
+        payload: String,
+        kind: String,
+    ) -> Result<ChatHandle, BridgeError> {
+        Ok(ChatHandle {
+            inner: Arc::new(
+                self.inner
+                    .start_configured_probe(id, revision, payload, kind)?,
+            ),
+        })
+    }
     pub async fn start_pool_test(
         &self,
         draft: ModelConfigDraft,

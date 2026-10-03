@@ -29,9 +29,11 @@ void main() {
         final catalog = (await tester.runAsync(runtime.modelCatalog))!;
         final test = ModelConnectionTest(() async => runtime);
         var requests = 0;
+        final keys = <String>[];
         await tester.runAsync(() async {
           server.listen((incoming) async {
             requests++;
+            keys.add(incoming.headers.value('authorization') ?? '');
             final body =
                 jsonDecode(await utf8.decoder.bind(incoming).join()) as Map;
             final messages =
@@ -97,13 +99,36 @@ void main() {
             provider: 'OPENAI_GENERIC',
             protocol: protocol,
             endpoint: 'http://127.0.0.1:${server.port}',
-            models: const ['fixture'],
+            models: catalog.configs.single.draft.models,
             options: catalog.configs.single.draft.options,
           );
           await tester.runAsync(
-            () => test.start(draft, const ModelCredentials()),
+            () => runtime.saveModelConfig(
+              catalog.configs.single.id,
+              catalog.configs.single.revision,
+              draft,
+              null,
+              null,
+            ),
+          );
+          final saved = (await tester.runAsync(runtime.modelCatalog))!
+              .configs
+              .single;
+          await tester.runAsync(
+            () => test.start(
+              draft,
+              ModelCredentials(
+                usePool: true,
+                keys: [
+                  ModelPoolKey.create('fixture-first'),
+                  ModelPoolKey.create('fixture-second'),
+                ],
+              ),
+              config: saved,
+            ),
           );
           expect(requests, 2);
+          expect(keys, ['Bearer fixture-first', 'Bearer fixture-second']);
           expect(test.running, false);
           expect(
             test.results!

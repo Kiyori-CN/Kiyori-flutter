@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:markdown/markdown.dart' as md;
 
 /// 静态资料预览；AST只随文本变化重建，不加载远程图片或打开链接。
 class ProfileMarkdownPreview extends StatefulWidget {
-  const ProfileMarkdownPreview({required this.text, super.key});
+  const ProfileMarkdownPreview({
+    required this.text,
+    this.embedded = false,
+    super.key,
+  });
   final String text;
+  final bool embedded;
   @override
   State<ProfileMarkdownPreview> createState() => _ProfileMarkdownPreviewState();
 }
@@ -23,12 +29,17 @@ class _ProfileMarkdownPreviewState extends State<ProfileMarkdownPreview> {
 
   @override
   Widget build(BuildContext context) => SelectionArea(
-    child: ListView.builder(
-      key: const PageStorageKey('profile-preview'),
-      padding: const EdgeInsets.all(16),
-      itemCount: nodes.length,
-      itemBuilder: (context, index) => block(context, nodes[index]),
-    ),
+    child: widget.embedded
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final node in nodes) block(context, node)],
+          )
+        : ListView.builder(
+            key: const PageStorageKey('profile-preview'),
+            padding: const EdgeInsets.all(16),
+            itemCount: nodes.length,
+            itemBuilder: (context, index) => block(context, nodes[index]),
+          ),
   );
   Widget block(BuildContext context, md.Node node) {
     final colors = Theme.of(context).colorScheme;
@@ -129,7 +140,9 @@ class _ProfileMarkdownPreviewState extends State<ProfileMarkdownPreview> {
                     ),
                     IconButton(
                       tooltip: '复制',
-                      onPressed: () {},
+                      onPressed: () => Clipboard.setData(
+                        ClipboardData(text: element.textContent),
+                      ),
                       icon: const Icon(Icons.copy, size: 16),
                       constraints: const BoxConstraints.tightFor(
                         width: 32,

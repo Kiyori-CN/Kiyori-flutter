@@ -34,7 +34,7 @@ pub struct ChatFailure {
     pub http_status: Option<u16>,
 }
 impl ChatFailure {
-    fn new(kind: ChatFailureKind, message: &str) -> Self {
+    pub(crate) fn new(kind: ChatFailureKind, message: &str) -> Self {
         Self {
             kind,
             message: message.into(),
@@ -112,7 +112,10 @@ impl ChatRun {
         }
         let event = tokio::select! {
             biased;
-            _ = self.cancellation.cancelled() => ChatEvent::Cancelled,
+            _ = self.cancellation.cancelled() => {
+                self.finished.cancelled().await;
+                ChatEvent::Cancelled
+            },
             event = state.receiver.recv() => event.unwrap_or_else(|| ChatEvent::Failed(
                 ChatFailure::new(ChatFailureKind::Interrupted, "请求任务意外结束"))),
         };
@@ -129,6 +132,74 @@ impl ChatRun {
 impl Drop for ChatRun {
     fn drop(&mut self) {
         self.cancel();
+    }
+}
+
+/// 持久化先于投影；即使UI退订/队列背压，取消也会写入唯一终态并释放执行锁。
+pub(crate) fn persist(
+    upstream: ChatRun,
+    cancellation: CancellationToken,
+    mut save: impl FnMut(ChatEvent) -> Result<ChatEvent, CoreError> + Send + 'static,
+) -> ChatRun {
+    let (sender, receiver) = mpsc::channel(8);
+    let worker_cancel = cancellation.clone();
+    let finished = CancellationToken::new();
+    let guard = finished.clone().drop_guard();
+    tokio::spawn(async move {
+        let _guard = guard;
+        loop {
+            let event = tokio::select! {
+                biased;
+                _ = worker_cancel.cancelled() => {
+                    upstream.cancel_and_wait().await;
+                    ChatEvent::Cancelled
+                },
+                event = upstream.next_event() => match event {
+                    Ok(Some(event)) => event,
+                    _ => ChatEvent::Failed(ChatFailure::new(ChatFailureKind::Interrupted, "请求意外中断，未自动重试")),
+                },
+            };
+            let event = match save(event) {
+                Ok(event) => event,
+                Err(_) => {
+                    upstream.cancel_and_wait().await;
+                    // DB失效时不能声称已保存；仍保留running账本供下次锁恢复。
+                    let failure = ChatEvent::Failed(ChatFailure::new(
+                        ChatFailureKind::Interrupted,
+                        "聊天保存失败，请重新打开会话核对；未自动重试",
+                    ));
+                    tokio::select! { _ = worker_cancel.cancelled() => {}, _ = sender.send(failure) => {} }
+                    break;
+                }
+            };
+            let terminal = matches!(
+                event,
+                ChatEvent::Completed { .. } | ChatEvent::Failed(_) | ChatEvent::Cancelled
+            );
+            let delivered = tokio::select! {
+                biased;
+                _ = worker_cancel.cancelled(), if !terminal => false,
+                result = sender.send(event) => result.is_ok(),
+                _ = worker_cancel.cancelled(), if terminal => false,
+            };
+            if terminal {
+                break;
+            }
+            if !delivered {
+                upstream.cancel_and_wait().await;
+                let _ = save(ChatEvent::Cancelled);
+                break;
+            }
+        }
+        upstream.cancel_and_wait().await;
+    });
+    ChatRun {
+        cancellation,
+        finished,
+        state: Mutex::new(RunState {
+            receiver,
+            terminal: false,
+        }),
     }
 }
 

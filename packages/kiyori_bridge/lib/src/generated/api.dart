@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -23,6 +23,20 @@ abstract class ChatHandle implements RustOpaqueInterface {
   Future<void> cancel();
 
   Future<ChatEvent?> nextEvent();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationPreparation>>
+abstract class ConversationPreparation implements RustOpaqueInterface {
+  Future<void> close();
+
+  Future<String?> secretReference();
+
+  Future<ChatHandle> start({
+    required String text,
+    required String payload,
+    String? replaceFrom,
+    int? revision,
+  });
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelSecretsHandle>>
@@ -52,6 +66,21 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<ModelSecretsHandle> beginModelSecrets();
 
+  Future<void> changeConversation({
+    required String id,
+    required int revision,
+    required String action,
+    required String value,
+  });
+
+  Future<void> changeMessage({
+    required String id,
+    required int revision,
+    required String message,
+    required String action,
+    required String text,
+  });
+
   Future<void> close();
 
   Future<String> composeCharacterPrompt({
@@ -60,6 +89,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   });
 
   Future<ContextSettings> contextSettings();
+
+  Future<ConversationSnapshot> conversation({required String id});
+
+  Future<ConversationCatalog> conversationCatalog();
+
+  Future<String> createConversation();
 
   Future<String> createDiary({
     required String space,
@@ -135,6 +170,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<ModelCatalog> modelCatalog();
 
+  Future<ConversationPreparation> prepareConversation({required String id});
+
   Future<PromptCatalog> promptCatalog();
 
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
@@ -205,6 +242,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required TagDraft draft,
   });
 
+  Future<void> selectConversation({required String id});
+
   Future<void> selectFunctionModel({
     required String function,
     required String config,
@@ -224,6 +263,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   });
 
   Future<ChatHandle> startChat({required ChatRequest request});
+
+  Future<ChatHandle> startConfiguredProbe({
+    required String id,
+    required int revision,
+    required String payload,
+    required String kind,
+  });
 
   Future<TaskHandle> startDiagnostic({
     required int steps,
@@ -583,6 +629,131 @@ class ContextSettings {
           runtimeType == other.runtimeType &&
           config == other.config &&
           history == other.history;
+}
+
+class Conversation {
+  final String id;
+  final String title;
+  final String characterId;
+  final String characterName;
+  final int revision;
+  final PlatformInt64 updatedAt;
+  final int messageCount;
+
+  const Conversation({
+    required this.id,
+    required this.title,
+    required this.characterId,
+    required this.characterName,
+    required this.revision,
+    required this.updatedAt,
+    required this.messageCount,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      characterId.hashCode ^
+      characterName.hashCode ^
+      revision.hashCode ^
+      updatedAt.hashCode ^
+      messageCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Conversation &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          characterId == other.characterId &&
+          characterName == other.characterName &&
+          revision == other.revision &&
+          updatedAt == other.updatedAt &&
+          messageCount == other.messageCount;
+}
+
+class ConversationCatalog {
+  final String? activeId;
+  final List<Conversation> conversations;
+
+  const ConversationCatalog({this.activeId, required this.conversations});
+
+  @override
+  int get hashCode => activeId.hashCode ^ conversations.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationCatalog &&
+          runtimeType == other.runtimeType &&
+          activeId == other.activeId &&
+          conversations == other.conversations;
+}
+
+class ConversationMessage {
+  final String id;
+  final String runId;
+  final String role;
+  final String content;
+  final String state;
+  final String error;
+  final String model;
+
+  const ConversationMessage({
+    required this.id,
+    required this.runId,
+    required this.role,
+    required this.content,
+    required this.state,
+    required this.error,
+    required this.model,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      runId.hashCode ^
+      role.hashCode ^
+      content.hashCode ^
+      state.hashCode ^
+      error.hashCode ^
+      model.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationMessage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          runId == other.runId &&
+          role == other.role &&
+          content == other.content &&
+          state == other.state &&
+          error == other.error &&
+          model == other.model;
+}
+
+class ConversationSnapshot {
+  final Conversation conversation;
+  final List<ConversationMessage> messages;
+
+  const ConversationSnapshot({
+    required this.conversation,
+    required this.messages,
+  });
+
+  @override
+  int get hashCode => conversation.hashCode ^ messages.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationSnapshot &&
+          runtimeType == other.runtimeType &&
+          conversation == other.conversation &&
+          messages == other.messages;
 }
 
 class DiaryDocument {

@@ -36,8 +36,9 @@ class ModelConnectionTest extends ChangeNotifier {
 
   Future<void> start(
     ModelConfigDraft draft,
-    ModelCredentials credentials,
-  ) async {
+    ModelCredentials credentials, {
+    ModelConfig? config,
+  }) async {
     if (running || _disposed) return;
     final generation = ++_generation;
     running = true;
@@ -47,19 +48,25 @@ class ModelConnectionTest extends ChangeNotifier {
     final items = <ModelTestItem>[];
     try {
       if (model.isEmpty) throw const FormatException('请先添加模型');
-      // 池轮换尚未接入时不能擅自选择某个key冒充已遵循轮换策略。
-      if (credentials.usePool) {
-        throw const FormatException('密钥池请求调度尚未接入，请关闭池后测试单个密钥');
+      if (credentials.usePool && config == null) {
+        throw const FormatException('密钥池测试需要已保存的配置');
       }
       Future<ModelTestItem> probe(String label, String kind) async {
         final runtime = await connect();
         if (_disposed || generation != _generation) {
           return ModelTestItem(label, ModelTestOutcome.unverified, '已取消');
         }
-        final run = await runtime.startModelProbe(draft, credentials.apiKey, [
-          for (final h in credentials.headers.entries)
-            ChatHeader(name: h.key, value: h.value),
-        ], kind);
+        final run = config != null
+            ? await runtime.startConfiguredProbe(
+                config.id,
+                config.revision,
+                credentials.encode(),
+                kind,
+              )
+            : await runtime.startModelProbe(draft, credentials.apiKey, [
+                for (final h in credentials.headers.entries)
+                  ChatHeader(name: h.key, value: h.value),
+              ], kind);
         if (_disposed || generation != _generation) {
           await run.cancel();
           await run.events.drain<void>();
@@ -115,7 +122,7 @@ class ModelConnectionTest extends ChangeNotifier {
         const ModelTestItem(
           '聊天',
           ModelTestOutcome.failed,
-          '测试无法启动，请检查模型、单密钥配置及请求参数',
+          '测试无法启动，请检查模型、密钥池可用性及请求参数',
         ),
       );
     } finally {

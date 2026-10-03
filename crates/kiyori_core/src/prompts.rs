@@ -216,7 +216,10 @@ fn write_character(
     }
     Ok(())
 }
-fn read_character(connection: &Connection, id: &str) -> Result<PromptCharacter, CoreError> {
+pub(crate) fn read_character(
+    connection: &Connection,
+    id: &str,
+) -> Result<PromptCharacter, CoreError> {
     let mut value=connection.query_row("SELECT id,revision,updated_at,name,description,setting,opening,chat,voice,custom,marks,model_config,model_name,memory_space,tools_enabled FROM prompt_characters WHERE id=?1",[id],|r|Ok(PromptCharacter{id:r.get(0)?,revision:r.get(1)?,updated_at:r.get(2)?,draft:CharacterDraft{name:r.get(3)?,description:r.get(4)?,setting:r.get(5)?,opening:r.get(6)?,chat:r.get(7)?,voice:r.get(8)?,custom:r.get(9)?,marks:r.get(10)?,model_config:r.get(11)?,model_name:r.get(12)?,memory_space:r.get(13)?,tools_enabled:r.get(14)?,tag_ids:vec![],tools:vec![]}})).optional().map_err(storage)?.ok_or_else(||invalid("Character no longer exists."))?;
     value.draft.tag_ids = connection
         .prepare("SELECT tag_id FROM prompt_character_tags WHERE character_id=?1 ORDER BY position")
@@ -563,27 +566,32 @@ impl AppStore {
             .lock()
             .map_err(|_| invalid("Storage lock failed."))?;
         let tx = connection.transaction().map_err(storage)?;
-        let draft = read_character(&tx, &id)?.draft;
-        let mut parts = vec![draft.setting, if voice { draft.voice } else { draft.chat }];
-        for tag in draft.tag_ids {
-            parts.push(
-                tx.query_row("SELECT content FROM prompt_tags WHERE id=?1", [tag], |r| {
-                    r.get(0)
-                })
-                .map_err(storage)?,
-            );
-        }
-        parts.push(draft.custom);
-        let result = parts
-            .into_iter()
-            .filter(|p| !p.trim().is_empty())
-            .collect::<Vec<_>>()
-            .join("\n\n")
-            .trim()
-            .to_owned();
+        let result = compose_prompt(&tx, &id, voice)?;
         tx.commit().map_err(storage)?;
         Ok(result)
     }
+}
+
+pub(crate) fn compose_prompt(tx: &Connection, id: &str, voice: bool) -> Result<String, CoreError> {
+    let draft = read_character(tx, id)?.draft;
+    let mut parts = vec![draft.setting, if voice { draft.voice } else { draft.chat }];
+    for tag in draft.tag_ids {
+        parts.push(
+            tx.query_row("SELECT content FROM prompt_tags WHERE id=?1", [tag], |r| {
+                r.get(0)
+            })
+            .map_err(storage)?,
+        );
+    }
+    parts.push(draft.custom);
+    let result = parts
+        .into_iter()
+        .filter(|p| !p.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+        .trim()
+        .to_owned();
+    Ok(result)
 }
 fn table(kind: &str) -> Result<&'static str, CoreError> {
     match kind {

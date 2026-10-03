@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 7;
+const SCHEMA_VERSION: i32 = 9;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -178,6 +178,21 @@ impl AppStore {
             transaction
                 .pragma_update(None, "user_version", 7)
                 .map_err(|_| error("Cannot migrate model secret recovery protocol."))?;
+        }
+        if version < 8 {
+            transaction
+                .execute_batch(
+                    "CREATE TABLE IF NOT EXISTS model_key_cursors (
+                    config_id TEXT PRIMARY KEY REFERENCES model_configs(id) ON DELETE CASCADE,
+                    next_index INTEGER NOT NULL CHECK(next_index>=0));
+                 PRAGMA user_version=8;",
+                )
+                .map_err(|_| error("Cannot migrate model key rotation."))?;
+        }
+        if version < 9 {
+            transaction
+                .execute_batch(crate::conversations::SCHEMA)
+                .map_err(|_| error("Cannot migrate conversation storage."))?;
         }
         transaction
             .commit()

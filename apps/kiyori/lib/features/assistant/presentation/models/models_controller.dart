@@ -32,7 +32,7 @@ class ModelsController extends ChangeNotifier {
       try {
         final lease = await (await connect()).beginModelSecrets();
         try {
-          await cleanupRetired();
+          await cleanupRetired(lease: lease);
         } finally {
           await lease.close();
         }
@@ -51,21 +51,40 @@ class ModelsController extends ChangeNotifier {
   }
 
   Future<ModelCredentials> readCredentials(ModelConfig config) async {
-    if (config.secretReference == null) return const ModelCredentials();
-    final value = await (await openSecrets()).read(config.secretReference!);
-    if (value == null) throw const SecretStoreException('missing');
-    return ModelCredentials.decode(value);
+    final runtime = await connect();
+    final lease = await runtime.beginModelSecrets();
+    try {
+      final current = (await runtime.modelCatalog()).configs
+          .where((item) => item.id == config.id)
+          .firstOrNull;
+      if (current == null ||
+          current.revision != config.revision ||
+          current.secretReference != config.secretReference) {
+        throw const SecretStoreException('stale');
+      }
+      if (current.secretReference == null) return const ModelCredentials();
+      final value = await (await openSecrets()).read(current.secretReference!);
+      if (value == null) throw const SecretStoreException('missing');
+      return ModelCredentials.decode(value);
+    } finally {
+      await lease.close();
+    }
   }
 
-  Future<void> cleanupRetired() async {
+  Future<void> cleanupRetired({ModelSecretsWrite? lease}) async {
     final runtime = await connect();
-    final references = await runtime.retiredModelSecrets();
-    if (references.isEmpty) return;
-    final secrets = await openSecrets();
-    for (final reference in references) {
-      // retired是终态，不能重新激活；删除成功后才移除账本，可重复调用。
-      await secrets.delete(reference);
-      await runtime.forgetRetiredModelSecret(reference);
+    final owned = lease ?? await runtime.beginModelSecrets();
+    try {
+      final references = await runtime.retiredModelSecrets();
+      if (references.isEmpty) return;
+      final secrets = await openSecrets();
+      for (final reference in references) {
+        // 读取短lease也使用同一锁；退役引用必须等在途native读取结束后再删。
+        await secrets.delete(reference);
+        await runtime.forgetRetiredModelSecret(reference);
+      }
+    } finally {
+      if (lease == null) await owned.close();
     }
   }
 
@@ -101,7 +120,7 @@ class ModelsController extends ChangeNotifier {
         try {
           // 活跃检查与退役在核心同一事务；提交响应丢失也不能删活跃凭据。
           await runtime.retireModelSecret(reserved);
-          await cleanupRetired();
+          await cleanupRetired(lease: lease);
         } catch (_) {
           cleanupWarning = '部分安全凭据等待对账，原配置保持可恢复';
         }

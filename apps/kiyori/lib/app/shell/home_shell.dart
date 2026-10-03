@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../features/assistant/presentation/chat_page.dart';
+import '../../features/assistant/presentation/chat_controller.dart';
 import '../../features/assistant/presentation/ai_drawer.dart';
 import '../../features/browser/presentation/browser_page.dart';
 import '../../features/files/presentation/files_page.dart';
@@ -28,9 +29,11 @@ class HomeShell extends StatefulWidget {
     this.knowledge,
     this.prompts,
     this.models,
+    this.chat,
     super.key,
   });
   final ModelsController? models;
+  final ChatController? chat;
   final PromptsController? prompts;
   final WorkflowController? workflows;
   final KnowledgeController? knowledge;
@@ -62,7 +65,11 @@ class _HomeShellState extends State<HomeShell> {
   late final pages = <Widget>[
     MinusOnePage(onClose: () => go(1)),
     HomePage(openAi: () => go(2)),
-    ChatPage(onOpenDrawer: openAiDrawer),
+    ChatPage(
+      onOpenDrawer: openAiDrawer,
+      controller: widget.chat,
+      onOpenModels: navigation.openModels,
+    ),
   ];
 
   void openAiDrawer() {

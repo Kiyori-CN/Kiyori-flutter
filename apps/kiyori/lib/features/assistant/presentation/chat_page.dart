@@ -1,11 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-/// 未接入模型前只保存 UI 草稿，发送和工具按钮不产生业务副作用。
+import 'chat_controller.dart';
+import 'chat_messages.dart';
+import 'chat_dialogs.dart';
+
+/// 原聊天宿主；运行与持久化由注入的共享controller连接Rust。
 class ChatPage extends StatefulWidget {
-  const ChatPage({this.onOpenDrawer = emptyAction, super.key});
+  const ChatPage({
+    this.onOpenDrawer = emptyAction,
+    this.onOpenModels = emptyAction,
+    this.controller,
+    super.key,
+  });
   final VoidCallback onOpenDrawer;
+  final VoidCallback onOpenModels;
+  final ChatController? controller;
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
@@ -13,10 +28,65 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage>
     with AutomaticKeepAliveClientMixin {
   final draft = TextEditingController();
+  String draftId = 'new';
+  ChatController? get chat => widget.controller;
+  @override
+  void initState() {
+    super.initState();
+    chat?.addListener(changed);
+    draft.addListener(saveDraft);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(chat?.load());
+    });
+  }
+
+  @override
+  void didUpdateWidget(ChatPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != chat) {
+      oldWidget.controller?.removeListener(changed);
+      chat?.addListener(changed);
+      changed();
+    }
+  }
+
+  void saveDraft() {
+    chat?.drafts[draftId] = draft.text;
+  }
+
+  void changed() {
+    if (!mounted) return;
+    final next = chat?.draftId ?? 'new';
+    if (next != draftId) {
+      final previous = draft.text;
+      final wasNew = draftId == 'new';
+      draftId = next;
+      draft.text =
+          chat?.drafts[next] ??
+          (wasNew && next != 'new' && chat?.snapshot?.messages.isEmpty == true
+              ? previous
+              : '');
+    }
+    setState(() {});
+  }
+
+  void send() {
+    final value = draft.text;
+    unawaited(
+      chat?.send(
+        value,
+        accepted: () {
+          if (mounted && draft.text == value) draft.clear();
+        },
+      ),
+    );
+  }
+
   @override
   bool get wantKeepAlive => true;
   @override
   void dispose() {
+    chat?.removeListener(changed);
     draft.dispose();
     super.dispose();
   }
@@ -40,10 +110,15 @@ class _ChatPageState extends State<ChatPage>
                   size: 48,
                   iconSize: 21,
                 ),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'AI 对话',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    chat?.snapshot?.conversation.title ?? 'AI 对话',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const ShellAction(
@@ -85,11 +160,14 @@ class _ChatPageState extends State<ChatPage>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
               child: Row(
                 children: [
-                  const ShellAction(
+                  ShellAction(
                     Icons.history,
                     '显示历史',
                     size: 32,
                     color: Color(0xFF2584E9),
+                    onTap: () {
+                      if (chat != null) showChatHistory(context, chat!);
+                    },
                   ),
                   const SizedBox(width: 8),
                   const ShellAction(
@@ -99,36 +177,50 @@ class _ChatPageState extends State<ChatPage>
                     color: Color(0xFF607080),
                   ),
                   const SizedBox(width: 8),
-                  InkWell(
-                    onTap: emptyAction,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFEDF6EF),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.person_rounded,
-                              size: 16,
-                              color: Color(0xFF34974E),
-                            ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: InkWell(
+                        onTap: () {
+                          if (chat != null) showChatCharacters(context, chat!);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 6),
-                          const Text('Kiyori', style: TextStyle(fontSize: 14)),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEDF6EF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.person_rounded,
+                                  size: 16,
+                                  color: Color(0xFF34974E),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  chat?.character?.draft.name ?? 'Kiyori',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const Spacer(),
                   Semantics(
                     button: true,
                     label: '对话统计',
@@ -163,9 +255,27 @@ class _ChatPageState extends State<ChatPage>
               ),
             ),
           ),
-          const Expanded(
-            child: SizedBox.expand(key: Key('empty-conversation')),
+          Expanded(
+            child: chat == null
+                ? const SizedBox.expand(key: Key('empty-conversation'))
+                : ChatMessages(controller: chat!, onAction: messageAction),
           ),
+          if (chat?.error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(chat!.error!, style: TextStyle(color: c.error)),
+                  ),
+                  IconButton(
+                    tooltip: '重新载入',
+                    onPressed: () => chat!.load(),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+            ),
           Container(
             margin: const EdgeInsets.only(top: 4),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -202,11 +312,19 @@ class _ChatPageState extends State<ChatPage>
                       horizontal: 16,
                       vertical: 16,
                     ),
-                    suffixIcon: const ShellAction(
+                    suffixIcon: ShellAction(
                       Icons.fullscreen,
                       '全屏输入',
                       size: 48,
                       iconSize: 24,
+                      onTap: () async {
+                        final value = await editChatText(
+                          context,
+                          '输入消息',
+                          draft.text,
+                        );
+                        if (mounted && value != null) draft.text = value;
+                      },
                     ),
                   ),
                 ),
@@ -217,7 +335,18 @@ class _ChatPageState extends State<ChatPage>
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: InkWell(
-                          onTap: emptyAction,
+                          onTap: () async {
+                            if (chat != null) {
+                              await chat!.load();
+                              if (context.mounted) {
+                                await showChatModels(
+                                  context,
+                                  chat!,
+                                  widget.onOpenModels,
+                                );
+                              }
+                            }
+                          },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -233,9 +362,13 @@ class _ChatPageState extends State<ChatPage>
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  '未选择',
-                                  style: TextStyle(fontSize: 14),
+                                Flexible(
+                                  child: Text(
+                                    chat?.modelName ?? '未选择',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
                                 Icon(
@@ -250,7 +383,7 @@ class _ChatPageState extends State<ChatPage>
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const ShellAction(Icons.tune, '设置选项'),
+                    ShellAction(Icons.tune, '设置选项', onTap: widget.onOpenModels),
                     const SizedBox(width: 8),
                     const ShellAction(Icons.add, '添加附件', iconSize: 24),
                     const SizedBox(width: 6),
@@ -258,12 +391,26 @@ class _ChatPageState extends State<ChatPage>
                       valueListenable: draft,
                       builder: (context, value, _) {
                         final empty = value.text.trim().isEmpty;
+                        final running = chat?.execution?.active ?? false;
                         return ShellAction(
-                          empty ? Icons.mic_none : Icons.send_outlined,
-                          empty ? '语音输入' : '发送',
+                          running
+                              ? Icons.stop
+                              : empty
+                              ? Icons.mic_none
+                              : Icons.send_outlined,
+                          running
+                              ? '停止生成'
+                              : empty
+                              ? '语音输入'
+                              : '发送',
                           iconSize: 18,
                           color: empty ? c.onSurfaceVariant : c.onPrimary,
                           background: empty ? null : c.primary,
+                          onTap: running
+                              ? () => unawaited(chat!.stop())
+                              : empty
+                              ? emptyAction
+                              : send,
                         );
                       },
                     ),
@@ -275,5 +422,69 @@ class _ChatPageState extends State<ChatPage>
         ],
       ),
     );
+  }
+
+  Future<void> messageAction(ConversationMessage message, String action) async {
+    final owner = chat;
+    final item = owner?.snapshot?.conversation;
+    if (owner == null || item == null) return;
+    if (action == 'copy') {
+      await Clipboard.setData(ClipboardData(text: message.content));
+      return;
+    }
+    if (action == 'edit' || action == 'resend') {
+      final text = await editChatText(
+        context,
+        action == 'edit' ? '编辑消息' : '编辑并重发',
+        message.content,
+      );
+      if (!mounted ||
+          text == null ||
+          owner.snapshot?.conversation.id != item.id) {
+        return;
+      }
+      if (action == 'edit') {
+        await owner.changeMessage(item, message, 'edit', text);
+      } else {
+        await owner.send(
+          text,
+          replaceFrom: message.id,
+          revision: item.revision,
+        );
+      }
+    } else if (action == 'regenerate') {
+      final messages = owner.snapshot!.messages;
+      final index = messages.indexWhere((m) => m.id == message.id);
+      final user = messages
+          .take(index)
+          .where((m) => m.role == 'user')
+          .lastOrNull;
+      if (user != null &&
+          await confirmChatAction(context, '重新生成回复？', '将从这条提问重新生成，后续消息会被移除。') &&
+          mounted &&
+          owner.snapshot?.conversation.id == item.id) {
+        await owner.send(
+          user.content,
+          replaceFrom: user.id,
+          revision: item.revision,
+        );
+      }
+    } else if (await confirmChatAction(
+          context,
+          action == 'delete' ? '删除消息？' : '回滚到此处？',
+          action == 'delete' ? '此消息将从会话中移除。' : '此条及后续消息将被移除，提问会回填输入区。',
+        ) &&
+        mounted &&
+        owner.snapshot?.conversation.id == item.id) {
+      if (await owner.changeMessage(
+            item,
+            message,
+            action == 'delete' ? 'delete' : 'deleteFrom',
+            '',
+          ) &&
+          action != 'delete') {
+        draft.text = message.content;
+      }
+    }
   }
 }
