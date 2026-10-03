@@ -7,6 +7,8 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 import 'knowledge_controller.dart';
 import 'memory_editor.dart';
 import 'knowledge_dialogs.dart';
+import 'knowledge_folder_tree.dart';
+import 'knowledge_filter_sheet.dart';
 
 class KnowledgePage extends StatefulWidget {
   const KnowledgePage({
@@ -28,6 +30,7 @@ class KnowledgePageState extends State<KnowledgePage> {
   final _routes = <ModalRoute<dynamic>>[];
   String? _space;
   bool _opening = false;
+  final _expandedFolders = <String, Set<String>>{};
   KnowledgeController get state => widget.controller;
   MemoryQuery get _query => MemoryQuery(
     kind: kind,
@@ -251,8 +254,13 @@ class KnowledgePageState extends State<KnowledgePage> {
 
   Future<void> _folderMenu(BuildContext context, String path) async {
     final space = state.snapshot!.activeSpace;
-    final choice = await _menu(context, [('rename', '重命名'), ('delete', '删除')]);
+    final choice = await _menu(context, [
+      ('child', '新建子文件夹'),
+      ('rename', '重命名'),
+      ('delete', '删除'),
+    ]);
     if (!mounted || !(state.snapshot?.folders.contains(path) ?? false)) return;
+    if (choice == 'child') _createFolder(parent: path);
     if (choice == 'rename') {
       _nameDialog(
         '重命名文件夹',
@@ -332,12 +340,12 @@ class KnowledgePageState extends State<KnowledgePage> {
       ),
     ),
   );
-  void _createFolder() {
+  void _createFolder({String? parent}) {
     final space = state.snapshot?.activeSpace;
     if (space == null) return;
     _nameDialog(
       '新建文件夹',
-      folder.isEmpty ? '' : '$folder/',
+      (parent ?? folder).isEmpty ? '' : '${parent ?? folder}/',
       (value) => state.createFolder(space, value),
     );
   }
@@ -349,134 +357,154 @@ class KnowledgePageState extends State<KnowledgePage> {
         animation: state,
         builder: (context, _) {
           final snapshot = state.snapshot!;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Builder(
-                        builder: (context) => OutlinedButton(
-                          onPressed: state.saving
-                              ? null
-                              : () async {
-                                  final id = await _menu(context, [
-                                    for (final space in snapshot.spaces)
-                                      (space.id, space.name),
-                                  ]);
-                                  if (id != null) await state.selectSpace(id);
-                                },
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      '选择记忆空间',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    Text(
-                                      snapshot.spaces
-                                          .firstWhere(
-                                            (s) => s.id == snapshot.activeSpace,
-                                          )
-                                          .name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+          final expanded = _expandedFolders.putIfAbsent(
+            snapshot.activeSpace,
+            () => {},
+          );
+          expanded.removeWhere((path) => !snapshot.folders.contains(path));
+          return StatefulBuilder(
+            builder: (context, update) => CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Builder(
+                                builder: (context) => OutlinedButton(
+                                  onPressed: state.saving
+                                      ? null
+                                      : () async {
+                                          final id = await _menu(context, [
+                                            for (final space in snapshot.spaces)
+                                              (space.id, space.name),
+                                          ]);
+                                          if (id != null) {
+                                            await state.selectSpace(id);
+                                          }
+                                        },
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              '选择记忆空间',
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                            Text(
+                                              snapshot.spaces
+                                                  .firstWhere(
+                                                    (s) =>
+                                                        s.id ==
+                                                        snapshot.activeSpace,
+                                                  )
+                                                  .name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const Icon(Icons.arrow_drop_down),
-                            ],
-                          ),
+                            ),
+                            Builder(
+                              builder: (context) => IconButton(
+                                tooltip: '管理记忆空间',
+                                onPressed: state.saving
+                                    ? null
+                                    : () async {
+                                        final choice = await _menu(context, [
+                                          ('create', '新建记忆空间'),
+                                          ('rename', '重命名记忆空间'),
+                                          if (snapshot.activeSpace != 'default')
+                                            ('delete', '删除记忆空间'),
+                                        ]);
+                                        if (!mounted) return;
+                                        if (choice == 'create') {
+                                          _nameDialog(
+                                            '新建记忆空间',
+                                            '',
+                                            (name) =>
+                                                state.saveSpace(null, name),
+                                          );
+                                        }
+                                        if (choice == 'rename') {
+                                          _nameDialog(
+                                            '重命名记忆空间',
+                                            snapshot.spaces
+                                                .firstWhere(
+                                                  (s) =>
+                                                      s.id ==
+                                                      snapshot.activeSpace,
+                                                )
+                                                .name,
+                                            (name) => state.saveSpace(
+                                              snapshot.activeSpace,
+                                              name,
+                                            ),
+                                          );
+                                        }
+                                        if (choice == 'delete') {
+                                          _confirm(
+                                            '删除记忆空间',
+                                            '确定删除此空间及其中的全部记忆吗？此操作无法撤销。',
+                                            () => state.deleteSpace(
+                                              snapshot.activeSpace,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                icon: const Icon(Icons.more_vert),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                        const Divider(),
+                        Row(
+                          children: [
+                            const Expanded(child: Text('文件夹')),
+                            TextButton.icon(
+                              onPressed: state.saving ? null : _createFolder,
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('新建文件夹'),
+                            ),
+                          ],
+                        ),
+                        if (state.error != null) Text(state.error!),
+                      ],
                     ),
-                    Builder(
-                      builder: (context) => IconButton(
-                        tooltip: '管理记忆空间',
-                        onPressed: state.saving
-                            ? null
-                            : () async {
-                                final choice = await _menu(context, [
-                                  ('create', '新建记忆空间'),
-                                  ('rename', '重命名记忆空间'),
-                                  if (snapshot.activeSpace != 'default')
-                                    ('delete', '删除记忆空间'),
-                                ]);
-                                if (!mounted) return;
-                                if (choice == 'create') {
-                                  _nameDialog(
-                                    '新建记忆空间',
-                                    '',
-                                    (name) => state.saveSpace(null, name),
-                                  );
-                                }
-                                if (choice == 'rename') {
-                                  _nameDialog(
-                                    '重命名记忆空间',
-                                    snapshot.spaces
-                                        .firstWhere(
-                                          (s) => s.id == snapshot.activeSpace,
-                                        )
-                                        .name,
-                                    (name) => state.saveSpace(
-                                      snapshot.activeSpace,
-                                      name,
-                                    ),
-                                  );
-                                }
-                                if (choice == 'delete') {
-                                  _confirm(
-                                    '删除记忆空间',
-                                    '确定删除此空间及其中的全部记忆吗？此操作无法撤销。',
-                                    () =>
-                                        state.deleteSpace(snapshot.activeSpace),
-                                  );
-                                }
-                              },
-                        icon: const Icon(Icons.more_vert),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                TextButton(
-                  onPressed: () => _chooseFolder(dismiss, ''),
-                  child: const Text('根目录'),
-                ),
-                for (final path in snapshot.folders)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => _chooseFolder(dismiss, path),
-                          child: Text(path),
-                        ),
-                      ),
-                      Builder(
-                        builder: (context) => IconButton(
-                          tooltip: '$path 的文件夹操作',
-                          onPressed: state.saving
-                              ? null
-                              : () => _folderMenu(context, path),
-                          icon: const Icon(Icons.more_vert),
-                        ),
-                      ),
-                    ],
                   ),
-                if (snapshot.folders.isEmpty)
-                  const Text('还没有文件夹。可以按项目或主题整理内容。'),
-                TextButton(
-                  onPressed: state.saving ? null : _createFolder,
-                  child: const Text('新建文件夹'),
                 ),
-                if (state.error != null) Text(state.error!),
+                KnowledgeFolderTree(
+                  paths: snapshot.folders,
+                  expanded: expanded,
+                  selected: folder,
+                  busy: state.saving,
+                  onChoose: (path) => _chooseFolder(dismiss, path),
+                  onMenu: _folderMenu,
+                  onToggle: (path) => update(() {
+                    if (!expanded.remove(path)) expanded.add(path);
+                  }),
+                ),
+                if (snapshot.folders.isEmpty)
+                  const SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    sliver: SliverToBoxAdapter(
+                      child: Text('还没有文件夹。可以按项目或主题整理内容。'),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
               ],
             ),
           );
@@ -620,132 +648,31 @@ class KnowledgePageState extends State<KnowledgePage> {
   void _filters() => unawaited(
     _drawer(
       '筛选与排序',
-      (context, dismiss) => StatefulBuilder(
-        builder: (context, update) => Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('最近更新'),
-                          selected: !sortTitle,
-                          onSelected: (_) {
-                            _change(() => sortTitle = false);
-                            update(() {});
-                          },
-                        ),
-                        ChoiceChip(
-                          label: const Text('标题顺序'),
-                          selected: sortTitle,
-                          onSelected: (_) {
-                            _change(() => sortTitle = true);
-                            update(() {});
-                          },
-                        ),
-                      ],
-                    ),
-                    if (kind != 'diary')
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('全部主题'),
-                            selected: category == null,
-                            onSelected: (_) {
-                              _change(() => category = null);
-                              update(() {});
-                            },
-                          ),
-                          for (final value in memoryCategories.entries)
-                            ChoiceChip(
-                              label: Text(value.value),
-                              selected: category == value.key,
-                              onSelected: (_) {
-                                _change(() => category = value.key);
-                                update(() {});
-                              },
-                            ),
-                        ],
-                      ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('只看已归档'),
-                      subtitle: const Text('归档内容保留在库中，但不会参与日常和 AI 检索。'),
-                      value: archived,
-                      onChanged: (v) {
-                        _change(() => archived = v);
-                        update(() {});
-                      },
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('全部标签'),
-                          selected: tag == null,
-                          onSelected: (_) {
-                            _change(() => tag = null);
-                            update(() {});
-                          },
-                        ),
-                        for (final value in {
-                          ...?state.snapshot?.records.expand(
-                            (r) => r.draft.tags,
-                          ),
-                          ?tag,
-                        })
-                          ChoiceChip(
-                            label: Text(value),
-                            selected: tag == value,
-                            onSelected: (_) {
-                              _change(() => tag = value);
-                              update(() {});
-                            },
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      _change(() {
-                        category = null;
-                        tag = null;
-                        archived = false;
-                        sortTitle = false;
-                      });
-                      update(() {});
-                    },
-                    child: const Text('重置筛选'),
-                  ),
-                  FilledButton(
-                    onPressed: () => unawaited(dismiss()),
-                    child: const Text('完成'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      (context, dismiss) => AnimatedBuilder(
+        animation: state,
+        builder: (context, _) => KnowledgeFilterSheet(
+          controller: state,
+          kind: kind,
+          category: category,
+          tag: tag,
+          archived: archived,
+          sortTitle: sortTitle,
+          onCategory: (value) => _change(() => category = value),
+          onTag: (value) => _change(() => tag = value),
+          onArchived: (value) => _change(() => archived = value),
+          onSort: (value) => _change(() => sortTitle = value),
+          onReset: () => _change(() {
+            category = null;
+            tag = null;
+            archived = false;
+            sortTitle = false;
+          }),
+          onDone: () => unawaited(dismiss()),
         ),
       ),
     ),
   );
+
   String _source(String value) => value == 'user_input' ? '手动记录' : value;
   String _date(int value) =>
       DateTime.fromMillisecondsSinceEpoch(value)

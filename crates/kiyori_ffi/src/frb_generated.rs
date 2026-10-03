@@ -1426,12 +1426,14 @@ impl SseDecode for crate::api::KnowledgeSnapshot {
         let mut var_folders = <Vec<String>>::sse_decode(deserializer);
         let mut var_records = <Vec<crate::api::MemoryRecord>>::sse_decode(deserializer);
         let mut var_hasMore = <bool>::sse_decode(deserializer);
+        let mut var_availableTags = <Vec<String>>::sse_decode(deserializer);
         return crate::api::KnowledgeSnapshot {
             spaces: var_spaces,
             active_space: var_activeSpace,
             folders: var_folders,
             records: var_records,
             has_more: var_hasMore,
+            available_tags: var_availableTags,
         };
     }
 }
@@ -1905,6 +1907,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::KnowledgeSnapshot {
             self.folders.into_into_dart().into_dart(),
             self.records.into_into_dart().into_dart(),
             self.has_more.into_into_dart().into_dart(),
+            self.available_tags.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2186,6 +2189,7 @@ impl SseEncode for crate::api::KnowledgeSnapshot {
         <Vec<String>>::sse_encode(self.folders, serializer);
         <Vec<crate::api::MemoryRecord>>::sse_encode(self.records, serializer);
         <bool>::sse_encode(self.has_more, serializer);
+        <Vec<String>>::sse_encode(self.available_tags, serializer);
     }
 }
 

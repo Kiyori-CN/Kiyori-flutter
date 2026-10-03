@@ -103,6 +103,7 @@ pub struct KnowledgeSnapshot {
     pub folders: Vec<String>,
     pub records: Vec<MemoryRecord>,
     pub has_more: bool,
+    pub available_tags: Vec<String>,
 }
 pub struct MemoryQuery {
     pub kind: Option<String>,
@@ -335,6 +336,7 @@ impl From<kiyori_core::knowledge::KnowledgeSnapshot> for KnowledgeSnapshot {
             active_space: v.active_space,
             folders: v.folders,
             has_more: v.has_more,
+            available_tags: v.available_tags,
             records: v
                 .records
                 .into_iter()

@@ -102,6 +102,7 @@ class KnowledgeController extends ChangeNotifier {
           folders: value.folders,
           records: records,
           hasMore: value.hasMore,
+          availableTags: value.availableTags,
         );
       }
     } catch (_) {

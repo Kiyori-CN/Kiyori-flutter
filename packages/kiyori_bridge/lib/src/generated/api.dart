@@ -144,6 +144,7 @@ class KnowledgeSnapshot {
   final List<String> folders;
   final List<MemoryRecord> records;
   final bool hasMore;
+  final List<String> availableTags;
 
   const KnowledgeSnapshot({
     required this.spaces,
@@ -151,6 +152,7 @@ class KnowledgeSnapshot {
     required this.folders,
     required this.records,
     required this.hasMore,
+    required this.availableTags,
   });
 
   @override
@@ -159,7 +161,8 @@ class KnowledgeSnapshot {
       activeSpace.hashCode ^
       folders.hashCode ^
       records.hashCode ^
-      hasMore.hashCode;
+      hasMore.hashCode ^
+      availableTags.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -170,7 +173,8 @@ class KnowledgeSnapshot {
           activeSpace == other.activeSpace &&
           folders == other.folders &&
           records == other.records &&
-          hasMore == other.hasMore;
+          hasMore == other.hasMore &&
+          availableTags == other.availableTags;
 }
 
 class KnowledgeSpace {

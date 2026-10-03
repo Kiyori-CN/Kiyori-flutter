@@ -1284,14 +1284,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   KnowledgeSnapshot dco_decode_knowledge_snapshot(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return KnowledgeSnapshot(
       spaces: dco_decode_list_knowledge_space(arr[0]),
       activeSpace: dco_decode_String(arr[1]),
       folders: dco_decode_list_String(arr[2]),
       records: dco_decode_list_memory_record(arr[3]),
       hasMore: dco_decode_bool(arr[4]),
+      availableTags: dco_decode_list_String(arr[5]),
     );
   }
 
@@ -1654,12 +1655,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_folders = sse_decode_list_String(deserializer);
     var var_records = sse_decode_list_memory_record(deserializer);
     var var_hasMore = sse_decode_bool(deserializer);
+    var var_availableTags = sse_decode_list_String(deserializer);
     return KnowledgeSnapshot(
       spaces: var_spaces,
       activeSpace: var_activeSpace,
       folders: var_folders,
       records: var_records,
       hasMore: var_hasMore,
+      availableTags: var_availableTags,
     );
   }
 
@@ -2101,6 +2104,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_String(self.folders, serializer);
     sse_encode_list_memory_record(self.records, serializer);
     sse_encode_bool(self.hasMore, serializer);
+    sse_encode_list_String(self.availableTags, serializer);
   }
 
   @protected

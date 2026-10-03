@@ -47,6 +47,7 @@ void main() {
         );
         expect(query.records.single.id, id);
         expect(query.hasMore, isFalse);
+        expect(query.availableTags, ['中文']);
         expect(
           (await client.getMemory(space, id))!.draft.content,
           draft.content,

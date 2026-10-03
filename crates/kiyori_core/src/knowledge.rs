@@ -40,6 +40,7 @@ pub struct KnowledgeSnapshot {
     pub folders: Vec<String>,
     pub records: Vec<MemoryRecord>,
     pub has_more: bool,
+    pub available_tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -278,6 +279,16 @@ impl AppStore {
         let text = query.text.trim();
         let subtree =
             !text.is_empty() || query.category.is_some() || query.tag.is_some() || query.archived;
+        // 标签来自分页前的查询范围，主题/标签筛选不能让其它候选消失。
+        let available_tags = transaction.prepare(
+            "SELECT DISTINCT t.name FROM memory_tags t JOIN memories m ON m.id=t.memory_id
+             WHERE m.space_id=?1 AND (?2 IS NULL OR m.kind=?2) AND (?2 IS NULL OR m.archived=?3)
+             AND (?4='' OR instr(lower(m.title),lower(?4))>0 OR instr(lower(m.content),lower(?4))>0
+               OR EXISTS(SELECT 1 FROM memory_tags st WHERE st.memory_id=m.id AND instr(lower(st.name),lower(?4))>0))
+             AND (?5 OR m.folder=?6 OR (?7 AND (?6='' OR substr(m.folder,1,length(?6)+1)=?6||'/')))
+             ORDER BY t.name COLLATE NOCASE,t.name"
+        ).map_err(storage)?.query_map(params![active_space,query.kind,query.archived,text,query.kind.is_none(),folder,subtree], |r| r.get(0))
+            .map_err(storage)?.collect::<Result<Vec<String>,_>>().map_err(storage)?;
         // 每页只传400字符列表摘要；正文保持原样存储，打开详情时按身份读取完整正文。
         let mut records = transaction.prepare("SELECT id,kind,title,substr(content,1,400),category,source,folder,credibility,importance,archived,created_at,updated_at FROM memories WHERE space_id=?1 AND (?2 IS NULL OR kind=?2) AND (?2 IS NULL OR archived=?3) AND (?4 IS NULL OR category=?4) AND (?5 IS NULL OR EXISTS(SELECT 1 FROM memory_tags WHERE memory_id=memories.id AND name=?5)) AND (?6='' OR instr(lower(title),lower(?6))>0 OR instr(lower(content),lower(?6))>0 OR EXISTS(SELECT 1 FROM memory_tags WHERE memory_id=memories.id AND instr(lower(name),lower(?6))>0)) AND (?7 OR folder=?8 OR (?9 AND (?8='' OR substr(folder,1,length(?8)+1)=?8||'/'))) ORDER BY CASE WHEN ?10 THEN title END COLLATE NOCASE ASC,updated_at DESC,id DESC LIMIT 101 OFFSET ?11").map_err(storage)?.query_map(params![active_space,query.kind,query.archived,query.category,query.tag,text,query.kind.is_none(),folder,subtree,query.sort_title,query.offset], |r| Ok(MemoryRecord {
             id:r.get(0)?,space_id:active_space.clone(), draft:MemoryDraft { kind:r.get(1)?,title:r.get(2)?,content:r.get(3)?,category:r.get(4)?,source:r.get(5)?,folder:r.get(6)?,credibility:r.get(7)?,importance:r.get(8)?,tags:vec![] }, archived:r.get(9)?,created_at:r.get(10)?,updated_at:r.get(11)?
@@ -302,6 +313,7 @@ impl AppStore {
             folders,
             records,
             has_more,
+            available_tags,
         })
     }
     pub fn get_memory(&self, space: String, id: String) -> Result<Option<MemoryRecord>, CoreError> {
@@ -551,6 +563,7 @@ mod tests {
         value.folder = "".into();
         value.content = "正文🐱".repeat(220);
         value.content.push_str("needle%_末尾");
+        value.tags = vec!["末页独有标签".into()];
         let id = runtime
             .save_memory("default".into(), None, value.clone())
             .unwrap();
@@ -568,6 +581,16 @@ mod tests {
             .unwrap();
         assert_eq!(first.records.len(), 100);
         assert!(first.has_more);
+        assert!(first.available_tags.contains(&"末页独有标签".into()));
+        assert!(!first.records.iter().any(|r| r.id == id));
+        let filtered = runtime
+            .query_knowledge(MemoryQuery {
+                kind: Some("memory".into()),
+                tag: Some("标记".into()),
+                ..Default::default()
+            })
+            .unwrap();
+        assert!(filtered.available_tags.contains(&"末页独有标签".into()));
         let second = runtime
             .query_knowledge(MemoryQuery {
                 kind: Some("memory".into()),

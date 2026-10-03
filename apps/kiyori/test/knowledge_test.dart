@@ -42,6 +42,7 @@ class KnowledgeClient extends FakeClient {
   Future<KnowledgeSnapshot> knowledgeSnapshot() async => read != null
       ? read!()
       : KnowledgeSnapshot(
+          availableTags: records.expand((r) => r.draft.tags).toSet().toList(),
           hasMore: false,
           spaces: List.of(spaces),
           activeSpace: active,
@@ -77,6 +78,7 @@ class KnowledgeClient extends FakeClient {
       matches.sort((a, b) => a.draft.title.compareTo(b.draft.title));
     }
     return KnowledgeSnapshot(
+      availableTags: all.availableTags,
       spaces: all.spaces,
       activeSpace: all.activeSpace,
       folders: all.folders,
@@ -203,6 +205,79 @@ Finder field(String label) => find.byWidgetPredicate(
   (w) => w is TextField && w.decoration?.labelText == label,
 );
 void main() {
+  testWidgets(
+    'tag search selects a candidate outside the first page and reset clears it',
+    (tester) async {
+      final client = KnowledgeClient();
+      for (var i = 0; i < 105; i++) {
+        await client.saveMemory(
+          'default',
+          null,
+          MemoryDraft(
+            kind: 'memory',
+            title: '条目$i',
+            content: '正文',
+            category: 'other',
+            source: 'user_input',
+            folder: '',
+            credibility: .8,
+            importance: .5,
+            tags: ['标签$i'],
+          ),
+        );
+      }
+      final state = KnowledgeController(() async => client);
+      await host(tester, state);
+      expect(state.snapshot!.records.length, 100);
+      await tester.tap(
+        find.byWidgetPredicate((w) => w is ShellAction && w.label == '筛选'),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(field('查找标签'));
+      await tester.enterText(field('查找标签'), '标签0');
+      await tester.pumpAndSettle();
+      final choice = find.widgetWithText(RadioListTile<String?>, '标签0');
+      await tester.ensureVisible(choice);
+      await tester.tap(choice);
+      await tester.pumpAndSettle();
+      expect(state.snapshot!.records.single.draft.title, '条目0');
+      await tester.tap(find.text('重置筛选'));
+      await tester.pumpAndSettle();
+      expect(state.query.tag, isNull);
+      expect(state.snapshot!.records.length, 100);
+      expect(
+        tester.widget<TextField>(field('查找标签')).controller?.text ?? '',
+        '',
+      );
+      await release(tester, state);
+    },
+  );
+
+  testWidgets('folder tree expands and child creation uses the menu target', (
+    tester,
+  ) async {
+    final client = KnowledgeClient()..folders.addAll(['项目', '项目/子', '其他']);
+    final state = KnowledgeController(() async => client);
+    await host(tester, state);
+    await tester.tap(find.text('默认配置').first);
+    await tester.pumpAndSettle();
+    expect(find.text('子'), findsNothing);
+    await tester.tap(find.byTooltip('展开 项目'));
+    await tester.pumpAndSettle();
+    expect(find.text('子'), findsOneWidget);
+    await tester.longPress(find.text('子'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('新建子文件夹'));
+    await tester.pumpAndSettle();
+    final input = find.byType(TextField).hitTestable().last;
+    expect(tester.widget<TextField>(input).controller!.text, '项目/子/');
+    await tester.enterText(input, '项目/子/新建');
+    await tester.tap(find.text('确认').last);
+    await tester.pumpAndSettle();
+    expect(client.folders, contains('项目/子/新建'));
+    await release(tester, state);
+  });
+
   test('late detail failure cannot publish into another space', () async {
     final client = KnowledgeClient();
     await client.saveMemory('default', null, sampleDraft);
@@ -431,6 +506,7 @@ void main() {
     expect(await state.save('default', null, sampleDraft), isTrue);
     old.complete(
       const KnowledgeSnapshot(
+        availableTags: [],
         hasMore: false,
         spaces: [],
         activeSpace: 'old',
@@ -644,6 +720,9 @@ void main() {
         if (output.isNotEmpty) {
           await captureUi(tester, key, output, '$name-list');
         }
+        client.folders.addAll(['项目', '项目/笔记', '生活']);
+        await state.load();
+        await tester.pumpAndSettle();
         await tester.tap(find.text('默认配置'));
         await tester.pumpAndSettle();
         if (output.isNotEmpty) {
