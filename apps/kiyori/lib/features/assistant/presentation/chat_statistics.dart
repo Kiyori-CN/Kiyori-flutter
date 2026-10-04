@@ -1,9 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
+
+Color chatContextColor(BuildContext context, double? ratio) {
+  final c = Theme.of(context).colorScheme;
+  if (ratio == null) return c.onSurfaceVariant;
+  if (ratio > .9) return IconTone.recycle.iconFor(context);
+  if (ratio > .75) {
+    return Color(c.brightness == Brightness.dark ? 0xFFFFB76A : 0xFFA85A12);
+  }
+  return c.primary;
+}
 
 const _usageNote =
     '累计仅含输入和输出完整报告且已入账的请求，可能来自不同模型；进行中的回合稍后计入。总用量 = 输入 + 输出；推理属于输出细分。历史累计未区分推理、缓存写入的未提供和 0，没有正值时显示未提供。';
@@ -40,11 +52,16 @@ class _StatisticsState extends State<_Statistics> {
   late final id = widget.owner.snapshot?.conversation.id;
   ConversationStatistics? value;
   bool recent = false, failed = false, loading = false, dirty = false;
+  Timer? refresh;
   @override
   void initState() {
     super.initState();
     widget.owner.addListener(changed);
     load();
+    // 仅面板打开且该会话运行时刷新核心观测；不让流分片重建聊天顶栏。
+    refresh = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (widget.owner.executions[id]?.active == true) changed();
+    });
   }
 
   void changed() {
@@ -63,6 +80,7 @@ class _StatisticsState extends State<_Statistics> {
           requests: 0,
           reportedRequests: 0,
           cacheReportedRequests: 0,
+          speedEstimated: true,
           recentModel: '',
         ),
       );
@@ -93,6 +111,7 @@ class _StatisticsState extends State<_Statistics> {
   @override
   void dispose() {
     widget.owner.removeListener(changed);
+    refresh?.cancel();
     super.dispose();
   }
 
@@ -128,7 +147,7 @@ class _StatisticsState extends State<_Statistics> {
         ? (cacheRead == null ? null : input)
         : v?.cacheInputTokens;
     final uncached = recent
-        ? (input == null ? null : input - (cacheRead ?? 0) - (cacheWrite ?? 0))
+        ? (reported != 1 ? null : input! - (cacheRead ?? 0) - (cacheWrite ?? 0))
         : v?.uncachedInputTokens;
     final cacheRate = cacheInput == null || cacheRead == null
         ? null
@@ -146,6 +165,23 @@ class _StatisticsState extends State<_Statistics> {
         '未提供';
     String duration(int? n) =>
         n == null || n < 0 ? '未提供' : '${(n / 1000).toStringAsFixed(2)} s';
+    final contextTokens = v?.contextTokens ?? 0;
+    final limit = widget.owner.contextLimit;
+    final ratio = limit == null || limit <= 0 ? null : contextTokens / limit;
+    final contextPercent = ratio == null
+        ? '未提供'
+        : '${(ratio * 100).toStringAsFixed(1)}%';
+    final contextCount = '${number(contextTokens)} / ${number(limit)} token';
+    final speed = v?.tokensPerSecond;
+    final speedValue = speed == null
+        ? '未提供'
+        : '${speed.toStringAsFixed(1)} token/s';
+    final speedSource = speed == null
+        ? '暂无有效的流式计时数据'
+        : v!.speedEstimated
+        ? '估算 · 根据当前输出 token'
+        : '已完成 · 根据供应商用量';
+    final contextColor = chatContextColor(context, ratio);
     final rows = [
       ('输入', number(input)),
       ('输出', number(output)),
@@ -163,7 +199,12 @@ class _StatisticsState extends State<_Statistics> {
       ('普通 / 未分类输入', number(uncached)),
       ('输入 token 缓存读取率', cachePercent),
       ('可计量输入 · 读取率分母', number(cacheInput)),
-      ('缺少有效缓存指标的输入', number(input == null ? null : input - (cacheInput ?? 0))),
+      (
+        '缺少有效缓存指标的输入',
+        number(
+          reported == 0 || input == null ? null : input - (cacheInput ?? 0),
+        ),
+      ),
     ];
     final c = Theme.of(context).colorScheme;
     return Column(
@@ -200,8 +241,8 @@ class _StatisticsState extends State<_Statistics> {
                       recent ? '最近请求' : '对话累计',
                       if (recent && v?.recentModel.isNotEmpty == true)
                         v!.recentModel,
-                      '上下文占用 · 估算: 未提供 (未提供 / 未提供 token)',
-                      '生成速度 · 当前 / 最近请求: 未提供 · 暂无有效的流式计时数据',
+                      '上下文占用 · 估算: $contextPercent ($contextCount)',
+                      '生成速度 · 当前 / 最近请求: $speedValue · $speedSource',
                       '首次输出等待: ${duration(v?.firstOutputMs?.toInt())}',
                       '请求总耗时: ${duration(v?.durationMs?.toInt())}',
                       for (final row in [...rows, ...cache, ...coverage])
@@ -283,15 +324,25 @@ class _StatisticsState extends State<_Statistics> {
                 note: _contextNote,
                 leading: [
                   Text(
-                    '未提供',
+                    contextPercent,
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: c.onSurfaceVariant,
+                      color: contextColor,
                     ),
                   ),
-                  const LinearProgressIndicator(value: 0),
-                  const Text('未提供 / 未提供 token', style: TextStyle(fontSize: 14)),
+                  LinearProgressIndicator(
+                    value: (ratio ?? 0).clamp(0, 1),
+                    color: contextColor,
+                  ),
+                  Text(contextCount, style: const TextStyle(fontSize: 14)),
+                ],
+                trailing: [
+                  if (ratio != null && ratio >= .9)
+                    Text(
+                      ratio >= 1 ? '上下文估算已达到或超过配置上限。' : '上下文接近上限，可关注上下文压缩设置。',
+                      style: TextStyle(fontSize: 12, color: contextColor),
+                    ),
                 ],
               ),
               _card(
@@ -303,12 +354,15 @@ class _StatisticsState extends State<_Statistics> {
                 ],
                 note: _timingNote,
                 leading: [
-                  const Text(
-                    '未提供',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+                  Text(
+                    speedValue,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
-                    '暂无有效的流式计时数据',
+                    speedSource,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -407,13 +461,13 @@ class _StatisticsState extends State<_Statistics> {
                 },
               ),
             ),
-          for (final child in trailing)
-            Padding(padding: const EdgeInsets.only(top: 10), child: child),
           if (note != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: _note(context, note),
             ),
+          for (final child in trailing)
+            Padding(padding: const EdgeInsets.only(top: 10), child: child),
         ],
       ),
     ),

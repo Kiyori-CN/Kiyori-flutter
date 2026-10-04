@@ -1,3 +1,4 @@
+pub mod observation;
 pub mod pool;
 pub mod probe;
 mod responses;
@@ -78,6 +79,7 @@ pub enum ChatEvent {
     Usage {
         input: u64,
         output: u64,
+        output_reported: bool,
         total: u64,
         cache_read: Option<u64>,
         cache_write: Option<u64>,
@@ -239,7 +241,40 @@ pub(crate) fn start(
     input: ChatRequest,
     cancellation: CancellationToken,
 ) -> ChatRun {
+    start_observed(client, input, cancellation, None)
+}
+
+// 在有界队列和SQLite写入前记录到达时间；UI/存储背压不能延长输出计时。
+pub(crate) struct EventSender {
+    sender: mpsc::Sender<ChatEvent>,
+    observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
+}
+impl EventSender {
+    fn observe(&self, event: &ChatEvent) {
+        if let Some(tracker) = &self.observation {
+            tracker
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .observe(event);
+        }
+    }
+    async fn send(&self, event: ChatEvent) -> Result<(), mpsc::error::SendError<ChatEvent>> {
+        self.observe(&event);
+        self.sender.send(event).await
+    }
+}
+
+pub(crate) fn start_observed(
+    client: Arc<Client>,
+    input: ChatRequest,
+    cancellation: CancellationToken,
+    observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
+) -> ChatRun {
     let (sender, receiver) = mpsc::channel(8);
+    let sender = EventSender {
+        sender,
+        observation,
+    };
     let worker_cancel = cancellation.clone();
     let finished = CancellationToken::new();
     let guard = finished.clone().drop_guard();
@@ -251,7 +286,7 @@ pub(crate) fn start(
                 let _ = sender.send(ChatEvent::Failed(error)).await;
             }
         };
-        tokio::select! { biased; _ = worker_cancel.cancelled() => {}, _ = work => {} }
+        tokio::select! { biased; _ = worker_cancel.cancelled() => { sender.observe(&ChatEvent::Cancelled); }, _ = work => {} }
     });
     ChatRun {
         cancellation,
@@ -306,7 +341,7 @@ fn endpoint(value: &str, protocol: &str) -> Result<Url, ChatFailure> {
 async fn execute(
     client: &Client,
     mut input: ChatRequest,
-    sender: &mpsc::Sender<ChatEvent>,
+    sender: &EventSender,
 ) -> Result<(), ChatFailure> {
     if !matches!(input.protocol.as_str(), "chat" | "responses") {
         return Err(ChatFailure::new(
@@ -548,7 +583,7 @@ async fn decode(
     data: &str,
     finish: &mut Option<String>,
     probe: &mut Option<probe::Probe>,
-    sender: &mpsc::Sender<ChatEvent>,
+    sender: &EventSender,
 ) -> Result<(), ChatFailure> {
     let value: Value = serde_json::from_str(data).map_err(|_| ChatFailure::protocol())?;
     if value.get("error").is_some() {
@@ -601,8 +636,8 @@ async fn decode(
             *finish = Some(reason.into());
         }
     }
-    if let Some(usage) = value.get("usage").filter(|v| !v.is_null()) {
-        let _ = sender.send(usage::parse(usage)?).await;
+    if let Some(usage) = value.get("usage").and_then(usage::parse) {
+        let _ = sender.send(usage).await;
     }
     Ok(())
 }

@@ -26,6 +26,7 @@ class ChatFixture {
   Completer<void>? gate;
   bool fail = false;
   Map<String, Object?>? usage;
+  List<String>? chunks;
   String answer = '合成回复：**你好**\n\n```dart\nprint("hello");\n```';
   Future<void> open() async {
     directory = await Directory.systemTemp.createTemp('kiyori-chat-ui-');
@@ -77,18 +78,23 @@ class ChatFixture {
         await request.response.close();
         return;
       }
-      request.response.write(
-        'data: ${jsonEncode({
-          'choices': [
-            {
-              'index': 0,
-              'delta': {'content': answer},
-              'finish_reason': null,
-            },
-          ],
-        })}\n\n',
-      );
-      await request.response.flush();
+      for (final chunk in chunks ?? [answer]) {
+        request.response.write(
+          'data: ${jsonEncode({
+            'choices': [
+              {
+                'index': 0,
+                'delta': {'content': chunk},
+                'finish_reason': null,
+              },
+            ],
+          })}\n\n',
+        );
+        await request.response.flush();
+        if (chunks != null) {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+        }
+      }
       if (gate != null) await gate!.future;
       if (usage != null) {
         request.response.write(

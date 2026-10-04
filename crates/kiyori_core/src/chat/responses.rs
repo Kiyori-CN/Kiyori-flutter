@@ -63,7 +63,7 @@ impl Decoder {
     pub async fn document(
         value: Value,
         probe: &mut Option<probe::Probe>,
-        sender: &mpsc::Sender<ChatEvent>,
+        sender: &super::EventSender,
     ) -> Result<String, ChatFailure> {
         let kind = match value.get("status").and_then(Value::as_str) {
             Some("completed") => "response.completed",
@@ -113,7 +113,7 @@ impl Decoder {
         &mut self,
         data: &str,
         probe: &mut Option<probe::Probe>,
-        sender: &mpsc::Sender<ChatEvent>,
+        sender: &super::EventSender,
     ) -> Result<Option<String>, ChatFailure> {
         let value: Value = serde_json::from_str(data).map_err(|_| ChatFailure::protocol())?;
         if let Some(sequence) = value.get("sequence_number") {
@@ -244,8 +244,8 @@ impl Decoder {
                 if !remaining.is_empty() {
                     return Err(ChatFailure::protocol());
                 }
-                if let Some(usage) = response.get("usage").filter(|v| !v.is_null()) {
-                    let _ = sender.send(usage::parse(usage)?).await;
+                if let Some(usage) = response.get("usage").and_then(usage::parse) {
+                    let _ = sender.send(usage).await;
                 }
                 return Ok(Some(reason.into()));
             }

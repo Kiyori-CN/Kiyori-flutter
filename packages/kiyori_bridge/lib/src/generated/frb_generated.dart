@@ -3893,6 +3893,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   GroupDraft dco_decode_box_autoadd_group_draft(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_group_draft(raw);
@@ -4218,27 +4224,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConversationStatistics dco_decode_conversation_statistics(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 18)
-      throw Exception('unexpected arr length: expect 18 but see ${arr.length}');
+    if (arr.length != 22)
+      throw Exception('unexpected arr length: expect 22 but see ${arr.length}');
     return ConversationStatistics(
-      requests: dco_decode_u_32(arr[0]),
-      reportedRequests: dco_decode_u_32(arr[1]),
-      inputTokens: dco_decode_opt_box_autoadd_i_64(arr[2]),
-      outputTokens: dco_decode_opt_box_autoadd_i_64(arr[3]),
-      recentInputTokens: dco_decode_opt_box_autoadd_i_64(arr[4]),
-      recentOutputTokens: dco_decode_opt_box_autoadd_i_64(arr[5]),
-      recentModel: dco_decode_String(arr[6]),
-      firstOutputMs: dco_decode_opt_box_autoadd_i_64(arr[7]),
-      durationMs: dco_decode_opt_box_autoadd_i_64(arr[8]),
-      cacheReportedRequests: dco_decode_u_32(arr[9]),
-      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[10]),
-      cacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[11]),
-      reasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[12]),
-      cacheInputTokens: dco_decode_opt_box_autoadd_i_64(arr[13]),
-      uncachedInputTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
-      recentCacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
-      recentCacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[16]),
-      recentReasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[17]),
+      contextTokens: dco_decode_opt_box_autoadd_i_64(arr[0]),
+      contextLimit: dco_decode_opt_box_autoadd_i_64(arr[1]),
+      tokensPerSecond: dco_decode_opt_box_autoadd_f_64(arr[2]),
+      speedEstimated: dco_decode_bool(arr[3]),
+      requests: dco_decode_u_32(arr[4]),
+      reportedRequests: dco_decode_u_32(arr[5]),
+      inputTokens: dco_decode_opt_box_autoadd_i_64(arr[6]),
+      outputTokens: dco_decode_opt_box_autoadd_i_64(arr[7]),
+      recentInputTokens: dco_decode_opt_box_autoadd_i_64(arr[8]),
+      recentOutputTokens: dco_decode_opt_box_autoadd_i_64(arr[9]),
+      recentModel: dco_decode_String(arr[10]),
+      firstOutputMs: dco_decode_opt_box_autoadd_i_64(arr[11]),
+      durationMs: dco_decode_opt_box_autoadd_i_64(arr[12]),
+      cacheReportedRequests: dco_decode_u_32(arr[13]),
+      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
+      cacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
+      reasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[16]),
+      cacheInputTokens: dco_decode_opt_box_autoadd_i_64(arr[17]),
+      uncachedInputTokens: dco_decode_opt_box_autoadd_i_64(arr[18]),
+      recentCacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[19]),
+      recentCacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[20]),
+      recentReasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[21]),
     );
   }
 
@@ -4803,6 +4813,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_f_64(raw);
+  }
+
+  @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_i_64(raw);
@@ -5251,6 +5267,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_f_64(deserializer));
+  }
+
+  @protected
   GroupDraft sse_decode_box_autoadd_group_draft(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_group_draft(deserializer));
@@ -5634,6 +5656,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_contextTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_contextLimit = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_tokensPerSecond = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_speedEstimated = sse_decode_bool(deserializer);
     var var_requests = sse_decode_u_32(deserializer);
     var var_reportedRequests = sse_decode_u_32(deserializer);
     var var_inputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
@@ -5659,6 +5685,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       deserializer,
     );
     return ConversationStatistics(
+      contextTokens: var_contextTokens,
+      contextLimit: var_contextLimit,
+      tokensPerSecond: var_tokensPerSecond,
+      speedEstimated: var_speedEstimated,
       requests: var_requests,
       reportedRequests: var_reportedRequests,
       inputTokens: var_inputTokens,
@@ -6479,6 +6509,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_f_64(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -6983,6 +7024,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_group_draft(
     GroupDraft self,
     SseSerializer serializer,
@@ -7292,6 +7339,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_box_autoadd_i_64(self.contextTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.contextLimit, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.tokensPerSecond, serializer);
+    sse_encode_bool(self.speedEstimated, serializer);
     sse_encode_u_32(self.requests, serializer);
     sse_encode_u_32(self.reportedRequests, serializer);
     sse_encode_opt_box_autoadd_i_64(self.inputTokens, serializer);
@@ -7923,6 +7974,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_diary_summary(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_f_64(self, serializer);
     }
   }
 

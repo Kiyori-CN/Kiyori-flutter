@@ -103,6 +103,12 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
+    pub(crate) chat_observations: std::sync::Mutex<
+        std::collections::HashMap<
+            String,
+            std::sync::Arc<std::sync::Mutex<crate::chat::observation::Tracker>>,
+        >,
+    >,
     pub(crate) cancellation: CancellationToken,
     store: std::sync::Mutex<Option<std::sync::Arc<AppStore>>>,
     pub(crate) chat_client: std::sync::OnceLock<Result<std::sync::Arc<reqwest::Client>, CoreError>>,
@@ -117,6 +123,7 @@ impl Default for Runtime {
 impl Runtime {
     pub fn new() -> Self {
         Self {
+            chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
             store: std::sync::Mutex::new(None),
             chat_client: std::sync::OnceLock::new(),
@@ -125,6 +132,7 @@ impl Runtime {
 
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
+            chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
             store: std::sync::Mutex::new(Some(std::sync::Arc::new(AppStore::open(path)?))),
             chat_client: std::sync::OnceLock::new(),
@@ -229,6 +237,9 @@ impl Runtime {
         // 关闭等待当前短事务提交；后续操作在持锁后检查关闭状态，不能迟到写入。
         if let Ok(mut store) = self.store.lock() {
             store.take();
+        }
+        if let Ok(mut observations) = self.chat_observations.lock() {
+            observations.clear();
         }
     }
 

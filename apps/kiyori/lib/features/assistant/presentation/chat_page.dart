@@ -179,6 +179,12 @@ class _ChatPageState extends State<ChatPage>
     final c = Theme.of(context).colorScheme;
     final dark = c.brightness == Brightness.dark;
     final characterName = chat?.character?.draft.name ?? 'Kiyori';
+    final contextLimit = chat?.contextLimit;
+    final contextTokens = chat?.statistics?.contextTokens ?? 0;
+    final contextRatio = contextLimit == null || contextLimit <= 0
+        ? null
+        : contextTokens / contextLimit;
+    final contextColor = chatContextColor(context, contextRatio);
     return PopScope(
       canPop: selectedMessages == null,
       onPopInvokedWithResult: (didPop, _) {
@@ -352,6 +358,10 @@ class _ChatPageState extends State<ChatPage>
                     Semantics(
                       button: true,
                       label: '对话统计',
+                      excludeSemantics: true,
+                      value: contextRatio == null
+                          ? '上下文占用未提供'
+                          : '上下文占用 ${(contextRatio * 100).toStringAsFixed(1)}%',
                       child: SizedBox.square(
                         dimension: 36,
                         child: InkWell(
@@ -371,15 +381,29 @@ class _ChatPageState extends State<ChatPage>
                                 alignment: Alignment.center,
                                 children: [
                                   CircularProgressIndicator(
-                                    value: 0,
+                                    value: (contextRatio ?? 0).clamp(0, 1),
                                     strokeWidth: 2.5,
+                                    color: contextColor,
                                     backgroundColor: c.surfaceContainerHighest,
                                   ),
-                                  Icon(
-                                    Icons.bar_chart_outlined,
-                                    size: 15,
-                                    color: c.onSurfaceVariant,
-                                  ),
+                                  if (contextRatio == null)
+                                    Icon(
+                                      Icons.bar_chart_outlined,
+                                      size: 15,
+                                      color: contextColor,
+                                    )
+                                  else
+                                    Text(
+                                      '${(contextRatio * 100).round().clamp(0, 999)}%',
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        height: 1,
+                                        fontWeight: FontWeight.w600,
+                                        color: contextColor,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),

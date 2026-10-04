@@ -15,6 +15,8 @@ core/chat/pool使用同一请求client做有界并发可用性探测，Dart的Mo
 页面执行代次和逐项安全保存；core/model_execution拥有候选筛选与独立SQLite游标，
 配置模型测试按revision调用，不能由UI自行选择首个密钥。
 core/chat/responses只适配Responses请求体和事件解码，复用同一client/生命周期，未建立新网络owner。
+core/chat/observation属于同一请求链路，Runtime按会话持有最新tracker，负责单调计时、
+输入估算与进程内最近样本；不入库、不从历史耗时反推，不建立第二份累计账本。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

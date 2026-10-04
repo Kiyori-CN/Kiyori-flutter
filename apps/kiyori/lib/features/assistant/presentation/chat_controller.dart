@@ -14,6 +14,7 @@ class ChatController extends ChangeNotifier {
   final Future<SecretStore> Function() openSecrets;
   ConversationCatalog? catalog;
   ConversationSnapshot? snapshot;
+  ConversationStatistics? statistics;
   ModelCatalog? models;
   PromptCatalog? prompts;
   ChatPreferences? preferences;
@@ -93,6 +94,15 @@ class ChatController extends ChangeNotifier {
           ?.configId;
   ModelConfig? get modelConfig =>
       models?.configs.where((config) => config.id == modelConfigId).firstOrNull;
+  int? get contextLimit {
+    final options = modelConfig?.draft.options;
+    if (options == null) return null;
+    return (options.maxContextMode
+                ? options.maxContextLength
+                : options.contextLength)
+            .toInt() *
+        1024;
+  }
 
   Future<void> setMaxContext(bool enabled) async {
     final config = modelConfig;
@@ -147,9 +157,13 @@ class ChatController extends ChangeNotifier {
       final selected = id ?? snapshot?.conversation.id ?? directory.activeId;
       final exists = directory.conversations.any((c) => c.id == selected);
       final value = exists ? await runtime.conversation(selected!) : null;
+      final stats = exists
+          ? await runtime.conversationStatistics(selected!)
+          : null;
       if (_disposed || generation != _generation) return;
       catalog = directory;
       snapshot = value;
+      statistics = stats;
       final reply = _replies[selected];
       if (reply != null &&
           value?.messages.any((m) => m.id == reply.id) != true) {
@@ -456,12 +470,14 @@ class ChatController extends ChangeNotifier {
       }
       // 网络可能先于FFI快照返回；流正文从空串累积，禁止把DB快照与重放delta相加。
       final started = await runtime.conversation(id);
+      final startedStatistics = await runtime.conversationStatistics(id);
       operation.messageId = started.messages
           .where((m) => m.state == 'running')
           .firstOrNull
           ?.id;
       if (!_disposed && snapshot?.conversation.id == id) {
         snapshot = started;
+        statistics = startedStatistics;
         _notify();
       }
       await for (final event in run.events) {
@@ -486,9 +502,13 @@ class ChatController extends ChangeNotifier {
         try {
           final runtime = await connect();
           final finalSnapshot = await runtime.conversation(id);
+          final finalStatistics = await runtime.conversationStatistics(id);
           final directory = await runtime.conversationCatalog();
           if (!_disposed) {
-            if (snapshot?.conversation.id == id) snapshot = finalSnapshot;
+            if (snapshot?.conversation.id == id) {
+              snapshot = finalSnapshot;
+              statistics = finalStatistics;
+            }
             catalog = directory;
           }
         } catch (_) {

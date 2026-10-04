@@ -1,5 +1,5 @@
 //! 与旧 ProviderUsageSnapshot 一致：细分异常不丢弃有效输入/输出总量。
-use super::{ChatEvent, ChatFailure};
+use super::ChatEvent;
 use serde_json::Value;
 
 fn present<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
@@ -10,7 +10,7 @@ fn count(value: &Value) -> Option<u64> {
     value.as_u64().filter(|value| *value <= i64::MAX as u64)
 }
 
-pub(super) fn parse(value: &Value) -> Result<ChatEvent, ChatFailure> {
+pub(super) fn parse(value: &Value) -> Option<ChatEvent> {
     let hit = present(value, "prompt_cache_hit_tokens");
     let miss = present(value, "prompt_cache_miss_tokens");
     let input = present(value, "prompt_tokens").or_else(|| present(value, "input_tokens"));
@@ -21,12 +21,14 @@ pub(super) fn parse(value: &Value) -> Result<ChatEvent, ChatFailure> {
             .zip(miss.and_then(count))
             .and_then(|(hit, miss)| hit.checked_add(miss))
             .filter(|value| *value <= i64::MAX as u64),
-    }
-    .ok_or_else(ChatFailure::protocol)?;
-    let output = present(value, "completion_tokens")
-        .or_else(|| present(value, "output_tokens"))
-        .and_then(count)
-        .ok_or_else(ChatFailure::protocol)?;
+    }?;
+    let output = present(value, "completion_tokens").or_else(|| present(value, "output_tokens"));
+    let output_reported = output.is_some();
+    // 旧解析器保留仅输入样本，但错类型/负值跳过本次观察，不中断有效回复。
+    let output = match output {
+        Some(value) => count(value)?,
+        None => 0,
+    };
     let details = value
         .get("prompt_tokens_details")
         .filter(|value| value.is_object())
@@ -56,9 +58,10 @@ pub(super) fn parse(value: &Value) -> Result<ChatEvent, ChatFailure> {
                 .and_then(count)
         })
         .filter(|reasoning| *reasoning <= output);
-    Ok(ChatEvent::Usage {
+    Some(ChatEvent::Usage {
         input,
         output,
+        output_reported,
         // 旧统计总量是输入+输出；不能把推理细分再相加。
         total: input.saturating_add(output),
         cache_read: valid.then_some(read_count.unwrap_or(0)),
@@ -88,6 +91,7 @@ mod tests {
                 ChatEvent::Usage {
                     input: 100,
                     output: 30,
+                    output_reported: true,
                     total: 130,
                     cache_read: Some(60),
                     cache_write: Some(10),
@@ -130,7 +134,7 @@ mod tests {
             json!({"input_tokens":-1,"output_tokens":1}),
             json!({"input_tokens":18446744073709551615u64,"output_tokens":1}),
         ] {
-            assert!(parse(&value).is_err());
+            assert!(parse(&value).is_none());
         }
     }
 }

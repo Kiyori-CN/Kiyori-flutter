@@ -135,6 +135,14 @@ async fn real_two_turns_freeze_selected_config_role_history_and_reopen() {
     assert_eq!(stats.input_tokens, None);
     assert_eq!(stats.output_tokens, None);
     assert!(stats.first_output_ms.is_some());
+    let expected_context: i64 = requests[1]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| chat::observation::estimate(m["content"].as_str().unwrap()))
+        .sum();
+    assert_eq!(stats.context_tokens, Some(expected_context));
+    assert_eq!(stats.tokens_per_second, None); // 单分片不得伪造速度。
     assert_eq!(snapshot.messages.len(), 4);
     assert_eq!(
         runtime.search_conversations("合成回复").unwrap(),
@@ -153,6 +161,10 @@ async fn real_two_turns_freeze_selected_config_role_history_and_reopen() {
     runtime.select_conversation(id.clone()).unwrap();
     runtime.close();
     let reopened = Runtime::with_data_dir(&dir.0).unwrap();
+    let restored_stats = reopened.conversation_statistics(id.clone()).unwrap();
+    assert!(restored_stats.recent_model.is_empty());
+    assert_eq!(restored_stats.context_tokens, None);
+    assert_eq!(restored_stats.first_output_ms, None);
     assert_eq!(
         reopened.conversation_catalog().unwrap().active_id,
         Some(id.clone())
@@ -180,11 +192,13 @@ fn usage_distinguishes_reported_zero_and_unknown_across_schema9_migration() {
     assert_eq!(stats.first_output_ms, None);
     upgraded.with_store(|store| {
         store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at) VALUES('zero',?1,'running','default',1,'zero-model',2)",[&id]).unwrap();
-        store.persist_conversation_event("zero",chat::ChatEvent::Usage {input:0,output:0,total:0,cache_read:None,cache_write:None,reasoning:None})?;
+        store.persist_conversation_event("zero",chat::ChatEvent::Usage {input:0,output:0,total:0,cache_read:None,cache_write:None,reasoning:None,output_reported:true})?;
         store.persist_conversation_event("zero",chat::ChatEvent::Cancelled)?;
         Ok(())
     }).unwrap();
-    let stats = upgraded.conversation_statistics(id).unwrap();
+    let stats = upgraded
+        .with_store(|store| store.conversation_statistics(&id))
+        .unwrap();
     assert_eq!(stats.requests, 2);
     assert_eq!(stats.reported_requests, 2);
     assert_eq!(stats.recent_input_tokens, Some(0));
@@ -213,7 +227,7 @@ fn usage_details_replace_samples_survive_reopen_and_migrate_unknown() {
     runtime.with_store(|store| {
         store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at) VALUES('new',?1,'running','default',1,'model',2)",[&id]).unwrap();
         for read in [50,60,60] {
-            store.persist_conversation_event("new",chat::ChatEvent::Usage {input:200,output:30,total:230,cache_read:Some(read),cache_write:Some(10),reasoning:Some(20)})?;
+            store.persist_conversation_event("new",chat::ChatEvent::Usage {input:200,output:30,total:230,cache_read:Some(read),cache_write:Some(10),reasoning:Some(20),output_reported:true})?;
         }
         let active = store.conversation_statistics(&id)?;
         assert_eq!(active.reported_requests,1);
@@ -242,6 +256,7 @@ fn usage_details_replace_samples_survive_reopen_and_migrate_unknown() {
                 chat::ChatEvent::Usage {
                     input: 200,
                     output: 30,
+                    output_reported: true,
                     total: 230,
                     cache_read: Some(0),
                     cache_write: Some(0),
@@ -252,7 +267,16 @@ fn usage_details_replace_samples_survive_reopen_and_migrate_unknown() {
             Ok(())
         })
         .unwrap();
-    let zero = reopened.conversation_statistics(id).unwrap();
+    assert_eq!(
+        reopened
+            .conversation_statistics(id.clone())
+            .unwrap()
+            .recent_input_tokens,
+        None
+    );
+    let zero = reopened
+        .with_store(|store| store.conversation_statistics(&id))
+        .unwrap();
     assert_eq!(zero.recent_cache_read_tokens, Some(0));
     assert_eq!(zero.recent_cache_write_tokens, Some(0));
     assert_eq!(zero.recent_reasoning_tokens, Some(0));

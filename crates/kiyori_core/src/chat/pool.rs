@@ -77,6 +77,10 @@ pub(crate) fn start_pool(
                         };
                         // 单key探测复用同一execute；collector只保留终态，不累计事件。
                         let (tx, mut rx) = mpsc::channel(8);
+                        let tx = super::EventSender {
+                            sender: tx,
+                            observation: None,
+                        };
                         let send = async {
                             let result = execute(&client, request, &tx).await;
                             drop(tx);

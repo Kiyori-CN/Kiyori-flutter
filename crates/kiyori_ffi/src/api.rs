@@ -92,6 +92,10 @@ pub struct ConversationCatalog {
 }
 
 pub struct ConversationStatistics {
+    pub context_tokens: Option<i64>,
+    pub context_limit: Option<i64>,
+    pub tokens_per_second: Option<f64>,
+    pub speed_estimated: bool,
     pub requests: u32,
     pub reported_requests: u32,
     pub input_tokens: Option<i64>,
@@ -1202,6 +1206,10 @@ impl RuntimeHandle {
     ) -> Result<ConversationStatistics, BridgeError> {
         let v = self.inner.conversation_statistics(id)?;
         Ok(ConversationStatistics {
+            context_tokens: v.context_tokens,
+            context_limit: v.context_limit,
+            tokens_per_second: v.tokens_per_second,
+            speed_estimated: v.speed_estimated,
             requests: v.requests,
             reported_requests: v.reported_requests,
             input_tokens: v.input_tokens,

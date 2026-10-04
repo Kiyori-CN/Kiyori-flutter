@@ -5,6 +5,34 @@
 
 ## 当前任务：AI对话精确复刻与即时点击
 
+### 请求内观测与用量容错增量
+
+继续原目标，基线main/9e7bde8c6ce599adfbdfc3f8f41df9ecb92a64d9，起始工作区干净。
+对照旧GenerationSpeedTracker、TokenStatisticsDelegate、ChatUtils/TokenCacheManager，
+接入同Runtime的每会话最新请求tracker：核心Instant计时、逐条UTF-16估算、首输出等待、
+至少两分片的有效速度、完成供应商输出及最近样本；分支/重开不恢复历史样本，取消/失败清除。
+顶栏圆环与抽屉使用真实上下文估算和当前模型上限；明暗语义色及阈值、百分比精度沿旧源。
+可选usage缺失/错类型/负值/越界只跳过该观察，保持有效回复；仅输入样本不计完整覆盖。
+不改schema/依赖，不操作设备或供应商端点。完整tools/verify.ps1 -WindowsIntegration通过，
+work/chat-observation-verify-v2.log记录Rust80/fmt/Clippy、355 Dart格式/analyze、应用565
+（11条件跳过）、platform5、独立FFI18及Windows引擎5；桥生成-Check五输出一致。
+观测/统计UI专项7项及最终捕获专项5项通过，最终7张PNG在work/chat-observation-capture-final，
+已检查速度卡及统计代表图；包含取消、未知输出、非流式、两分片、UTF16与重开边界回归。
+首轮发现探测collector适配遗漏、测试Responses流缺delta、语义标签合并、惰性卡片未滚动，
+均按实际契约修复，最终完整验证首轮新测试花括号lint也已修复；保留失败日志，未降低断言。
+最终Android ARM64 Debug（70.0s）、普通Windows x64 Debug产品入口（19.4s）串行构建通过，
+日志work/chat-observation-android.log、chat-observation-windows.log。固定包
+artifacts/ui-preview/20261004-152316：APK117922609字节，SHA256
+5D23B954FC66631CC3B3C76EBBB74EEF8AB41547F9155047E008780AD3E687E0；Windows84文件158583216字节。
+85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及Windows x64/Flutter DLL pin通过；
+原生runner增量复用，最新Dart kernel与Rust DLL均核对。25文件精确清单审计通过，
+按本轮授权提交并普通推送main，最终提交/ref见Git与固定包manifest.sourceCommit。
+源码/测试/正式文档入库，固定包与过程证据保持忽略；旧源6b03b03仍只读干净。
+本批仍不等于全部AI功能/像素完成：并行运行历史数量胶囊、附件/语音/悬浮、工具执行及
+复杂消息渲染继续；同设备并排、实际键盘触摸/Profile与Apple仍待验证。
+
+### 已交付的供应商用量细分
+
 继续原目标，当前统计增量基线main/fb52ede229fafc0f5ffa097fa1c8c1db51bfff31，工作区干净。
 按旧ProviderUsageSnapshot、OpenAIResponsesProvider.parseUsageCounts与统计抽屉语义，
 接入缓存读取/写入、推理细分、有效缓存分母、未分类输入和覆盖率。schema14新增三个可空列，

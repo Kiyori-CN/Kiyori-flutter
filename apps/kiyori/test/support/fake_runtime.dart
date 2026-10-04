@@ -54,6 +54,7 @@ class FakeClient implements RuntimeClient {
   Future<ConversationStatistics> conversationStatistics(String id) async =>
       const ConversationStatistics(
         cacheReportedRequests: 0,
+        speedEstimated: true,
         requests: 0,
         reportedRequests: 0,
         recentModel: '',

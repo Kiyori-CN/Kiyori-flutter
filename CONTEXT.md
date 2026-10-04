@@ -110,6 +110,10 @@ core/conversations拥有会话、消息和Run，复用同一Runtime/SQLite；Cha
 不能修改user_version。详细生命周期与验证边界见[请求契约](docs/decisions/0007-chat-request-runtime.md)。
 供应商缓存读写及推理细分属于同一次Run，重复usage替换而不累加；未提供保持NULL。
 累计排除运行中的请求；有效缓存输入作为命中率分母，异常缓存不影响输入/输出总数。
+可选usage格式异常只跳过观察，不中断有效回复；仅输入样本不进入完整用量累计。
+Runtime按会话持有最新请求观测，core/chat/observation用单调时钟及实际出站消息估算；
+最近样本/速度不从SQLite恢复，取消/失败清除、删除/关闭释放，旧执行无法覆盖新tracker。
+非流式、单分片、未报告最终输出均不发布完成速度。UI只投影核心观测，顶栏不按分片刷新。
 密钥池的TextExchange只处理单次用户选择的文本，不暴露路径给feature或建立文件库。
 导入UTF-8逐行追加，空行忽略、重复值保留；原文件和合并payload上限1 MiB，超限不改草稿。
 Windows COM不添加最近文档，Android SAF不持久授权/缓存；导出为用户选择位置的明文文件。

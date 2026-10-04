@@ -54,6 +54,74 @@ fn request(endpoint: String) -> ChatRequest {
 }
 
 #[tokio::test]
+async fn optional_usage_never_invalidates_valid_chat_or_responses() {
+    for protocol in ["chat", "responses"] {
+        for stream in [true, false] {
+            for usage in [
+                json!({}),
+                json!({"input_tokens":12}),
+                json!({"input_tokens":-1,"output_tokens":2}),
+                json!({"input_tokens":12,"output_tokens":"bad"}),
+                json!({"input_tokens":12,"output_tokens":2}),
+            ] {
+                let document = if protocol == "chat" {
+                    json!({"choices":[{"index":0,"message":{"role":"assistant","content":"完整回复"},"delta":{"content":"完整回复"},"finish_reason":"stop"}],"usage":usage})
+                } else {
+                    json!({"status":"completed","output":[{"type":"message","role":"assistant","id":"message","content":[{"type":"output_text","text":"完整回复"}]}],"usage":usage})
+                };
+                let body = if !stream {
+                    document.to_string()
+                } else if protocol == "chat" {
+                    format!("data: {document}\n\ndata: [DONE]\n\n")
+                } else {
+                    format!(
+                        "data: {}\n\ndata: {}\n\n",
+                        json!({"type":"response.output_text.delta","item_id":"message","output_index":0,"content_index":0,"delta":"完整回复"}),
+                        json!({"type":"response.completed","response":document})
+                    )
+                };
+                let (endpoint, worker) = serve(
+                    "200 OK",
+                    body,
+                    if stream {
+                        "text/event-stream"
+                    } else {
+                        "application/json"
+                    },
+                );
+                let runtime = Runtime::new();
+                let mut input = request(endpoint);
+                input.protocol = protocol.into();
+                input.stream = stream;
+                let run = runtime.start_chat(input).unwrap();
+                let mut events = vec![];
+                while let Some(event) = run.next_event().await.unwrap() {
+                    events.push(event);
+                }
+                assert!(
+                    matches!(events.last(), Some(ChatEvent::Completed { .. })),
+                    "{protocol} {stream} {usage}: {events:?}"
+                );
+                if usage.get("output_tokens").is_none()
+                    && usage.get("input_tokens") == Some(&json!(12))
+                {
+                    assert!(events.iter().any(|e| matches!(
+                        e,
+                        ChatEvent::Usage {
+                            input: 12,
+                            output_reported: false,
+                            ..
+                        }
+                    )));
+                }
+                worker.join().unwrap();
+                runtime.close();
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn nonstream_chat_and_responses_use_json_and_preserve_usage() {
     for (protocol, body) in [
         (
@@ -215,6 +283,7 @@ async fn responses_request_stream_and_usage_do_not_require_chat_done() {
                 cache_read: None,
                 cache_write: None,
                 reasoning: None,
+                output_reported: true,
             },
             ChatEvent::Completed {
                 reason: "stop".into(),
@@ -304,6 +373,7 @@ async fn real_post_stream_usage_and_terminal_once() {
                 cache_read: None,
                 cache_write: None,
                 reasoning: None,
+                output_reported: true,
             },
             ChatEvent::Completed {
                 reason: "stop".into(),

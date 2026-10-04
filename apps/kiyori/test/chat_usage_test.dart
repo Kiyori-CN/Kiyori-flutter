@@ -8,6 +8,71 @@ import 'chat_business_test.dart' show ChatFixture, until;
 import 'support/ui_capture.dart';
 
 void main() {
+  testWidgets(
+    'request observations retain partial usage without failing chat',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(f.open);
+      final boundary = GlobalKey();
+      const output = String.fromEnvironment('KIYORI_CAPTURE');
+      try {
+        if (output.isNotEmpty) await loadCaptureFonts(tester);
+        f.chunks = ['合成', '回复'];
+        f.usage = {'input_tokens': 13};
+        await tester.runAsync(() => f.chat.send('仅报告输入'));
+        expect(f.chat.error, isNull);
+        expect(f.chat.snapshot!.messages.last.state, 'completed');
+        final partial = f.chat.statistics!;
+        expect(partial.reportedRequests, 0);
+        expect(partial.recentInputTokens, 13);
+        expect(partial.recentOutputTokens, isNull);
+        expect(partial.tokensPerSecond, isNull);
+        f.usage = {'input_tokens': 15, 'output_tokens': 6};
+        await tester.runAsync(() => f.chat.send('完整用量'));
+        final stats = f.chat.statistics!;
+        expect(stats.tokensPerSecond, greaterThan(0));
+        expect(stats.speedEstimated, isFalse);
+        expect(stats.contextTokens, greaterThan(0));
+        expect(stats.durationMs, greaterThan(stats.firstOutputMs!));
+        expect(stats.reportedRequests, 1);
+        expect(stats.inputTokens, 15);
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: boundary,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: KiyoriTheme.light(),
+              home: Scaffold(body: ChatPage(controller: f.chat)),
+            ),
+          ),
+        );
+        await until(tester, () => !f.chat.loading);
+        await tester.tap(find.bySemanticsLabel('对话统计'));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text('生成速度 · 当前 / 最近请求'),
+          200,
+          scrollable: find.descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await until(
+          tester,
+          () => find.text('已完成 · 根据供应商用量').evaluate().isNotEmpty,
+        );
+        expect(find.textContaining('token/s'), findsOneWidget);
+        if (output.isNotEmpty) {
+          await captureUi(tester, boundary, output, 'chat-observation-speed');
+        }
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
   testWidgets('statistics total saturates instead of wrapping negative', (
     tester,
   ) async {
@@ -95,15 +160,22 @@ void main() {
         final branch = (await tester.runAsync(
           () => f.runtime.conversationStatistics(f.chat.draftId),
         ))!;
-        expect(branch, first);
+        expect(branch.inputTokens, first.inputTokens);
+        expect(branch.cacheReadTokens, first.cacheReadTokens);
+        expect(branch.recentInputTokens, isNull);
+        expect(branch.contextTokens, isNull);
         final reopened = (await tester.runAsync(
           () => NativeRuntimeClient.open(dataDirectory: f.directory.path),
         ))!;
         try {
-          expect(
-            await tester.runAsync(() => reopened.conversationStatistics(id)),
-            first,
-          );
+          final history = (await tester.runAsync(
+            () => reopened.conversationStatistics(id),
+          ))!;
+          expect(history.inputTokens, first.inputTokens);
+          expect(history.cacheReadTokens, first.cacheReadTokens);
+          expect(history.recentInputTokens, isNull);
+          expect(history.firstOutputMs, isNull);
+          expect(history.contextTokens, isNull);
         } finally {
           await tester.runAsync(reopened.close);
         }

@@ -83,6 +83,10 @@ pub struct ConversationCatalog {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Statistics {
+    pub context_tokens: Option<i64>,
+    pub context_limit: Option<i64>,
+    pub tokens_per_second: Option<f64>,
+    pub speed_estimated: bool,
     pub requests: u32,
     pub reported_requests: u32,
     pub input_tokens: Option<i64>,
@@ -286,6 +290,10 @@ impl AppStore {
         ).optional().map_err(storage)?.unwrap_or((None,None,String::new(),None,None,None,None,None));
         tx.commit().map_err(storage)?;
         Ok(Statistics {
+            context_tokens: None,
+            context_limit: None,
+            tokens_per_second: None,
+            speed_estimated: true,
             requests,
             reported_requests,
             input_tokens: (reported_requests > 0).then_some(input_tokens),
@@ -829,7 +837,32 @@ impl Runtime {
         self.with_store(|store| store.select_chat_character(&id))
     }
     pub fn conversation_statistics(&self, id: String) -> Result<Statistics, CoreError> {
-        self.with_store(|store| store.conversation_statistics(&id))
+        let mut statistics = self.with_store(|store| store.conversation_statistics(&id))?;
+        let observation = self
+            .chat_observations
+            .lock()
+            .map_err(|_| invalid("请求观测锁不可用"))?
+            .get(&id)
+            .map(|tracker| {
+                tracker
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .snapshot()
+            });
+        let v = observation.clone().unwrap_or_default();
+        statistics.context_tokens = observation.as_ref().map(|v| v.context_tokens);
+        statistics.context_limit = observation.as_ref().map(|v| v.context_limit);
+        statistics.tokens_per_second = v.tokens_per_second;
+        statistics.speed_estimated = v.estimated;
+        statistics.recent_input_tokens = v.input_tokens;
+        statistics.recent_output_tokens = v.output_tokens;
+        statistics.recent_model = v.model;
+        statistics.recent_cache_read_tokens = v.cache_read_tokens;
+        statistics.recent_cache_write_tokens = v.cache_write_tokens;
+        statistics.recent_reasoning_tokens = v.reasoning_tokens;
+        statistics.first_output_ms = v.first_output_ms;
+        statistics.duration_ms = v.duration_ms;
+        Ok(statistics)
     }
     pub fn search_conversations(&self, query: &str) -> Result<Vec<String>, CoreError> {
         self.with_store(|store| store.search_conversations(query))
@@ -853,7 +886,14 @@ impl Runtime {
         action: String,
         value: String,
     ) -> Result<(), CoreError> {
-        self.with_store(|s| s.change_conversation(&id, revision, &action, &value))
+        self.with_store(|s| s.change_conversation(&id, revision, &action, &value))?;
+        if action == "delete" {
+            self.chat_observations
+                .lock()
+                .map_err(|_| invalid("请求观测锁不可用"))?
+                .remove(&id);
+        }
+        Ok(())
     }
     pub fn change_message(
         &self,
@@ -933,7 +973,7 @@ impl Runtime {
             .get_or_init(|| chat::client().map(Arc::new))
             .clone()?;
         let run_guard = store.run_lock(&prepared.conversation)?;
-        let (request,run_id)=prepared.lease.with_store(&store,|| {
+        let (request,run_id,context_limit)=prepared.lease.with_store(&store,|| {
             let mut connection=store.connection.lock().map_err(|_|invalid("聊天存储锁不可用"))?;
             let tx=connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
             let selected=selection(&tx,&prepared.conversation,prepared.target.as_deref())?;
@@ -1001,12 +1041,30 @@ impl Runtime {
             }
             touch(&tx,&prepared.conversation)?;
             tx.commit().map_err(storage)?;
-            Ok((request,run_id))
+            Ok((request,run_id,(context*1024.) as i64))
         })?;
+        let observation = Arc::new(std::sync::Mutex::new(chat::observation::Tracker::new(
+            request.stream,
+            format!(
+                "{}:{}",
+                prepared.selection.config.draft.provider, request.model
+            ),
+            &request.messages,
+            context_limit,
+        )));
+        self.chat_observations
+            .lock()
+            .map_err(|_| invalid("请求观测锁不可用"))?
+            .insert(prepared.conversation.clone(), observation.clone());
         // 安全引用已解析成短期请求，不把lease延长到网络/流式阶段。
         drop(prepared);
         let cancellation = self.cancellation.child_token();
-        let upstream = chat::start(client, request, cancellation.child_token());
+        let upstream = chat::start_observed(
+            client,
+            request,
+            cancellation.child_token(),
+            Some(observation),
+        );
         Ok(chat::persist(upstream, cancellation, move |event| {
             let _keep_lock = &run_guard;
             store.persist_conversation_event(&run_id, event)
@@ -1155,6 +1213,7 @@ impl AppStore {
             chat::ChatEvent::Usage {
                 input,
                 output,
+                output_reported,
                 cache_read,
                 cache_write,
                 reasoning,
@@ -1173,8 +1232,8 @@ impl AppStore {
                 let valid =
                     read.is_some_and(|read| read <= input && write.unwrap_or(0) <= input - read);
                 tx.execute(
-                    "UPDATE conversation_runs SET input_tokens=?2,output_tokens=?3,usage_reported=1,cache_read_tokens=?4,cache_write_tokens=?5,reasoning_tokens=?6 WHERE id=?1",
-                    params![run, input, output, if valid {read} else {None}, if valid {write} else {None}, reasoning],
+                    "UPDATE conversation_runs SET input_tokens=?2,output_tokens=?3,usage_reported=?7,cache_read_tokens=?4,cache_write_tokens=?5,reasoning_tokens=?6 WHERE id=?1",
+                    params![run, input, output, if valid {read} else {None}, if valid {write} else {None}, reasoning, output_reported],
                 )
                 .map_err(storage)?;
             }

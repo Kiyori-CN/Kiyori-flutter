@@ -898,6 +898,10 @@ class ConversationSnapshot {
 }
 
 class ConversationStatistics {
+  final PlatformInt64? contextTokens;
+  final PlatformInt64? contextLimit;
+  final double? tokensPerSecond;
+  final bool speedEstimated;
   final int requests;
   final int reportedRequests;
   final PlatformInt64? inputTokens;
@@ -918,6 +922,10 @@ class ConversationStatistics {
   final PlatformInt64? recentReasoningTokens;
 
   const ConversationStatistics({
+    this.contextTokens,
+    this.contextLimit,
+    this.tokensPerSecond,
+    required this.speedEstimated,
     required this.requests,
     required this.reportedRequests,
     this.inputTokens,
@@ -940,6 +948,10 @@ class ConversationStatistics {
 
   @override
   int get hashCode =>
+      contextTokens.hashCode ^
+      contextLimit.hashCode ^
+      tokensPerSecond.hashCode ^
+      speedEstimated.hashCode ^
       requests.hashCode ^
       reportedRequests.hashCode ^
       inputTokens.hashCode ^
@@ -964,6 +976,10 @@ class ConversationStatistics {
       identical(this, other) ||
       other is ConversationStatistics &&
           runtimeType == other.runtimeType &&
+          contextTokens == other.contextTokens &&
+          contextLimit == other.contextLimit &&
+          tokensPerSecond == other.tokensPerSecond &&
+          speedEstimated == other.speedEstimated &&
           requests == other.requests &&
           reportedRequests == other.reportedRequests &&
           inputTokens == other.inputTokens &&

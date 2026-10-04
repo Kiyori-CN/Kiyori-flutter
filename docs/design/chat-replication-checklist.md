@@ -50,9 +50,10 @@ AgentInfoPopup为右下220宽、bottom52/end12、16内距、16粗标题、14/20�
 没有确定按钮。模型/设置/附件卡使用KiyoriSurfaceTokens的popupElevation3和
 surfaceContainerHigh。ChatStatisticsSheet的说明全文来自values/strings.xml，
 StatisticsCard圆角16/内16/间10，行宽不足300或字比例大于1.3时纵排；统计事实来源
-已接缓存/推理的真实供应商细分及覆盖；上下文估算和速度tracker仍未接，字段保持未知。
-最近请求目前仍读数据库最新Run，与旧版仅保存进程内样本的生命周期不同，尚待修复；
-不能据已接细分宣称整个统计抽屉功能一致。总量按旧Long饱和加法避免极值回绕。
+已接缓存/推理的真实供应商细分及覆盖；请求内上下文估算与速度tracker已接核心，
+最近请求按进程内tracker读取，分支/重开不从历史Run推算；仅输入样本不计入完整覆盖。
+顶栏圆环与抽屉读同一上下文估算，按当前配置上限显示整数/一位小数，语义颜色按旧阈值。
+完整统计仍需同设备并排确认，不以逻辑回归宣称像素验收。总量使用旧Long饱和加法。
 消息信息的durationMs已由核心使用
 finished_at-first_output_at计算，UI不能再次扣除等待；统计durationMs则为请求总耗时。
 

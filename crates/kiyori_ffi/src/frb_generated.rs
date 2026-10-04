@@ -4763,6 +4763,10 @@ impl SseDecode for crate::api::ConversationSnapshot {
 impl SseDecode for crate::api::ConversationStatistics {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_contextTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_contextLimit = <Option<i64>>::sse_decode(deserializer);
+        let mut var_tokensPerSecond = <Option<f64>>::sse_decode(deserializer);
+        let mut var_speedEstimated = <bool>::sse_decode(deserializer);
         let mut var_requests = <u32>::sse_decode(deserializer);
         let mut var_reportedRequests = <u32>::sse_decode(deserializer);
         let mut var_inputTokens = <Option<i64>>::sse_decode(deserializer);
@@ -4782,6 +4786,10 @@ impl SseDecode for crate::api::ConversationStatistics {
         let mut var_recentCacheWriteTokens = <Option<i64>>::sse_decode(deserializer);
         let mut var_recentReasoningTokens = <Option<i64>>::sse_decode(deserializer);
         return crate::api::ConversationStatistics {
+            context_tokens: var_contextTokens,
+            context_limit: var_contextLimit,
+            tokens_per_second: var_tokensPerSecond,
+            speed_estimated: var_speedEstimated,
             requests: var_requests,
             reported_requests: var_reportedRequests,
             input_tokens: var_inputTokens,
@@ -5619,6 +5627,17 @@ impl SseDecode for Option<crate::api::DiarySummary> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<crate::api::DiarySummary>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f64>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -6646,6 +6665,10 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::ConversationSnapshot>
 impl flutter_rust_bridge::IntoDart for crate::api::ConversationStatistics {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.context_tokens.into_into_dart().into_dart(),
+            self.context_limit.into_into_dart().into_dart(),
+            self.tokens_per_second.into_into_dart().into_dart(),
+            self.speed_estimated.into_into_dart().into_dart(),
             self.requests.into_into_dart().into_dart(),
             self.reported_requests.into_into_dart().into_dart(),
             self.input_tokens.into_into_dart().into_dart(),
@@ -7703,6 +7726,10 @@ impl SseEncode for crate::api::ConversationSnapshot {
 impl SseEncode for crate::api::ConversationStatistics {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<i64>>::sse_encode(self.context_tokens, serializer);
+        <Option<i64>>::sse_encode(self.context_limit, serializer);
+        <Option<f64>>::sse_encode(self.tokens_per_second, serializer);
+        <bool>::sse_encode(self.speed_estimated, serializer);
         <u32>::sse_encode(self.requests, serializer);
         <u32>::sse_encode(self.reported_requests, serializer);
         <Option<i64>>::sse_encode(self.input_tokens, serializer);
@@ -8303,6 +8330,16 @@ impl SseEncode for Option<crate::api::DiarySummary> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::api::DiarySummary>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f64>::sse_encode(value, serializer);
         }
     }
 }
