@@ -423,8 +423,9 @@ class ChatController extends ChangeNotifier {
     void Function()? accepted,
     String? replaceFrom,
     int? revision,
-    String? replyId,
-  ) async {
+    String? replyId, {
+    String? summaryBoundary,
+  }) async {
     PreparedConversation? prepared;
     try {
       final runtime = await connect();
@@ -436,7 +437,9 @@ class ChatController extends ChangeNotifier {
                   true
           ? replaceFrom
           : null;
-      prepared = await runtime.prepareConversation(id, target: target);
+      prepared = summaryBoundary == null
+          ? await runtime.prepareConversation(id, target: target)
+          : await runtime.prepareSummary(id, summaryBoundary, revision!);
       if (_disposed || operation.stopping) return;
       final reference = await prepared.secretReference();
       // 仅此作用域持有明文；句柄中的短lease覆盖native读取及Rust最终配置复核。
@@ -450,31 +453,37 @@ class ChatController extends ChangeNotifier {
       final payload = raw == null
           ? const ModelCredentials().encode()
           : ModelCredentials.decode(raw).encode();
-      final summaryReference = await prepared.summarySecretReference();
+      final summaryReference = summaryBoundary == null
+          ? await prepared.summarySecretReference()
+          : null;
       final summaryRaw =
           summaryReference == null || summaryReference == reference
           ? null
           : await (await openSecrets()).read(summaryReference);
       if (_disposed || operation.stopping) return;
-      final run = await prepared.start(
-        text,
-        payload,
-        summaryPayload:
-            summaryReference != null && summaryReference == reference
-            ? payload
-            : summaryReference == null
-            ? const ModelCredentials().encode()
-            : summaryRaw == null
-            ? null
-            : ModelCredentials.decode(summaryRaw).encode(),
-        replaceFrom: replaceFrom,
-        revision: revision,
-        replyTo: replyId,
-      );
+      final run = summaryBoundary != null
+          ? await prepared.startSummary(payload)
+          : await prepared.start(
+              text,
+              payload,
+              summaryPayload:
+                  summaryReference != null && summaryReference == reference
+                  ? payload
+                  : summaryReference == null
+                  ? const ModelCredentials().encode()
+                  : summaryRaw == null
+                  ? null
+                  : ModelCredentials.decode(summaryRaw).encode(),
+              replaceFrom: replaceFrom,
+              revision: revision,
+              replyTo: replyId,
+            );
       operation.run = run;
-      if (_replies[id]?.id == replyId) _replies.remove(id);
-      if (drafts[id] == text) drafts.remove(id);
-      if (drafts['new'] == text) drafts.remove('new');
+      if (summaryBoundary == null) {
+        if (_replies[id]?.id == replyId) _replies.remove(id);
+        if (drafts[id] == text) drafts.remove(id);
+        if (drafts['new'] == text) drafts.remove('new');
+      }
       if (!_disposed && snapshot?.conversation.id == id) accepted?.call();
       await prepared.close();
       prepared = null;
@@ -542,6 +551,27 @@ class ChatController extends ChangeNotifier {
     operation.stopping = true;
     _notify();
     await operation.run?.cancel();
+    await operation.done;
+  }
+
+  Future<void> insertSummary(ConversationMessage boundary) async {
+    final item = snapshot?.conversation;
+    if (item == null || busy || loading || _disposed) return;
+    executions.remove(item.id)?.dispose();
+    final operation = ChatExecution();
+    executions[item.id] = operation;
+    error = null;
+    _notify();
+    operation.done = _send(
+      item.id,
+      '',
+      operation,
+      null,
+      null,
+      item.revision,
+      null,
+      summaryBoundary: boundary.id,
+    );
     await operation.done;
   }
 

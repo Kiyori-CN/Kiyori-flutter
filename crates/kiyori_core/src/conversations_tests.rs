@@ -184,6 +184,7 @@ fn usage_distinguishes_reported_zero_and_unknown_across_schema9_migration() {
         let connection = store.connection.lock().unwrap();
         connection.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,input_tokens,output_tokens) VALUES('old',?1,'completed','default',1,'old-model',1,12,3)",[&id]).unwrap();
         crate::downloads::remove_schema_for_fixture(&connection);
+        connection.execute_batch("ALTER TABLE conversation_runs DROP COLUMN kind;").unwrap();
         connection.execute_batch("ALTER TABLE conversation_runs DROP COLUMN cache_read_tokens; ALTER TABLE conversation_runs DROP COLUMN cache_write_tokens; ALTER TABLE conversation_runs DROP COLUMN reasoning_tokens; DROP TABLE conversation_variants; ALTER TABLE conversation_messages DROP COLUMN variant; ALTER TABLE conversation_runs DROP COLUMN role_id; ALTER TABLE conversation_runs DROP COLUMN role_name; ALTER TABLE conversation_runs DROP COLUMN usage_reported; ALTER TABLE conversation_runs DROP COLUMN first_output_at; ALTER TABLE conversations DROP COLUMN folder; ALTER TABLE conversations DROP COLUMN pinned; ALTER TABLE conversations DROP COLUMN locked; ALTER TABLE conversations DROP COLUMN sort_order; DROP TABLE conversation_folders; DROP TABLE chat_preferences; PRAGMA user_version=9;").unwrap();
         Ok(())
     }).unwrap();
@@ -219,6 +220,7 @@ fn usage_details_replace_samples_survive_reopen_and_migrate_unknown() {
     runtime.with_store(|store| {
         store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,input_tokens,output_tokens,usage_reported) VALUES('old',?1,'completed','default',1,'old-model',1,100,20,1)",[&id]).unwrap();
         crate::downloads::remove_schema_for_fixture(&store.connection.lock().unwrap());
+        store.connection.lock().unwrap().execute_batch("ALTER TABLE conversation_runs DROP COLUMN kind;").unwrap();
         store.connection.lock().unwrap().execute_batch("ALTER TABLE conversation_runs DROP COLUMN cache_read_tokens; ALTER TABLE conversation_runs DROP COLUMN cache_write_tokens; ALTER TABLE conversation_runs DROP COLUMN reasoning_tokens; PRAGMA user_version=13;").unwrap();
         Ok(())
     }).unwrap();

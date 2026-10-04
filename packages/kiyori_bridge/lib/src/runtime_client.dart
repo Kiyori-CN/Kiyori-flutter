@@ -39,6 +39,11 @@ abstract interface class RuntimeClient {
     String text,
   );
   Future<PreparedConversation> prepareConversation(String id, {String? target});
+  Future<PreparedConversation> prepareSummary(
+    String id,
+    String boundary,
+    int revision,
+  );
   Future<ChatRun> startConfiguredProbe(
     String id,
     int revision,
@@ -223,6 +228,7 @@ final class _NativeModelNamesUndo implements ModelNamesUndo {
 abstract interface class PreparedConversation {
   Future<String?> secretReference();
   Future<String?> summarySecretReference();
+  Future<ChatRun> startSummary(String payload);
   Future<ChatRun> start(
     String text,
     String payload, {
@@ -248,6 +254,12 @@ final class _NativePreparedConversation implements PreparedConversation {
   Future<String?> secretReference() => handle.secretReference();
   @override
   Future<String?> summarySecretReference() => handle.summarySecretReference();
+  @override
+  Future<ChatRun> startSummary(String payload) async {
+    owner._ensureOpen();
+    return owner._trackChat(await handle.startSummary(payload: payload));
+  }
+
   @override
   Future<ChatRun> start(
     String text,
@@ -400,6 +412,28 @@ final class NativeRuntimeClient implements RuntimeClient {
   }) async {
     _ensureOpen();
     final handle = await _handle.prepareConversation(id: id, target: target);
+    if (_closing != null) {
+      await handle.close();
+      handle.dispose();
+      _ensureOpen();
+    }
+    final preparation = _NativePreparedConversation(handle, this);
+    _preparations.add(preparation);
+    return preparation;
+  }
+
+  @override
+  Future<PreparedConversation> prepareSummary(
+    String id,
+    String boundary,
+    int revision,
+  ) async {
+    _ensureOpen();
+    final handle = await _handle.prepareSummary(
+      id: id,
+      boundary: boundary,
+      revision: revision,
+    );
     if (_closing != null) {
       await handle.close();
       handle.dispose();

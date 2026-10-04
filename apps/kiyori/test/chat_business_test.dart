@@ -176,6 +176,198 @@ Future<void> until(WidgetTester tester, bool Function() done) async {
 
 void main() {
   testWidgets(
+    'manual summary cancel and switching preserve per-conversation ownership and drafts',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(f.open);
+      try {
+        await tester.runAsync(() async {
+          await f.models.select('summary', 'default', 'second-model');
+          await f.chat.send('原问');
+          final old = f.chat.snapshot!.conversation.id;
+          f.chat.drafts[old] = '未发送草稿';
+          f.gate = Completer<void>();
+          final canceled = f.chat.insertSummary(f.chat.snapshot!.messages.last);
+          for (var i = 0; i < 200 && f.requests.length < 2; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+          expect(f.requests.length, 2);
+          await f.chat.stop();
+          await canceled;
+          expect((await f.runtime.conversation(old)).messages.length, 2);
+          f.gate!.complete();
+          f.gate = null;
+          final other = await f.runtime.createConversation();
+          f.gate = Completer<void>();
+          final pending = f.chat.insertSummary(f.chat.snapshot!.messages.last);
+          for (var i = 0; i < 200 && f.requests.length < 3; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+          expect(f.requests.length, 3);
+          await f.chat.load(id: other);
+          f.chat.drafts[other] = '新会话草稿';
+          f.gate!.complete();
+          f.gate = null;
+          await pending;
+          expect(f.chat.snapshot!.conversation.id, other);
+          expect(f.chat.snapshot!.messages, isEmpty);
+          expect(
+            (await f.runtime.conversation(old)).messages.last.role,
+            'summary',
+          );
+          expect(f.chat.drafts[old], '未发送草稿');
+          expect(f.chat.drafts[other], '新会话草稿');
+          expect(f.chat.error, isNull);
+        });
+      } finally {
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+  for (final boundary in [1, 2, 3]) {
+    testWidgets(
+      'manual summary boundary $boundary persists and detail edit delete execute real FFI',
+      (tester) async {
+        tester.view.physicalSize = const Size(440, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final f = ChatFixture();
+        await tester.runAsync(f.open);
+        try {
+          await tester.runAsync(() async {
+            final config = await f.models.create('手动总结');
+            final c = f.models.catalog!.configs.singleWhere(
+              (c) => c.id == config,
+            );
+            f.summaryModel = 'manual-summary';
+            await f.models.save(
+              c,
+              ModelConfigDraft(
+                name: c.draft.name,
+                provider: 'OPENAI_GENERIC',
+                protocol: 'chat',
+                endpoint: 'http://127.0.0.1:${f.server.port}',
+                models: [f.summaryModel!],
+                options: c.draft.options,
+              ),
+              const ModelCredentials(),
+              const ModelCredentials(apiKey: 'summary-fixture'),
+              replacement: f.summaryModel,
+            );
+            await f.models.select('summary', config, f.summaryModel!);
+            f.answer = '第一回复';
+            await f.chat.send('第一提问');
+            f.answer = '第二回复';
+            await f.chat.send('第二提问');
+          });
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: KiyoriTheme.light(),
+              home: Scaffold(body: ChatPage(controller: f.chat)),
+            ),
+          );
+          await until(tester, () => !f.chat.loading);
+          f.chat.drafts[f.chat.draftId] = '保留输入草稿';
+          f.answer = '完整摘要：保留两轮上下文';
+          final before = f.chat.snapshot!;
+          if (boundary == 3) {
+            await tester.longPress(find.text('Response').last);
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('插入总结'));
+            await until(
+              tester,
+              () => !f.chat.busy && f.chat.snapshot!.messages.length == 5,
+            );
+          } else {
+            await tester.runAsync(
+              () => f.chat.insertSummary(before.messages[boundary]),
+            );
+          }
+          expect(f.chat.error, isNull);
+          final insertion = boundary == 3 ? 4 : 2;
+          final summary = f.chat.snapshot!.messages[insertion];
+          expect(summary.role, 'summary');
+          expect(
+            f.chat.snapshot!.messages
+                .where((m) => m.role != 'summary')
+                .map((m) => m.id),
+            before.messages.map((m) => m.id),
+          );
+          expect(f.chat.drafts[f.chat.draftId], '保留输入草稿');
+          expect(f.requests.last['model'], 'manual-summary');
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(
+            find.byKey(ValueKey('summary-${summary.id}')),
+          );
+          await tester.tap(find.byKey(ValueKey('summary-${summary.id}')));
+          await tester.pumpAndSettle();
+          expect(find.text(f.answer), findsOneWidget);
+          await tester.tap(find.text('编辑'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('纯文本'));
+          await tester.pumpAndSettle();
+          await tester.enterText(
+            find.byKey(const Key('message-editor-raw')),
+            '修订后的摘要',
+          );
+          await tester.tap(find.text('保存'));
+          await until(
+            tester,
+            () =>
+                !f.chat.changing &&
+                f.chat.snapshot!.messages[insertion].content == '修订后的摘要',
+          );
+          await tester.runAsync(() => f.chat.send('摘要后提问'));
+          final request = f.requests.last['messages'] as List;
+          expect(request.any((m) => m['content'] == '第一提问'), isFalse);
+          expect(request.any((m) => m['content'] == '修订后的摘要'), isTrue);
+          expect(request.any((m) => m['content'] == '第二提问'), boundary != 3);
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(
+            find.byKey(ValueKey('summary-${summary.id}')),
+          );
+          await tester.tap(find.byKey(ValueKey('summary-${summary.id}')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+          expect(find.text('确认删除摘要'), findsOneWidget);
+          // 取消确认保留真实检查点。
+          await tester.tap(find.text('取消'));
+          await tester.pumpAndSettle();
+          expect(
+            f.chat.snapshot!.messages.where((m) => m.role == 'summary').length,
+            1,
+          );
+          await tester.tap(find.byKey(ValueKey('summary-${summary.id}')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('删除'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('确认删除'));
+          await until(
+            tester,
+            () => !f.chat.changing && f.chat.snapshot!.messages.length == 6,
+          );
+          final id = f.chat.snapshot!.conversation.id;
+          await tester.pumpWidget(const SizedBox());
+          await tester.runAsync(() async {
+            await f.runtime.close();
+            f.runtime = await NativeRuntimeClient.open(
+              dataDirectory: f.directory.path,
+            );
+            final restored = await f.runtime.conversation(id);
+            expect(restored.messages.length, 6);
+            expect(restored.messages.first.content, '第一提问');
+            expect(restored.messages.any((m) => m.role == 'summary'), isFalse);
+          });
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox());
+          await tester.runAsync(f.close);
+        }
+      },
+    );
+  }
+  testWidgets(
     'independent summary credentials compress request and retain original UI history after reopen',
     (tester) async {
       final f = ChatFixture();

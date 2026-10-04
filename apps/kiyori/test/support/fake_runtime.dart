@@ -130,6 +130,12 @@ class FakeClient implements RuntimeClient {
     String? target,
   }) async => throw UnimplementedError();
   @override
+  Future<PreparedConversation> prepareSummary(
+    String id,
+    String boundary,
+    int revision,
+  ) async => throw UnimplementedError();
+  @override
   Future<ChatRun> startConfiguredProbe(
     String id,
     int revision,

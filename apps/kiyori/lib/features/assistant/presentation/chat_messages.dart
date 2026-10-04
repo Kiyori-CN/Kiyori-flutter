@@ -3,6 +3,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'chat_controller.dart';
 import 'chat_markdown.dart';
+import 'chat_summary.dart';
 
 /// 稳定消息ID与局部流通知；用户上翻后停止自动跟随。
 class ChatMessages extends StatefulWidget {
@@ -201,6 +202,14 @@ class ChatMessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    if (message.role == 'summary') {
+      return ChatSummary(
+        message: message,
+        enabled: enabled,
+        onAction: onAction,
+        onRoute: onRoute,
+      );
+    }
     final user = message.role == 'user';
     final variants = message.variantCount < 2
         ? const SizedBox.shrink()

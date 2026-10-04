@@ -37,6 +37,10 @@ KIYORI_LIVE_KEY、KIYORI_LIVE_ENDPOINT、KIYORI_LIVE_MODEL时才执行两轮合�
 增加KIYORI_LIVE_SUMMARY=1时创建独立总结配置与DPAPI引用、summaryCount=1，第二轮必须
 产生摘要并保留口令，重开核对摘要及四条原始消息。chat_business_test用loopback覆盖同链路
 及编辑失效；summary用量、预算和迟到身份保护由Rust专项验证。
+手动摘要覆盖user/AI边界、完整历史、继承检查点、失效/删除/编辑/分支、独立认证、
+取消/空输出/不完整终态与迟到配置/历史变更。chat_business_test从菜单经真实FFI/
+DPAPI/SQLite插入、详情编辑及二次确认删除并重开；chat_summary_capture_test核对
+320/440/844横屏/1440桌面、明暗/双倍字与长正文滚动，不代替同设备像素验收。
 
 core/chat通过真实loopback HTTP覆盖POST、拆流、结束/usage、错误/重定向与取消；
 packages/kiyori_bridge/test/chat_runtime_test.dart覆盖真实FFI事件、取消等待、未订阅关闭和超时。

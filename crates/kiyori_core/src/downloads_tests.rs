@@ -222,7 +222,7 @@ fn paths_collisions_sources_and_schema_upgrade_are_rejected_without_writes() {
     assert!(runtime.transfers().unwrap().is_empty());
     runtime.close();
     let conn = rusqlite::Connection::open(directory.0.join("kiyori.sqlite3")).unwrap();
-    conn.execute_batch("DROP TABLE transfer_files;DROP TABLE transfers;DROP TABLE resources;DROP TABLE local_model_market;PRAGMA user_version=15;").unwrap();
+    conn.execute_batch("ALTER TABLE conversation_runs DROP COLUMN kind;DROP TABLE transfer_files;DROP TABLE transfers;DROP TABLE resources;DROP TABLE local_model_market;PRAGMA user_version=15;").unwrap();
     drop(conn);
     let runtime = Runtime::with_data_dir(&directory.0).unwrap();
     assert!(runtime.transfers().unwrap().is_empty());
@@ -397,7 +397,7 @@ fn terminal_storage_error_is_observable_and_schema16_upgrade_preserves_frozen_ta
             .message
             .contains("保存失败")
     );
-    store.connection.lock().unwrap().execute_batch("DROP TRIGGER fail_phase; ALTER TABLE transfers DROP COLUMN restart_required; PRAGMA user_version=16;").unwrap();
+    store.connection.lock().unwrap().execute_batch("ALTER TABLE conversation_runs DROP COLUMN kind; DROP TRIGGER fail_phase; ALTER TABLE transfers DROP COLUMN restart_required; PRAGMA user_version=16;").unwrap();
     runtime.close();
     drop(store);
     let reopened = Runtime::with_data_dir(&directory.0).unwrap();

@@ -40,6 +40,8 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
     String? replyTo,
   });
 
+  Future<ChatHandle> startSummary({required String payload});
+
   Future<String?> summarySecretReference();
 }
 
@@ -209,6 +211,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<ConversationPreparation> prepareConversation({
     required String id,
     String? target,
+  });
+
+  Future<ConversationPreparation> prepareSummary({
+    required String id,
+    required String boundary,
+    required int revision,
   });
 
   Future<PromptCatalog> promptCatalog();

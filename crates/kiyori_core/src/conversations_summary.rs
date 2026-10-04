@@ -35,6 +35,79 @@ pub(super) fn cached(
     .map_err(storage)
 }
 
+// 手动摘要与自动缓存使用同一请求编译，规则、预算及凭据轮换不能分叉。
+pub(super) fn request(
+    tx: &rusqlite::Transaction<'_>,
+    selected: &Selection,
+    recent: Vec<chat::ChatMessage>,
+    previous: Option<String>,
+    credentials: &str,
+    limits: &chat::limits::Registry,
+) -> Result<chat::ChatRequest, CoreError> {
+    let summary = selected
+        .summary
+        .as_ref()
+        .ok_or_else(|| invalid("总结模型绑定不可用"))?;
+    let (key, headers) = model_execution::select_credentials(tx, &summary.config.id, credentials)?;
+    let mut request = chat::probe::prepare(summary.config.draft.clone(), key, headers, "chat")?;
+    request.probe = None;
+    request.model = summary.name.clone();
+    request.timeout_ms = 600_000;
+    request.stream = !selected.preferences.disable_stream;
+    request.admission = Some(limits.configure(
+        &summary.config.id,
+        summary.config.revision,
+        summary.config.draft.options.request_limit,
+        summary.config.draft.options.concurrent_limit,
+    ));
+    let mut prompt = include_str!("summary_prompt_zh.txt").trim().to_owned();
+    if let Some(previous) = previous {
+        prompt.push_str(&format!(
+            "\n\n上一次的摘要（请继承其中的上下文信息）：\n{previous}"
+        ));
+    }
+    if !selected
+        .config
+        .draft
+        .options
+        .summary_rules
+        .trim()
+        .is_empty()
+    {
+        prompt.push_str("\n\n");
+        prompt.push_str(selected.config.draft.options.summary_rules.trim());
+    }
+    request.messages = vec![chat::ChatMessage {
+        role: "system".into(),
+        content: prompt,
+    }];
+    request.messages.extend(recent);
+    request.messages.push(chat::ChatMessage {
+        role: "user".into(),
+        content: "请根据以上对话内容生成完整的对话摘要。".into(),
+    });
+    let options = &summary.config.draft.options;
+    budget(
+        &request.messages,
+        if options.max_context_mode {
+            options.max_context_length
+        } else {
+            options.context_length
+        },
+    )?;
+    apply_thinking(&mut request, &selected.preferences)?;
+    Ok(request)
+}
+
+pub(super) fn checkpoint(
+    tx: &Connection,
+    id: &str,
+    before: i64,
+) -> Result<Option<(i64, String)>, CoreError> {
+    tx.query_row("SELECT position,content FROM conversation_messages WHERE conversation_id=?1 AND position<?2 AND role='summary' AND state='completed' ORDER BY position DESC LIMIT 1",
+        params![id,before], |r| Ok((r.get(0)?,r.get(1)?))).optional().map_err(storage)
+}
+
 pub(super) fn projection(
     system: &str,
     previous: Option<&str>,
@@ -128,54 +201,7 @@ pub(super) fn prepare(input: Input<'_>) -> Result<chat::Prelude, CoreError> {
     } else {
         summary_payload.ok_or_else(|| invalid("总结需要独立模型的安全凭据，请在总结配置中填写"))?
     };
-    let (key, headers) = model_execution::select_credentials(tx, &summary.config.id, credentials)?;
-    let mut request = chat::probe::prepare(summary.config.draft.clone(), key, headers, "chat")?;
-    request.probe = None;
-    request.model = summary.name.clone();
-    request.timeout_ms = 600_000;
-    request.stream = !selected.preferences.disable_stream;
-    request.admission = Some(limits.configure(
-        &summary.config.id,
-        summary.config.revision,
-        summary.config.draft.options.request_limit,
-        summary.config.draft.options.concurrent_limit,
-    ));
-    let mut prompt = include_str!("summary_prompt_zh.txt").trim().to_owned();
-    if let Some(previous) = previous {
-        prompt.push_str(&format!(
-            "\n\n上一次的摘要（请继承其中的上下文信息）：\n{previous}"
-        ));
-    }
-    if !selected
-        .config
-        .draft
-        .options
-        .summary_rules
-        .trim()
-        .is_empty()
-    {
-        prompt.push_str("\n\n");
-        prompt.push_str(selected.config.draft.options.summary_rules.trim());
-    }
-    request.messages = vec![chat::ChatMessage {
-        role: "system".into(),
-        content: prompt,
-    }];
-    request.messages.extend(recent);
-    request.messages.push(chat::ChatMessage {
-        role: "user".into(),
-        content: "请根据以上对话内容生成完整的对话摘要。".into(),
-    });
-    let options = &summary.config.draft.options;
-    budget(
-        &request.messages,
-        if options.max_context_mode {
-            options.max_context_length
-        } else {
-            options.context_length
-        },
-    )?;
-    apply_thinking(&mut request, &selected.preferences)?;
+    let request = request(tx, selected, recent, previous, credentials, limits)?;
     let frozen = selected.clone();
     let usage_store = store.clone();
     let usage_run = run_id.clone();

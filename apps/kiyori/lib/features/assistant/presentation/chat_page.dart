@@ -801,7 +801,11 @@ class _ChatPageState extends State<ChatPage>
       );
       return;
     }
-    if (action == 'speak' || action == 'summary') {
+    if (action == 'summary') {
+      await owner.insertSummary(message);
+      return;
+    }
+    if (action == 'speak') {
       await showDialog<void>(
         context: context,
         builder: (context) {
@@ -901,9 +905,18 @@ class _ChatPageState extends State<ChatPage>
       }
     } else if (await confirmChatAction(
           context,
-          action == 'delete' ? '删除消息？' : '回滚到此处？',
-          action == 'delete' ? '此消息将从会话中移除。' : '此条及后续消息将被移除，提问会回填输入区。',
+          action == 'delete'
+              ? message.role == 'summary'
+                    ? '确认删除摘要'
+                    : '删除消息？'
+              : '回滚到此处？',
+          action == 'delete'
+              ? message.role == 'summary'
+                    ? '你确定要删除这条摘要吗？此操作无法撤销。'
+                    : '此消息将从会话中移除。'
+              : '此条及后续消息将被移除，提问会回填输入区。',
           onRoute: modals.registration(modals.epoch),
+          summary: message.role == 'summary',
         ) &&
         mounted &&
         owner.snapshot?.conversation.id == item.id) {

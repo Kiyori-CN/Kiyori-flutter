@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 17;
+const SCHEMA_VERSION: i32 = 18;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -265,6 +265,10 @@ impl AppStore {
                  PRAGMA user_version=17;",
                 )
                 .map_err(|_| error("Cannot migrate transfer recovery state."))?;
+        }
+        if version < 18 {
+            transaction.execute_batch("ALTER TABLE conversation_runs ADD COLUMN kind TEXT NOT NULL DEFAULT 'chat' CHECK(kind IN ('chat','summary')); PRAGMA user_version=18;")
+                .map_err(|_| error("Cannot migrate manual summary runs."))?;
         }
         transaction
             .commit()

@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1885804465;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1758718577;
 
 // Section: executor
 
@@ -322,6 +322,66 @@ fn wire__crate__api__ConversationPreparation_start_impl(
                             api_replace_from,
                             api_revision,
                             api_reply_to,
+                        )
+                        .await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__ConversationPreparation_start_summary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ConversationPreparation_start_summary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationPreparation>,
+            >>::sse_decode(&mut deserializer);
+            let api_payload = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::BridgeError>(
+                    (move || async move {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => {
+                                    api_that_guard =
+                                        Some(api_that.lockable_decode_async_ref().await)
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok = crate::api::ConversationPreparation::start_summary(
+                            &*api_that_guard,
+                            api_payload,
                         )
                         .await?;
                         std::result::Result::Ok(output_ok)
@@ -2889,6 +2949,63 @@ fn wire__crate__api__RuntimeHandle_prepare_conversation_impl(
                         &*api_that_guard,
                         api_id,
                         api_target,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__RuntimeHandle_prepare_summary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "RuntimeHandle_prepare_summary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_boundary = <String>::sse_decode(&mut deserializer);
+            let api_revision = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::BridgeError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::RuntimeHandle::prepare_summary(
+                        &*api_that_guard,
+                        api_id,
+                        api_boundary,
+                        api_revision,
                     )?;
                     std::result::Result::Ok(output_ok)
                 })())
@@ -7044,357 +7161,366 @@ fn pde_ffi_dispatcher_primary_impl(
         5 => {
             wire__crate__api__ConversationPreparation_start_impl(port, ptr, rust_vec_len, data_len)
         }
-        6 => wire__crate__api__ConversationPreparation_summary_secret_reference_impl(
+        6 => wire__crate__api__ConversationPreparation_start_summary_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__ModelNamesEdit_close_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__ModelNamesEdit_undo_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__ModelSecretsHandle_close_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__ModelSecretsHandle_reserve_impl(port, ptr, rust_vec_len, data_len),
-        11 => {
+        7 => wire__crate__api__ConversationPreparation_summary_secret_reference_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        8 => wire__crate__api__ModelNamesEdit_close_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__ModelNamesEdit_undo_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__ModelSecretsHandle_close_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__ModelSecretsHandle_reserve_impl(port, ptr, rust_vec_len, data_len),
+        12 => {
             wire__crate__api__RuntimeHandle_activate_prompt_impl(port, ptr, rust_vec_len, data_len)
         }
-        12 => wire__crate__api__RuntimeHandle_append_diary_impl(port, ptr, rust_vec_len, data_len),
-        13 => {
+        13 => wire__crate__api__RuntimeHandle_append_diary_impl(port, ptr, rust_vec_len, data_len),
+        14 => {
             wire__crate__api__RuntimeHandle_archive_memory_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__RuntimeHandle_begin_model_secrets_impl(
+        15 => wire__crate__api__RuntimeHandle_begin_model_secrets_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__RuntimeHandle_change_chat_preference_impl(
+        16 => wire__crate__api__RuntimeHandle_change_chat_preference_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__RuntimeHandle_change_conversation_impl(
+        17 => wire__crate__api__RuntimeHandle_change_conversation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => {
+        18 => {
             wire__crate__api__RuntimeHandle_change_message_impl(port, ptr, rust_vec_len, data_len)
         }
-        18 => wire__crate__api__RuntimeHandle_change_model_names_impl(
+        19 => wire__crate__api__RuntimeHandle_change_model_names_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => {
+        20 => {
             wire__crate__api__RuntimeHandle_chat_preferences_impl(port, ptr, rust_vec_len, data_len)
         }
-        20 => wire__crate__api__RuntimeHandle_close_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__RuntimeHandle_compose_character_prompt_impl(
+        21 => wire__crate__api__RuntimeHandle_close_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__RuntimeHandle_compose_character_prompt_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => {
+        23 => {
             wire__crate__api__RuntimeHandle_context_settings_impl(port, ptr, rust_vec_len, data_len)
         }
-        23 => wire__crate__api__RuntimeHandle_conversation_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__RuntimeHandle_conversation_catalog_impl(
+        24 => wire__crate__api__RuntimeHandle_conversation_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__RuntimeHandle_conversation_catalog_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__RuntimeHandle_conversation_statistics_impl(
+        26 => wire__crate__api__RuntimeHandle_conversation_statistics_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__RuntimeHandle_create_conversation_impl(
+        27 => wire__crate__api__RuntimeHandle_create_conversation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__api__RuntimeHandle_create_diary_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__RuntimeHandle_create_knowledge_folder_impl(
+        28 => wire__crate__api__RuntimeHandle_create_diary_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__RuntimeHandle_create_knowledge_folder_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        29 => wire__crate__api__RuntimeHandle_create_model_config_impl(
+        30 => wire__crate__api__RuntimeHandle_create_model_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        30 => {
+        31 => {
             wire__crate__api__RuntimeHandle_create_transfer_impl(port, ptr, rust_vec_len, data_len)
         }
-        31 => {
+        32 => {
             wire__crate__api__RuntimeHandle_create_workflow_impl(port, ptr, rust_vec_len, data_len)
         }
-        32 => wire__crate__api__RuntimeHandle_delete_knowledge_folder_impl(
+        33 => wire__crate__api__RuntimeHandle_delete_knowledge_folder_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        33 => wire__crate__api__RuntimeHandle_delete_knowledge_space_impl(
+        34 => wire__crate__api__RuntimeHandle_delete_knowledge_space_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        34 => {
+        35 => {
             wire__crate__api__RuntimeHandle_delete_memories_impl(port, ptr, rust_vec_len, data_len)
         }
-        35 => wire__crate__api__RuntimeHandle_delete_memory_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__RuntimeHandle_delete_memory_link_impl(
+        36 => wire__crate__api__RuntimeHandle_delete_memory_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__RuntimeHandle_delete_memory_link_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        37 => wire__crate__api__RuntimeHandle_delete_model_config_impl(
+        38 => wire__crate__api__RuntimeHandle_delete_model_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        38 => wire__crate__api__RuntimeHandle_delete_prompt_impl(port, ptr, rust_vec_len, data_len),
-        39 => {
+        39 => wire__crate__api__RuntimeHandle_delete_prompt_impl(port, ptr, rust_vec_len, data_len),
+        40 => {
             wire__crate__api__RuntimeHandle_delete_transfer_impl(port, ptr, rust_vec_len, data_len)
         }
-        40 => {
+        41 => {
             wire__crate__api__RuntimeHandle_delete_workflow_impl(port, ptr, rust_vec_len, data_len)
         }
-        41 => {
+        42 => {
             wire__crate__api__RuntimeHandle_delete_workflows_impl(port, ptr, rust_vec_len, data_len)
         }
-        42 => wire__crate__api__RuntimeHandle_download_local_model_impl(
+        43 => wire__crate__api__RuntimeHandle_download_local_model_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        43 => {
+        44 => {
             wire__crate__api__RuntimeHandle_duplicate_prompt_impl(port, ptr, rust_vec_len, data_len)
         }
-        44 => wire__crate__api__RuntimeHandle_forget_retired_model_secret_impl(
+        45 => wire__crate__api__RuntimeHandle_forget_retired_model_secret_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        45 => wire__crate__api__RuntimeHandle_get_memory_impl(port, ptr, rust_vec_len, data_len),
-        46 => wire__crate__api__RuntimeHandle_info_impl(port, ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__RuntimeHandle_knowledge_snapshot_impl(
+        46 => wire__crate__api__RuntimeHandle_get_memory_impl(port, ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__RuntimeHandle_info_impl(port, ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__RuntimeHandle_knowledge_snapshot_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        48 => {
+        49 => {
             wire__crate__api__RuntimeHandle_list_workflows_impl(port, ptr, rust_vec_len, data_len)
         }
-        49 => wire__crate__api__RuntimeHandle_local_models_impl(port, ptr, rust_vec_len, data_len),
-        50 => wire__crate__api__RuntimeHandle_memory_graph_impl(port, ptr, rust_vec_len, data_len),
-        51 => wire__crate__api__RuntimeHandle_memory_search_settings_impl(
+        50 => wire__crate__api__RuntimeHandle_local_models_impl(port, ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__RuntimeHandle_memory_graph_impl(port, ptr, rust_vec_len, data_len),
+        52 => wire__crate__api__RuntimeHandle_memory_search_settings_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        52 => wire__crate__api__RuntimeHandle_model_catalog_impl(port, ptr, rust_vec_len, data_len),
-        53 => wire__crate__api__RuntimeHandle_prepare_conversation_impl(
+        53 => wire__crate__api__RuntimeHandle_model_catalog_impl(port, ptr, rust_vec_len, data_len),
+        54 => wire__crate__api__RuntimeHandle_prepare_conversation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        54 => {
+        55 => {
+            wire__crate__api__RuntimeHandle_prepare_summary_impl(port, ptr, rust_vec_len, data_len)
+        }
+        56 => {
             wire__crate__api__RuntimeHandle_prompt_catalog_impl(port, ptr, rust_vec_len, data_len)
         }
-        55 => {
+        57 => {
             wire__crate__api__RuntimeHandle_query_knowledge_impl(port, ptr, rust_vec_len, data_len)
         }
-        56 => wire__crate__api__RuntimeHandle_refresh_local_models_impl(
+        58 => wire__crate__api__RuntimeHandle_refresh_local_models_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        57 => wire__crate__api__RuntimeHandle_rename_knowledge_folder_impl(
+        59 => wire__crate__api__RuntimeHandle_rename_knowledge_folder_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        58 => wire__crate__api__RuntimeHandle_reset_default_character_impl(
+        60 => wire__crate__api__RuntimeHandle_reset_default_character_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        59 => wire__crate__api__RuntimeHandle_reset_function_models_impl(
+        61 => wire__crate__api__RuntimeHandle_reset_function_models_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        60 => wire__crate__api__RuntimeHandle_resource_file_path_impl(
+        62 => wire__crate__api__RuntimeHandle_resource_file_path_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        61 => wire__crate__api__RuntimeHandle_retire_model_secret_impl(
+        63 => wire__crate__api__RuntimeHandle_retire_model_secret_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        62 => wire__crate__api__RuntimeHandle_retired_model_secrets_impl(
+        64 => wire__crate__api__RuntimeHandle_retired_model_secrets_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        63 => {
+        65 => {
             wire__crate__api__RuntimeHandle_save_character_impl(port, ptr, rust_vec_len, data_len)
         }
-        64 => wire__crate__api__RuntimeHandle_save_context_settings_impl(
+        66 => wire__crate__api__RuntimeHandle_save_context_settings_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        65 => wire__crate__api__RuntimeHandle_save_knowledge_space_impl(
+        67 => wire__crate__api__RuntimeHandle_save_knowledge_space_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        66 => wire__crate__api__RuntimeHandle_save_memory_impl(port, ptr, rust_vec_len, data_len),
-        67 => {
+        68 => wire__crate__api__RuntimeHandle_save_memory_impl(port, ptr, rust_vec_len, data_len),
+        69 => {
             wire__crate__api__RuntimeHandle_save_memory_link_impl(port, ptr, rust_vec_len, data_len)
         }
-        68 => wire__crate__api__RuntimeHandle_save_memory_search_settings_impl(
+        70 => wire__crate__api__RuntimeHandle_save_memory_search_settings_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        69 => wire__crate__api__RuntimeHandle_save_model_config_impl(
+        71 => wire__crate__api__RuntimeHandle_save_model_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        70 => wire__crate__api__RuntimeHandle_save_prompt_group_impl(
+        72 => wire__crate__api__RuntimeHandle_save_prompt_group_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        71 => {
+        73 => {
             wire__crate__api__RuntimeHandle_save_prompt_tag_impl(port, ptr, rust_vec_len, data_len)
         }
-        72 => wire__crate__api__RuntimeHandle_search_conversations_impl(
+        74 => wire__crate__api__RuntimeHandle_search_conversations_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        73 => wire__crate__api__RuntimeHandle_select_chat_character_impl(
+        75 => wire__crate__api__RuntimeHandle_select_chat_character_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        74 => wire__crate__api__RuntimeHandle_select_conversation_impl(
+        76 => wire__crate__api__RuntimeHandle_select_conversation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        75 => wire__crate__api__RuntimeHandle_select_function_model_impl(
+        77 => wire__crate__api__RuntimeHandle_select_function_model_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        76 => wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
+        78 => wire__crate__api__RuntimeHandle_select_knowledge_space_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        77 => wire__crate__api__RuntimeHandle_set_memory_graph_visible_impl(
+        79 => wire__crate__api__RuntimeHandle_set_memory_graph_visible_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        78 => wire__crate__api__RuntimeHandle_simulate_memory_search_impl(
+        80 => wire__crate__api__RuntimeHandle_simulate_memory_search_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        79 => wire__crate__api__RuntimeHandle_start_chat_impl(port, ptr, rust_vec_len, data_len),
-        80 => wire__crate__api__RuntimeHandle_start_configured_model_directory_impl(
+        81 => wire__crate__api__RuntimeHandle_start_chat_impl(port, ptr, rust_vec_len, data_len),
+        82 => wire__crate__api__RuntimeHandle_start_configured_model_directory_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        81 => wire__crate__api__RuntimeHandle_start_configured_probe_impl(
+        83 => wire__crate__api__RuntimeHandle_start_configured_probe_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        82 => {
+        84 => {
             wire__crate__api__RuntimeHandle_start_diagnostic_impl(port, ptr, rust_vec_len, data_len)
         }
-        83 => wire__crate__api__RuntimeHandle_start_model_directory_impl(
+        85 => wire__crate__api__RuntimeHandle_start_model_directory_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        84 => wire__crate__api__RuntimeHandle_start_model_probe_impl(
+        86 => wire__crate__api__RuntimeHandle_start_model_probe_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        85 => {
+        87 => {
             wire__crate__api__RuntimeHandle_start_pool_test_impl(port, ptr, rust_vec_len, data_len)
         }
-        86 => {
+        88 => {
             wire__crate__api__RuntimeHandle_start_transfer_impl(port, ptr, rust_vec_len, data_len)
         }
-        87 => wire__crate__api__RuntimeHandle_transfers_impl(port, ptr, rust_vec_len, data_len),
-        88 => {
+        89 => wire__crate__api__RuntimeHandle_transfers_impl(port, ptr, rust_vec_len, data_len),
+        90 => {
             wire__crate__api__RuntimeHandle_update_workflow_impl(port, ptr, rust_vec_len, data_len)
         }
-        89 => wire__crate__api__TaskHandle_cancel_impl(port, ptr, rust_vec_len, data_len),
-        90 => wire__crate__api__TaskHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
-        91 => wire__crate__api__TransferHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
-        92 => wire__crate__api__TransferHandle_stop_impl(port, ptr, rust_vec_len, data_len),
-        93 => wire__crate__api__create_runtime_impl(port, ptr, rust_vec_len, data_len),
-        94 => {
+        91 => wire__crate__api__TaskHandle_cancel_impl(port, ptr, rust_vec_len, data_len),
+        92 => wire__crate__api__TaskHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
+        93 => wire__crate__api__TransferHandle_next_event_impl(port, ptr, rust_vec_len, data_len),
+        94 => wire__crate__api__TransferHandle_stop_impl(port, ptr, rust_vec_len, data_len),
+        95 => wire__crate__api__create_runtime_impl(port, ptr, rust_vec_len, data_len),
+        96 => {
             wire__crate__api__create_runtime_with_data_dir_impl(port, ptr, rust_vec_len, data_len)
         }
-        95 => wire__crate__api__parse_diary_impl(port, ptr, rust_vec_len, data_len),
+        97 => wire__crate__api__parse_diary_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

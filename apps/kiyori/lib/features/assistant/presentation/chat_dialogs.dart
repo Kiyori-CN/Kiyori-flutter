@@ -82,6 +82,7 @@ Future<bool> confirmChatAction(
   String title,
   String message, {
   ValueChanged<ModalRoute<dynamic>>? onRoute,
+  bool summary = false,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -97,10 +98,19 @@ Future<bool> confirmChatAction(
               onPressed: () => Navigator.pop(context, false),
               child: const Text('取消'),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('确定'),
-            ),
+            if (summary)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('确认删除'),
+              )
+            else
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('确定'),
+              ),
           ],
         ),
       ),

@@ -23,6 +23,8 @@ core/chat/observation属于同一请求链路，Runtime按会话持有最新trac
 输入估算与进程内最近样本；不入库、不从历史耗时反推，不建立第二份累计账本。
 core/conversations_summary管理总结功能绑定与请求投影缓存，原始历史仍由conversations持有；
 使用同HTTP client、限流和Run取消，summary_usage计入同库累计，不替换聊天最近样本。
+core/conversations_manual_summary冻结手动边界、复用摘要请求编译，完整终态原子插入
+可见检查点；同会话OS锁/ChatRun/SQLite，不建立第二历史或执行器。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

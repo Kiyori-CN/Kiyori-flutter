@@ -141,6 +141,418 @@ async fn send(runtime: &Runtime, id: &str, text: &str) -> Vec<chat::ChatEvent> {
     .await
 }
 
+fn manual(runtime: &Runtime, id: &str, index: usize) -> Result<chat::ChatRun, CoreError> {
+    let snap = runtime.conversation(id.into()).unwrap();
+    runtime.start_summary(
+        runtime.prepare_summary(
+            id.into(),
+            snap.messages[index].id.clone(),
+            snap.conversation.revision,
+        )?,
+        summary_payload(),
+    )
+}
+
+#[tokio::test]
+async fn manual_summary_obeys_user_and_assistant_boundaries_and_preserves_reopen_branch_usage() {
+    for boundary in [1, 2, 3] {
+        let dir = Directory::new();
+        let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+        let (endpoint, _, worker) = server(vec![
+            response("第一答", "stop"),
+            response("第二答", "stop"),
+            response("手动摘要", "stop"),
+            response("续答", "stop"),
+        ]);
+        let id = setup(&runtime, endpoint, false);
+        send(&runtime, &id, "第一问").await;
+        send(&runtime, &id, "第二问").await;
+        let original = runtime.conversation(id.clone()).unwrap();
+        assert!(
+            drain(&manual(&runtime, &id, boundary).unwrap())
+                .await
+                .iter()
+                .any(|e| matches!(e, chat::ChatEvent::Completed { .. }))
+        );
+        let snapshot = runtime.conversation(id.clone()).unwrap();
+        let insertion = if boundary == 3 { 4 } else { 2 };
+        assert_eq!(snapshot.messages[insertion].role, "summary");
+        assert_eq!(snapshot.messages[insertion].content, "手动摘要");
+        assert_eq!(
+            snapshot
+                .messages
+                .iter()
+                .filter(|m| m.role != "summary")
+                .cloned()
+                .collect::<Vec<_>>(),
+            original.messages
+        );
+        assert_eq!(
+            runtime
+                .conversation_statistics(id.clone())
+                .unwrap()
+                .requests,
+            3
+        );
+        assert!(
+            !runtime
+                .conversation_statistics(id.clone())
+                .unwrap()
+                .recent_model
+                .contains("summary")
+        );
+        send(&runtime, &id, "下一问").await;
+        let requests = worker.join().unwrap();
+        assert!(requests[2].0.contains("Bearer summary-credential"));
+        assert_eq!(requests[2].1["model"], "summary-fixture");
+        let summary_messages = requests[2].1["messages"].as_array().unwrap();
+        assert!(summary_messages.iter().any(|m| m["content"] == "第一答"));
+        assert_eq!(
+            summary_messages.iter().any(|m| m["content"] == "第二问"),
+            boundary == 3
+        );
+        let continuation = requests[3].1["messages"].as_array().unwrap();
+        assert!(!continuation.iter().any(|m| m["content"] == "第一问"));
+        assert!(continuation.iter().any(|m| m["content"] == "手动摘要"));
+        assert_eq!(
+            continuation.iter().any(|m| m["content"] == "第二问"),
+            boundary != 3
+        );
+        runtime.close();
+        let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+        let restored = runtime.conversation(id.clone()).unwrap();
+        assert_eq!(restored.messages.len(), 7);
+        let checkpoint = &restored.messages[insertion];
+        runtime
+            .change_message(
+                id.clone(),
+                runtime
+                    .conversation(id.clone())
+                    .unwrap()
+                    .conversation
+                    .revision,
+                checkpoint.id.clone(),
+                "branch".into(),
+                "".into(),
+            )
+            .unwrap();
+        let branch = runtime.conversation_catalog().unwrap().active_id.unwrap();
+        assert_eq!(
+            runtime
+                .conversation(branch.clone())
+                .unwrap()
+                .messages
+                .last()
+                .unwrap()
+                .role,
+            "summary"
+        );
+        assert!(
+            !runtime
+                .conversation_statistics(branch)
+                .unwrap()
+                .recent_model
+                .contains("summary")
+        );
+        runtime
+            .change_message(
+                id.clone(),
+                runtime
+                    .conversation(id.clone())
+                    .unwrap()
+                    .conversation
+                    .revision,
+                checkpoint.id.clone(),
+                "edit".into(),
+                "修订摘要".into(),
+            )
+            .unwrap();
+        let updated = runtime.conversation(id.clone()).unwrap();
+        assert_eq!(updated.messages[insertion].content, "修订摘要");
+        runtime
+            .change_message(
+                id.clone(),
+                updated.conversation.revision,
+                checkpoint.id.clone(),
+                "delete".into(),
+                "".into(),
+            )
+            .unwrap();
+        assert_eq!(runtime.conversation(id).unwrap().messages.len(), 6);
+    }
+}
+
+#[tokio::test]
+async fn manual_failure_empty_incomplete_and_cancel_never_insert_partial_checkpoints() {
+    for body in [
+        "fail".to_owned(),
+        response("", "stop"),
+        response("截断摘要", "length"),
+        "cancel".to_owned(),
+    ] {
+        let dir = Directory::new();
+        let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+        let (endpoint, count, worker) = server(vec![response("原答", "stop"), body.clone()]);
+        let id = setup(&runtime, endpoint, false);
+        send(&runtime, &id, "原问").await;
+        let before = runtime.conversation(id.clone()).unwrap();
+        assert!(
+            runtime
+                .prepare_summary(
+                    id.clone(),
+                    before.messages[0].id.clone(),
+                    before.conversation.revision
+                )
+                .is_err()
+        );
+        let run = manual(&runtime, &id, 1).unwrap();
+        let other = Runtime::with_data_dir(&dir.0).unwrap();
+        assert!(manual(&other, &id, 1).is_err());
+        if body == "cancel" {
+            while count.load(Ordering::SeqCst) < 2 {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+            run.cancel_and_wait().await;
+        } else {
+            let events = drain(&run).await;
+            assert!(
+                events
+                    .iter()
+                    .any(|e| matches!(e, chat::ChatEvent::Failed(_)))
+            );
+        }
+        assert_eq!(
+            runtime.conversation(id.clone()).unwrap().messages,
+            before.messages
+        );
+        let store = runtime.persistent_store().unwrap();
+        assert!(
+            !store
+                .connection
+                .lock()
+                .unwrap()
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE state='running')",
+                    [],
+                    |r| r.get::<_, bool>(0)
+                )
+                .unwrap()
+        );
+        worker.join().unwrap();
+    }
+}
+
+#[tokio::test]
+async fn manual_late_configuration_and_history_changes_reject_result() {
+    for history in [false, true] {
+        let dir = Directory::new();
+        let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+        let (endpoint, count, worker) = server(vec![
+            response("原答", "stop"),
+            format!("delay:{}", response("迟到摘要", "stop")),
+        ]);
+        let id = setup(&runtime, endpoint, false);
+        send(&runtime, &id, "原问").await;
+        let run = manual(&runtime, &id, 1).unwrap();
+        while count.load(Ordering::SeqCst) < 2 {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        if history {
+            // 故障注入绕过应用OS锁，确认提交仍复核冻结原文。
+            runtime.persistent_store().unwrap().connection.lock().unwrap().execute("UPDATE conversation_messages SET content='外部变更' WHERE conversation_id=?1 AND role='user'",[&id]).unwrap();
+        } else {
+            let pref = runtime.chat_preferences().unwrap();
+            runtime
+                .change_chat_preference(
+                    pref.revision,
+                    "thinking".into(),
+                    (!pref.value.thinking).to_string(),
+                )
+                .unwrap();
+        }
+        assert!(
+            drain(&run)
+                .await
+                .iter()
+                .any(|e| matches!(e, chat::ChatEvent::Failed(_)))
+        );
+        assert_eq!(runtime.conversation(id).unwrap().messages.len(), 2);
+        worker.join().unwrap();
+    }
+}
+
+#[tokio::test]
+async fn manual_checkpoints_inherit_and_become_invalid_after_original_edit() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let (endpoint, _, worker) = server(vec![
+        response("第一答", "stop"),
+        response("第一摘要", "stop"),
+        response("第二答", "stop"),
+        response("第二摘要", "stop"),
+        response("修订后答", "stop"),
+    ]);
+    let id = setup(&runtime, endpoint, false);
+    send(&runtime, &id, "第一问").await;
+    drain(&manual(&runtime, &id, 1).unwrap()).await;
+    send(&runtime, &id, "第二问").await;
+    drain(&manual(&runtime, &id, 4).unwrap()).await;
+    let snapshot = runtime.conversation(id.clone()).unwrap();
+    runtime
+        .change_message(
+            id.clone(),
+            snapshot.conversation.revision,
+            snapshot.messages[0].id.clone(),
+            "edit".into(),
+            "修订第一问".into(),
+        )
+        .unwrap();
+    assert!(
+        runtime
+            .conversation(id.clone())
+            .unwrap()
+            .messages
+            .iter()
+            .filter(|m| m.role == "summary")
+            .all(|m| m.state == "invalidated")
+    );
+    send(&runtime, &id, "修订后问").await;
+    let requests = worker.join().unwrap();
+    assert!(
+        requests[3].1["messages"][0]["content"]
+            .as_str()
+            .unwrap()
+            .contains("第一摘要")
+    );
+    let latest = requests[4].1["messages"].as_array().unwrap();
+    assert!(latest.iter().any(|m| m["content"] == "修订第一问"));
+    assert!(!latest.iter().any(|m| m["content"] == "第二摘要"));
+}
+
+#[tokio::test]
+async fn manual_commit_storage_failure_rolls_back_position_moves_and_recovers_without_replay() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let (endpoint, _, worker) =
+        server(vec![response("原答", "stop"), response("完整摘要", "stop")]);
+    let id = setup(&runtime, endpoint, false);
+    send(&runtime, &id, "原问").await;
+    let before = runtime.conversation(id.clone()).unwrap();
+    let store = runtime.persistent_store().unwrap();
+    store.connection.lock().unwrap().execute_batch("CREATE TRIGGER reject_summary BEFORE INSERT ON conversation_messages WHEN NEW.role='summary' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(
+        drain(&manual(&runtime, &id, 1).unwrap())
+            .await
+            .iter()
+            .any(|e| matches!(e, chat::ChatEvent::Failed(_)))
+    );
+    assert_eq!(
+        runtime.conversation(id.clone()).unwrap().messages,
+        before.messages
+    );
+    assert_eq!(
+        store
+            .connection
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT max(position) FROM conversation_messages WHERE conversation_id=?1",
+                [&id],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        store
+            .connection
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT state FROM conversation_runs WHERE kind='summary'",
+                [],
+                |r| r.get::<_, String>(0)
+            )
+            .unwrap(),
+        "interrupted"
+    );
+    worker.join().unwrap();
+}
+
+#[tokio::test]
+async fn schema17_migration_keeps_original_runs_and_bulk_deletion_invalidates_earlier_checkpoints()
+{
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let (endpoint, _, worker) = server(vec![
+        response("原答", "stop"),
+        response("原摘要", "stop"),
+        response("后答", "stop"),
+    ]);
+    let id = setup(&runtime, endpoint, false);
+    send(&runtime, &id, "原问").await;
+    drain(&manual(&runtime, &id, 1).unwrap()).await;
+    send(&runtime, &id, "后问").await;
+    let before = runtime.conversation(id.clone()).unwrap();
+    let store = runtime.persistent_store().unwrap();
+    // 真实17版本没有手动摘要；先移除测试新增消息/Run，再构造旧列集合。
+    store.connection.lock().unwrap().execute_batch("DELETE FROM conversation_messages WHERE role='summary'; DELETE FROM conversation_runs WHERE kind='summary'; ALTER TABLE conversation_runs DROP COLUMN kind; PRAGMA user_version=17;").unwrap();
+    runtime.close();
+    drop(store);
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let restored = runtime.conversation(id.clone()).unwrap();
+    assert_eq!(
+        restored.messages,
+        before
+            .messages
+            .into_iter()
+            .filter(|m| m.role != "summary")
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        !runtime
+            .persistent_store()
+            .unwrap()
+            .connection
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE kind<>'chat')",
+                [],
+                |r| r.get::<_, bool>(0)
+            )
+            .unwrap()
+    );
+    // 人为注入一个原问之后检查点，primary选择较晚消息但批量包含较早原问。
+    runtime.persistent_store().unwrap().connection.lock().unwrap().execute("INSERT INTO conversation_messages(id,conversation_id,position,role,content,state) VALUES('checkpoint',?1,2,'summary','保留原问','completed')",[&id]).unwrap();
+    let snap = runtime.conversation(id.clone()).unwrap();
+    runtime
+        .change_message(
+            id.clone(),
+            snap.conversation.revision,
+            snap.messages.last().unwrap().id.clone(),
+            "delete_selected".into(),
+            json!([
+                snap.messages.last().unwrap().id,
+                snap.messages.first().unwrap().id
+            ])
+            .to_string(),
+        )
+        .unwrap();
+    assert_eq!(
+        runtime
+            .conversation(id)
+            .unwrap()
+            .messages
+            .iter()
+            .find(|m| m.id == "checkpoint")
+            .unwrap()
+            .state,
+        "invalidated"
+    );
+    worker.join().unwrap();
+}
+
 #[tokio::test]
 async fn regeneration_summarizes_only_history_before_the_target_user_and_keeps_later_versions() {
     for (enabled, cache_position) in [
@@ -428,7 +840,7 @@ fn summary_count_ratio_budget_and_schema14_migration_preserve_history() {
         .connection
         .lock()
         .unwrap()
-        .execute_batch("DROP TABLE conversation_summary_usage; DROP TABLE conversation_summaries; PRAGMA user_version=14;")
+        .execute_batch("ALTER TABLE conversation_runs DROP COLUMN kind; DROP TABLE conversation_summary_usage; DROP TABLE conversation_summaries; PRAGMA user_version=14;")
         .unwrap();
     drop(store);
     let runtime = Runtime::with_data_dir(&dir.0).unwrap();
@@ -438,7 +850,7 @@ fn summary_count_ratio_budget_and_schema14_migration_preserve_history() {
     assert_eq!(
         conn.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
             .unwrap(),
-        17
+        18
     );
     assert!(summary::cached(&conn, &id).unwrap().is_none());
     drop(conn);

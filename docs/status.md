@@ -121,6 +121,35 @@ status1/input31/output2；停止生成后reset并再次得到5，析构成功，
 smoke-reuse-run.log。此独立执行不是产品adapter验收，正式native句柄/流式/取消及扩展仍有缺口。
 OS后台下载、同设备像素/键盘/触摸/Profile与Apple仍待验证；未安装或操作设备。
 
+### 手动插入总结增量（本机验收通过，设备待验证）
+
+基线main/483e7fd，开始时干净。core/conversations_manual_summary使用独立SUMMARY绑定、
+同请求编译/队列/安全短lease/会话OS锁与ChatRun。用户边界排除该user，AI边界包含该回复；
+完整stop后才事务插入可见summary、保留所有原消息ID/正文/版本，后续请求从有效检查点继续。
+取消/失败/空输出/不完整终态无半条消息；冻结原文、边界、配置/角色/偏好复核拒绝迟到。
+编辑/删除原文和回复版本使后续检查点失效但全文可见；编辑摘要重新确认，删除恢复前一
+检查点/原文，分支保留Run身份。schema18的kind区分独立摘要累计和最近聊天样本。
+ChatPage菜单、旧窄摘要条、详情滚动/编辑/二次确认删除接实际业务，草稿/引用保留；
+按会话执行、停止/切换/关闭继续复用原owner。契约见ADR0008。
+
+Rust137项通过（work/manual-summary-core-full-v3.log）；6项手动专项含存储提交回滚、
+schema17迁移、批量删除失效、跨Runtime锁/取消/迟到及边界。正式FFI/DPAPI/SQLite页面
+与旧自动总结联合12项通过（work/manual-summary-ui-v4.log），取消/切会话不会污染新会话。
+27项页面与捕获通过（work/manual-summary-ui-v3.log），39 PNG在work/manual-summary-review-v3；
+已审阅320暗色双倍字和844横屏双倍字详情，中文/滚动/全部操作可达。
+首轮夹具revision/偏好未实际改变、确认按钮文案、旧schema夹具列集与期望版本问题已修，
+失败日志保留。最终完整verify-v2通过：Rust137/fmt/Clippy、368 Dart格式/analyze、
+应用609（13条件跳过）、platform5、独立FFI20、Windows引擎5；日志
+work/manual-summary-verify-v2.log。首轮完整verify-v1仅新捕获测试两处花括号lint失败，
+修正后全量重验；未放宽检查。桥-Check五文件一致（work/manual-summary-bridge-check.log）。
+Android ARM64 Debug99.3s、Windows x64 Debug21.0s串行最终构建通过；固定包
+artifacts/ui-preview/20261005-061902：APK118028209字节，SHA256
+9F30941E47A8F3002B684997C22775A3E9316690B122E214C59AD74A78176FC7；Windows84文件
+160233368字节。85副本哈希、APK身份/v2签名、ZIP16K/ELF、x64/Flutter DLL pin通过。
+28路径精确允许清单审计通过；按本任务授权提交普通推送，最终ref见Git及manifest。
+未重复已完成真实API矩阵和完整模型下载；本增量供应商手动入口与设备/Apple独立待验证。
+产品native MNN/llama adapter、TOOLPKG和OS后台移交仍有实现缺口，整体任务部分完成。
+
 ## 上一批：十一组实机截图UI与交互复刻
 
 用户提供D:/03_Default/图片/截图的22张新旧实机JPEG，并授权本轮全部提交推送；

@@ -170,10 +170,22 @@ impl From<kiyori_core::chat_preferences::Snapshot> for ChatPreferences {
 #[frb(opaque)]
 pub struct ConversationPreparation {
     prepared: std::sync::Mutex<Option<kiyori_core::conversations::PreparedSend>>,
+    summary: std::sync::Mutex<Option<kiyori_core::conversations::PreparedSummary>>,
     runtime: Arc<runtime::Runtime>,
 }
 impl ConversationPreparation {
     pub fn secret_reference(&self) -> Result<Option<String>, BridgeError> {
+        if let Some(summary) = self
+            .summary
+            .lock()
+            .map_err(|_| BridgeError {
+                code: ErrorCode::Storage,
+                message: "总结准备锁不可用".into(),
+            })?
+            .as_ref()
+        {
+            return Ok(summary.secret_reference());
+        }
         let guard = self.prepared.lock().map_err(|_| BridgeError {
             code: ErrorCode::Storage,
             message: "请求准备锁不可用".into(),
@@ -236,6 +248,26 @@ impl ConversationPreparation {
         if let Ok(mut guard) = self.prepared.lock() {
             guard.take();
         }
+        if let Ok(mut guard) = self.summary.lock() {
+            guard.take();
+        }
+    }
+    pub async fn start_summary(&self, payload: String) -> Result<ChatHandle, BridgeError> {
+        let prepared = self
+            .summary
+            .lock()
+            .map_err(|_| BridgeError {
+                code: ErrorCode::Storage,
+                message: "总结准备锁不可用".into(),
+            })?
+            .take()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "总结准备已使用或释放".into(),
+            })?;
+        Ok(ChatHandle {
+            inner: Arc::new(self.runtime.start_summary(prepared, payload)?),
+        })
     }
 }
 pub struct ChatHeader {
@@ -1488,6 +1520,21 @@ impl RuntimeHandle {
         Ok(ConversationPreparation {
             prepared: std::sync::Mutex::new(Some(
                 self.inner.prepare_conversation_target(id, target)?,
+            )),
+            summary: std::sync::Mutex::new(None),
+            runtime: self.inner.clone(),
+        })
+    }
+    pub fn prepare_summary(
+        &self,
+        id: String,
+        boundary: String,
+        revision: u32,
+    ) -> Result<ConversationPreparation, BridgeError> {
+        Ok(ConversationPreparation {
+            prepared: std::sync::Mutex::new(None),
+            summary: std::sync::Mutex::new(Some(
+                self.inner.prepare_summary(id, boundary, revision)?,
             )),
             runtime: self.inner.clone(),
         })

@@ -36,6 +36,10 @@ mod tests;
 #[path = "conversations_summary.rs"]
 mod summary;
 
+#[path = "conversations_manual_summary.rs"]
+mod manual_summary;
+pub use manual_summary::PreparedSummary;
+
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &Connection) {
     crate::downloads::remove_schema_for_fixture(connection);
@@ -308,7 +312,7 @@ impl AppStore {
         }
         use rusqlite::OptionalExtension;
         let recent = tx.query_row(
-            "SELECT CASE WHEN usage_reported=1 THEN input_tokens END,CASE WHEN usage_reported=1 THEN output_tokens END,model,first_output_at-created_at,finished_at-created_at,cache_read_tokens,cache_write_tokens,reasoning_tokens FROM conversation_runs WHERE conversation_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1",
+            "SELECT CASE WHEN usage_reported=1 THEN input_tokens END,CASE WHEN usage_reported=1 THEN output_tokens END,model,first_output_at-created_at,finished_at-created_at,cache_read_tokens,cache_write_tokens,reasoning_tokens FROM conversation_runs WHERE conversation_id=?1 AND kind='chat' ORDER BY created_at DESC,rowid DESC LIMIT 1",
             [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))
         ).optional().map_err(storage)?.unwrap_or((None,None,String::new(),None,None,None,None,None));
         tx.commit().map_err(storage)?;
@@ -776,6 +780,8 @@ impl AppStore {
                 [id],
             )
             .map_err(storage)?;
+            // 原文或较早摘要变化会使后续检查点过期；仍保留可见全文供用户核对。
+            tx.execute("UPDATE conversation_messages SET state='invalidated' WHERE conversation_id=?1 AND role='summary' AND position>?2",params![id,position]).map_err(storage)?;
         }
         match action {
             "delete_selected" => {
@@ -785,6 +791,7 @@ impl AppStore {
                     return Err(invalid("消息选择无效"));
                 }
                 for selected in ids {
+                    tx.execute("UPDATE conversation_messages SET state='invalidated' WHERE conversation_id=?1 AND role='summary' AND position>(SELECT position FROM conversation_messages WHERE id=?2 AND conversation_id=?1)",params![id,selected]).map_err(storage)?;
                     let affected = tx
                         .execute(
                             "DELETE FROM conversation_messages WHERE id=?1 AND conversation_id=?2",
@@ -837,7 +844,7 @@ impl AppStore {
                 let branch = identity(&tx)?;
                 tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) SELECT ?2,title||' (分支)',character_id,?3,?3,1,folder FROM conversations WHERE id=?1", params![id,branch,now()]).map_err(storage)?;
                 // 分支复制独立运行快照与完整消息；源对话删除/编辑不会级联影响分支。
-                tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id,cache_read_tokens,cache_write_tokens,reasoning_tokens) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id,r.cache_read_tokens,r.cache_write_tokens,r.reasoning_tokens FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
+                tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id,cache_read_tokens,cache_write_tokens,reasoning_tokens,kind) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id,r.cache_read_tokens,r.cache_write_tokens,r.reasoning_tokens,r.kind FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state,variant) SELECT ?3||'/'||id,?3,CASE WHEN run_id IS NULL THEN NULL ELSE ?3||'/'||run_id END,position,role,content,state,variant FROM conversation_messages WHERE conversation_id=?1 AND position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_variants SELECT ?3||'/'||v.message_id,v.variant,CASE WHEN v.run_id IS NULL THEN NULL ELSE ?3||'/'||v.run_id END,v.content,v.state FROM conversation_variants v JOIN conversation_messages m ON m.id=v.message_id WHERE m.conversation_id=?1 AND m.position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_summaries SELECT ?3,through_position,content FROM conversation_summaries WHERE conversation_id=?1 AND through_position<=?2",params![id,position,branch]).map_err(storage)?;
@@ -857,6 +864,7 @@ impl AppStore {
                     params![message, text],
                 )
                 .map_err(storage)?;
+                tx.execute("UPDATE conversation_messages SET state='completed' WHERE id=?1 AND role='summary'",[message]).map_err(storage)?;
             }
             "delete" => {
                 tx.execute("DELETE FROM conversation_messages WHERE id=?1", [message])
@@ -1067,10 +1075,12 @@ impl Runtime {
             let keep_from:i64=if regenerating {
                 tx.query_row("SELECT coalesce(max(position),0) FROM conversation_messages WHERE conversation_id=?1 AND position<?2 AND role='user'",params![prepared.conversation,cutoff],|r|r.get(0)).map_err(storage)?
             } else {i64::MAX};
-            let cached=summary::cached(&tx,&prepared.conversation)?.filter(|(through,_)|*through<cutoff && *through<keep_from && selected.config.draft.options.summary_enabled);
-            let after_position=cached.as_ref().map_or(-1,|(through,_)|*through);
-            let previous=cached.map(|(_,content)|content);
-            let mut statement=tx.prepare("SELECT position,role,content FROM conversation_messages WHERE conversation_id=?1 AND position<?2 AND position>?3 AND content<>'' ORDER BY position").map_err(storage)?;
+            let checkpoint=summary::checkpoint(&tx,&prepared.conversation,cutoff.min(keep_from))?;
+            let cached=summary::cached(&tx,&prepared.conversation)?.filter(|(through,_)|*through<cutoff && *through<keep_from && selected.config.draft.options.summary_enabled && checkpoint.as_ref().is_none_or(|c|*through>c.0));
+            let projected=cached.or(checkpoint);
+            let after_position=projected.as_ref().map_or(-1,|(through,_)|*through);
+            let previous=projected.map(|(_,content)|content);
+            let mut statement=tx.prepare("SELECT position,role,content FROM conversation_messages WHERE conversation_id=?1 AND position<?2 AND position>?3 AND content<>'' AND role IN ('user','assistant') ORDER BY position").map_err(storage)?;
             let rows=statement.query_map(params![prepared.conversation,cutoff,after_position],|r|Ok((r.get::<_,i64>(0)?,chat::ChatMessage{role:r.get(1)?,content:r.get(2)?}))).map_err(storage)?;
             let mut recent=Vec::new(); let mut after=Vec::new(); let mut bytes=0usize; let mut through=after_position;
             for row in rows {
@@ -1113,6 +1123,7 @@ impl Runtime {
             if regenerating {
                 let target=replace_from.as_ref().ok_or_else(||invalid("回复目标无效"))?;
                 tx.execute("DELETE FROM conversation_summaries WHERE conversation_id=?1 AND through_position>=?2",params![prepared.conversation,keep_from]).map_err(storage)?;
+                tx.execute("UPDATE conversation_messages SET state='invalidated' WHERE conversation_id=?1 AND role='summary' AND position>=?2",params![prepared.conversation,keep_from]).map_err(storage)?;
                 tx.execute("INSERT OR REPLACE INTO conversation_variants SELECT id,variant,run_id,content,state FROM conversation_messages WHERE id=?1",[target]).map_err(storage)?;
                 tx.execute("UPDATE conversation_messages SET run_id=?2,content='',state='running',variant=(SELECT max(variant)+1 FROM conversation_variants WHERE message_id=?1) WHERE id=?1",params![target,run_id]).map_err(storage)?;
             } else {
@@ -1287,7 +1298,15 @@ impl AppStore {
     fn persist_conversation_event(
         &self,
         run: &str,
+        event: chat::ChatEvent,
+    ) -> Result<chat::ChatEvent, CoreError> {
+        self.persist_event(run, event, None)
+    }
+    fn persist_event(
+        &self,
+        run: &str,
         mut event: chat::ChatEvent,
+        manual: Option<&manual_summary::Commit>,
     ) -> Result<chat::ChatEvent, CoreError> {
         let mut connection = self
             .connection
@@ -1306,8 +1325,21 @@ impl AppStore {
         if state != "running" {
             return Err(invalid("执行已经结束"));
         }
+        if let chat::ChatEvent::Completed { reason, .. } = &event
+            && reason == "stop"
+            && let Some(manual) = manual
+            && let Err(error) = manual.insert(&tx, run)
+        {
+            if error.code == ErrorCode::Storage {
+                return Err(error);
+            }
+            event = chat::ChatEvent::Failed(chat::ChatFailure::new(
+                chat::ChatFailureKind::InvalidInput,
+                &error.message,
+            ));
+        }
         if let chat::ChatEvent::Completed { reason, .. } = &event {
-            let nonempty:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_messages WHERE run_id=?1 AND role='assistant' AND length(trim(content))>0)",[run],|r|r.get(0)).map_err(storage)?;
+            let nonempty:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_messages WHERE run_id=?1 AND role IN ('assistant','summary') AND length(trim(content))>0)",[run],|r|r.get(0)).map_err(storage)?;
             if reason != "stop" || !nonempty {
                 event = chat::ChatEvent::Failed(chat::ChatFailure::new(
                     chat::ChatFailureKind::Interrupted,
@@ -1322,11 +1354,13 @@ impl AppStore {
         let mut terminal = None;
         match &event {
             chat::ChatEvent::Text(text) => {
-                let bytes:i64=tx.query_row("SELECT length(CAST(content AS BLOB)) FROM conversation_messages WHERE run_id=?1 AND role='assistant'",[run],|r|r.get(0)).map_err(storage)?;
-                if bytes as usize + text.len() > 8 * 1024 * 1024 {
-                    return Err(invalid("回复超过8 MiB存储限制"));
+                if manual.is_none() {
+                    let bytes:i64=tx.query_row("SELECT length(CAST(content AS BLOB)) FROM conversation_messages WHERE run_id=?1 AND role='assistant'",[run],|r|r.get(0)).map_err(storage)?;
+                    if bytes as usize + text.len() > 8 * 1024 * 1024 {
+                        return Err(invalid("回复超过8 MiB存储限制"));
+                    }
+                    tx.execute("UPDATE conversation_messages SET content=content||?2 WHERE run_id=?1 AND role='assistant'",params![run,text]).map_err(storage)?;
                 }
-                tx.execute("UPDATE conversation_messages SET content=content||?2 WHERE run_id=?1 AND role='assistant'",params![run,text]).map_err(storage)?;
                 if !text.is_empty() {
                     tx.execute("UPDATE conversation_runs SET first_output_at=coalesce(first_output_at,max(created_at,?2)) WHERE id=?1",params![run,now()]).map_err(storage)?;
                 }
