@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_controller.dart';
 import 'package:kiyori/features/assistant/presentation/chat_page.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
+import 'package:kiyori/features/assistant/presentation/models/model_options_editing.dart';
 import 'package:kiyori/features/assistant/presentation/models/models_controller.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_platform/src/windows_secret_store.dart';
@@ -28,6 +29,7 @@ class ChatFixture {
   Map<String, Object?>? usage;
   List<String>? chunks;
   String answer = '合成回复：**你好**\n\n```dart\nprint("hello");\n```';
+  String? summaryModel;
   Future<void> open() async {
     directory = await Directory.systemTemp.createTemp('kiyori-chat-ui-');
     runtime = await NativeRuntimeClient.open(dataDirectory: directory.path);
@@ -42,7 +44,9 @@ class ChatFixture {
       );
       expect(
         request.headers.value('authorization'),
-        'Bearer synthetic-fixture',
+        requests.last['model'] == summaryModel
+            ? 'Bearer summary-fixture'
+            : 'Bearer synthetic-fixture',
       );
       expect(request.uri.path, '/v1/chat/completions');
       request.response.bufferOutput = false;
@@ -171,6 +175,132 @@ Future<void> until(WidgetTester tester, bool Function() done) async {
 }
 
 void main() {
+  testWidgets(
+    'independent summary credentials compress request and retain original UI history after reopen',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(f.open);
+      try {
+        await tester.runAsync(() async {
+          final main = f.models.catalog!.configs.single;
+          await f.models.save(
+            main,
+            ModelConfigDraft(
+              name: main.draft.name,
+              provider: main.draft.provider,
+              protocol: main.draft.protocol,
+              endpoint: main.draft.endpoint,
+              models: main.draft.models,
+              options: main.draft.options.copyWith(
+                summaryEnabled: true,
+                summaryByCount: true,
+                summaryCount: 1,
+                summaryRules: '保留合成原文',
+              ),
+            ),
+            const ModelCredentials(apiKey: 'synthetic-fixture'),
+            const ModelCredentials(apiKey: 'synthetic-fixture'),
+          );
+          final id = await f.models.create('独立总结');
+          final c = f.models.catalog!.configs.singleWhere((c) => c.id == id);
+          f.summaryModel = 'summary-only';
+          await f.models.save(
+            c,
+            ModelConfigDraft(
+              name: c.draft.name,
+              provider: c.draft.provider,
+              protocol: c.draft.protocol,
+              options: c.draft.options,
+              endpoint: 'http://127.0.0.1:${f.server.port}',
+              models: [f.summaryModel!],
+            ),
+            const ModelCredentials(),
+            const ModelCredentials(apiKey: 'summary-fixture'),
+            replacement: f.summaryModel,
+          );
+          await f.models.select('summary', id, f.summaryModel!);
+          await f.chat.load();
+        });
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(body: ChatPage(controller: f.chat)),
+          ),
+        );
+        await until(tester, () => !f.chat.loading);
+        for (final text in ['第一原问', '第二原问']) {
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byKey(const Key('chat-draft')), text);
+          await tester.pump();
+          await tester.tap(
+            find.byWidgetPredicate((w) => w is ShellAction && w.label == '发送'),
+          );
+          for (
+            var i = 0;
+            i < 200 &&
+                (f.chat.busy ||
+                    f.chat.snapshot?.messages.length !=
+                        (text == '第一原问' ? 2 : 4));
+            i++
+          ) {
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 20)),
+            );
+            await tester.pump(const Duration(milliseconds: 20));
+          }
+          expect(
+            f.chat.snapshot?.messages.length,
+            text == '第一原问' ? 2 : 4,
+            reason:
+                'busy=${f.chat.busy}, error=${f.chat.error}, requests=${f.requests.length}',
+          );
+          expect(f.chat.error, isNull);
+        }
+        expect(f.requests.map((r) => r['model']), [
+          'second-model',
+          'summary-only',
+          'second-model',
+        ]);
+        expect(
+          (f.requests[1]['messages'] as List).first['content'],
+          contains('保留合成原文'),
+        );
+        expect(
+          (f.requests[2]['messages'] as List).any(
+            (m) => m['content'] == '第一原问',
+          ),
+          isFalse,
+        );
+        expect(f.chat.snapshot!.summary!.content, f.answer);
+        expect(f.chat.snapshot!.messages.first.content, '第一原问');
+        final id = f.chat.snapshot!.conversation.id;
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(() async {
+          await f.chat.shutdown();
+          await f.runtime.close();
+          f.runtime = await NativeRuntimeClient.open(
+            dataDirectory: f.directory.path,
+          );
+          final restored = await f.runtime.conversation(id);
+          expect(restored.messages.length, 4);
+          expect(restored.messages.first.content, '第一原问');
+          expect(restored.summary!.content, f.answer);
+          await f.runtime.changeMessage(
+            id,
+            restored.conversation.revision,
+            restored.messages.first.id,
+            'edit',
+            '修订原问',
+          );
+          expect((await f.runtime.conversation(id)).summary, isNull);
+        });
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
   testWidgets('model picker and message edit menus execute real commands', (
     tester,
   ) async {

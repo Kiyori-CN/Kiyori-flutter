@@ -136,6 +136,7 @@ pub fn prepare(
         );
     }
     Ok(ChatRequest {
+        prelude: None,
         provider: draft.provider,
         continuation_credentials: None,
         google_search: draft.options.google_search,

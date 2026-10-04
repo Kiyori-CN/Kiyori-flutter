@@ -56,11 +56,20 @@ pub struct ConversationMessage {
 pub struct ConversationSnapshot {
     pub conversation: Conversation,
     pub messages: Vec<ConversationMessage>,
+    pub summary: Option<ConversationSummary>,
+}
+pub struct ConversationSummary {
+    pub through_position: i64,
+    pub content: String,
 }
 impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnapshot {
     fn from(v: kiyori_core::conversations::ConversationSnapshot) -> Self {
         Self {
             conversation: v.conversation.into(),
+            summary: v.summary.map(|v| ConversationSummary {
+                through_position: v.through_position,
+                content: v.content,
+            }),
             messages: v
                 .messages
                 .into_iter()
@@ -177,10 +186,24 @@ impl ConversationPreparation {
             })?
             .secret_reference())
     }
+    pub fn summary_secret_reference(&self) -> Result<Option<String>, BridgeError> {
+        let guard = self.prepared.lock().map_err(|_| BridgeError {
+            code: ErrorCode::Storage,
+            message: "请求准备锁不可用".into(),
+        })?;
+        Ok(guard
+            .as_ref()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "请求准备已释放".into(),
+            })?
+            .summary_secret_reference())
+    }
     pub async fn start(
         &self,
         text: String,
         payload: String,
+        summary_payload: Option<String>,
         replace_from: Option<String>,
         revision: Option<u32>,
         reply_to: Option<String>,
@@ -198,10 +221,11 @@ impl ConversationPreparation {
                 message: "请求准备已使用或释放".into(),
             })?;
         Ok(ChatHandle {
-            inner: Arc::new(self.runtime.start_conversation_replying(
+            inner: Arc::new(self.runtime.start_conversation_with_summary(
                 prepared,
                 text,
                 payload,
+                summary_payload,
                 replace_from,
                 revision,
                 reply_to,
@@ -1438,6 +1462,7 @@ impl RuntimeHandle {
         Ok(ChatHandle {
             inner: Arc::new(
                 self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    prelude: None,
                     provider: String::new(),
                     continuation_credentials: None,
                     google_search: false,

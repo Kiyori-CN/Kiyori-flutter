@@ -68,6 +68,13 @@ impl Tracker {
     pub fn snapshot(&self) -> Observation {
         self.snapshot.clone()
     }
+    pub fn rebase_context(&mut self, messages: &[ChatMessage]) {
+        // 总结仍属于本次等待时间；只替换实际聊天请求的上下文估算，不能重启计时。
+        self.snapshot.context_tokens = messages
+            .iter()
+            .map(|m| estimate(&m.content))
+            .fold(0i64, i64::saturating_add);
+    }
 
     pub fn observe(&mut self, event: &ChatEvent) {
         self.observe_at(
@@ -190,6 +197,21 @@ mod tests {
             100,
         );
         assert_eq!(tracker.snapshot().context_tokens, 0);
+    }
+    #[test]
+    fn summary_projection_rebases_context_without_resetting_wait_or_samples() {
+        let mut tracker = Tracker::new(true, "model".into(), &[], 100);
+        let started = tracker.started;
+        tracker.rebase_context(&[ChatMessage {
+            role: "user".into(),
+            content: "中中".into(),
+        }]);
+        assert_eq!(tracker.started, started);
+        assert_eq!(tracker.snapshot().context_tokens, 3);
+        tracker.observe_at(&ChatEvent::Text("abcd".into()), 2000);
+        tracker.observe_at(&ChatEvent::Text("abcd".into()), 2500);
+        assert_eq!(tracker.snapshot().first_output_ms, Some(2000));
+        assert_eq!(tracker.snapshot().tokens_per_second, Some(4.));
     }
     #[test]
     fn timing_excludes_wait_and_requires_observable_stream() {

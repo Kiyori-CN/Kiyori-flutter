@@ -18,6 +18,7 @@ void main() {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       var active = 0, peak = 0;
       final seen = <String>[];
+      final responsesClosed = Completer<void>();
       server.listen((incoming) async {
         await incoming.drain<void>();
         final key = incoming.headers.value('authorization')!;
@@ -47,6 +48,7 @@ void main() {
         }
         await incoming.response.close();
         active--;
+        if (seen.length == 3 && active == 0) responsesClosed.complete();
       });
       try {
         final base = (await runtime.modelCatalog()).configs.single.draft;
@@ -96,6 +98,8 @@ void main() {
           2,
         );
         final events = await run.events.toList();
+        // 客户端终态不代表服务端close的异步回调已恢复；等待夹具完成再核对计数。
+        await responsesClosed.future.timeout(const Duration(seconds: 2));
         final results = {
           for (final event in events.where(
             (e) => e.phase == ChatPhase.poolResult,

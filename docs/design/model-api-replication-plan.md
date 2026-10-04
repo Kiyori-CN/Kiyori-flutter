@@ -75,7 +75,7 @@ DeepSeek / deepseek-flash 与指定中转 / gpt-6.1-sol 两个端点的真实合
 
 | 顺序 | 范围与实现位置 | 不变量与风险 | 完成信号 |
 | --- | --- | --- | --- |
-| 1 | 总结执行：`core/conversations` 协调 `summary` 功能绑定与安全凭据租约 | 现有 UI 只保存阈值/规则；需要继承旧摘要、计数/比例触发、取消、失败保留全文、修订冲突保护；不得在 SQLite 事务中等待网络 | 同一会话长历史真实压缩、重开恢复、自定义规则、关闭总结、失败/取消/编辑后失效测试通过 |
+| 1 | 总结执行：`core/conversations_summary` 协调 `summary` 功能绑定与安全凭据租约 | 已实现继承摘要、计数/比例触发、独立预算、同Run取消、失败保留全文、迟到身份保护和用量；重新生成保留当前问题及尾部，缓存越界弃用 | 本机完整verify、两端12条独立总结真实UI链路和双端构建通过，证据见status；设备/Apple仍待验证，手动插入总结另列 |
 | 2 | 共享资源/传输：首个 `core/files` ResourceRef 与 `core/downloads` Transfer 用例 | 应用私有模型资源和用户授权引用区分；持久任务只有一个执行者，Range/ETag/大小校验与原子交付；Dart 无临时下载器 | 本地模型页真实刷新/开始/暂停/续传/取消/删除，重启对账、断流/空间不足/实体变化通过 |
 | 3 | MNN / llama.cpp 原生 adapter，`kiyori_platform` 拥有句柄与线程/GPU生命周期 | 旧源 CMake 分别 pin MNN ea44a3e、llama.cpp 885c5bb；不能复制旧 JNI/预编译库伪装跨平台实现；新增依赖先审许可证与正式构建 | Android/Windows 能加载对应资源，设置参数真实传入，流式/取消/卸载与错误测试；Apple 实际编译独立验收 |
 | 4 | TOOLPKG 模型提供方，统一扩展目录/manifest/执行与授权 | 旧 ModelApiProviderPresentation 的 TOOLPKG 是动态目录；现有内置提供方列表不能替代它；执行器不得获得任意文件/网络权限 | 安装/启停/卸载目录更新、配置身份与撤权、协议/模型列表/请求、超时取消/恶意结果有真实宿主测试 |

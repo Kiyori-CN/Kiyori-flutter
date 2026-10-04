@@ -6,6 +6,7 @@ export 'src/generated/api.dart'
         ConversationCatalog,
         ConversationMessage,
         ConversationSnapshot,
+        ConversationSummary,
         ConversationStatistics,
         ChatPreferences,
         ChatMessage,

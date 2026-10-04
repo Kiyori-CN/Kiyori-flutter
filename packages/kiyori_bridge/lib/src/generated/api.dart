@@ -34,10 +34,13 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
   Future<ChatHandle> start({
     required String text,
     required String payload,
+    String? summaryPayload,
     String? replaceFrom,
     int? revision,
     String? replyTo,
   });
+
+  Future<String?> summarySecretReference();
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelNamesEdit>>
@@ -914,14 +917,17 @@ class ConversationMessage {
 class ConversationSnapshot {
   final Conversation conversation;
   final List<ConversationMessage> messages;
+  final ConversationSummary? summary;
 
   const ConversationSnapshot({
     required this.conversation,
     required this.messages,
+    this.summary,
   });
 
   @override
-  int get hashCode => conversation.hashCode ^ messages.hashCode;
+  int get hashCode =>
+      conversation.hashCode ^ messages.hashCode ^ summary.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -929,7 +935,8 @@ class ConversationSnapshot {
       other is ConversationSnapshot &&
           runtimeType == other.runtimeType &&
           conversation == other.conversation &&
-          messages == other.messages;
+          messages == other.messages &&
+          summary == other.summary;
 }
 
 class ConversationStatistics {
@@ -1033,6 +1040,27 @@ class ConversationStatistics {
           recentCacheReadTokens == other.recentCacheReadTokens &&
           recentCacheWriteTokens == other.recentCacheWriteTokens &&
           recentReasoningTokens == other.recentReasoningTokens;
+}
+
+class ConversationSummary {
+  final PlatformInt64 throughPosition;
+  final String content;
+
+  const ConversationSummary({
+    required this.throughPosition,
+    required this.content,
+  });
+
+  @override
+  int get hashCode => throughPosition.hashCode ^ content.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationSummary &&
+          runtimeType == other.runtimeType &&
+          throughPosition == other.throughPosition &&
+          content == other.content;
 }
 
 class DiaryDocument {

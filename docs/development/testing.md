@@ -26,6 +26,9 @@ chat_business_test.dart使用真实DPAPI、生成FFI、SQLite和loopback验证�
 横屏/桌面与历史截图。chat_live_test.dart默认跳过，只有用户明确授权并向进程内存注入
 KIYORI_LIVE_KEY、KIYORI_LIVE_ENDPOINT、KIYORI_LIVE_MODEL时才执行两轮合成请求；
 不得将实际值写命令历史、源码、日志、截图或Git。供应商验收与设备验收分别记录。
+增加KIYORI_LIVE_SUMMARY=1时创建独立总结配置与DPAPI引用、summaryCount=1，第二轮必须
+产生摘要并保留口令，重开核对摘要及四条原始消息。chat_business_test用loopback覆盖同链路
+及编辑失效；summary用量、预算和迟到身份保护由Rust专项验证。
 
 core/chat通过真实loopback HTTP覆盖POST、拆流、结束/usage、错误/重定向与取消；
 packages/kiyori_bridge/test/chat_runtime_test.dart覆盖真实FFI事件、取消等待、未订阅关闭和超时。

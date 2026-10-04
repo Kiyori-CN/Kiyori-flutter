@@ -17,6 +17,32 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 /// 只有显式注入授权凭据时执行；凭据仅进入正式安全存储，禁止截图/日志。
 void main() {
   final key = Platform.environment['KIYORI_LIVE_KEY'];
+  final summarize = Platform.environment['KIYORI_LIVE_SUMMARY'] == '1';
+  final protocol = Platform.environment['KIYORI_LIVE_PROTOCOL'] ?? 'responses';
+  final sol = Platform.environment['KIYORI_LIVE_MODEL'] == 'gpt-6.1-sol';
+  final reasoning = protocol == 'responses'
+      ? ModelParameter(
+          name: 'reasoning',
+          enabled: true,
+          valueType: 'json',
+          value: sol ? '{"effort":"low"}' : '{"effort":"none"}',
+          category: 'custom',
+        )
+      : protocol == 'chat'
+      ? ModelParameter(
+          name: 'reasoning_effort',
+          enabled: true,
+          valueType: 'text',
+          value: sol ? 'low' : 'none',
+          category: 'custom',
+        )
+      : ModelParameter(
+          name: sol ? 'reasoning_effort' : 'thinking',
+          enabled: true,
+          valueType: sol ? 'text' : 'json',
+          value: sol ? 'low' : '{"type":"disabled"}',
+          category: 'custom',
+        );
   testWidgets(
     'authorized provider via configuration fields DPAPI and two UI conversation turns',
     (tester) async {
@@ -41,23 +67,25 @@ void main() {
         editor = ModelEditSession(models, base, const ModelCredentials());
         editor.update(
           provider: 'OPENAI_GENERIC',
-          protocol: 'responses',
-          endpoint: Platform.environment['KIYORI_LIVE_ENDPOINT']!,
+          protocol: protocol,
+          endpoint: protocol == 'messages' && !sol
+              ? '${Platform.environment['KIYORI_LIVE_ENDPOINT']!.replaceAll(RegExp(r'/+$'), '')}/anthropic'
+              : Platform.environment['KIYORI_LIVE_ENDPOINT']!,
           models: [Platform.environment['KIYORI_LIVE_MODEL']!],
           options: base.draft.options.copyWith(
+            summaryEnabled: summarize,
+            summaryByCount: true,
+            summaryCount: 1,
+            summaryRules: summarize
+                ? '本次为合成测试。摘要只用一个简短句子，必须保留助手之前回答的确切口令 KIYORI_OK。'
+                : base.draft.options.summaryRules,
             parameters: [
-              const ModelParameter(
-                name: 'reasoning',
-                enabled: true,
-                valueType: 'json',
-                value: '{"effort":"none"}',
-                category: 'custom',
-              ),
-              const ModelParameter(
+              reasoning,
+              ModelParameter(
                 name: 'max_tokens',
                 enabled: true,
                 valueType: 'integer',
-                value: '512',
+                value: sol ? '4096' : '512',
                 category: 'standard',
               ),
             ],
@@ -91,12 +119,61 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         editor.dispose();
         editor = null;
+        if (summarize) {
+          await tester.runAsync(() async {
+            final id = await models.create('独立总结合成测试');
+            final summary = models.catalog!.configs.singleWhere(
+              (c) => c.id == id,
+            );
+            final main = models.catalog!.configs.singleWhere(
+              (c) => c.id == 'default',
+            );
+            await models.save(
+              summary,
+              ModelConfigDraft(
+                name: summary.draft.name,
+                provider: main.draft.provider,
+                protocol: main.draft.protocol,
+                endpoint: main.draft.endpoint,
+                models: main.draft.models,
+                options: main.draft.options.copyWith(
+                  parameters: [
+                    reasoning,
+                    const ModelParameter(
+                      name: 'max_tokens',
+                      enabled: true,
+                      valueType: 'integer',
+                      value: '4096',
+                      category: 'standard',
+                    ),
+                  ],
+                ),
+              ),
+              const ModelCredentials(),
+              ModelCredentials(apiKey: key),
+              replacement: Platform.environment['KIYORI_LIVE_MODEL'],
+            );
+            await models.select(
+              'summary',
+              id,
+              Platform.environment['KIYORI_LIVE_MODEL']!,
+            );
+          });
+        }
         await tester.runAsync(() async {
           await runtime.close();
           runtime = await NativeRuntimeClient.open(
             dataDirectory: directory.path,
           );
           await models.load();
+          if (Platform.environment['KIYORI_LIVE_NONSTREAM'] == '1') {
+            final prefs = await runtime.chatPreferences();
+            await runtime.changeChatPreference(
+              prefs.revision,
+              'disable_stream',
+              'true',
+            );
+          }
           await chat.load();
         });
         await tester.pumpWidget(
@@ -132,8 +209,21 @@ void main() {
             await tester.pump(const Duration(milliseconds: 100));
           }
           expect(chat.snapshot?.messages.length, count);
-          expect(chat.snapshot!.messages.last.state, 'completed');
+          expect(
+            chat.snapshot!.messages.last.state,
+            'completed',
+            reason: 'turn=$count; ${chat.snapshot!.messages.last.error}',
+          );
           expect(chat.snapshot!.messages.last.content.trim(), 'KIYORI_OK');
+          if (summarize && count == 4) {
+            expect(chat.snapshot!.summary, isNotNull);
+            expect(chat.snapshot!.summary!.content, contains('KIYORI_OK'));
+            expect(chat.snapshot!.summary!.throughPosition.toInt(), 1);
+            expect(
+              chat.snapshot!.messages.first.content,
+              startsWith('This is a synthetic'),
+            );
+          }
         }
         final id = chat.snapshot!.conversation.id;
         await tester.pumpWidget(const SizedBox());
@@ -146,10 +236,18 @@ void main() {
           final restored = await runtime.conversation(id);
           expect(restored.messages.length, 4);
           expect(restored.messages.last.state, 'completed');
+          if (summarize) {
+            expect(restored.summary, isNotNull);
+            expect(restored.summary!.content, contains('KIYORI_OK'));
+            expect(
+              restored.messages.first.content,
+              startsWith('This is a synthetic'),
+            );
+          }
         });
         // 只输出合成验收结论，既不记录请求体也不记录安全引用/凭据。
         debugPrint(
-          'LIVE_CHAT_OK: UI configuration -> DPAPI -> reopen -> two UI sends -> Rust/SQLite -> reopen; two completed KIYORI_OK replies.',
+          'LIVE_CHAT_OK: UI configuration -> DPAPI -> reopen -> two UI sends -> Rust/SQLite -> reopen; two completed KIYORI_OK replies; independent summary=${summarize ? 'verified' : 'disabled'}.',
         );
       } finally {
         await tester.pumpWidget(const SizedBox());

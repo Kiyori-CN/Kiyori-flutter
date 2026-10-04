@@ -4,7 +4,7 @@
 `feature`指`apps/kiyori/lib/features`；`native`指已建立安全存储adapter的
 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
 
-core/models拥有配置、功能绑定、参数验证与安全引用账本；schema14的core/conversations拥有
+core/models拥有配置、功能绑定、参数验证与安全引用账本；schema15的core/conversations拥有
 会话、消息、Run、恢复锁与历史修改事务，复用同一storage；core/context将chat绑定的
 上下文选项与全局媒体偏好按各自revision在同一事务保存。native安全存储只保护
 不可变payload，Dart的ModelsController/ModelEditSession编排保存和短期草稿，不另建数据库。
@@ -17,6 +17,8 @@ core/chat/pool使用同一请求client做有界并发可用性探测，Dart的Mo
 core/chat/responses只适配Responses请求体和事件解码，复用同一client/生命周期，未建立新网络owner。
 core/chat/observation属于同一请求链路，Runtime按会话持有最新tracker，负责单调计时、
 输入估算与进程内最近样本；不入库、不从历史耗时反推，不建立第二份累计账本。
+core/conversations_summary管理总结功能绑定与请求投影缓存，原始历史仍由conversations持有；
+使用同HTTP client、限流和Run取消，summary_usage计入同库累计，不替换聊天最近样本。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

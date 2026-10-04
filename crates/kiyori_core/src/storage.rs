@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 14;
+const SCHEMA_VERSION: i32 = 15;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -236,6 +236,18 @@ impl AppStore {
                 PRAGMA user_version=14;",
                 )
                 .map_err(|_| error("Cannot migrate provider usage detail."))?;
+        }
+        if version < 15 {
+            transaction.execute_batch(
+                "CREATE TABLE IF NOT EXISTS conversation_summaries(
+                 conversation_id TEXT PRIMARY KEY NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                 through_position INTEGER NOT NULL, content TEXT NOT NULL);
+                 CREATE TABLE IF NOT EXISTS conversation_summary_usage(
+                 run_id TEXT PRIMARY KEY NOT NULL REFERENCES conversation_runs(id) ON DELETE CASCADE,
+                 model TEXT NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+                 usage_reported INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER, cache_write_tokens INTEGER, reasoning_tokens INTEGER);
+                 PRAGMA user_version=15;"
+            ).map_err(|_| error("Cannot migrate conversation summary projections."))?;
         }
         transaction
             .commit()

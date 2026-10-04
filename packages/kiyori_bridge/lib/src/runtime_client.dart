@@ -215,9 +215,11 @@ final class _NativeModelNamesUndo implements ModelNamesUndo {
 
 abstract interface class PreparedConversation {
   Future<String?> secretReference();
+  Future<String?> summarySecretReference();
   Future<ChatRun> start(
     String text,
     String payload, {
+    String? summaryPayload,
     String? replaceFrom,
     int? revision,
     String? replyTo,
@@ -233,9 +235,12 @@ final class _NativePreparedConversation implements PreparedConversation {
   @override
   Future<String?> secretReference() => handle.secretReference();
   @override
+  Future<String?> summarySecretReference() => handle.summarySecretReference();
+  @override
   Future<ChatRun> start(
     String text,
     String payload, {
+    String? summaryPayload,
     String? replaceFrom,
     int? revision,
     String? replyTo,
@@ -245,6 +250,7 @@ final class _NativePreparedConversation implements PreparedConversation {
       await handle.start(
         text: text,
         payload: payload,
+        summaryPayload: summaryPayload,
         replaceFrom: replaceFrom,
         revision: revision,
         replyTo: replyTo,

@@ -96,7 +96,8 @@ schema9的conversations、conversation_messages、conversation_runs与活跃选�
 会话创建绑定当前单角色，群组自动执行明确拒绝；发送时解析角色当前组合提示词与固定模型，
 否则使用chat功能绑定。历史按position读取，包含已收到的取消/失败正文，不把空助手消息送入请求。
 配置参数包括text/json的类型在Rust转换。没有通用tokenizer时以UTF-8字节作为保守预算，
-同时限制1000消息、8 MiB请求/回复；超限明确失败，保留原文，不静默压缩。
+同时限制1000消息、8 MiB请求/回复；超限明确失败，保留原文，不静默截断。
+schema15接入显式启用的自动总结，执行与缓存合同见[ADR 0008](0008-conversation-summary-projection.md)。
 
 准备句柄持有安全引用短lease，启动时重新校验配置/角色/提示词；同事务推进密钥游标、
 保存用户消息/空助手/Run。网络后再释放的只有会话OS锁；安全lease在请求冻结后释放。

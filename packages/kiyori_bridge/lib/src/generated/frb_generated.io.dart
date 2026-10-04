@@ -175,6 +175,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ContextOptions dco_decode_box_autoadd_context_options(dynamic raw);
 
   @protected
+  ConversationSummary dco_decode_box_autoadd_conversation_summary(dynamic raw);
+
+  @protected
   DiarySummary dco_decode_box_autoadd_diary_summary(dynamic raw);
 
   @protected
@@ -268,6 +271,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ConversationStatistics dco_decode_conversation_statistics(dynamic raw);
+
+  @protected
+  ConversationSummary dco_decode_conversation_summary(dynamic raw);
 
   @protected
   DiaryDocument dco_decode_diary_document(dynamic raw);
@@ -432,6 +438,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ChatEvent? dco_decode_opt_box_autoadd_chat_event(dynamic raw);
+
+  @protected
+  ConversationSummary? dco_decode_opt_box_autoadd_conversation_summary(
+    dynamic raw,
+  );
 
   @protected
   DiarySummary? dco_decode_opt_box_autoadd_diary_summary(dynamic raw);
@@ -639,6 +650,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ConversationSummary sse_decode_box_autoadd_conversation_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DiarySummary sse_decode_box_autoadd_diary_summary(
     SseDeserializer deserializer,
   );
@@ -748,6 +764,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ConversationStatistics sse_decode_conversation_statistics(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ConversationSummary sse_decode_conversation_summary(
     SseDeserializer deserializer,
   );
 
@@ -934,6 +955,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ChatEvent? sse_decode_opt_box_autoadd_chat_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ConversationSummary? sse_decode_opt_box_autoadd_conversation_summary(
     SseDeserializer deserializer,
   );
 
@@ -1175,6 +1201,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_conversation_summary(
+    ConversationSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_diary_summary(
     DiarySummary self,
     SseSerializer serializer,
@@ -1324,6 +1356,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_conversation_statistics(
     ConversationStatistics self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_conversation_summary(
+    ConversationSummary self,
     SseSerializer serializer,
   );
 
@@ -1579,6 +1617,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_chat_event(
     ChatEvent? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_conversation_summary(
+    ConversationSummary? self,
     SseSerializer serializer,
   );
 

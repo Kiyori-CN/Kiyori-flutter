@@ -50,9 +50,43 @@ Sol6.1五档Responses×流式/非流式聊天/system/tool共30项通过（work/l
 最终捕获19项通过、20张PNG在work/model-api-review-final，已审阅手机明暗、320双倍字、
 横屏双倍字与结果卡；矮屏底部操作滚动可达。首轮收尾verify与供应商测试同时使用原生DLL
 出现文件占用，相关进程退出后串行重验；保留失败日志，未降断言。
-MNN/llama推理/共享下载资源、扩展提供方和总结执行仍有实际缺口，
+MNN/llama推理/共享下载资源与扩展提供方仍有实际缺口，
 实施依赖与完成信号已写入方案，不能把配置保存或网络测试称作全功能。
 同设备并排像素、键盘/触摸/Profile与Apple为verification_pending；当前授权不含设备操作。
+
+### 自动总结增量（本机验收通过，设备待验证）
+
+基线为已交付190524d，按当前任务授权提交普通推送；最终ref见Git及固定包manifest。
+core/conversations_summary接入独立summary
+功能绑定/安全凭据、计数与比例触发、旧中文提示词/自定义规则/上一摘要、独立输入预算与
+同worker取消。schema15新增请求投影缓存和独立总结usage，原消息保持完整；摘要提交前
+复核配置/角色/偏好/绑定及running，迟到结果拒绝。编辑/删除/回复版本、重发覆盖与清空
+使摘要失效，分支只复制其前缀内缓存。累计含总结用量，最近聊天样本不被覆盖。
+契约见[ADR 0008](decisions/0008-conversation-summary-projection.md)。
+
+Rust122、Clippy通过（work/model-summary-regen-green.log、model-summary-regen-clippy.log）；
+含独立budget、清空/观测、同配置单并发和重新生成边界。重新生成回归先复现最后user被
+摘要替代，再验证保留问题、缓存跨界弃用、有效旧缓存、关闭总结、后续消息及旧回复版本。
+正式FFI/DPAPI/SQLite/ChatPage与上下文
+联合10项通过（work/model-summary-ui-v8.log），含第二轮独立总结、原文/摘要重开与编辑失效。
+初轮新测试缺少extension导入、首次加载尚未结束的发送等待和用量夹具缺choices已修；
+全部失败日志保留，没有降低断言。生成桥-Check五文件一致。首轮完整verify-v1中Rust121、
+应用与platform5通过，独立FFI服务器清理回调滞后导致计数断言偶发失败；夹具显式等待
+响应关闭，保留peak=2/active=0断言。最终完整verify-v2通过：Rust122/fmt/Clippy、
+363 Dart格式/analyze、应用588（13条件跳过）、platform5、独立FFI18、Windows引擎5；
+日志work/model-summary-verify-final-v2.log，桥-Check五文件一致。
+Android ARM64 Debug101.5s、普通Windows x64 Debug21.2s串行构建通过；
+固定包artifacts/ui-preview/20261005-040903：APK117983513字节、SHA256
+8DD11CC674FD2DABE56C17EA587D1F6651E8E5367E2D701771C9035A49218F2D，
+Windows84文件159366208字节；85份副本哈希/APK身份、v2签名、ZIP16K/ELF、
+x64和Flutter DLL pin审计通过。30路径精确清单审计通过，日志和产物保持忽略。
+两端Chat/Responses/Messages×流式/非流式共12条正式UI独立总结、两轮口令与重开全部通过：
+DeepSeek日志work/live-ui-DEEPSEEK-summary-20261005-033621-*；
+中转work/live-ui-ROUTED-summary-20261005-033024-*及033430-messages-*。
+DeepSeek Responses流式首轮通过（work/live-ui-DEEPSEEK-summary-20261005-032448.log）；
+首轮512输出额度不足，独立总结改4096后完整通过。中转Chat第一轮none参数HTTP400，
+改low/4096及对应协议字段后全部链路通过；不泛化代理兼容为官方能力。
+设备/Apple仍待验证；手动插入摘要消息属于后续聊天入口，未以自动总结冒充已完成。
 
 ## 上一批：十一组实机截图UI与交互复刻
 

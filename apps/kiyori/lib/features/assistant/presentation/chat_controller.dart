@@ -450,9 +450,23 @@ class ChatController extends ChangeNotifier {
       final payload = raw == null
           ? const ModelCredentials().encode()
           : ModelCredentials.decode(raw).encode();
+      final summaryReference = await prepared.summarySecretReference();
+      final summaryRaw =
+          summaryReference == null || summaryReference == reference
+          ? null
+          : await (await openSecrets()).read(summaryReference);
+      if (_disposed || operation.stopping) return;
       final run = await prepared.start(
         text,
         payload,
+        summaryPayload:
+            summaryReference != null && summaryReference == reference
+            ? payload
+            : summaryReference == null
+            ? const ModelCredentials().encode()
+            : summaryRaw == null
+            ? null
+            : ModelCredentials.decode(summaryRaw).encode(),
         replaceFrom: replaceFrom,
         revision: revision,
         replyTo: replyId,

@@ -1,4 +1,6 @@
 use super::*;
+#[path = "conversations_summary_tests.rs"]
+mod summary_tests;
 use serde_json::{Value, json};
 use std::{
     io::{Read, Write},
@@ -515,6 +517,7 @@ fn folders_flags_order_and_metadata_are_persistent_and_atomic() {
 #[test]
 fn thinking_contract_preserves_explicit_parameters_and_rejects_unknown_models() {
     let mut request = chat::ChatRequest {
+        prelude: None,
         provider: String::new(),
         continuation_credentials: None,
         google_search: false,
