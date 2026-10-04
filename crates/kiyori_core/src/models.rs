@@ -188,6 +188,16 @@ pub struct ModelCatalog {
     pub functions: Vec<FunctionModel>,
 }
 
+/// 只存在于当前操作句柄；不含凭据，撤销必须核对配置与受影响角色的提交代次。
+pub struct ModelNamesUndo {
+    id: String,
+    revision: u32,
+    previous: Vec<String>,
+    replacement: Option<String>,
+    functions: Vec<(String, String)>,
+    characters: Vec<(String, String, u32)>,
+}
+
 fn invalid(message: &str) -> CoreError {
     CoreError {
         code: ErrorCode::InvalidInput,
@@ -461,8 +471,20 @@ impl AppStore {
         let tx = connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let next = require_revision(&tx, &id, revision)?;
-        let old = read_config(&tx, &id)?;
+        Self::save_config(&tx, id, revision, draft, secret_reference, replacement)?;
+        tx.commit().map_err(storage)
+    }
+
+    fn save_config(
+        tx: &Connection,
+        id: String,
+        revision: u32,
+        draft: ModelConfigDraft,
+        secret_reference: Option<String>,
+        replacement: Option<String>,
+    ) -> Result<(), CoreError> {
+        let next = require_revision(tx, &id, revision)?;
+        let old = read_config(tx, &id)?;
         let removed: Vec<_> = old
             .draft
             .models
@@ -521,8 +543,136 @@ impl AppStore {
             )
             .map_err(storage)?;
         }
+        Ok(())
+    }
+
+    fn change_model_names(
+        &self,
+        id: String,
+        revision: u32,
+        names: Vec<String>,
+        replacement: Option<String>,
+    ) -> Result<ModelNamesUndo, CoreError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| invalid("Storage lock failed."))?;
+        let tx = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        let next = require_revision(&tx, &id, revision)?;
+        let config = read_config(&tx, &id)?;
+        let mut draft = config.draft;
+        let previous = draft.models.clone();
+        draft.models = names;
+        validate(&mut draft)?;
+        let removed: Vec<_> = previous
+            .iter()
+            .filter(|m| !draft.models.contains(m))
+            .collect();
+        let mut functions = Vec::new();
+        let mut characters = Vec::new();
+        for name in removed {
+            let mut statement = tx.prepare("SELECT function,model_name FROM function_models WHERE config_id=?1 AND model_name=?2").map_err(storage)?;
+            functions.extend(
+                statement
+                    .query_map(params![id, name], |r| Ok((r.get(0)?, r.get(1)?)))
+                    .map_err(storage)?
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(storage)?,
+            );
+            let mut statement = tx.prepare("SELECT id,model_name,revision FROM prompt_characters WHERE model_config=?1 AND model_name=?2").map_err(storage)?;
+            characters.extend(
+                statement
+                    .query_map(params![id, name], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+                    .map_err(storage)?
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(storage)?,
+            );
+        }
+        Self::save_config(
+            &tx,
+            id.clone(),
+            revision,
+            draft,
+            config.secret_reference,
+            replacement.clone(),
+        )?;
+        tx.commit().map_err(storage)?;
+        Ok(ModelNamesUndo {
+            id,
+            revision: next,
+            previous,
+            replacement,
+            functions,
+            characters,
+        })
+    }
+
+    fn undo_model_names(&self, undo: ModelNamesUndo) -> Result<(), CoreError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| invalid("Storage lock failed."))?;
+        let tx = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        require_revision(&tx, &undo.id, undo.revision)?;
+        // 一项冲突即拒绝整次撤销，避免部分恢复与覆盖随后编辑的角色/功能。
+        for (function, _) in &undo.functions {
+            let current: (String, String) = tx
+                .query_row(
+                    "SELECT config_id,model_name FROM function_models WHERE function=?1",
+                    [function],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .map_err(storage)?;
+            if current.0 != undo.id || Some(&current.1) != undo.replacement.as_ref() {
+                return Err(invalid("Model bindings changed after deletion."));
+            }
+        }
+        for (id, _, revision) in &undo.characters {
+            let current: (Option<String>, Option<String>, u32) = tx
+                .query_row(
+                    "SELECT model_config,model_name,revision FROM prompt_characters WHERE id=?1",
+                    [id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .map_err(storage)?;
+            if current.0.as_ref() != Some(&undo.id)
+                || current.1 != undo.replacement
+                || current.2
+                    != revision
+                        .checked_add(1)
+                        .ok_or_else(|| invalid("Character revision overflow."))?
+            {
+                return Err(invalid("Model bindings changed after deletion."));
+            }
+        }
+        let config = read_config(&tx, &undo.id)?;
+        let mut draft = config.draft;
+        draft.models = undo.previous;
+        Self::save_config(
+            &tx,
+            undo.id.clone(),
+            undo.revision,
+            draft,
+            config.secret_reference,
+            None,
+        )?;
+        for (function, model) in undo.functions {
+            tx.execute(
+                "UPDATE function_models SET model_name=?1 WHERE function=?2",
+                params![model, function],
+            )
+            .map_err(storage)?;
+        }
+        for (id, model, _) in undo.characters {
+            tx.execute("UPDATE prompt_characters SET model_name=?1,revision=revision+1,updated_at=updated_at+1 WHERE id=?2", params![model,id]).map_err(storage)?;
+        }
         tx.commit().map_err(storage)
     }
+
     pub fn reserve_model_secret(
         &self,
         id: String,
@@ -692,6 +842,18 @@ impl AppStore {
     }
 }
 impl Runtime {
+    pub fn change_model_names(
+        &self,
+        id: String,
+        revision: u32,
+        names: Vec<String>,
+        replacement: Option<String>,
+    ) -> Result<ModelNamesUndo, CoreError> {
+        self.with_store(|s| s.change_model_names(id, revision, names, replacement))
+    }
+    pub fn undo_model_names(&self, undo: ModelNamesUndo) -> Result<(), CoreError> {
+        self.with_store(|s| s.undo_model_names(undo))
+    }
     pub fn begin_model_secrets(&self) -> Result<ModelSecretsLease, CoreError> {
         self.with_store(AppStore::begin_model_secrets)
     }
@@ -712,7 +874,19 @@ impl Runtime {
         secret_reference: Option<String>,
         replacement: Option<String>,
     ) -> Result<(), CoreError> {
-        self.with_store(|s| s.save_model_config(id, revision, draft, secret_reference, replacement))
+        let next_revision = revision
+            .checked_add(1)
+            .ok_or_else(|| invalid("Model revision exhausted."))?;
+        let request_limit = draft.options.request_limit;
+        let concurrent_limit = draft.options.concurrent_limit;
+        self.with_store(|s| {
+            s.save_model_config(id.clone(), revision, draft, secret_reference, replacement)?;
+            // 提交已成功就必须返回成功；更新进程内门控无需再次读取可能失败的存储。
+            // configure 按 revision 丢弃迟到更新，不能覆盖并发保存的新限制。
+            self.model_limits
+                .configure(&id, next_revision, request_limit, concurrent_limit);
+            Ok(())
+        })
     }
     pub fn reserve_model_secret(
         &self,
@@ -747,7 +921,9 @@ impl Runtime {
         replacement_model: Option<String>,
     ) -> Result<(), CoreError> {
         self.with_store(|s| {
-            s.delete_model_config(id, revision, replacement_config, replacement_model)
-        })
+            s.delete_model_config(id.clone(), revision, replacement_config, replacement_model)
+        })?;
+        self.model_limits.remove(&id);
+        Ok(())
     }
 }

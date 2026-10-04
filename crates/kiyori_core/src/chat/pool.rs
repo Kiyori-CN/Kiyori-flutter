@@ -24,7 +24,10 @@ pub(crate) fn start_pool(
     };
     if keys.len() > 20_000
         || concurrency > 32
-        || !matches!(draft.protocol.as_str(), "chat" | "responses")
+        || !matches!(
+            draft.protocol.as_str(),
+            "chat" | "responses" | "messages" | "native"
+        )
         || endpoint(&draft.endpoint, &draft.protocol).is_err()
     {
         return Err(invalid());

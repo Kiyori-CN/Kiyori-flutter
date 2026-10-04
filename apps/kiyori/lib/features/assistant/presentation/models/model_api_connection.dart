@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
@@ -9,6 +11,9 @@ import 'model_tags_editor.dart';
 import 'model_edit_session.dart';
 import 'model_credentials.dart';
 import 'model_options_editing.dart';
+import 'upstream_model_drawer.dart';
+
+import 'package:kiyori_bridge/kiyori_bridge.dart' show ModelNamesUndo;
 
 class ModelApiConnection extends StatefulWidget {
   const ModelApiConnection({
@@ -46,6 +51,243 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     RegExp(r'[ \r\n]'),
   );
   static const compute = ['CPU', 'OpenCL', 'Auto', 'OpenGL', 'Vulkan'];
+  ModalRoute<dynamic>? _directoryRoute;
+  DialogRoute<bool>? _changeRoute;
+  final _undos = <ModelNamesUndo>[];
+  bool _changingNames = false, _active = true;
+  int _namesVersion = 0;
+
+  void namesRecovered() {
+    final session = widget.session;
+    if (mounted && session != null && session.namesVersion != _namesVersion) {
+      _namesVersion = session.namesVersion;
+      super.setState(() => models = List.of(session.draft.models));
+    }
+  }
+
+  void invalidateDirectory() {
+    final directory = widget.session?.directory;
+    if (directory != null) unawaited(directory.cancel());
+    final route = _directoryRoute;
+    _directoryRoute = null;
+    if (route?.isActive == true) route!.navigator?.removeRoute(route);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.valuesOf(context).enabled;
+    if (_active && !active) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_active) invalidateDirectory();
+      });
+    }
+    _active = active;
+  }
+
+  void message(String text) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> fetchModels() async {
+    final session = widget.session;
+    if (session == null ||
+        session.directory.loading ||
+        _changingNames ||
+        !_active) {
+      return;
+    }
+    await session.poolTest.pause();
+    if (!await session.flush() || !mounted || !_active) return;
+    final success = await session.directory.refresh(
+      session.draft,
+      session.credentials,
+      config: session.base,
+    );
+    if (!mounted || !_active) return;
+    if (!success) {
+      message(session.directory.error ?? '获取模型目录已取消');
+      return;
+    }
+    final result = await showKiyoriModalDrawer<Set<String>>(
+      context,
+      onRoute: (route) => _directoryRoute = route,
+      builder: (context, dismiss) => UpstreamModelDrawer(
+        directory: session.directory,
+        existing: List.of(models),
+        dismiss: dismiss,
+        refresh: () => unawaited(() async {
+          final success = await session.directory.refresh(
+            session.draft,
+            session.credentials,
+            config: session.base,
+          );
+          if (!success &&
+              mounted &&
+              _active &&
+              session.directory.models.isNotEmpty) {
+            message(session.directory.error ?? '获取模型目录已取消');
+          }
+        }()),
+      ),
+    );
+    _directoryRoute = null;
+    await session.directory.cancel();
+    if (!mounted || !_active || result == null) return;
+    // 刷新后的目录可能不同；选择只影响上游存在项，自定义名称保留原顺序。
+    final upstream = session.directory.models.map((m) => m.id).toSet();
+    final existing = models.toSet();
+    final desired = [
+      for (final name in models)
+        if (!upstream.contains(name) || result.contains(name)) name,
+      for (final entry in session.directory.models)
+        if (result.contains(entry.id) && !existing.contains(entry.id)) entry.id,
+    ];
+    await changeNames(desired, upstream: true);
+  }
+
+  Future<bool> confirm(String title, String content, String action) async {
+    if (_changeRoute != null) return false;
+    final route = DialogRoute<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        scrollable: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    );
+    _changeRoute = route;
+    final result = await Navigator.of(context).push(route);
+    if (identical(_changeRoute, route)) _changeRoute = null;
+    return mounted && _active && result == true;
+  }
+
+  Future<void> changeNames(
+    List<String> desired, {
+    bool clear = false,
+    bool upstream = false,
+  }) async {
+    final session = widget.session;
+    if (_changingNames || !_active) return;
+    if (session == null) {
+      setState(() => models = desired);
+      return;
+    }
+    _changingNames = true;
+    try {
+      await session.poolTest.pause();
+      if (!await session.flush() || !mounted || !_active) return;
+      final before = List<String>.of(models);
+      final removed = before.where((m) => !desired.contains(m)).toSet();
+      final runtime = await session.owner.connect();
+      final catalog = await runtime.modelCatalog();
+      final prompts = await runtime.promptCatalog();
+      if (!mounted || !_active) return;
+      final functions = catalog.functions
+          .where(
+            (f) =>
+                f.configId == session.base.id && removed.contains(f.modelName),
+          )
+          .length;
+      final characters = prompts.characters
+          .where(
+            (c) =>
+                c.draft.modelConfig == session.base.id &&
+                removed.contains(c.draft.modelName),
+          )
+          .length;
+      final bound = functions + characters;
+      if (bound > 0 && desired.isEmpty) {
+        await confirm(
+          '无法移除全部模型',
+          '仍有 $functions 项功能和 $characters 张角色卡使用这些模型，请至少保留一个模型。',
+          '知道了',
+        );
+        return;
+      }
+      if (bound > 0 &&
+          !await confirm(
+            upstream ? '应用模型选择更改？' : '删除已绑定的模型？',
+            '将移除 ${removed.length} 个模型，其中影响 $functions 项功能和 $characters 张角色卡。这些绑定将改用新的测试模型“${desired.first}”。',
+            upstream ? '应用更改' : '删除',
+          )) {
+        return;
+      }
+      if (clear &&
+          !await confirm(
+            '清空模型列表？',
+            '将移除当前配置中的全部 ${models.length} 个模型。此操作可以立即撤销。',
+            '清空全部',
+          )) {
+        return;
+      }
+      if (!mounted || !_active) return;
+      final undo = await session.changeNames(
+        desired,
+        replacement: bound > 0 ? desired.first : null,
+      );
+      if (!mounted) {
+        undo.close();
+        return;
+      }
+      super.setState(() => models = List.of(session.draft.models));
+      if (upstream) {
+        undo.close();
+        final added = desired.where((name) => !before.contains(name)).length;
+        message('已添加 $added 个模型，移除 ${removed.length} 个模型');
+        return;
+      }
+      _undos.add(undo);
+      final notification = ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(clear ? '已清空模型列表' : '模型已删除'),
+          action: SnackBarAction(
+            label: '撤销',
+            onPressed: () async {
+              if (!mounted || !_active) return;
+              _undos.remove(undo);
+              try {
+                await session.undoNames(undo);
+                if (mounted) {
+                  super.setState(() => models = List.of(session.draft.models));
+                }
+              } on ModelNamesCommittedException {
+                message('撤销已提交，但结果读取失败；请重新载入后核对');
+              } catch (_) {
+                message('撤销失败：配置或绑定已发生变化，请重新核对');
+              } finally {
+                _undos.remove(undo);
+                undo.close();
+              }
+            },
+          ),
+        ),
+      );
+      unawaited(
+        notification.closed.then((_) {
+          if (_undos.remove(undo)) undo.close();
+        }),
+      );
+    } on ModelNamesCommittedException {
+      message('模型更改已提交，但结果读取失败；请重新载入后核对');
+    } catch (_) {
+      message('模型操作未能保存，原列表已保留；请核对绑定和配置后重试');
+    } finally {
+      _changingNames = false;
+    }
+  }
 
   @override
   void initState() {
@@ -74,6 +316,8 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     claudeCache = o.claudeCache;
     toolCall = o.toolCall;
     session.readers[this] = capture;
+    _namesVersion = session.namesVersion;
+    session.addListener(namesRecovered);
     for (final c in [
       endpoint,
       apiKey,
@@ -84,6 +328,8 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     ]) {
       c.addListener(session.changed);
     }
+    endpoint.addListener(invalidateDirectory);
+    apiKey.addListener(invalidateDirectory);
   }
 
   void capture() {
@@ -128,7 +374,20 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
 
   @override
   void dispose() {
+    for (final undo in _undos) {
+      undo.close();
+    }
+    final directoryRoute = _directoryRoute, changeRoute = _changeRoute;
+    _directoryRoute = null;
+    _changeRoute = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in [directoryRoute, changeRoute]) {
+        if (route?.isActive == true) route!.navigator?.removeRoute(route);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
     widget.session?.readers.remove(this);
+    widget.session?.removeListener(namesRecovered);
     for (final controller in [
       endpoint,
       apiKey,
@@ -147,6 +406,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     ApiProviderPresentation next,
     ModelApiProtocol nextProtocol,
   ) {
+    invalidateDirectory();
     final nextRoute = next.protocols.firstWhere(
       (entry) => entry.protocol == nextProtocol,
     );
@@ -358,10 +618,24 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
           formatters: [inputFilter],
         ),
       ],
-      ModelTagsEditor(
-        models: models,
-        onChanged: (value) => setState(() => models = value),
-      ),
+      if (widget.session case final session?)
+        ListenableBuilder(
+          listenable: session.directory,
+          builder: (context, _) => ModelTagsEditor(
+            models: models,
+            onChanged: (value) => setState(() => models = value),
+            loading: session.directory.loading,
+            onFetch: fetchModels,
+            onRemove: (name) =>
+                changeNames(models.where((m) => m != name).toList()),
+            onClear: () => changeNames([], clear: true),
+          ),
+        )
+      else
+        ModelTagsEditor(
+          models: models,
+          onChanged: (value) => setState(() => models = value),
+        ),
       ModelSettingsSwitch(
         '模型支持识图',
         '启用后，图片将直接发送给AI处理，而不是让AI通过OCR工具读取',

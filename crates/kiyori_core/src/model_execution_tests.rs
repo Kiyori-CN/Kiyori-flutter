@@ -18,6 +18,43 @@ fn directory() -> std::path::PathBuf {
 }
 
 #[test]
+fn directory_and_probes_share_rotation_and_invalid_revision_does_not_consume_candidate() {
+    let path = directory();
+    let p = payload(
+        &[("a", "UNTESTED", true), ("b", "UNTESTED", true)],
+        "fallback",
+    );
+    {
+        let store = AppStore::open(&path).unwrap();
+        assert_eq!(
+            store.prepare_model_directory("default", 1, &p).unwrap().1,
+            "a"
+        );
+        assert!(store.prepare_model_directory("default", 2, &p).is_err());
+        assert_eq!(
+            store
+                .prepare_configured_probe("default", 1, &p, "chat")
+                .unwrap()
+                .api_key,
+            "b"
+        );
+        assert_eq!(
+            store.prepare_model_directory("default", 1, &p).unwrap().1,
+            "a"
+        );
+        assert_eq!(store.model_catalog().unwrap().configs[0].revision, 1);
+    }
+    {
+        let store = AppStore::open(&path).unwrap();
+        assert_eq!(
+            store.prepare_model_directory("default", 1, &p).unwrap().1,
+            "b"
+        );
+    }
+    std::fs::remove_dir_all(path).unwrap();
+}
+
+#[test]
 fn rotation_survives_reopen_without_changing_revision_and_rejects_stale_snapshot() {
     let path = directory();
     let p = payload(

@@ -51,6 +51,22 @@ abstract interface class RuntimeClient {
     List<api.ChatHeader> headers,
     String kind,
   );
+  Future<ChatRun> startModelDirectory(
+    api.ModelConfigDraft draft,
+    String apiKey,
+    List<api.ChatHeader> headers,
+  );
+  Future<ChatRun> startConfiguredModelDirectory(
+    String id,
+    int revision,
+    String payload,
+  );
+  Future<ModelNamesUndo> changeModelNames(
+    String id,
+    int revision,
+    List<String> names, {
+    String? replacement,
+  });
   Future<api.ContextSettings> contextSettings();
   Future<api.ContextSettings> saveContextSettings(
     String id,
@@ -167,6 +183,34 @@ abstract interface class DiagnosticRun {
 abstract interface class ChatRun {
   Stream<api.ChatEvent> get events;
   Future<void> cancel();
+}
+
+abstract interface class ModelNamesUndo {
+  Future<void> undo();
+  void close();
+}
+
+final class _NativeModelNamesUndo implements ModelNamesUndo {
+  _NativeModelNamesUndo(this.handle);
+  final api.ModelNamesEdit handle;
+  bool _closed = false;
+  @override
+  Future<void> undo() async {
+    if (_closed) throw StateError('模型撤销已释放');
+    try {
+      await handle.undo();
+    } finally {
+      close();
+    }
+  }
+
+  @override
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    handle.close();
+    handle.dispose();
+  }
 }
 
 abstract interface class PreparedConversation {
@@ -852,6 +896,56 @@ final class NativeRuntimeClient implements RuntimeClient {
     run = _NativeChatRun(handle, () => _chatRuns.remove(run));
     _chatRuns.add(run);
     return run;
+  }
+
+  @override
+  Future<ChatRun> startConfiguredModelDirectory(
+    String id,
+    int revision,
+    String payload,
+  ) async {
+    _ensureOpen();
+    return _trackChat(
+      await _handle.startConfiguredModelDirectory(
+        id: id,
+        revision: revision,
+        payload: payload,
+      ),
+    );
+  }
+
+  @override
+  Future<ChatRun> startModelDirectory(
+    api.ModelConfigDraft draft,
+    String apiKey,
+    List<api.ChatHeader> headers,
+  ) async {
+    _ensureOpen();
+    return _trackChat(
+      await _handle.startModelDirectory(
+        draft: draft,
+        apiKey: apiKey,
+        headers: headers,
+      ),
+    );
+  }
+
+  @override
+  Future<ModelNamesUndo> changeModelNames(
+    String id,
+    int revision,
+    List<String> names, {
+    String? replacement,
+  }) async {
+    _ensureOpen();
+    return _NativeModelNamesUndo(
+      await _handle.changeModelNames(
+        id: id,
+        revision: revision,
+        names: names,
+        replacement: replacement,
+      ),
+    );
   }
 
   @override

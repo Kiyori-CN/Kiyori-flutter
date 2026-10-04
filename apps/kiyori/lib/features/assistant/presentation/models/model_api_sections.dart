@@ -240,12 +240,12 @@ class _ModelHeadersCardState extends State<ModelHeadersCard> {
     s.readers[this] = () {
       final values = <String, String>{};
       for (final h in headers) {
-        if (values.keys.any(
-          (k) => k.toLowerCase() == h.name.text.toLowerCase(),
-        )) {
+        final name = h.name.text.trim();
+        if (name.isEmpty) continue;
+        if (values.keys.any((k) => k.toLowerCase() == name.toLowerCase())) {
           throw const FormatException('请求头名称重复');
         }
-        values[h.name.text] = h.value.text;
+        values[name] = h.value.text;
       }
       final old = s.credentials;
       s.credentials = ModelCredentials(

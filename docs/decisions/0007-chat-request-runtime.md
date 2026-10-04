@@ -5,8 +5,8 @@
 ## 需求与选择
 
 模型测试、密钥池探测和后续会话使用同一Rust请求核心，Dart仅投影执行状态。
-已实现OpenAI兼容Chat Completions与Responses文本流；Messages和本地native协议
-返回明确unsupported。不能以配置保存成功推断该协议已能执行。
+已实现OpenAI兼容Chat Completions、Responses、Anthropic Messages及Gemini原生网络协议。
+MNN/llama.cpp本地原生与扩展提供方返回明确unsupported。不能以配置保存成功推断该协议已能执行。
 
 每个Runtime惰性建立一个reqwest Client并复用连接池；不创建平行浏览器、下载服务或
 文件数据库。reqwest 0.13.5（MIT OR Apache-2.0）关闭默认features，启用
@@ -48,7 +48,10 @@ FFI同时读取被拒绝，Dart订阅暂停停止继续拉取，关闭处理未�
 运行时按钮为取消，结果卡位于按钮下方。ModelConfigConnectionTester以Hi检查非空回答，
 SystemInstructionCapabilityProbe用随机口令只放system检查实际遵循情况。新探测的提示词、
 参数转换、64000字符限制和结果判定全部归Rust，Dart不另行判断服务输出。
-新实现沿用此流程；聊天结束length不计完全通过。工具和启用媒体在探测实现前标未验证。
+新实现沿用此流程；聊天结束length不计完全通过。已接原生/XML echo调用和随机结果续答，
+保留Messages思考签名、Responses不透明reasoning及Gemini thoughtSignature供探测续答。
+XML允许旧源接受的换行/解释文字，但只有一个echo(text=ping)才生成本地结果。
+图片、音频、视频使用旧素材按协议编码；关闭开关或协议不支持时拒绝发送，错误答案不标通过。
 模型综合测试现用已保存配置revision执行轮换；独立池可用性测试逐条探测，不消费轮换游标。
 
 ## 密钥池可用性
@@ -179,6 +182,14 @@ Chat基础批次无schema变化，可回退到e859ad7。池测试扩展会写安
 代码读取新凭据；恢复边界见ADR0006，不混同SQLite schema与payload版本。
 
 ## 官方依据
+
+2026-10-05扩展：Messages流须message_stop且全部内容块闭合；Gemini须finishReason及完整
+HTTP流结束，思考不混入正文。Gemini生成参数和搜索工具、Messages缓存TTL按旧源合同编译，
+实际模型能力依供应商验证。base64 0.23.1（MIT OR Apache-2.0）仅用于固定媒体编码。
+模型目录保持代理前缀，四个旧官方Messages路径作同主机精确转换，自定义主机不转发到默认主机。
+官方依据：[Claude模型目录](https://platform.claude.com/docs/en/api/models/list)、
+[Gemini模型目录](https://ai.google.dev/api/models)、
+[智谱兼容端点与Token配置](https://docs.bigmodel.cn/cn/guide/develop/claude)。
 
 2026-10-03核验：[OpenAI SSE说明](https://developers.openai.com/api/docs/guides/streaming-responses)、
 [Chat delta与usage示例](https://developers.openai.com/cookbook/examples/how_to_stream_completions)、

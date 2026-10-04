@@ -1,3 +1,8 @@
+pub mod directory;
+pub(crate) mod gemini;
+pub mod limits;
+mod media;
+pub(crate) mod messages;
 pub mod observation;
 pub mod pool;
 pub mod probe;
@@ -5,6 +10,9 @@ mod responses;
 mod sse;
 #[cfg(test)]
 mod tests;
+mod tool_probe;
+#[cfg(test)]
+mod tool_probe_tests;
 mod usage;
 
 use crate::runtime::{CoreError, ErrorCode};
@@ -56,6 +64,11 @@ pub struct ChatMessage {
 
 // 凭据输入不实现Debug，错误也不附带请求、URL或供应商响应正文。
 pub struct ChatRequest {
+    pub provider: String,
+    pub continuation_credentials: Option<CredentialSource>,
+    pub google_search: bool,
+    pub claude_cache: bool,
+    pub admission: Option<Arc<limits::Gate>>,
     pub stream: bool,
     pub probe: Option<probe::Probe>,
     pub protocol: String,
@@ -67,9 +80,12 @@ pub struct ChatRequest {
     pub parameters: String,
     pub timeout_ms: u32,
 }
+pub type CredentialSource =
+    Box<dyn FnMut() -> Result<(String, Vec<(String, String)>), CoreError> + Send>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatEvent {
+    Models(Vec<directory::ModelEntry>),
     PoolResult {
         id: String,
         available: bool,
@@ -322,15 +338,17 @@ fn endpoint(value: &str, protocol: &str) -> Result<Url, ChatFailure> {
             "端点需要HTTPS（本机回环可用HTTP），且不能含账号、查询或片段",
         ));
     }
-    if !exact {
-        let suffix = if protocol == "responses" {
-            "responses"
-        } else {
-            "chat/completions"
+    if !exact && protocol != "native" {
+        let suffix = match protocol {
+            "responses" => "responses",
+            "messages" => "messages",
+            _ => "chat/completions",
         };
         let path = url.path().trim_end_matches('/');
-        if path.is_empty() {
-            url.set_path(&format!("/v1/{suffix}"));
+        if path.is_empty()
+            || (protocol == "messages" && path.to_ascii_lowercase().ends_with("/anthropic"))
+        {
+            url.set_path(&format!("{path}/v1/{suffix}"));
         } else if path.to_ascii_lowercase().ends_with("/v1") {
             url.set_path(&format!("{path}/{suffix}"));
         }
@@ -343,7 +361,52 @@ async fn execute(
     mut input: ChatRequest,
     sender: &EventSender,
 ) -> Result<(), ChatFailure> {
-    if !matches!(input.protocol.as_str(), "chat" | "responses") {
+    let timeout = input.timeout_ms;
+    let probing = input.probe.is_some();
+    let operation = async {
+        let mut reason = execute_once(client, &mut input, sender).await?;
+        if let Some(probe) = &mut input.probe
+            && let Some(tool) = &mut probe.tool
+            && tool.advance(&input.protocol, &probe.text, &reason)?
+        {
+            probe.expected = Some(tool.code.clone());
+            probe.text.clear();
+            if let Some(source) = input.continuation_credentials.as_mut() {
+                let (key, headers) = source().map_err(|_| {
+                    ChatFailure::new(
+                        ChatFailureKind::InvalidInput,
+                        "工具续答前配置或安全凭据已失效",
+                    )
+                })?;
+                input.api_key = key;
+                input.headers = headers;
+            }
+            reason = execute_once(client, &mut input, sender).await?;
+        }
+        let verified = input.probe.as_ref().map(|p| p.verified(&reason));
+        let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
+        Ok(())
+    };
+    if probing {
+        tokio::time::timeout(Duration::from_millis(timeout.into()), operation)
+            .await
+            .map_err(|_| {
+                ChatFailure::new(ChatFailureKind::Timeout, "模型能力探测超时；未自动重试")
+            })?
+    } else {
+        operation.await
+    }
+}
+
+async fn execute_once(
+    client: &Client,
+    input: &mut ChatRequest,
+    sender: &EventSender,
+) -> Result<String, ChatFailure> {
+    if !matches!(
+        input.protocol.as_str(),
+        "chat" | "responses" | "messages" | "native"
+    ) {
         return Err(ChatFailure::new(
             ChatFailureKind::Unsupported,
             "该模型协议的请求执行尚未接入",
@@ -361,7 +424,13 @@ async fn execute(
         ));
     }
     let is_responses = input.protocol == "responses";
-    let url = endpoint(&input.endpoint, &input.protocol)?;
+    let is_messages = input.protocol == "messages";
+    let is_gemini = input.protocol == "native";
+    let url = if is_gemini {
+        gemini::url(&input.endpoint, &input.model, input.stream)?
+    } else {
+        endpoint(&input.endpoint, &input.protocol)?
+    };
     let mut body: Value = serde_json::from_str(&input.parameters)
         .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "请求参数必须为JSON对象"))?;
     let object = body
@@ -386,6 +455,11 @@ async fn execute(
         "function_call",
         "input",
         "instructions",
+        "system",
+        "contents",
+        "systemInstruction",
+        "generationConfig",
+        "toolConfig",
         "previous_response_id",
         "conversation",
         "store",
@@ -399,13 +473,25 @@ async fn execute(
         }
     }
     object.insert("model".into(), json!(input.model));
-    if is_responses {
+    if is_gemini {
+        gemini::prepare(object, &input.messages, input.google_search)?;
+    } else if is_responses {
         responses::prepare(object, &input.messages)?;
+    } else if is_messages {
+        messages::prepare(object, &input.messages, input.claude_cache)?;
     } else {
         object.insert("messages".into(), json!(input.messages));
         object.insert("n".into(), json!(1));
     }
-    object.insert("stream".into(), json!(input.stream));
+    if !is_gemini {
+        object.insert("stream".into(), json!(input.stream));
+    }
+    if let Some(media) = input.probe.as_ref().and_then(|p| p.media.as_ref()) {
+        media.apply(&input.protocol, object)?;
+    }
+    if let Some(tool) = input.probe.as_ref().and_then(|p| p.tool.as_ref()) {
+        tool.apply(&input.protocol, object)?;
+    }
     let bytes = serde_json::to_vec(&body).map_err(|_| ChatFailure::protocol())?;
     if bytes.len() > 8 * 1024 * 1024 {
         return Err(ChatFailure::new(
@@ -415,10 +501,39 @@ async fn execute(
     }
     let mut headers = HeaderMap::new();
     if !input.api_key.trim().is_empty() {
-        let mut value = HeaderValue::from_str(&format!("Bearer {}", input.api_key.trim()))
+        let bearer = !is_gemini
+            && (!is_messages
+                || matches!(
+                    input.provider.as_str(),
+                    "ZHIPU" | "MIMO" | "INFINIAI" | "LMSTUDIO" | "OLLAMA"
+                ));
+        let auth = if !bearer {
+            input.api_key.trim().to_owned()
+        } else {
+            format!("Bearer {}", input.api_key.trim())
+        };
+        let mut value = HeaderValue::from_str(&auth)
             .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "认证信息格式无效"))?;
         value.set_sensitive(true);
-        headers.insert(reqwest::header::AUTHORIZATION, value);
+        headers.insert(
+            if is_gemini {
+                HeaderName::from_static("x-goog-api-key")
+            } else if !bearer {
+                HeaderName::from_static("x-api-key")
+            } else {
+                reqwest::header::AUTHORIZATION
+            },
+            value,
+        );
+        if input.provider == "MIMO" {
+            let mut value = HeaderValue::from_str(input.api_key.trim())
+                .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "认证信息格式无效"))?;
+            value.set_sensitive(true);
+            headers.insert("api-key", value);
+        }
+    }
+    if is_messages {
+        headers.insert("anthropic-version", HeaderValue::from_static("2023-06-01"));
     }
     if input.headers.len() > 100 {
         return Err(ChatFailure::new(
@@ -426,7 +541,7 @@ async fn execute(
             "请求头数量过多",
         ));
     }
-    for (name, value) in input.headers {
+    for (name, value) in &input.headers {
         let name = HeaderName::from_bytes(name.as_bytes())
             .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "请求头名称无效"))?;
         if matches!(
@@ -446,11 +561,15 @@ async fn execute(
                 "自定义请求头不能覆盖传输控制字段",
             ));
         }
-        let mut value = HeaderValue::from_str(&value)
+        let mut value = HeaderValue::from_str(value)
             .map_err(|_| ChatFailure::new(ChatFailureKind::InvalidInput, "请求头内容无效"))?;
         value.set_sensitive(true);
         headers.insert(name, value);
     }
+    let _permit = match &input.admission {
+        Some(gate) => Some(gate.acquire().await),
+        None => None,
+    };
     let operation = async {
         let _ = sender.send(ChatEvent::Started).await;
         let mut response = client
@@ -490,8 +609,16 @@ async fn execute(
             }
             let mut value: Value =
                 serde_json::from_slice(&body).map_err(|_| ChatFailure::protocol())?;
-            let reason = if is_responses {
+            let reason = if is_gemini {
+                let mut decoder = gemini::Decoder::default();
+                decoder
+                    .decode(&value.to_string(), &mut input.probe, sender)
+                    .await?;
+                decoder.reason.ok_or_else(ChatFailure::protocol)?
+            } else if is_responses {
                 responses::Decoder::document(value, &mut input.probe, sender).await?
+            } else if is_messages {
+                messages::Decoder::document(value, &mut input.probe, sender).await?
             } else {
                 let choices = value
                     .get_mut("choices")
@@ -506,9 +633,7 @@ async fn execute(
                 decode(&value.to_string(), &mut finish, &mut input.probe, sender).await?;
                 finish.ok_or_else(ChatFailure::protocol)?
             };
-            let verified = input.probe.as_ref().map(|p| p.verified(&reason));
-            let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
-            return Ok(());
+            return Ok(reason);
         }
         if response
             .headers()
@@ -530,17 +655,31 @@ async fn execute(
         let mut sse = sse::Sse::new();
         let mut finish: Option<String> = None;
         let mut responses = responses::Decoder::default();
+        let mut messages = messages::Decoder::default();
+        let mut gemini = gemini::Decoder::default();
         while let Some(chunk) = response.chunk().await.map_err(transport)? {
             for byte in chunk {
                 if let Some(data) = sse.push(byte)? {
+                    if is_gemini {
+                        if data == "[DONE]" {
+                            return Err(ChatFailure::protocol());
+                        }
+                        gemini.decode(&data, &mut input.probe, sender).await?;
+                        continue;
+                    }
+                    if is_messages {
+                        if let Some(reason) =
+                            messages.decode(&data, &mut input.probe, sender).await?
+                        {
+                            return Ok(reason);
+                        }
+                        continue;
+                    }
                     if is_responses {
                         if let Some(reason) =
                             responses.decode(&data, &mut input.probe, sender).await?
                         {
-                            let verified =
-                                input.probe.as_ref().map(|probe| probe.verified(&reason));
-                            let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
-                            return Ok(());
+                            return Ok(reason);
                         }
                         continue;
                     }
@@ -551,13 +690,23 @@ async fn execute(
                                 "流已结束但缺少模型结束原因",
                             )
                         })?;
-                        let verified = input.probe.as_ref().map(|probe| probe.verified(&reason));
-                        let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
-                        return Ok(());
+                        return Ok(reason);
                     }
                     decode(&data, &mut finish, &mut input.probe, sender).await?;
                 }
             }
+        }
+        if is_gemini {
+            if !sse.at_boundary() {
+                return Err(ChatFailure::new(
+                    ChatFailureKind::Interrupted,
+                    "Gemini末尾事件不完整",
+                ));
+            }
+            let reason = gemini.reason.ok_or_else(|| {
+                ChatFailure::new(ChatFailureKind::Interrupted, "Gemini流缺少结束原因")
+            })?;
+            return Ok(reason);
         }
         Err(ChatFailure::new(
             ChatFailureKind::Interrupted,
@@ -607,12 +756,25 @@ async fn decode(
             .get("delta")
             .and_then(Value::as_object)
             .ok_or_else(ChatFailure::protocol)?;
-        if delta.get("tool_calls").is_some_and(|v| !v.is_null())
-            || delta.get("function_call").is_some_and(|v| !v.is_null())
+        if let Some(reasoning) = delta.get("reasoning_content").filter(|v| !v.is_null())
+            && let Some(tool) = tool_probe::native(probe)
         {
+            tool.chat_reasoning(reasoning.as_str().ok_or_else(ChatFailure::protocol)?)?;
+        }
+        if let Some(calls) = delta.get("tool_calls").filter(|v| !v.is_null()) {
+            if let Some(tool) = tool_probe::native(probe) {
+                tool.chat_delta(calls)?;
+            } else {
+                return Err(ChatFailure::new(
+                    ChatFailureKind::Unsupported,
+                    "此请求入口尚未接入工具调用执行",
+                ));
+            }
+        }
+        if delta.get("function_call").is_some_and(|v| !v.is_null()) {
             return Err(ChatFailure::new(
                 ChatFailureKind::Unsupported,
-                "此请求入口尚未接入工具调用执行",
+                "当前入口不支持旧版function_call",
             ));
         }
         if let Some(content) = delta.get("content").filter(|v| !v.is_null()) {
@@ -627,13 +789,16 @@ async fn decode(
         }
         if let Some(reason) = choice.get("finish_reason").filter(|v| !v.is_null()) {
             let reason = reason.as_str().ok_or_else(ChatFailure::protocol)?;
-            if !matches!(reason, "stop" | "length") {
+            if reason == "tool_calls" && tool_probe::native(probe).is_some() {
+                *finish = Some("tool".into());
+            } else if !matches!(reason, "stop" | "length") {
                 return Err(ChatFailure::new(
                     ChatFailureKind::Unsupported,
                     "模型以工具调用、过滤或未知原因结束",
                 ));
+            } else {
+                *finish = Some(reason.into());
             }
-            *finish = Some(reason.into());
         }
     }
     if let Some(usage) = value.get("usage").and_then(usage::parse) {

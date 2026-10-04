@@ -25,6 +25,8 @@ pub(super) fn prepare(
 
 #[derive(Default)]
 pub(super) struct Decoder {
+    document: bool,
+    functions: BTreeMap<u64, (String, String, String, String)>,
     sequence: Option<u64>,
     // 不累计正文；增量指纹用于检查最终快照没有缺段、重复或替换。
     parts: BTreeMap<(u64, u64), (String, usize, DefaultHasher)>,
@@ -37,7 +39,7 @@ fn unsupported() -> ChatFailure {
     )
 }
 
-fn validate_item(item: &Value) -> Result<(), ChatFailure> {
+fn validate_item(item: &Value, tools: bool) -> Result<(), ChatFailure> {
     match item.get("type").and_then(Value::as_str) {
         Some("message") => {
             if item.get("role").and_then(Value::as_str) != Some("assistant") {
@@ -55,6 +57,18 @@ fn validate_item(item: &Value) -> Result<(), ChatFailure> {
             Ok(())
         }
         Some("reasoning") => Ok(()),
+        Some("function_call") if tools => {
+            for key in ["id", "call_id", "name", "arguments"] {
+                let value = item
+                    .get(key)
+                    .and_then(Value::as_str)
+                    .ok_or_else(ChatFailure::protocol)?;
+                if value.len() > 64000 {
+                    return Err(ChatFailure::protocol());
+                }
+            }
+            Ok(())
+        }
         _ => Err(unsupported()),
     }
 }
@@ -76,9 +90,12 @@ impl Decoder {
             .ok_or_else(ChatFailure::protocol)?;
         // 先核对整个文档的输出类型，再投影文本；完整JSON复用相同终态与用量校验。
         for item in output {
-            validate_item(item)?;
+            validate_item(item, tool_probe::native(probe).is_some())?;
         }
-        let mut decoder = Self::default();
+        let mut decoder = Self {
+            document: true,
+            ..Default::default()
+        };
         for (index, item) in output.iter().enumerate() {
             if item["type"] != "message" {
                 continue;
@@ -171,7 +188,59 @@ impl Decoder {
                 }
             }
             "response.output_item.added" | "response.output_item.done" => {
-                validate_item(value.get("item").ok_or_else(ChatFailure::protocol)?)?;
+                let item = value.get("item").ok_or_else(ChatFailure::protocol)?;
+                validate_item(item, tool_probe::native(probe).is_some())?;
+                if item["type"] == "function_call" {
+                    let index = value["output_index"]
+                        .as_u64()
+                        .filter(|v| *v < 4096)
+                        .ok_or_else(ChatFailure::protocol)?;
+                    let fields = (
+                        item["id"].as_str().unwrap().to_owned(),
+                        item["call_id"].as_str().unwrap().to_owned(),
+                        item["name"].as_str().unwrap().to_owned(),
+                        item["arguments"].as_str().unwrap().to_owned(),
+                    );
+                    if kind == "response.output_item.added" {
+                        if self.functions.len() >= 16
+                            || self.functions.insert(index, fields).is_some()
+                        {
+                            return Err(ChatFailure::protocol());
+                        }
+                    } else if self.functions.get(&index) != Some(&fields) {
+                        return Err(ChatFailure::new(
+                            ChatFailureKind::Interrupted,
+                            "工具调用最终快照与增量不一致",
+                        ));
+                    }
+                }
+            }
+            "response.function_call_arguments.delta" | "response.function_call_arguments.done" => {
+                if tool_probe::native(probe).is_none() {
+                    return Err(unsupported());
+                }
+                let index = value["output_index"]
+                    .as_u64()
+                    .ok_or_else(ChatFailure::protocol)?;
+                let tracked = self
+                    .functions
+                    .get_mut(&index)
+                    .ok_or_else(ChatFailure::protocol)?;
+                if value["item_id"].as_str() != Some(tracked.0.as_str()) {
+                    return Err(ChatFailure::protocol());
+                }
+                if kind.ends_with(".delta") {
+                    let delta = value["delta"].as_str().ok_or_else(ChatFailure::protocol)?;
+                    if tracked.3.len() + delta.len() > 64000 {
+                        return Err(ChatFailure::protocol());
+                    }
+                    tracked.3.push_str(delta);
+                } else if value["arguments"].as_str() != Some(tracked.3.as_str()) {
+                    return Err(ChatFailure::new(
+                        ChatFailureKind::Interrupted,
+                        "工具参数最终快照与增量不一致",
+                    ));
+                }
             }
             "response.content_part.added" | "response.content_part.done" => {
                 if value.pointer("/part/type").and_then(Value::as_str) != Some("output_text") {
@@ -207,7 +276,32 @@ impl Decoder {
                     .ok_or_else(ChatFailure::protocol)?;
                 let mut remaining = self.parts.clone();
                 for (index, item) in output.iter().enumerate() {
-                    validate_item(item)?;
+                    validate_item(item, tool_probe::native(probe).is_some())?;
+                    if item["type"] == "function_call" {
+                        let id = item["id"].as_str().unwrap();
+                        let call_id = item["call_id"].as_str().unwrap();
+                        let name = item["name"].as_str().unwrap();
+                        let arguments = item["arguments"].as_str().unwrap();
+                        if !self.document
+                            && self.functions.remove(&(index as u64))
+                                != Some((id.into(), call_id.into(), name.into(), arguments.into()))
+                        {
+                            return Err(ChatFailure::new(
+                                ChatFailureKind::Interrupted,
+                                "工具调用缺少对应的完整增量",
+                            ));
+                        }
+                        let parsed =
+                            serde_json::from_str(arguments).map_err(|_| ChatFailure::protocol())?;
+                        tool_probe::native(probe)
+                            .ok_or_else(unsupported)?
+                            .capture(call_id, name, parsed)?;
+                    }
+                    if let Some(tool) = tool_probe::native(probe)
+                        && !tool.second
+                    {
+                        tool.block(item.clone())?;
+                    }
                     if item["type"] == "message" {
                         let id = item
                             .get("id")
@@ -241,7 +335,7 @@ impl Decoder {
                         }
                     }
                 }
-                if !remaining.is_empty() {
+                if !remaining.is_empty() || !self.functions.is_empty() {
                     return Err(ChatFailure::protocol());
                 }
                 if let Some(usage) = response.get("usage").and_then(usage::parse) {

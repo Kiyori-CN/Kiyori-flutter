@@ -41,6 +41,10 @@ impl Sse {
         Ok(None)
     }
 
+    pub fn at_boundary(&self) -> bool {
+        self.data.is_empty() && (self.line.is_empty() || self.line.first() == Some(&b':'))
+    }
+
     fn end_line(&mut self) -> Result<Option<String>, ChatFailure> {
         let bytes = std::mem::take(&mut self.line);
         let mut line = std::str::from_utf8(&bytes).map_err(|_| ChatFailure::protocol())?;

@@ -52,69 +52,76 @@ class ModelConnectionTest extends ChangeNotifier {
         throw const FormatException('密钥池测试需要已保存的配置');
       }
       Future<ModelTestItem> probe(String label, String kind) async {
-        final runtime = await connect();
-        if (_disposed || generation != _generation) {
-          return ModelTestItem(label, ModelTestOutcome.unverified, '已取消');
-        }
-        final run = config != null
-            ? await runtime.startConfiguredProbe(
-                config.id,
-                config.revision,
-                credentials.encode(),
-                kind,
-              )
-            : await runtime.startModelProbe(draft, credentials.apiKey, [
-                for (final h in credentials.headers.entries)
-                  ChatHeader(name: h.key, value: h.value),
-              ], kind);
-        if (_disposed || generation != _generation) {
-          await run.cancel();
-          await run.events.drain<void>();
-          return ModelTestItem(label, ModelTestOutcome.unverified, '已取消');
-        }
-        _run = run;
-        var verified = false;
         try {
-          await for (final event in run.events) {
-            if (event.phase == ChatPhase.failed) {
-              return ModelTestItem(
-                label,
-                ModelTestOutcome.failed,
-                event.errorMessage,
-              );
-            } else if (event.phase == ChatPhase.completed) {
-              verified = event.verified == true;
-            }
+          final runtime = await connect();
+          if (_disposed || generation != _generation) {
+            return ModelTestItem(label, ModelTestOutcome.unverified, '已取消');
           }
-        } finally {
-          if (identical(_run, run)) _run = null;
+          final run = config != null
+              ? await runtime.startConfiguredProbe(
+                  config.id,
+                  config.revision,
+                  credentials.encode(),
+                  kind,
+                )
+              : await runtime.startModelProbe(draft, credentials.apiKey, [
+                  for (final h in credentials.headers.entries)
+                    ChatHeader(name: h.key, value: h.value),
+                ], kind);
+          if (_disposed || generation != _generation) {
+            await run.cancel();
+            await run.events.drain<void>();
+            return ModelTestItem(label, ModelTestOutcome.unverified, '已取消');
+          }
+          _run = run;
+          var verified = false;
+          try {
+            await for (final event in run.events) {
+              if (event.phase == ChatPhase.failed) {
+                return ModelTestItem(
+                  label,
+                  ModelTestOutcome.failed,
+                  event.errorMessage,
+                );
+              } else if (event.phase == ChatPhase.completed) {
+                verified = event.verified == true;
+              }
+            }
+          } finally {
+            if (identical(_run, run)) _run = null;
+          }
+          return ModelTestItem(
+            label,
+            verified ? ModelTestOutcome.passed : ModelTestOutcome.unverified,
+            verified ? '通过' : '未能验证，请检查模型实际输出或重试',
+          );
+        } catch (_) {
+          return ModelTestItem(
+            label,
+            ModelTestOutcome.failed,
+            '该协议不支持此探测，或配置/安全凭据不可用',
+          );
         }
-        return ModelTestItem(
-          label,
-          verified ? ModelTestOutcome.passed : ModelTestOutcome.unverified,
-          verified ? '通过' : '未能验证，请检查模型实际输出或重试',
-        );
       }
 
       items.add(await probe('聊天', 'chat'));
       if (_disposed || generation != _generation) return;
       items.add(
-        ModelTestItem(
+        await probe(
           draft.options.toolCall ? 'Tool Call' : '内置工具调用',
-          ModelTestOutcome.unverified,
-          '未能验证此能力',
+          draft.options.toolCall ? 'tool' : 'xml_tool',
         ),
       );
+      if (_disposed || generation != _generation) return;
       items.add(await probe('系统指令遵循', 'system'));
-      for (final (enabled, label) in [
-        (draft.options.image, '图像'),
-        (draft.options.audio, '音频'),
-        (draft.options.video, '视频'),
+      for (final (enabled, label, kind) in [
+        (draft.options.image, '图像', 'image'),
+        (draft.options.audio, '音频', 'audio'),
+        (draft.options.video, '视频', 'video'),
       ]) {
         if (enabled) {
-          items.add(
-            ModelTestItem(label, ModelTestOutcome.unverified, '未能验证此能力'),
-          );
+          items.add(await probe(label, kind));
+          if (_disposed || generation != _generation) return;
         }
       }
     } catch (_) {

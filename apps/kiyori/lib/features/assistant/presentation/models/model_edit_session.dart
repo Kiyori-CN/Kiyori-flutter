@@ -7,6 +7,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'model_credentials.dart';
 import 'model_connection_test.dart';
 import 'model_pool_test_controller.dart';
+import 'model_directory_controller.dart';
 import 'model_options_editing.dart';
 import 'models_controller.dart';
 
@@ -15,6 +16,7 @@ class ModelEditSession extends ChangeNotifier {
   ModelEditSession(this.owner, this.base, this.credentials) {
     connectionTest = ModelConnectionTest(owner.connect);
     poolTest = ModelPoolTestController(owner.connect);
+    directory = ModelDirectoryController(owner.connect);
     draft = base.draft;
     _saved = _fingerprint();
     _persistedCredentials = credentials;
@@ -22,6 +24,7 @@ class ModelEditSession extends ChangeNotifier {
   final ModelsController owner;
   late final ModelConnectionTest connectionTest;
   late final ModelPoolTestController poolTest;
+  late final ModelDirectoryController directory;
   ModelConfig base;
   late ModelConfigDraft draft;
   ModelCredentials credentials;
@@ -36,6 +39,8 @@ class ModelEditSession extends ChangeNotifier {
   String? error;
   String? replacement;
   bool replacementRequired = false;
+  bool _committedNamesPending = false;
+  int namesVersion = 0;
   bool get saving => _flight != null;
 
   String _fingerprint() => jsonEncode([
@@ -106,7 +111,64 @@ class ModelEditSession extends ChangeNotifier {
     return false;
   }
 
+  Future<ModelNamesUndo> changeNames(
+    List<String> names, {
+    String? replacement,
+  }) async {
+    await poolTest.pause();
+    await connectionTest.cancel();
+    if (!await flush() || _disposed) throw StateError('模型配置尚未保存');
+    final runtime = await owner.connect();
+    final undo = await runtime.changeModelNames(
+      base.id,
+      base.revision,
+      names,
+      replacement: replacement,
+    );
+    try {
+      base = await owner.refreshCommittedConfig(base.id, base.revision + 1);
+      draft = base.draft;
+      _saved = _fingerprint();
+    } catch (_) {
+      undo.close();
+      _committedNamesPending = true;
+      error = '模型更改已提交，但读取结果失败；请返回并重新载入后核对';
+      if (!_disposed) notifyListeners();
+      throw const ModelNamesCommittedException();
+    }
+    return undo;
+  }
+
+  Future<void> undoNames(ModelNamesUndo undo) async {
+    if (!await flush() || _disposed) throw StateError('模型配置尚未保存');
+    await undo.undo();
+    try {
+      base = await owner.refreshCommittedConfig(base.id, base.revision + 1);
+      draft = base.draft;
+      _saved = _fingerprint();
+    } catch (_) {
+      _committedNamesPending = true;
+      error = '撤销已提交，但读取结果失败；请返回并重新载入后核对';
+      if (!_disposed) notifyListeners();
+      throw const ModelNamesCommittedException();
+    }
+  }
+
   Future<bool> _save() async {
+    if (_committedNamesPending) {
+      try {
+        base = await owner.refreshCommittedConfig(base.id, base.revision + 1);
+        if (_disposed) return false;
+        draft = base.draft;
+        _saved = _fingerprint();
+        _committedNamesPending = false;
+        error = null;
+        namesVersion++;
+        notifyListeners();
+      } catch (_) {
+        return false;
+      }
+    }
     try {
       for (final read in readers.values.toList()) {
         read();
@@ -147,9 +209,14 @@ class ModelEditSession extends ChangeNotifier {
   void dispose() {
     connectionTest.dispose();
     poolTest.dispose();
+    directory.dispose();
     _disposed = true;
     _timer?.cancel();
     readers.clear();
     super.dispose();
   }
+}
+
+class ModelNamesCommittedException implements Exception {
+  const ModelNamesCommittedException();
 }

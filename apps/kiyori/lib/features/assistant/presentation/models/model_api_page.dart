@@ -32,23 +32,32 @@ class _ModelApiPageState extends State<ModelApiPage> {
   int selected = 0;
   final visited = <int>{0};
   final sessions = <String, ModelEditSession>{};
-  final pending = <String>{};
+  final pending = <String, Object>{};
   final failures = <String>{};
   bool leaving = false, busy = false;
 
   Future<void> prepare(String id) async {
     final owner = widget.controller;
-    if (owner == null || sessions.containsKey(id) || !pending.add(id)) return;
+    if (owner == null || sessions.containsKey(id) || pending.containsKey(id)) {
+      return;
+    }
+    final ticket = Object();
+    pending[id] = ticket;
     try {
       final config = owner.catalog!.configs.firstWhere((c) => c.id == id);
       final credentials = await owner.readCredentials(config);
-      if (!mounted || !widget.configurations.any((c) => c.id == id)) return;
+      if (!mounted ||
+          !identical(owner, widget.controller) ||
+          !identical(pending[id], ticket) ||
+          !widget.configurations.any((c) => c.id == id)) {
+        return;
+      }
       sessions[id] = ModelEditSession(owner, config, credentials);
       failures.remove(id);
     } catch (_) {
-      failures.add(id);
+      if (mounted && identical(owner, widget.controller)) failures.add(id);
     } finally {
-      pending.remove(id);
+      if (identical(pending[id], ticket)) pending.remove(id);
       if (mounted) setState(() {});
     }
   }
@@ -56,6 +65,7 @@ class _ModelApiPageState extends State<ModelApiPage> {
   Future<bool> flush() async {
     if (pending.isNotEmpty) return false;
     for (final session in sessions.values.toList()) {
+      await session.directory.cancel();
       await session.poolTest.pause();
       if (!await session.flush()) return false;
     }
@@ -125,6 +135,22 @@ class _ModelApiPageState extends State<ModelApiPage> {
   @override
   void didUpdateWidget(ModelApiPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      for (final session in sessions.values) {
+        session.dispose();
+      }
+      sessions.clear();
+      failures.clear();
+      pending.clear();
+      selected = 0;
+      visited
+        ..clear()
+        ..add(0);
+      if (widget.configurations.isNotEmpty) {
+        unawaited(prepare(widget.configurations.first.id));
+      }
+      return;
+    }
     if (oldWidget.configurations == widget.configurations) return;
     final removed = sessions.keys
         .where((id) => !widget.configurations.any((c) => c.id == id))

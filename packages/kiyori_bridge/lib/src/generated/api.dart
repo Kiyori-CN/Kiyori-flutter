@@ -40,6 +40,13 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
   });
 }
 
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelNamesEdit>>
+abstract class ModelNamesEdit implements RustOpaqueInterface {
+  Future<void> close();
+
+  Future<void> undo();
+}
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelSecretsHandle>>
 abstract class ModelSecretsHandle implements RustOpaqueInterface {
   Future<void> close();
@@ -86,6 +93,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String message,
     required String action,
     required String text,
+  });
+
+  Future<ModelNamesEdit> changeModelNames({
+    required String id,
+    required int revision,
+    required List<String> names,
+    String? replacement,
   });
 
   Future<ChatPreferences> chatPreferences();
@@ -282,6 +296,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<ChatHandle> startChat({required ChatRequest request});
 
+  Future<ChatHandle> startConfiguredModelDirectory({
+    required String id,
+    required int revision,
+    required String payload,
+  });
+
   Future<ChatHandle> startConfiguredProbe({
     required String id,
     required int revision,
@@ -292,6 +312,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<TaskHandle> startDiagnostic({
     required int steps,
     required int intervalMs,
+  });
+
+  Future<ChatHandle> startModelDirectory({
+    required ModelConfigDraft draft,
+    required String apiKey,
+    required List<ChatHeader> headers,
   });
 
   Future<ChatHandle> startModelProbe({
@@ -437,6 +463,7 @@ class CharacterDraft {
 }
 
 class ChatEvent {
+  final List<ModelEntry> models;
   final String keyId;
   final bool? verified;
   final ChatPhase phase;
@@ -450,6 +477,7 @@ class ChatEvent {
   final BigInt totalTokens;
 
   const ChatEvent({
+    required this.models,
     required this.keyId,
     this.verified,
     required this.phase,
@@ -465,6 +493,7 @@ class ChatEvent {
 
   @override
   int get hashCode =>
+      models.hashCode ^
       keyId.hashCode ^
       verified.hashCode ^
       phase.hashCode ^
@@ -482,6 +511,7 @@ class ChatEvent {
       identical(this, other) ||
       other is ChatEvent &&
           runtimeType == other.runtimeType &&
+          models == other.models &&
           keyId == other.keyId &&
           verified == other.verified &&
           phase == other.phase &&
@@ -532,6 +562,7 @@ class ChatMessage {
 }
 
 enum ChatPhase {
+  models,
   poolResult,
   started,
   text,
@@ -1740,6 +1771,24 @@ class ModelConfigDraft {
           endpoint == other.endpoint &&
           models == other.models &&
           options == other.options;
+}
+
+class ModelEntry {
+  final String id;
+  final String name;
+
+  const ModelEntry({required this.id, required this.name});
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModelEntry &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name;
 }
 
 class ModelOptions {

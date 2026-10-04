@@ -892,6 +892,7 @@ dependencies = [
 name = "kiyori_core"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "jieba-rs",
  "reqwest",
  "rusqlite",

@@ -30,6 +30,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparationPtr;
 
   CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ModelNamesEditPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEditPtr;
+
+  CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_ModelSecretsHandlePtr => wire
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandlePtr;
 
@@ -50,6 +54,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   ConversationPreparation
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparation(
+    dynamic raw,
+  );
+
+  @protected
+  ModelNamesEdit
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
     dynamic raw,
   );
 
@@ -84,6 +94,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ModelNamesEdit
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    dynamic raw,
+  );
+
+  @protected
   ModelSecretsHandle
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     dynamic raw,
@@ -110,6 +126,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   ConversationPreparation
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparation(
+    dynamic raw,
+  );
+
+  @protected
+  ModelNamesEdit
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
     dynamic raw,
   );
 
@@ -331,6 +353,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ModelConfig> dco_decode_list_model_config(dynamic raw);
 
   @protected
+  List<ModelEntry> dco_decode_list_model_entry(dynamic raw);
+
+  @protected
   List<ModelParameter> dco_decode_list_model_parameter(dynamic raw);
 
   @protected
@@ -389,6 +414,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ModelConfigDraft dco_decode_model_config_draft(dynamic raw);
+
+  @protected
+  ModelEntry dco_decode_model_entry(dynamic raw);
 
   @protected
   ModelOptions dco_decode_model_options(dynamic raw);
@@ -490,6 +518,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ModelNamesEdit
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ModelSecretsHandle
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     SseDeserializer deserializer,
@@ -520,6 +554,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ModelNamesEdit
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ModelSecretsHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     SseDeserializer deserializer,
@@ -546,6 +586,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   ConversationPreparation
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ModelNamesEdit
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
     SseDeserializer deserializer,
   );
 
@@ -797,6 +843,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ModelConfig> sse_decode_list_model_config(SseDeserializer deserializer);
 
   @protected
+  List<ModelEntry> sse_decode_list_model_entry(SseDeserializer deserializer);
+
+  @protected
   List<ModelParameter> sse_decode_list_model_parameter(
     SseDeserializer deserializer,
   );
@@ -867,6 +916,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ModelConfigDraft sse_decode_model_config_draft(SseDeserializer deserializer);
+
+  @protected
+  ModelEntry sse_decode_model_entry(SseDeserializer deserializer);
 
   @protected
   ModelOptions sse_decode_model_options(SseDeserializer deserializer);
@@ -979,6 +1031,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    ModelNamesEdit self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     ModelSecretsHandle self,
     SseSerializer serializer,
@@ -1014,6 +1073,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    ModelNamesEdit self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelSecretsHandle(
     ModelSecretsHandle self,
     SseSerializer serializer,
@@ -1044,6 +1110,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparation(
     ConversationPreparation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    ModelNamesEdit self,
     SseSerializer serializer,
   );
 
@@ -1384,6 +1457,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_model_entry(
+    List<ModelEntry> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_model_parameter(
     List<ModelParameter> self,
     SseSerializer serializer,
@@ -1478,6 +1557,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ModelConfigDraft self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_model_entry(ModelEntry self, SseSerializer serializer);
 
   @protected
   void sse_encode_model_options(ModelOptions self, SseSerializer serializer);
@@ -1671,6 +1753,40 @@ class RustLibWire implements BaseWire {
       );
   late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparation =
       _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationPreparationPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEditPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEditPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEditPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEdit =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerModelNamesEditPtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
   void

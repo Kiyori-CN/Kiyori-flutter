@@ -1,21 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-/// 标签与排序仅编辑传入的页面草稿，复制/获取/删除持久记录不在此处执行。
+/// 标签几何与交互投影；持久化删除/引用保护由宿主注入。
 class ModelTagsEditor extends StatefulWidget {
   const ModelTagsEditor({
     required this.models,
     required this.onChanged,
+    this.onRemove,
+    this.onClear,
+    this.onFetch,
+    this.loading = false,
     super.key,
   });
   final List<String> models;
   final ValueChanged<List<String>> onChanged;
+  final ValueChanged<String>? onRemove;
+  final VoidCallback? onClear, onFetch;
+  final bool loading;
   @override
   State<ModelTagsEditor> createState() => _ModelTagsEditorState();
 }
 
 class _ModelTagsEditorState extends State<ModelTagsEditor> {
   bool expanded = false;
+  Future<void> copy(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('模型名称已复制')));
+    }
+  }
+
   @override
   void didUpdateWidget(ModelTagsEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -222,7 +238,7 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                                         ),
                                       ),
                                       child: InkWell(
-                                        onTap: emptyAction,
+                                        onTap: () => copy(widget.models[i]),
                                         onLongPress: widget.models.length > 1
                                             ? sort
                                             : null,
@@ -273,7 +289,25 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                                                   tooltip:
                                                       '删除模型 ${widget.models[i]}',
                                                   padding: EdgeInsets.zero,
-                                                  onPressed: emptyAction,
+                                                  onPressed: () {
+                                                    if (widget.onRemove !=
+                                                        null) {
+                                                      widget.onRemove!(
+                                                        widget.models[i],
+                                                      );
+                                                    } else {
+                                                      widget.onChanged(
+                                                        widget.models
+                                                            .where(
+                                                              (m) =>
+                                                                  m !=
+                                                                  widget
+                                                                      .models[i],
+                                                            )
+                                                            .toList(),
+                                                      );
+                                                    }
+                                                  },
                                                   icon: Icon(
                                                     Icons.clear,
                                                     size: 17,
@@ -350,9 +384,17 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
             Expanded(
               flex: 106,
               child: FilledButton.tonal(
-                onPressed: emptyAction,
+                onPressed: widget.loading
+                    ? null
+                    : widget.onFetch ?? emptyAction,
                 style: _buttonStyle(),
-                child: _action('从上游获取', Icons.cloud_download),
+                child: widget.loading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : _action('从上游获取', Icons.cloud_download),
               ),
             ),
             const SizedBox(width: 8),
@@ -361,7 +403,12 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
               tooltip: '更多模型操作',
               onSelected: (value) {
                 if (value == 'sort') sort();
+                if (value == 'copy') copy(widget.models.join('\n'));
                 if (value == 'clear') {
+                  if (widget.onClear != null) {
+                    widget.onClear!();
+                    return;
+                  }
                   showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -376,7 +423,29 @@ class _ModelTagsEditorState extends State<ModelTagsEditor> {
                           child: const Text('取消'),
                         ),
                         TextButton(
-                          onPressed: emptyAction,
+                          onPressed: () {
+                            final previous = List<String>.of(widget.models);
+                            widget.onChanged([]);
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              SnackBar(
+                                content: const Text('模型列表已清空'),
+                                action: SnackBarAction(
+                                  label: '撤销',
+                                  onPressed: () {
+                                    if (mounted) {
+                                      widget.onChanged(
+                                        {
+                                          ...widget.models,
+                                          ...previous,
+                                        }.toList(),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text('清空全部'),
                         ),
                       ],

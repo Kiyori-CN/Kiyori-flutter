@@ -44,6 +44,21 @@ class ModelsController extends ChangeNotifier {
     await load();
   }
 
+  Future<ModelConfig> refreshCommittedConfig(
+    String id,
+    int minimumRevision,
+  ) async {
+    await _refreshCommitted();
+    final current = catalog?.configs.where((c) => c.id == id).firstOrNull;
+    if (_disposed ||
+        error != null ||
+        current == null ||
+        current.revision < minimumRevision) {
+      throw StateError('已提交的配置尚未重新读取');
+    }
+    return current;
+  }
+
   Future<void> _load() async {
     final generation = ++_generation;
     loading = true;

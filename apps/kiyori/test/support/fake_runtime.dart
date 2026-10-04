@@ -25,6 +25,25 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ChatRun> startConfiguredModelDirectory(
+    String id,
+    int revision,
+    String payload,
+  ) async => throw UnimplementedError();
+  @override
+  Future<ChatRun> startModelDirectory(
+    ModelConfigDraft draft,
+    String apiKey,
+    List<ChatHeader> headers,
+  ) async => throw UnimplementedError();
+  @override
+  Future<ModelNamesUndo> changeModelNames(
+    String id,
+    int revision,
+    List<String> names, {
+    String? replacement,
+  }) async => throw UnimplementedError();
+  @override
   Future<List<String>> searchConversations(String query) async => [];
   @override
   Future<ChatPreferences> chatPreferences() async => const ChatPreferences(

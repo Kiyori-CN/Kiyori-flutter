@@ -23,6 +23,7 @@
 
 ## 领域设计
 
+- [模型与 API 复刻方案](design/model-api-replication-plan.md)：完整旧源行为矩阵、目录与引用事务、协议/原生依赖及验收顺序。
 - [十一组实机截图复刻审查](design/screenshot-parity-review.md)：逐屏证据、UI修正、真实交互回归与业务缺口。
 - [全页面 UI 复刻方案](design/ui-replication-plan.md)：分层顺序、组件复用、页面保真与持续验收。
 - [设置全树复刻映射](design/settings-replication-map.md)：12项入口、子树、旧源、新实现、状态与测试索引。

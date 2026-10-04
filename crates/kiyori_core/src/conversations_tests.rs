@@ -515,6 +515,11 @@ fn folders_flags_order_and_metadata_are_persistent_and_atomic() {
 #[test]
 fn thinking_contract_preserves_explicit_parameters_and_rejects_unknown_models() {
     let mut request = chat::ChatRequest {
+        provider: String::new(),
+        continuation_credentials: None,
+        google_search: false,
+        claude_cache: false,
+        admission: None,
         stream: true,
         probe: None,
         protocol: "responses".into(),
@@ -570,6 +575,32 @@ fn thinking_contract_preserves_explicit_parameters_and_rejects_unknown_models() 
     let p: Value = serde_json::from_str(&request.parameters).unwrap();
     assert_eq!(p["thinking"]["type"], "enabled");
     assert_eq!(p["reasoning_effort"], "max");
+    for protocol in ["chat", "responses"] {
+        request.protocol = protocol.into();
+        request.model = "alias/gpt-6.1-sol-2026-10-01".into();
+        for (index, effort) in ["low", "medium", "high", "xhigh", "max"].iter().enumerate() {
+            request.parameters = "{}".into();
+            preferences.thinking_quality = index as u32 + 1;
+            apply_thinking(&mut request, &preferences).unwrap();
+            let p: Value = serde_json::from_str(&request.parameters).unwrap();
+            assert_eq!(
+                if protocol == "chat" {
+                    &p["reasoning_effort"]
+                } else {
+                    &p["reasoning"]["effort"]
+                },
+                effort
+            );
+        }
+        preferences.thinking = false;
+        request.parameters = "{}".into();
+        assert!(apply_thinking(&mut request, &preferences).is_err());
+        assert_eq!(request.parameters, "{}");
+        preferences.thinking = true;
+    }
+    request.model = "gpt-6.1-sol-unknown".into();
+    request.parameters = "{}".into();
+    assert!(apply_thinking(&mut request, &preferences).is_err());
 }
 
 #[test]

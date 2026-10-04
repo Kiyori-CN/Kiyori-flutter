@@ -91,11 +91,20 @@ schema4保存空间检索权重、自动记录间隔/规则和图谱偏好；图
 页面700ms去抖和离开前刷写串行保存；错误留草稿，成功后刷新失败不重复提交。
 密钥/key池/headers由kiyori_platform安全存储保护，SQLite只有不可变reference；
 普通参数与端点不属于加密数据。供应商端点仍是旧默认值；模型测试使用core/chat执行真实
-Chat/Responses SSE，Runtime单client、无重试/重定向、直接连接、固定Mozilla根。Messages/native不支持。
+Chat/Responses/Messages/Gemini网络请求，Runtime单client、无重试/重定向、直接连接、固定Mozilla根。
+Messages按提供方采用x-api-key或Bearer，Gemini默认models根派生实际生成路径且密钥只放头部。
+MNN/llama.cpp和扩展提供方尚无实际adapter；明确失败，不以配置保存冒充执行。
 8事件队列背压、单事件1 MiB；Chat需finish与DONE，Responses需completed/incomplete终态及快照一致性。
 Responses使用input、store=false/background=false，max_tokens映射输出限制；思考不混入正文。
 请求取消等待worker释放，
-错误不回显凭据/URL/正文；模型探测按配置和执行代次隔离，工具/媒体尚未验证。
+错误不回显凭据/URL/正文；模型探测按配置和执行代次隔离。
+原生/XML工具探测只执行schema严格匹配的本地echo和随机结果续答，不授予实际系统工具权限；
+媒体使用固定旧素材，按协议/开关编码，结果分为通过、未验证和失败，实际用户附件另行接入。
+模型目录由同HTTP client分页获取，整次60秒/8 MiB/20000项/100页有界且不发布截断结果；
+配置目录和工具续答共用持久密钥游标，Dart无第二凭据选择器。目录只派生当前主机上的路径。
+Runtime的配置级RPM/并发门控按单调时钟计数；保存新限制唤醒旧等待者，取消释放等待及在途槽。
+保存成功后的门控更新只使用已提交revision和值，迟到更新不覆盖新限制；不再做可能误报
+保存失败的第二次读取。Sol6.1自动思考五档映射，关闭明确拒绝；显式参数优先。
 契约与依赖见[ADR 0007](docs/decisions/0007-chat-request-runtime.md)。
 pending/active/retired状态由跨进程lease保护恢复；安全payload v3保存密钥池稳定ID、启用状态及
 可用性，兼容v1字符串列表/v2无标记条目。旧二进制不支持v3，不能直接降级读取。

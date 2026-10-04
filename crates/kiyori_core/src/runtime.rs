@@ -110,8 +110,9 @@ pub struct Runtime {
         >,
     >,
     pub(crate) cancellation: CancellationToken,
-    store: std::sync::Mutex<Option<std::sync::Arc<AppStore>>>,
+    pub(crate) store: std::sync::Arc<std::sync::Mutex<Option<std::sync::Arc<AppStore>>>>,
     pub(crate) chat_client: std::sync::OnceLock<Result<std::sync::Arc<reqwest::Client>, CoreError>>,
+    pub(crate) model_limits: crate::chat::limits::Registry,
 }
 
 impl Default for Runtime {
@@ -125,8 +126,9 @@ impl Runtime {
         Self {
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
-            store: std::sync::Mutex::new(None),
+            store: std::sync::Arc::new(std::sync::Mutex::new(None)),
             chat_client: std::sync::OnceLock::new(),
+            model_limits: Default::default(),
         }
     }
 
@@ -134,8 +136,11 @@ impl Runtime {
         Ok(Self {
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
-            store: std::sync::Mutex::new(Some(std::sync::Arc::new(AppStore::open(path)?))),
+            store: std::sync::Arc::new(std::sync::Mutex::new(Some(std::sync::Arc::new(
+                AppStore::open(path)?,
+            )))),
             chat_client: std::sync::OnceLock::new(),
+            model_limits: Default::default(),
         })
     }
 
@@ -279,6 +284,26 @@ impl Runtime {
             concurrency,
             self.cancellation.child_token(),
         )
+    }
+
+    pub fn start_model_directory(
+        &self,
+        draft: crate::models::ModelConfigDraft,
+        api_key: String,
+        headers: Vec<(String, String)>,
+    ) -> Result<crate::chat::ChatRun, CoreError> {
+        self.ensure_open()?;
+        let client = self
+            .chat_client
+            .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))
+            .clone()?;
+        Ok(crate::chat::directory::start(
+            client,
+            draft,
+            api_key,
+            headers,
+            self.cancellation.child_token(),
+        ))
     }
 }
 

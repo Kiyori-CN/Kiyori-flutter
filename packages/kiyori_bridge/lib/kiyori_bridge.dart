@@ -9,6 +9,7 @@ export 'src/generated/api.dart'
         ConversationStatistics,
         ChatPreferences,
         ChatMessage,
+        ModelEntry,
         PoolKey,
         ChatHeader,
         ChatRequest,

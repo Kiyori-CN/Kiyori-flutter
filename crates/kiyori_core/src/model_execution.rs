@@ -25,6 +25,7 @@ struct Key {
     enabled: bool,
     availability: String,
 }
+type PreparedDirectory = (models::ModelConfigDraft, String, Vec<(String, String)>);
 fn invalid(message: &str) -> CoreError {
     CoreError {
         code: ErrorCode::InvalidInput,
@@ -82,12 +83,72 @@ fn random_index(count: usize) -> Result<usize, CoreError> {
 }
 
 impl AppStore {
+    fn prepare_model_directory(
+        &self,
+        id: &str,
+        revision: u32,
+        payload: &str,
+    ) -> Result<PreparedDirectory, CoreError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| invalid("模型存储锁不可用"))?;
+        let tx = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        let config = models::read_config(&tx, id)?;
+        if config.revision != revision {
+            return Err(invalid("模型配置已变化，请重新载入后获取目录"));
+        }
+        chat::directory::url(&config.draft).map_err(|error| invalid(&error.message))?;
+        let (key, headers) = select_credentials(&tx, id, payload)?;
+        tx.commit().map_err(storage)?;
+        Ok((config.draft, key, headers))
+    }
+    fn continuation_credentials(
+        &self,
+        id: &str,
+        revision: u32,
+        payload: &str,
+    ) -> Result<(String, Vec<(String, String)>), CoreError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| invalid("模型存储锁不可用"))?;
+        let tx = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        if models::read_config(&tx, id)?.revision != revision {
+            return Err(invalid("模型配置已变化，请重新测试"));
+        }
+        let selected = select_credentials(&tx, id, payload)?;
+        tx.commit().map_err(storage)?;
+        Ok(selected)
+    }
+    #[cfg(test)]
     pub(crate) fn prepare_configured_probe(
         &self,
         id: &str,
         revision: u32,
         payload: &str,
         kind: &str,
+    ) -> Result<chat::ChatRequest, CoreError> {
+        self.prepare_configured_probe_limited(
+            id,
+            revision,
+            payload,
+            kind,
+            &chat::limits::Registry::default(),
+        )
+    }
+
+    pub(crate) fn prepare_configured_probe_limited(
+        &self,
+        id: &str,
+        revision: u32,
+        payload: &str,
+        kind: &str,
+        limits: &chat::limits::Registry,
     ) -> Result<chat::ChatRequest, CoreError> {
         let mut connection = self
             .connection
@@ -100,11 +161,24 @@ impl AppStore {
         if config.revision != revision {
             return Err(invalid("模型配置已变化，请重新载入后测试"));
         }
-        if !matches!(config.draft.protocol.as_str(), "chat" | "responses") {
+        if !matches!(
+            config.draft.protocol.as_str(),
+            "chat" | "responses" | "messages" | "native"
+        ) {
             return Err(invalid("该模型协议的请求执行尚未接入"));
         }
         let (key, headers) = select_credentials(&tx, id, payload)?;
-        let request = chat::probe::prepare(config.draft, key, headers, kind)?;
+        let admission = limits.configure(
+            id,
+            revision,
+            config.draft.options.request_limit,
+            config.draft.options.concurrent_limit,
+        );
+        let mut request = chat::probe::prepare(config.draft, key, headers, kind)?;
+        request.admission = Some(admission);
+        let preferences = crate::chat_preferences::read(&tx)?.value;
+        request.stream = !preferences.disable_stream;
+        crate::conversations::apply_thinking(&mut request, &preferences)?;
         tx.commit().map_err(storage)?;
         Ok(request)
     }
@@ -162,6 +236,16 @@ pub(crate) fn select_credentials(
 }
 
 impl Runtime {
+    pub fn start_configured_model_directory(
+        &self,
+        id: String,
+        revision: u32,
+        payload: String,
+    ) -> Result<chat::ChatRun, CoreError> {
+        let (draft, key, headers) =
+            self.with_store(|s| s.prepare_model_directory(&id, revision, &payload))?;
+        self.start_model_directory(draft, key, headers)
+    }
     pub fn start_configured_probe(
         &self,
         id: String,
@@ -169,8 +253,27 @@ impl Runtime {
         payload: String,
         kind: String,
     ) -> Result<chat::ChatRun, CoreError> {
-        let request =
-            self.with_store(|s| s.prepare_configured_probe(&id, revision, &payload, &kind))?;
+        let mut request = self.with_store(|s| {
+            s.prepare_configured_probe_limited(&id, revision, &payload, &kind, &self.model_limits)
+        })?;
+        if matches!(kind.as_str(), "tool" | "xml_tool") {
+            // 每个真实HTTP请求独立轮换；保留同一owner锁，关闭后不能迟到推进游标。
+            let store = self.store.clone();
+            let closed = self.cancellation.clone();
+            request.continuation_credentials = Some(Box::new(move || {
+                let store = store.lock().map_err(|_| invalid("模型存储锁不可用"))?;
+                if closed.is_cancelled() {
+                    return Err(CoreError {
+                        code: ErrorCode::RuntimeClosed,
+                        message: "The runtime has been closed.".into(),
+                    });
+                }
+                store
+                    .as_ref()
+                    .ok_or_else(|| invalid("模型存储不可用"))?
+                    .continuation_credentials(&id, revision, &payload)
+            }));
+        }
         self.start_chat(request)
     }
 }

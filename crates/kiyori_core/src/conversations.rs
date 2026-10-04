@@ -978,7 +978,7 @@ impl Runtime {
             let tx=connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
             let selected=selection(&tx,&prepared.conversation,prepared.target.as_deref())?;
             if selected!=prepared.selection {return Err(invalid("配置、角色或模型已变化，请重新发送"));}
-            if !matches!(selected.config.draft.protocol.as_str(),"chat"|"responses") {return Err(invalid("该模型协议的请求执行尚未接入"));}
+            if !matches!(selected.config.draft.protocol.as_str(),"chat"|"responses"|"messages"|"native") {return Err(invalid("该模型协议的请求执行尚未接入"));}
             let mut messages=Vec::new();
             if !selected.system.is_empty() {messages.push(chat::ChatMessage{role:"system".into(),content:selected.system});}
             let text = if let Some(reply) = &reply_to {
@@ -1017,6 +1017,7 @@ impl Runtime {
             }
             let (api_key,headers)=model_execution::select_credentials(&tx,&selected.config.id,&payload)?;
             let mut request=chat::probe::prepare(selected.config.draft.clone(),api_key,headers,"chat")?;
+            request.admission=Some(self.model_limits.configure(&selected.config.id,selected.config.revision,options.request_limit,options.concurrent_limit));
             request.probe=None; request.messages=messages; request.model=selected.model.clone(); request.timeout_ms=600_000;
             request.stream = !selected.preferences.disable_stream;
             apply_thinking(&mut request,&selected.preferences)?;
@@ -1072,7 +1073,7 @@ impl Runtime {
     }
 }
 
-fn apply_thinking(
+pub(crate) fn apply_thinking(
     request: &mut chat::ChatRequest,
     preferences: &crate::chat_preferences::Preferences,
 ) -> Result<(), CoreError> {
@@ -1081,6 +1082,16 @@ fn apply_thinking(
     let object = parameters
         .as_object_mut()
         .ok_or_else(|| invalid("模型参数无效"))?;
+    if request.protocol == "native" {
+        chat::gemini::thinking(
+            object,
+            &request.model,
+            preferences.thinking,
+            preferences.thinking_quality,
+        )?;
+        request.parameters = parameters.to_string();
+        return Ok(());
+    }
     // 显式模型参数优先；已支持的旧源合同之外不猜测供应商字段。
     if object.contains_key("reasoning")
         || object.contains_key("reasoning_effort")
@@ -1096,9 +1107,29 @@ fn apply_thinking(
         .unwrap_or("")
         .to_ascii_lowercase();
     let deepseek = deepseek_model(&model);
-    let gpt = ["gpt-5.4", "gpt-5.5", "gpt-5.6", "gpt-6-astra"]
-        .iter()
-        .any(|prefix| model == *prefix || model.starts_with(&format!("{prefix}-")));
+    if request.protocol == "messages" {
+        chat::messages::thinking(
+            object,
+            &request.model,
+            preferences.thinking,
+            preferences.thinking_quality,
+            deepseek,
+        )?;
+        request.parameters = parameters.to_string();
+        return Ok(());
+    }
+    let sol61 = model == "gpt-6.1-sol"
+        || model.strip_prefix("gpt-6.1-sol-").is_some_and(|suffix| {
+            let parts: Vec<_> = suffix.split('-').collect();
+            parts.len() == 3
+                && parts.iter().enumerate().all(|(i, p)| {
+                    p.len() == if i == 0 { 4 } else { 2 } && p.bytes().all(|c| c.is_ascii_digit())
+                })
+        });
+    let gpt = sol61
+        || ["gpt-5.4", "gpt-5.5", "gpt-5.6", "gpt-6-astra"]
+            .iter()
+            .any(|prefix| model == *prefix || model.starts_with(&format!("{prefix}-")));
     if !deepseek && !gpt {
         if preferences.thinking {
             return Err(invalid(
@@ -1107,12 +1138,19 @@ fn apply_thinking(
         }
         return Ok(());
     }
+    // 官方 Sol 6.1 不支持 none；代理接受 none 不证明已关闭思考。
+    // 显式配置仍在上面优先返回；自动模式拒绝假装关闭或静默降成 low。
+    if sol61 && !preferences.thinking {
+        return Err(invalid(
+            "gpt-6.1-sol不支持关闭思考，请开启思考或显式配置代理支持的参数",
+        ));
+    }
     let level = preferences.thinking_quality.saturating_sub(1).min(4) as usize;
     let effort = if !preferences.thinking && !model.starts_with("gpt-6-astra") {
         "none"
     } else if deepseek {
         ["low", "high", "max", "max", "max"][level]
-    } else if model.starts_with("gpt-5.6") || model.contains("astra") {
+    } else if sol61 || model.starts_with("gpt-5.6") || model.contains("astra") {
         ["low", "medium", "high", "xhigh", "max"][level]
     } else {
         ["low", "medium", "high", "xhigh", "xhigh"][level]

@@ -33,6 +33,167 @@ fn config(store: &AppStore, id: &str) -> ModelConfig {
         .unwrap()
 }
 
+#[test]
+fn model_names_delete_and_undo_restore_order_and_bindings_atomically() {
+    let directory = Directory::new();
+    let store = AppStore::open(&directory.0).unwrap();
+    let initial = config(&store, "default");
+    let first = initial.draft.models[0].clone();
+    let mut draft = initial.draft;
+    draft.models.push("replacement".into());
+    store
+        .save_model_config("default".into(), initial.revision, draft, None, None)
+        .unwrap();
+    let current = config(&store, "default");
+    assert!(
+        store
+            .change_model_names("default".into(), current.revision, vec![], None)
+            .is_err()
+    );
+    assert_eq!(config(&store, "default"), current);
+    let undo = store
+        .change_model_names(
+            "default".into(),
+            current.revision,
+            vec!["replacement".into()],
+            Some("replacement".into()),
+        )
+        .unwrap();
+    assert!(
+        store
+            .model_catalog()
+            .unwrap()
+            .functions
+            .iter()
+            .all(|f| f.model_name == "replacement")
+    );
+    store.undo_model_names(undo).unwrap();
+    assert_eq!(
+        config(&store, "default").draft.models,
+        vec![first.clone(), "replacement".into()]
+    );
+    assert!(
+        store
+            .model_catalog()
+            .unwrap()
+            .functions
+            .iter()
+            .all(|f| f.model_name == first)
+    );
+}
+
+#[test]
+fn model_names_undo_rejects_later_function_edits_without_partial_changes() {
+    let directory = Directory::new();
+    let store = AppStore::open(&directory.0).unwrap();
+    let initial = config(&store, "default");
+    let mut draft = initial.draft;
+    draft.models.extend(["replacement".into(), "third".into()]);
+    store
+        .save_model_config("default".into(), initial.revision, draft, None, None)
+        .unwrap();
+    let current = config(&store, "default");
+    let undo = store
+        .change_model_names(
+            "default".into(),
+            current.revision,
+            vec!["replacement".into(), "third".into()],
+            Some("replacement".into()),
+        )
+        .unwrap();
+    store
+        .select_function_model("chat".into(), "default".into(), "third".into())
+        .unwrap();
+    let before = store.model_catalog().unwrap();
+    assert!(store.undo_model_names(undo).is_err());
+    assert_eq!(store.model_catalog().unwrap(), before);
+}
+
+#[test]
+fn model_names_undo_checks_character_revision_and_preserves_later_edits() {
+    let directory = Directory::new();
+    let store = AppStore::open(&directory.0).unwrap();
+    let mut initial = config(&store, "default");
+    let first = initial.draft.models[0].clone();
+    initial.draft.models.push("replacement".into());
+    store
+        .save_model_config(
+            "default".into(),
+            initial.revision,
+            initial.draft,
+            None,
+            None,
+        )
+        .unwrap();
+    let id = store
+        .save_character(
+            None,
+            None,
+            CharacterDraft {
+                name: "bound".into(),
+                model_config: Some("default".into()),
+                model_name: Some(first.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let undo = store
+        .change_model_names(
+            "default".into(),
+            2,
+            vec!["replacement".into()],
+            Some("replacement".into()),
+        )
+        .unwrap();
+    let character = store
+        .prompt_catalog()
+        .unwrap()
+        .characters
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert_eq!(character.draft.model_name.as_deref(), Some("replacement"));
+    store.undo_model_names(undo).unwrap();
+    let character = store
+        .prompt_catalog()
+        .unwrap()
+        .characters
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert_eq!(character.draft.model_name.as_ref(), Some(&first));
+    let undo = store
+        .change_model_names(
+            "default".into(),
+            4,
+            vec!["replacement".into()],
+            Some("replacement".into()),
+        )
+        .unwrap();
+    let mut character = store
+        .prompt_catalog()
+        .unwrap()
+        .characters
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    character.draft.description = "later change".into();
+    store
+        .save_character(Some(id.clone()), Some(character.revision), character.draft)
+        .unwrap();
+    let before = store.model_catalog().unwrap();
+    assert!(store.undo_model_names(undo).is_err());
+    assert_eq!(store.model_catalog().unwrap(), before);
+    let character = store
+        .prompt_catalog()
+        .unwrap()
+        .characters
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert_eq!(character.draft.description, "later change");
+}
+
 fn context_options(config: &ModelConfig) -> crate::context::ContextOptions {
     let o = &config.draft.options;
     crate::context::ContextOptions {

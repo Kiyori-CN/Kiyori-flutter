@@ -218,6 +218,38 @@ pub struct ChatHeader {
     pub name: String,
     pub value: String,
 }
+pub struct ModelEntry {
+    pub id: String,
+    pub name: String,
+}
+
+#[frb(opaque)]
+pub struct ModelNamesEdit {
+    undo: std::sync::Mutex<Option<kiyori_core::models::ModelNamesUndo>>,
+    runtime: Arc<kiyori_core::runtime::Runtime>,
+}
+impl ModelNamesEdit {
+    pub fn undo(&self) -> Result<(), BridgeError> {
+        let undo = self
+            .undo
+            .lock()
+            .map_err(|_| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "模型撤销句柄不可用".into(),
+            })?
+            .take()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "模型撤销已使用或释放".into(),
+            })?;
+        Ok(self.runtime.undo_model_names(undo)?)
+    }
+    pub fn close(&self) {
+        if let Ok(mut undo) = self.undo.lock() {
+            undo.take();
+        }
+    }
+}
 pub struct PoolKey {
     pub id: String,
     pub key: String,
@@ -235,6 +267,7 @@ pub struct ChatRequest {
     pub timeout_ms: u32,
 }
 pub enum ChatPhase {
+    Models,
     PoolResult,
     Started,
     Text,
@@ -244,6 +277,7 @@ pub enum ChatPhase {
     Cancelled,
 }
 pub struct ChatEvent {
+    pub models: Vec<ModelEntry>,
     pub key_id: String,
     pub verified: Option<bool>,
     pub phase: ChatPhase,
@@ -267,6 +301,7 @@ impl ChatHandle {
     pub async fn next_event(&self) -> Result<Option<ChatEvent>, BridgeError> {
         Ok(self.inner.next_event().await?.map(|event| {
             let mut result = ChatEvent {
+                models: Vec::new(),
                 key_id: String::new(),
                 verified: None,
                 phase: ChatPhase::Started,
@@ -281,6 +316,16 @@ impl ChatHandle {
             };
             use kiyori_core::chat::ChatEvent as E;
             match event {
+                E::Models(models) => {
+                    result.phase = ChatPhase::Models;
+                    result.models = models
+                        .into_iter()
+                        .map(|m| ModelEntry {
+                            id: m.id,
+                            name: m.name,
+                        })
+                        .collect();
+                }
                 E::PoolResult { id, available } => {
                     result.phase = ChatPhase::PoolResult;
                     result.key_id = id;
@@ -1345,10 +1390,59 @@ impl RuntimeHandle {
             inner: Arc::new(self.inner.start_chat(request)?),
         })
     }
+    pub async fn start_configured_model_directory(
+        &self,
+        id: String,
+        revision: u32,
+        payload: String,
+    ) -> Result<ChatHandle, BridgeError> {
+        Ok(ChatHandle {
+            inner: Arc::new(
+                self.inner
+                    .start_configured_model_directory(id, revision, payload)?,
+            ),
+        })
+    }
+    pub async fn start_model_directory(
+        &self,
+        draft: ModelConfigDraft,
+        api_key: String,
+        headers: Vec<ChatHeader>,
+    ) -> Result<ChatHandle, BridgeError> {
+        Ok(ChatHandle {
+            inner: Arc::new(self.inner.start_model_directory(
+                draft.into(),
+                api_key,
+                headers.into_iter().map(|h| (h.name, h.value)).collect(),
+            )?),
+        })
+    }
+    pub fn change_model_names(
+        &self,
+        id: String,
+        revision: u32,
+        names: Vec<String>,
+        replacement: Option<String>,
+    ) -> Result<ModelNamesEdit, BridgeError> {
+        Ok(ModelNamesEdit {
+            undo: std::sync::Mutex::new(Some(self.inner.change_model_names(
+                id,
+                revision,
+                names,
+                replacement,
+            )?)),
+            runtime: self.inner.clone(),
+        })
+    }
     pub async fn start_chat(&self, request: ChatRequest) -> Result<ChatHandle, BridgeError> {
         Ok(ChatHandle {
             inner: Arc::new(
                 self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    provider: String::new(),
+                    continuation_credentials: None,
+                    google_search: false,
+                    claude_cache: false,
+                    admission: None,
                     stream: true,
                     probe: None,
                     protocol: request.protocol,

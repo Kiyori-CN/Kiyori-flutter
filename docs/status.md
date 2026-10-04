@@ -1,9 +1,60 @@
 # 当前实施状态
 
-更新时间：2026-10-04（Asia/Shanghai）。本文件是当前实施进度唯一权威；
+更新时间：2026-10-05（Asia/Shanghai）。本文件是当前实施进度唯一权威；
 [路线图](roadmap.md)规定顺序，[历史记录](status-history.md)保留过往批次证据。
 
-## 当前任务：十一组实机截图UI与交互复刻
+## 当前任务：模型与 API 全功能旧源复刻
+
+用户要求深度核对旧源、全部 UI/功能、修复缺陷、完成构建并全部提交推送。
+基线 main/dcc5fbb5f5050e4a659510be652275694a74f82f，开始时工作区干净；旧源
+main/6b03b03aa082803bb279db5e78773583e2d91154 只读。任务契约、行为矩阵、分期依赖、
+风险和验收见[实施方案](design/model-api-replication-plan.md)。恢复后网络切片已完成本机验收，
+按任务授权提交普通推送main；最终ref见Git与固定包manifest.sourceCommit，继续剩余业务。
+
+已实现共享 HTTP client 的分页模型目录、取消/超时/脱敏、搜索/筛选全选/应用抽屉、
+真实剪贴板复制、模型移除的引用原子重绑与有冲突保护的撤销、目录/宿主代次隔离，
+以及配置级 RPM/并发排队，保存新限制唤醒已有等待者。Chat/Responses/Messages/Gemini
+文本、原生/XML echo随机结果续答与启用媒体探测接同一ChatRun；读取当前流式/思考偏好。
+续答每次HTTP独立轮换，目录共用同一持久游标；旧官方特殊目录与代理前缀/认证已核对。
+Gemini默认models根重复拼接、Messages厂商Bearer、XML换行被误判均已修。
+配置保存成功后不再读取存储更新限流，避免提交后错误误报；Chat原生工具续答保留有界
+reasoning_content，不进入正文或历史。Sol6.1自动思考参数增加五档映射，关闭时明确拒绝，
+显式模型参数仍优先；官方合同及代理兼容的区别见实施方案。
+生成桥已更新，不手改生成输出。
+
+恢复阶段Rust107项通过（work/model-api-limits-save-final.log），Clippy通过（resume-clippy-v2）。
+目录/真实FFI SQLite DPAPI与页面18项通过（work/model-api-resume-ui-v1.log），
+四协议×流式/非流式工具调用页面8项通过（work/model-api-xml-ui.log）。桥-Check五文件一致，
+foundation58文件通过。完整verify收尾v2通过：Rust107/fmt/Clippy、363 Dart格式/analyze、
+应用587（13条件跳过：11捕获、2真实端点）、platform5、独立FFI18及Windows引擎5，
+日志work/model-api-verify-final-v2.log；桥-Check五文件一致。
+Android ARM64 Debug（141.8s）与普通Windows x64 Debug入口（21.4s）串行构建通过。
+固定包artifacts/ui-preview/20261005-024348：APK117978824字节、SHA256
+20AEE66A1D963A7EC6FDD8C81B076F8D88BF9D5928E1CECE727CAB5E97D1A84A；
+Windows84文件159293320字节，85份副本哈希/APK身份、v2签名、ZIP16K/ELF和x64/Flutter DLL pin通过。
+54路径精确清单审计通过，日志/安装包保持忽略；旧源仍只读干净。
+
+2026-10-05用户授权两个指定供应商和模型，测试凭据只经隐藏输入进入进程内存，正式UI
+测试另使用隔离临时DPAPI密文并在结束删除；合成对话/固定素材，未发送用户历史或源码。
+DeepSeek/deepseek-flash和指定中转/gpt-6.1-sol：模型目录、Chat/Responses/Messages×
+流式/非流式聊天/system/原生工具及图像通过。中转XML全组合通过；DeepSeek首轮XML
+未验证保留，格式兼容修复后六组合通过（work/live-DEEPSEEK-20261005-020704.json）。
+DeepSeek Chat音频/video及Responses音频服务返回422；中转Chat音频/video没有正确识别素材，
+Responses音频返回400；两端Responses video和Messages音频/video为本地协议拒绝。
+不能称这些媒体已真实可用。首轮完整结果在
+work/live-DEEPSEEK.json及work/live-ROUTED.json，日志仅脱敏结果；套件成功只代表执行完矩阵。
+DeepSeek正式配置控件→DPAPI→重开→ChatPage两轮→SQLite→重开通过（live-ui-DEEPSEEK-20261005-020704.log）；
+中转正式UI同样通过（work/live-ui-ROUTED-20261005-021015.log）。DeepSeek思考开启的
+三档有效程度×三协议×流式/非流式聊天/system/tool共54项通过（work/live-DEEPSEEK-20261005-022434.json）；
+Sol6.1五档Responses×流式/非流式聊天/system/tool共30项通过（work/live-ROUTED-20261005-022716.json）。
+最终捕获19项通过、20张PNG在work/model-api-review-final，已审阅手机明暗、320双倍字、
+横屏双倍字与结果卡；矮屏底部操作滚动可达。首轮收尾verify与供应商测试同时使用原生DLL
+出现文件占用，相关进程退出后串行重验；保留失败日志，未降断言。
+MNN/llama推理/共享下载资源、扩展提供方和总结执行仍有实际缺口，
+实施依赖与完成信号已写入方案，不能把配置保存或网络测试称作全功能。
+同设备并排像素、键盘/触摸/Profile与Apple为verification_pending；当前授权不含设备操作。
+
+## 上一批：十一组实机截图UI与交互复刻
 
 用户提供D:/03_Default/图片/截图的22张新旧实机JPEG，并授权本轮全部提交推送；
 基线main/962bc18bf9b6e78441851c152d7355c47eef9109，初始工作区干净。旧源码main/
