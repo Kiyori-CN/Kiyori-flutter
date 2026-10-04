@@ -18,6 +18,7 @@ import 'chat_input_options.dart';
 import 'chat_classic_input.dart';
 import 'chat_message_info.dart';
 import 'chat_input_surface.dart';
+import 'chat_history_button.dart';
 
 /// 原聊天宿主；运行与持久化由注入的共享controller连接Rust。
 class ChatPage extends StatefulWidget {
@@ -48,6 +49,7 @@ class _ChatPageState extends State<ChatPage>
   DialogRoute<void>? messageEditor;
   final modals = ChatModalSession();
   bool openingModel = false, openingHistory = false, openingCharacter = false;
+  bool classicAttachments = false;
   Set<String>? selectedMessages;
   String? modalCharacterId;
 
@@ -107,6 +109,7 @@ class _ChatPageState extends State<ChatPage>
   void didUpdateWidget(ChatPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != chat) {
+      classicAttachments = false;
       selectedMessages = null;
       modals.invalidate();
       closeFullscreen();
@@ -130,6 +133,7 @@ class _ChatPageState extends State<ChatPage>
       modals.invalidate();
     }
     if (next != draftId) {
+      classicAttachments = false;
       selectedMessages = null;
       modals.invalidate();
       closeFullscreen();
@@ -146,6 +150,7 @@ class _ChatPageState extends State<ChatPage>
     selectedMessages?.removeWhere(
       (id) => chat?.snapshot?.messages.any((m) => m.id == id) != true,
     );
+    if (chat?.preferences?.inputStyle != 'classic') classicAttachments = false;
     setState(() {});
   }
 
@@ -156,9 +161,32 @@ class _ChatPageState extends State<ChatPage>
         value,
         accepted: () {
           if (mounted && draft.text == value) draft.clear();
+          if (mounted) setState(() => classicAttachments = false);
         },
       ),
     );
+  }
+
+  Future<void> openHistory() async {
+    final owner = chat;
+    if (owner == null || openingHistory) return;
+    setState(() => openingHistory = true);
+    try {
+      await showChatHistory(context, owner, session: modals);
+    } finally {
+      if (mounted) setState(() => openingHistory = false);
+    }
+  }
+
+  void openStatistics() {
+    final owner = chat;
+    if (owner != null) {
+      showChatStatistics(
+        context,
+        owner,
+        onRoute: modals.registration(modals.epoch),
+      );
+    }
   }
 
   @override
@@ -260,24 +288,14 @@ class _ChatPageState extends State<ChatPage>
                 ),
                 child: Row(
                   children: [
-                    ShellAction(
-                      Icons.history,
-                      '显示历史',
-                      size: 32,
-                      color: Color(dark ? 0xFF7DBAFF : 0xFF2584E9),
-                      onTap: () async {
-                        if (chat == null || openingHistory) return;
-                        openingHistory = true;
-                        try {
-                          await showChatHistory(
-                            context,
-                            chat!,
-                            session: modals,
-                          );
-                        } finally {
-                          openingHistory = false;
-                        }
-                      },
+                    ChatHistoryButton(
+                      runningCount:
+                          chat?.executions.values
+                              .where((e) => e.active && e.run != null)
+                              .length ??
+                          0,
+                      expanded: openingHistory,
+                      onTap: openHistory,
                     ),
                     const SizedBox(width: 8),
                     ShellAction(
@@ -327,6 +345,7 @@ class _ChatPageState extends State<ChatPage>
                                   ),
                                   child: Icon(
                                     Icons.person_rounded,
+                                    semanticLabel: 'Character Avatar',
                                     size: 16,
                                     color: Color(
                                       dark ? 0xFF8BDC87 : 0xFF34974E,
@@ -340,8 +359,8 @@ class _ChatPageState extends State<ChatPage>
                                       maxWidth: 116,
                                     ),
                                     child: Text(
-                                      characterName.characters.length > 12
-                                          ? '${characterName.characters.take(12)}…'
+                                      characterName.length > 12
+                                          ? '${characterName.substring(0, 12)}…'
                                           : characterName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -359,21 +378,14 @@ class _ChatPageState extends State<ChatPage>
                       button: true,
                       label: '对话统计',
                       excludeSemantics: true,
+                      onTap: openStatistics,
                       value: contextRatio == null
                           ? '上下文占用未提供'
                           : '上下文占用 ${(contextRatio * 100).toStringAsFixed(1)}%',
                       child: SizedBox.square(
                         dimension: 36,
                         child: InkWell(
-                          onTap: () {
-                            if (chat != null) {
-                              showChatStatistics(
-                                context,
-                                chat!,
-                                onRoute: modals.registration(modals.epoch),
-                              );
-                            }
-                          },
+                          onTap: openStatistics,
                           child: Center(
                             child: SizedBox.square(
                               dimension: 28,
@@ -519,14 +531,10 @@ class _ChatPageState extends State<ChatPage>
                 onVoice: () => localCapability('语音输入', '当前平台尚未接入语音识别服务。'),
                 reply: chat?.replyTo?.content,
                 onClearReply: () => chat?.clearReply(),
+                attachmentsExpanded: classicAttachments,
                 onAttach: () {
                   if (chat != null) {
-                    showChatInputOptions(
-                      context,
-                      chat!,
-                      attachments: true,
-                      onRoute: modals.registration(modals.epoch),
-                    );
+                    setState(() => classicAttachments = !classicAttachments);
                   }
                 },
               )
@@ -735,6 +743,15 @@ class _ChatPageState extends State<ChatPage>
                     ),
                   ],
                 ),
+              ),
+            if (chat != null && chat?.preferences?.inputStyle == 'classic')
+              ChatClassicAttachments(
+                owner: chat!,
+                visible: classicAttachments,
+                onDismiss: () {
+                  if (mounted) setState(() => classicAttachments = false);
+                },
+                onRoute: modals.registration(modals.epoch),
               ),
           ],
         ),

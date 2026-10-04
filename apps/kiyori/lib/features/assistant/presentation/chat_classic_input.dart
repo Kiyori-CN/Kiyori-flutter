@@ -13,10 +13,12 @@ class ChatClassicInput extends StatelessWidget {
     required this.onVoice,
     this.reply,
     this.onClearReply,
+    this.attachmentsExpanded = false,
     super.key,
   });
   final TextEditingController draft;
   final bool running;
+  final bool attachmentsExpanded;
   final VoidCallback onExpand, onAttach, onSend, onStop, onVoice;
   final String? reply;
   final VoidCallback? onClearReply;
@@ -96,7 +98,12 @@ class ChatClassicInput extends StatelessWidget {
                 '添加附件',
                 iconSize: 18,
                 onTap: onAttach,
-                background: colors.surfaceContainerHighest,
+                background: attachmentsExpanded
+                    ? colors.primary
+                    : colors.surfaceContainerHighest,
+                color: attachmentsExpanded
+                    ? colors.onPrimary
+                    : colors.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               ValueListenableBuilder(

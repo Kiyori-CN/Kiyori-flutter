@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
+import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
 import 'chat_dialogs.dart';
@@ -6,6 +8,123 @@ import 'chat_model_popup.dart';
 import 'chat_memory_folders.dart';
 import 'chat_info_popup.dart';
 import 'chat_option_toggle.dart';
+
+const _attachmentItems = <(IconData, String, IconTone)>[
+  (Icons.image_outlined, '照片', IconTone.image),
+  (Icons.photo_camera_outlined, '拍照', IconTone.image),
+  (Icons.memory, '记忆', IconTone.memory),
+  (Icons.description_outlined, '文件', IconTone.document),
+  (Icons.screenshot_monitor, '屏幕内容', IconTone.image),
+  (Icons.notifications_outlined, '当前通知', IconTone.warning),
+  (Icons.location_on_outlined, '当前位置', IconTone.neutral),
+  (Icons.auto_awesome_outlined, '包', IconTone.ai),
+];
+
+/// CLASSIC的附件是输入行之后的内联面板，与AGENT弹卡共享动作及状态边界。
+class ChatClassicAttachments extends StatefulWidget {
+  const ChatClassicAttachments({
+    required this.owner,
+    required this.visible,
+    required this.onDismiss,
+    this.onRoute,
+    super.key,
+  });
+  final ChatController owner;
+  final bool visible;
+  final VoidCallback onDismiss;
+  final ValueChanged<ModalRoute<dynamic>>? onRoute;
+  @override
+  State<ChatClassicAttachments> createState() => _ClassicAttachmentsState();
+}
+
+class _ClassicAttachmentsState extends State<ChatClassicAttachments>
+    with TickerProviderStateMixin {
+  late final animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+    value: widget.visible ? 1 : 0,
+  );
+  late final fade = AnimationController(
+    vsync: this,
+    value: widget.visible ? 1 : 0,
+  );
+  @override
+  void didUpdateWidget(ChatClassicAttachments oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible != oldWidget.visible) {
+      final target = widget.visible ? 1.0 : 0.0;
+      animation.animateTo(
+        target,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.fastOutSlowIn,
+      );
+      // Compose的tween(200)尺寸变化与fadeIn/fadeOut默认弹簧分别驱动。
+      fade.animateWith(
+        SpringSimulation(
+          const SpringDescription(mass: 1, stiffness: 400, damping: 40),
+          fade.value,
+          target,
+          fade.velocity,
+          tolerance: const Tolerance(distance: .01, velocity: .625),
+          snapToEnd: true,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    animation.dispose();
+    fade.dispose();
+    super.dispose();
+  }
+
+  Future<void> attachMemory() async {
+    final owner = widget.owner;
+    final id = owner.draftId;
+    final route = ModalRoute.of(context)!;
+    final selection = showChatMemoryFolders(
+      context,
+      owner,
+      onRoute: widget.onRoute,
+    );
+    // 旧面板在打开选择器时收起。回调由常驻宿主持有，不能随折叠内容释放。
+    widget.onDismiss();
+    final paths = await selection;
+    if (!mounted ||
+        widget.owner != owner ||
+        !route.isActive ||
+        owner.draftId != id ||
+        paths == null) {
+      return;
+    }
+    owner.attachMemoryFolders(paths);
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: Listenable.merge([animation, fade]),
+    builder: (context, _) => ClipRect(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        heightFactor: animation.value,
+        child: Opacity(
+          opacity: fade.value,
+          child: !widget.visible && animation.value == 0 && fade.value == 0
+              ? const SizedBox(width: double.infinity)
+              : _InputOptions(
+                  owner: widget.owner,
+                  attachments: true,
+                  inline: true,
+                  onDismiss: widget.onDismiss,
+                  onAttachMemory: attachMemory,
+                  onRoute: widget.onRoute,
+                ),
+        ),
+      ),
+    ),
+  );
+}
 
 Future<void> showChatInputOptions(
   BuildContext context,
@@ -42,9 +161,15 @@ class _InputOptions extends StatefulWidget {
     this.onMemory,
     this.onTools,
     this.onModels,
+    this.inline = false,
+    this.onDismiss,
+    this.onAttachMemory,
   });
   final ChatController owner;
   final bool attachments;
+  final bool inline;
+  final VoidCallback? onDismiss;
+  final VoidCallback? onAttachMemory;
   final ValueChanged<ModalRoute<dynamic>>? onRoute;
   final VoidCallback? onMemory, onTools, onModels;
   @override
@@ -53,6 +178,100 @@ class _InputOptions extends StatefulWidget {
 
 class _InputOptionsState extends State<_InputOptions> {
   final expanded = <String>{};
+  void attachmentAction(String name) {
+    if (name == '记忆') {
+      if (widget.onAttachMemory != null) {
+        widget.onAttachMemory!();
+      } else {
+        memoryFolders();
+      }
+    } else if (name == '包') {
+      showPackages();
+    } else {
+      info(name, '$name附件的设备读取与发送尚未接入。当前草稿保持不变。');
+    }
+  }
+
+  Widget inlineAttachments(BuildContext context) => Material(
+    key: const Key('chat-classic-attachments'),
+    color: Theme.of(context).colorScheme.surface,
+    elevation: 1,
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 3,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(1.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (var row = 0; row < 2; row++) ...[
+            if (row > 0) const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 96),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (final item in _attachmentItems.skip(row * 4).take(4))
+                      InkWell(
+                        onTap: () => attachmentAction(item.$2),
+                        child: SizedBox(
+                          width: 70,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: item.$3.containerFor(context),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    item.$1,
+                                    size: 24,
+                                    color: item.$3.iconFor(context),
+                                    semanticLabel: item.$2,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  item.$2,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 20 / 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
   Future<void> info(String title, String description) =>
       showChatInfoPopup(context, title, description, onRoute: widget.onRoute);
 
@@ -203,6 +422,7 @@ class _InputOptionsState extends State<_InputOptions> {
     animation: widget.owner,
     builder: (context, _) {
       final p = widget.owner.preferences;
+      if (widget.inline) return inlineAttachments(context);
       final classic = p?.inputStyle == 'classic' && !widget.attachments;
       return Align(
         alignment: Alignment.bottomRight,
@@ -238,25 +458,9 @@ class _InputOptionsState extends State<_InputOptions> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (widget.attachments)
-                      for (final item in <(IconData, String)>[
-                        (Icons.image_outlined, '图片'),
-                        (Icons.photo_camera_outlined, '拍照'),
-                        (Icons.memory, '记忆'),
-                        (Icons.description_outlined, '文件'),
-                        (Icons.screenshot_monitor, '屏幕内容'),
-                        (Icons.notifications_outlined, '通知'),
-                        (Icons.location_on_outlined, '位置'),
-                        (Icons.auto_awesome_outlined, '工具包'),
-                      ])
+                      for (final item in _attachmentItems)
                         InkWell(
-                          onTap: () => item.$2 == '记忆'
-                              ? memoryFolders()
-                              : item.$2 == '工具包'
-                              ? showPackages()
-                              : info(
-                                  item.$2,
-                                  '${item.$2}附件的设备读取与发送尚未接入。当前草稿保持不变。',
-                                ),
+                          onTap: () => attachmentAction(item.$2),
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: 40),
                             child: Padding(
@@ -265,7 +469,14 @@ class _InputOptionsState extends State<_InputOptions> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(item.$1, size: 16),
+                                  Icon(
+                                    item.$1,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: .7),
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -558,7 +769,11 @@ class _InputOptionsState extends State<_InputOptions> {
       return;
     }
     owner.attachMemoryFolders(paths);
-    route.navigator?.removeRoute(route);
+    if (widget.inline) {
+      widget.onDismiss?.call();
+    } else {
+      route.navigator?.removeRoute(route);
+    }
   }
 
   Future<void> showPackages() => showDialog<void>(
@@ -566,21 +781,19 @@ class _InputOptionsState extends State<_InputOptions> {
     builder: (context) {
       widget.onRoute?.call(ModalRoute.of(context)!);
       return AlertDialog(
-        title: const Text('选择工具包'),
-        content: const SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: InputDecoration(
-                  hintText: '搜索工具包、技能或 MCP',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              SizedBox(height: 24),
-              Text('暂无可用工具包'),
-            ],
+        title: const Text(
+          '选择包',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Text(
+            '暂无可用包',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         actions: [

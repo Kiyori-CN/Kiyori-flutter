@@ -5,6 +5,28 @@
 
 ## 当前任务：AI对话精确复刻与即时点击
 
+### 顶栏多任务与CLASSIC附件增量
+
+继续原目标，基线main/9803bec800b3c2f201ec7be06e34ad185d206107，起始工作区干净。
+按旧ChatHeader补真实并行运行数胶囊、展开背景及显示/隐藏语义；统计入口补可实际触发的
+无障碍动作。CLASSIC附件恢复输入行下方内联两行八项，展开/收起、颜色、尺寸及文案沿旧源；
+AGENT保留右下弹卡。包空态移除旧版不存在的搜索框。记忆选择由常驻宿主持有，展开选择器
+立即收起面板；成功发送、切换会话、换owner或切换输入风格均清理相应瞬态。
+专项8项通过，work/chat-header-ui-final.log；4张捕获在work/chat-header-capture-final，
+覆盖真实双请求→停止→完成、面板关闭、语义点击、包取消、记忆选择、旧会话结果隔离、
+320暗色/键盘及AGENT形式。初轮测试未等路由语义树恢复、语义句柄释放及lint问题均保留日志，
+修复测试时序/释放并保留实际语义动作断言。完整tools/verify.ps1 -WindowsIntegration通过，
+work/chat-header-verify.log记录Rust80/fmt/Clippy、358 Dart格式/analyze、应用569（11跳过）、
+platform5、FFI18及Windows引擎5。Android ARM64 Debug（23.0s）及普通Windows产品入口
+x64 Debug（18.5s）串行构建通过，日志work/chat-header-android.log、chat-header-windows.log。
+固定包artifacts/ui-preview/20261004-155853：APK117931727字节，SHA256
+1FDC4D3BAB4AEA442344400ECCA278686670BF8712B71E149E0EA10A836F9053；Windows84文件158598504字节。
+85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及Windows x64/Flutter DLL pin通过；
+原生runner与Rust DLL复用，最终Dart kernel时间/哈希已核对。9文件精确清单通过，按本轮授权
+提交普通推送main，最终ref见Git和manifest.sourceCommit；过程日志/安装包保持忽略。
+本批不更改Rust API/schema/依赖；设备附件、语音/悬浮、工具执行、复杂消息渲染继续，
+同设备并排与Profile仍为verification_pending，不宣称全功能或像素验收完成。
+
 ### 请求内观测与用量容错增量
 
 继续原目标，基线main/9e7bde8c6ce599adfbdfc3f8f41df9ecb92a64d9，起始工作区干净。
