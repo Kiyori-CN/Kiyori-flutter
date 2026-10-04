@@ -42,6 +42,7 @@ class FakeClient implements RuntimeClient {
     disableStream: false,
     autoRead: false,
     disablePreferences: false,
+    showSwipeHint: true,
     folders: [],
   );
   @override

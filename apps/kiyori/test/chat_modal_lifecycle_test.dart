@@ -79,11 +79,11 @@ void main() {
           isEmpty,
         );
         await tester.tap(find.widgetWithIcon(ShellAction, Icons.history));
-        await until(tester, () => find.text('聊天历史').evaluate().isNotEmpty);
+        await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
         await tester.runAsync(fixture.chat.create);
         await tester.pumpAndSettle();
-        expect(find.text('聊天历史'), findsNothing);
+        expect(find.text('对话历史'), findsNothing);
         expect(find.byType(ChatPage), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {

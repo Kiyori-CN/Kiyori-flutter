@@ -33,9 +33,9 @@ void main() {
           ),
         );
         await tester.tap(find.text('打开'));
-        await until(tester, () => find.text('空目录 (0)').evaluate().isNotEmpty);
+        await until(tester, () => find.text('空目录').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
-        expect(find.text('空目录 (0)'), findsOneWidget);
+        expect(find.text('空目录'), findsOneWidget);
         await tester.runAsync(f.chat.create);
         await until(tester, () => find.text('新对话').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
@@ -92,13 +92,13 @@ void main() {
           ),
         );
         await tester.tap(find.text('打开'));
-        await until(tester, () => find.text('学习 (1)').evaluate().isNotEmpty);
+        await until(tester, () => find.text('学习').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
         expect(find.text('分组中的对话'), findsOneWidget);
-        await tester.tap(find.text('学习 (1)'));
+        await tester.tap(find.text('学习'));
         await tester.pumpAndSettle();
         expect(find.text('分组中的对话'), findsNothing);
-        await tester.tap(find.text('学习 (1)'));
+        await tester.tap(find.text('学习'));
         await tester.pumpAndSettle();
         expect(find.text('分组中的对话'), findsOneWidget);
         await tester.tap(find.byTooltip('收起对话历史'));

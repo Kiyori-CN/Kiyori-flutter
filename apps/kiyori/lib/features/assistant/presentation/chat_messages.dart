@@ -110,7 +110,7 @@ class _ChatMessagesState extends State<ChatMessages> {
               child: ListView.builder(
                 key: ValueKey('messages-${snapshot!.conversation.id}'),
                 controller: scroll,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: messages.length,
                 findChildIndexCallback: (key) =>
                     key is ValueKey<String> ? positions[key.value] : null,
@@ -403,7 +403,7 @@ class ChatMessageTile extends StatelessWidget {
                 padding: user ? const EdgeInsets.all(16) : EdgeInsets.zero,
                 decoration: user
                     ? BoxDecoration(
-                        color: colors.surfaceContainerHighest,
+                        color: colors.primaryContainer,
                         borderRadius: BorderRadius.circular(8),
                       )
                     : null,

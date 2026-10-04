@@ -68,6 +68,8 @@ class _HomeShellState extends State<HomeShell> {
     MinusOnePage(onClose: () => go(1)),
     HomePage(openAi: () => go(2)),
     ChatPage(
+      onOpenBrowser: () => select(1),
+      onOpenFiles: () => select(3),
       onOpenDrawer: openAiDrawer,
       controller: widget.chat,
       onOpenModels: navigation.openModels,
@@ -180,7 +182,7 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  void select(int value) {
+  void select(int value, {bool preserveHomePage = false}) {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       if (value == 1) browserReturn = destination;
@@ -200,7 +202,7 @@ class _HomeShellState extends State<HomeShell> {
         );
       }
     });
-    if (value == 0) go(1);
+    if (value == 0 && !preserveHomePage) go(1);
   }
 
   void back() {
@@ -217,9 +219,9 @@ class _HomeShellState extends State<HomeShell> {
         (workflowKey.currentState?.handleBack() ?? false)) {
       return;
     } else if (destination == 1) {
-      select(browserReturn);
+      select(browserReturn, preserveHomePage: true);
     } else if (destination != 0) {
-      select(0);
+      select(0, preserveHomePage: true);
     } else {
       go(1);
     }

@@ -59,7 +59,7 @@ class MinusOnePage extends StatelessWidget {
                       style: TextStyle(fontSize: 13, color: c.onSurfaceVariant),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(

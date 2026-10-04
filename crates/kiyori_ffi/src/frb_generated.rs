@@ -4589,6 +4589,7 @@ impl SseDecode for crate::api::ChatPreferences {
         let mut var_disableStream = <bool>::sse_decode(deserializer);
         let mut var_autoRead = <bool>::sse_decode(deserializer);
         let mut var_disablePreferences = <bool>::sse_decode(deserializer);
+        let mut var_showSwipeHint = <bool>::sse_decode(deserializer);
         let mut var_folders = <Vec<String>>::sse_decode(deserializer);
         return crate::api::ChatPreferences {
             revision: var_revision,
@@ -4605,6 +4606,7 @@ impl SseDecode for crate::api::ChatPreferences {
             disable_stream: var_disableStream,
             auto_read: var_autoRead,
             disable_preferences: var_disablePreferences,
+            show_swipe_hint: var_showSwipeHint,
             folders: var_folders,
         };
     }
@@ -6486,6 +6488,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::ChatPreferences {
             self.disable_stream.into_into_dart().into_dart(),
             self.auto_read.into_into_dart().into_dart(),
             self.disable_preferences.into_into_dart().into_dart(),
+            self.show_swipe_hint.into_into_dart().into_dart(),
             self.folders.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -7630,6 +7633,7 @@ impl SseEncode for crate::api::ChatPreferences {
         <bool>::sse_encode(self.disable_stream, serializer);
         <bool>::sse_encode(self.auto_read, serializer);
         <bool>::sse_encode(self.disable_preferences, serializer);
+        <bool>::sse_encode(self.show_swipe_hint, serializer);
         <Vec<String>>::sse_encode(self.folders, serializer);
     }
 }

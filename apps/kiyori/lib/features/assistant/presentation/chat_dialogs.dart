@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
+import 'package:kiyori_ui/kiyori_ui.dart' show IconTone;
 
 import 'chat_controller.dart';
 import 'ai_drawer.dart';
@@ -145,7 +146,7 @@ Future<void> showChatHistory(
                     builder: (context, search) => Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 4, 6),
+                          padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
                           child: Row(
                             children: [
                               Expanded(
@@ -153,7 +154,7 @@ Future<void> showChatHistory(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      '聊天历史',
+                                      '对话历史',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -170,6 +171,10 @@ Future<void> showChatHistory(
                               ),
                               IconButton(
                                 tooltip: '聊天历史设置',
+                                style: IconButton.styleFrom(
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
                                 constraints: const BoxConstraints.tightFor(
                                   width: 40,
                                   height: 40,
@@ -183,6 +188,10 @@ Future<void> showChatHistory(
                               ),
                               IconButton(
                                 tooltip: '收起对话历史',
+                                style: IconButton.styleFrom(
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
                                 constraints: const BoxConstraints.tightFor(
                                   width: 40,
                                   height: 40,
@@ -243,7 +252,7 @@ Future<void> showChatHistory(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.outline,
+                                  color: const Color(0xFF9AA0A6),
                                 ),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
@@ -281,13 +290,16 @@ Future<void> showChatHistory(
                                 tooltip: '新建文件夹',
                                 style: IconButton.styleFrom(
                                   fixedSize: const Size(40, 40),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.create_new_folder_outlined,
                                   size: 20,
+                                  color: IconTone.folder.iconFor(context),
                                 ),
                                 onPressed: () => showHistoryFolderEditor(
                                   context,
@@ -299,6 +311,55 @@ Future<void> showChatHistory(
                           ),
                         ),
                         const SizedBox(height: 10),
+                        if (owner.preferences?.showSwipeHint == true &&
+                            (owner.catalog?.conversations.isNotEmpty ?? false))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 8, 2),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.swap_horiz,
+                                  size: 14,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: .7),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '右滑编辑，左滑删除；点“更多”可管理对话',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: .7),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: '隐藏对话手势提示',
+                                  constraints: const BoxConstraints.tightFor(
+                                    width: 28,
+                                    height: 28,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  style: IconButton.styleFrom(
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  onPressed: owner.savingPreference
+                                      ? null
+                                      : () => owner.setPreference(
+                                          'show_swipe_hint',
+                                          'false',
+                                        ),
+                                  icon: const Icon(Icons.close, size: 14),
+                                ),
+                              ],
+                            ),
+                          ),
                         const Divider(height: 1),
                         if (search.searching) const LinearProgressIndicator(),
                         if (search.failed)

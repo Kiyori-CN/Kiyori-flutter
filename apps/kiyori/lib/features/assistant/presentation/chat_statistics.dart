@@ -276,17 +276,22 @@ class _StatisticsState extends State<_Statistics> {
                 spacing: 8,
                 children: [
                   FilterChip(
+                    showCheckmark: false,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     selected: !recent,
                     onSelected: (_) => setState(() => recent = false),
                     label: const Text('对话累计'),
                   ),
                   FilterChip(
+                    showCheckmark: false,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     selected: recent,
                     onSelected: (_) => setState(() => recent = true),
                     label: const Text('最近请求'),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
               Text(
                 recent ? _recentNote : _usageNote,
                 style: const TextStyle(fontSize: 12),

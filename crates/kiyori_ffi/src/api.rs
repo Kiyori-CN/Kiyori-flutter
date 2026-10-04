@@ -131,6 +131,7 @@ pub struct ChatPreferences {
     pub disable_stream: bool,
     pub auto_read: bool,
     pub disable_preferences: bool,
+    pub show_swipe_hint: bool,
     pub folders: Vec<String>,
 }
 impl From<kiyori_core::chat_preferences::Snapshot> for ChatPreferences {
@@ -151,6 +152,7 @@ impl From<kiyori_core::chat_preferences::Snapshot> for ChatPreferences {
             disable_stream: v.disable_stream,
             auto_read: v.auto_read,
             disable_preferences: v.disable_preferences,
+            show_swipe_hint: v.show_swipe_hint,
             folders: s.folders,
         }
     }

@@ -4,6 +4,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'chat_controller.dart';
 import 'chat_dialogs.dart';
 import 'chat_info_popup.dart';
+import 'chat_option_toggle.dart';
 
 /// AGENT 输入栏弹出卡：透明宿主、右下300宽、420最大高。
 class ChatModelPopup extends StatefulWidget {
@@ -26,6 +27,8 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
   String? expanded;
   bool selecting = false;
   bool thinkingExpanded = false;
+  double? quality;
+  bool qualitySaving = false;
   Future<void> choose(ModelConfig config, String model) async {
     if (selecting || widget.owner.changing) return;
     final route = ModalRoute.of(context)!;
@@ -77,7 +80,11 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.psychology_outlined, size: 16),
+                    Icon(
+                      Icons.psychology_outlined,
+                      size: 16,
+                      color: colors.onSurfaceVariant.withValues(alpha: .7),
+                    ),
                     IconButton(
                       tooltip: '思考设置说明',
                       constraints: const BoxConstraints.tightFor(
@@ -85,6 +92,12 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                         height: 40,
                       ),
                       iconSize: 16,
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: colors.onSurfaceVariant.withValues(
+                          alpha: .7,
+                        ),
+                      ),
                       icon: const Icon(Icons.info_outline),
                       onPressed: () => info(
                         '思考设置',
@@ -92,11 +105,11 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('思考设置:', style: TextStyle(fontSize: 13)),
+                    const Text('思考:', style: TextStyle(fontSize: 13)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        owner.preferences?.thinking == true ? '思考' : '关闭',
+                        owner.preferences?.thinking == true ? 'mode' : 'off',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -119,42 +132,62 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Column(
                   children: [
-                    SwitchListTile(
-                      dense: true,
-                      title: const Text('思考模式', style: TextStyle(fontSize: 13)),
+                    ChatOptionToggle(
+                      title: '思考模式',
+                      icon: Icons.psychology_outlined,
+                      horizontalPadding: 8,
                       value: owner.preferences?.thinking ?? false,
-                      onChanged: (v) => owner.setPreference('thinking', '$v'),
+                      onChanged: owner.savingPreference
+                          ? null
+                          : (v) => owner.setPreference('thinking', '$v'),
+                      onInfo: () => info('思考模式', '开启后请求模型推理；具体支持由供应商、协议和模型决定。'),
                     ),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text('思考程度', style: TextStyle(fontSize: 13)),
-                        ),
-                        Text(
-                          [
-                            '低',
-                            '中',
-                            '高',
-                            '极高',
-                            '最高',
-                          ][(owner.preferences?.thinkingQuality ?? 2) - 1],
-                          style: TextStyle(fontSize: 13, color: colors.primary),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      min: 1,
-                      max: 5,
-                      divisions: 4,
-                      value: (owner.preferences?.thinkingQuality ?? 2)
-                          .toDouble(),
-                      onChanged: owner.preferences?.thinking == true
-                          ? (v) => owner.setPreference(
-                              'thinking_quality',
-                              '${v.round()}',
-                            )
-                          : null,
-                    ),
+                    if (owner.preferences?.thinking == true) ...[
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text('思考程度', style: TextStyle(fontSize: 13)),
+                          ),
+                          Text(
+                            ['低', '中', '高', '极高', '最高'][(quality?.round() ??
+                                    owner.preferences?.thinkingQuality ??
+                                    2) -
+                                1],
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        value:
+                            quality ??
+                            (owner.preferences?.thinkingQuality ?? 2)
+                                .toDouble(),
+                        onChanged: !owner.savingPreference && !qualitySaving
+                            ? (v) => setState(() => quality = v)
+                            : null,
+                        onChangeEnd: !owner.savingPreference && !qualitySaving
+                            ? (v) async {
+                                setState(() => qualitySaving = true);
+                                await owner.setPreference(
+                                  'thinking_quality',
+                                  '${v.round()}',
+                                );
+                                if (mounted) {
+                                  setState(() {
+                                    qualitySaving = false;
+                                    quality = null;
+                                  });
+                                }
+                              }
+                            : null,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -166,36 +199,17 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                   style: TextStyle(color: colors.error),
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.whatshot_outlined, size: 16),
-                  IconButton(
-                    tooltip: 'MAX说明',
-                    constraints: const BoxConstraints.tightFor(
-                      width: 40,
-                      height: 40,
-                    ),
-                    iconSize: 16,
-                    onPressed: () => info(
-                      'MAX模式',
-                      'Max Mode（超大上下文模式）开启后将使用 ${config?.draft.options.maxContextLength ?? 200}k 上下文窗口，关闭则回到 ${config?.draft.options.contextLength ?? 64}k。您可以在设置中自定义这些数值。',
-                    ),
-                    icon: const Icon(Icons.info_outline),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text('MAX', style: TextStyle(fontSize: 13)),
-                  ),
-                  Switch(
-                    value: config?.draft.options.maxContextMode ?? false,
-                    onChanged: config == null || owner.changing
-                        ? null
-                        : owner.setMaxContext,
-                  ),
-                ],
+            ChatOptionToggle(
+              title: 'Max模式',
+              icon: Icons.whatshot_outlined,
+              onInfo: () => info(
+                'MAX模式',
+                'Max Mode（超大上下文模式）开启后将使用 ${config?.draft.options.maxContextLength ?? 200}k 上下文窗口，关闭则回到 ${config?.draft.options.contextLength ?? 64}k。您可以在设置中自定义这些数值。',
               ),
+              value: config?.draft.options.maxContextMode ?? false,
+              onChanged: config == null || owner.changing
+                  ? null
+                  : owner.setMaxContext,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -209,6 +223,12 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                       height: 40,
                     ),
                     iconSize: 16,
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: colors.onSurfaceVariant.withValues(
+                        alpha: .7,
+                      ),
+                    ),
                     onPressed: () =>
                         info('模型配置', '在这里选择一个已经配置好的模型，或者点击下方的管理配置去新建或修改模型'),
                     icon: const Icon(Icons.info_outline),

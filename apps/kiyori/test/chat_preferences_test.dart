@@ -34,6 +34,7 @@ void main() {
       expect(fixture.chat.preferences!.thinking, isFalse);
       expect(fixture.chat.preferences!.thinkingQuality, 2);
       expect(fixture.chat.preferences!.memoryAuto, isTrue);
+      expect(fixture.chat.preferences!.showSwipeHint, isTrue);
       expect(
         await fixture.chat.setPreference('history_mode', 'current'),
         isTrue,
@@ -44,11 +45,16 @@ void main() {
       );
       expect(await fixture.chat.setPreference('thinking', 'true'), isTrue);
       expect(await fixture.chat.setPreference('thinking_quality', '5'), isTrue);
+      expect(
+        await fixture.chat.setPreference('show_swipe_hint', 'false'),
+        isTrue,
+      );
       final reopened = await fixture.runtime.chatPreferences();
       expect(reopened.historyMode, 'current');
       expect(reopened.inputStyle, 'classic');
       expect(reopened.thinking, isTrue);
       expect(reopened.thinkingQuality, 5);
+      expect(reopened.showSwipeHint, isFalse);
       expect(
         () => fixture.runtime.changeChatPreference(
           reopened.revision - 1,

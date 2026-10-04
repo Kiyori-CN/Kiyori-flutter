@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'chat_controller.dart';
 import 'chat_panel_route.dart';
+import 'chat_character_avatar.dart';
 
 class ChatCharacters extends StatefulWidget {
   const ChatCharacters({
@@ -66,13 +67,18 @@ class _ChatCharactersState extends State<ChatCharacters> {
                           ),
                           Text(
                             '${cards.length + groups.length} 个角色',
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.onSurfaceVariant,
+                            ),
                           ),
+                          const SizedBox(width: 4),
                           PopupMenuButton<int>(
                             tooltip: '角色排序',
                             constraints: const BoxConstraints(minWidth: 160),
                             style: IconButton.styleFrom(
                               fixedSize: const Size(40, 40),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             elevation: 0,
                             color: colors.surface,
@@ -104,6 +110,7 @@ class _ChatCharactersState extends State<ChatCharacters> {
                                 ),
                             ],
                           ),
+                          const SizedBox(width: 4),
                           IconButton(
                             tooltip: '编辑角色卡',
                             constraints: const BoxConstraints.tightFor(
@@ -111,6 +118,9 @@ class _ChatCharactersState extends State<ChatCharacters> {
                               height: 40,
                             ),
                             iconSize: 18,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             onPressed: () {
                               Navigator.pop(context);
                               widget.onManage();
@@ -141,7 +151,7 @@ class _ChatCharactersState extends State<ChatCharacters> {
                                     context,
                                     group.draft.name,
                                     group.draft.description,
-                                    Icons.groups_rounded,
+                                    null,
                                     false,
                                     () => setState(
                                       () => error = '群组自动对话尚未接入，请选择单个角色',
@@ -154,7 +164,7 @@ class _ChatCharactersState extends State<ChatCharacters> {
                                   context,
                                   card.draft.name,
                                   card.draft.description,
-                                  Icons.person_rounded,
+                                  card.id,
                                   card.id == owner.character?.id,
                                   () async {
                                     if (owner.busy) return;
@@ -185,7 +195,7 @@ class _ChatCharactersState extends State<ChatCharacters> {
     BuildContext context,
     String name,
     String description,
-    IconData icon,
+    String? characterId,
     bool selected,
     VoidCallback tap,
   ) {
@@ -213,11 +223,23 @@ class _ChatCharactersState extends State<ChatCharacters> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: selectedBackground,
-                  child: Icon(icon, size: 18, color: colors.primary),
-                ),
+                if (characterId == null)
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: selectedBackground,
+                    child: Icon(
+                      Icons.groups_rounded,
+                      size: 18,
+                      color: colors.primary,
+                    ),
+                  )
+                else
+                  ChatCharacterAvatar(
+                    characterId: characterId,
+                    size: 36,
+                    background: selectedBackground,
+                    foreground: colors.primary,
+                  ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

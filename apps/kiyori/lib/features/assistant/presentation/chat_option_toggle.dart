@@ -7,6 +7,7 @@ class ChatOptionToggle extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.onInfo,
+    this.horizontalPadding = 12,
     super.key,
   });
   final String title;
@@ -14,6 +15,7 @@ class ChatOptionToggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
   final VoidCallback onInfo;
+  final double horizontalPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class ChatOptionToggle extends StatelessWidget {
     return InkWell(
       onTap: onChanged == null ? null : () => onChanged!(!value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Row(
           children: [
             Icon(
@@ -35,6 +37,9 @@ class ChatOptionToggle extends StatelessWidget {
               tooltip: '$title说明',
               onPressed: onInfo,
               constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              style: IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               icon: Icon(
                 Icons.info_outline,
                 size: 16,
@@ -50,20 +55,25 @@ class ChatOptionToggle extends StatelessWidget {
                 style: const TextStyle(fontSize: 13),
               ),
             ),
-            Transform.scale(
-              scale: .65,
-              child: Switch(
-                value: value,
-                onChanged: onChanged,
-                thumbColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? c.primary
-                      : c.outline,
-                ),
-                trackColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? c.primaryContainer
-                      : c.surfaceContainerHighest,
+            SizedBox(
+              width: 52,
+              height: 40,
+              child: Transform.scale(
+                scale: .65,
+                child: Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  thumbColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? c.primary
+                        : c.outline,
+                  ),
+                  trackColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? c.primaryContainer
+                        : c.surfaceContainerHighest,
+                  ),
                 ),
               ),
             ),

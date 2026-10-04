@@ -19,6 +19,7 @@ import 'chat_classic_input.dart';
 import 'chat_message_info.dart';
 import 'chat_input_surface.dart';
 import 'chat_history_button.dart';
+import 'chat_character_avatar.dart';
 
 /// 原聊天宿主；运行与持久化由注入的共享controller连接Rust。
 class ChatPage extends StatefulWidget {
@@ -28,6 +29,8 @@ class ChatPage extends StatefulWidget {
     this.onOpenCharacters = emptyAction,
     this.onOpenMemory = emptyAction,
     this.onOpenTools = emptyAction,
+    this.onOpenBrowser = emptyAction,
+    this.onOpenFiles = emptyAction,
     this.controller,
     super.key,
   });
@@ -35,6 +38,7 @@ class ChatPage extends StatefulWidget {
   final VoidCallback onOpenModels;
   final VoidCallback onOpenCharacters;
   final VoidCallback onOpenMemory, onOpenTools;
+  final VoidCallback onOpenBrowser, onOpenFiles;
   final ChatController? controller;
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -236,8 +240,22 @@ class _ChatPageState extends State<ChatPage>
                     iconSize: 21,
                   ),
                   Expanded(
-                    child: Text(
-                      chat?.snapshot?.conversation.title ?? 'AI 对话',
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'AI 对话',
+                        children: [
+                          if (chat?.snapshot?.conversation.title.isNotEmpty ==
+                              true)
+                            TextSpan(
+                              text: ' - ${chat!.snapshot!.conversation.title}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.normal,
+                                color: c.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -249,6 +267,7 @@ class _ChatPageState extends State<ChatPage>
                   ShellAction(
                     Icons.language,
                     '浏览器',
+                    onTap: widget.onOpenBrowser,
                     size: 48,
                     iconSize: 21,
                     color: Color(dark ? 0xFF7DBAFF : 0xFF2584E9),
@@ -256,6 +275,7 @@ class _ChatPageState extends State<ChatPage>
                   ShellAction(
                     Icons.folder_outlined,
                     '文件管理器',
+                    onTap: widget.onOpenFiles,
                     size: 48,
                     iconSize: 21,
                     color: Color(dark ? 0xFFFFD16A : 0xFFB07C07),
@@ -334,23 +354,9 @@ class _ChatPageState extends State<ChatPage>
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: Color(
-                                      dark ? 0xFF293729 : 0xFFEDF6EF,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.person_rounded,
-                                    semanticLabel: 'Character Avatar',
-                                    size: 16,
-                                    color: Color(
-                                      dark ? 0xFF8BDC87 : 0xFF34974E,
-                                    ),
-                                  ),
+                                ChatCharacterAvatar(
+                                  characterId: chat?.character?.id,
+                                  size: 24,
                                 ),
                                 const SizedBox(width: 6),
                                 Flexible(
@@ -580,6 +586,12 @@ class _ChatPageState extends State<ChatPage>
                       maxLines: 6,
                       decoration: InputDecoration(
                         hintText: '请输入您的问题...',
+                        isDense: true,
+                        constraints: const BoxConstraints(minHeight: 56),
+                        suffixIconConstraints: const BoxConstraints.tightFor(
+                          width: 48,
+                          height: 48,
+                        ),
                         hintStyle: TextStyle(
                           fontSize: 14,
                           color: c.onSurfaceVariant,
@@ -607,7 +619,7 @@ class _ChatPageState extends State<ChatPage>
                             child: InkWell(
                               onTap: () async {
                                 if (chat != null && !openingModel) {
-                                  openingModel = true;
+                                  setState(() => openingModel = true);
                                   final epoch = modals.epoch;
                                   final owner = chat!;
                                   try {
@@ -626,7 +638,9 @@ class _ChatPageState extends State<ChatPage>
                                       );
                                     }
                                   } finally {
-                                    openingModel = false;
+                                    if (mounted) {
+                                      setState(() => openingModel = false);
+                                    }
                                   }
                                 }
                               },
@@ -658,7 +672,9 @@ class _ChatPageState extends State<ChatPage>
                                     ),
                                     const SizedBox(width: 4),
                                     Icon(
-                                      Icons.keyboard_arrow_down,
+                                      openingModel
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
                                       size: 18,
                                       color: c.onSurfaceVariant,
                                     ),

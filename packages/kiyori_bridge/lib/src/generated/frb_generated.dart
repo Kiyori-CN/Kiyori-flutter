@@ -4082,8 +4082,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChatPreferences dco_decode_chat_preferences(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 15)
-      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
+    if (arr.length != 16)
+      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
     return ChatPreferences(
       revision: dco_decode_u_32(arr[0]),
       historyMode: dco_decode_String(arr[1]),
@@ -4099,7 +4099,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       disableStream: dco_decode_bool(arr[11]),
       autoRead: dco_decode_bool(arr[12]),
       disablePreferences: dco_decode_bool(arr[13]),
-      folders: dco_decode_list_String(arr[14]),
+      showSwipeHint: dco_decode_bool(arr[14]),
+      folders: dco_decode_list_String(arr[15]),
     );
   }
 
@@ -5485,6 +5486,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_disableStream = sse_decode_bool(deserializer);
     var var_autoRead = sse_decode_bool(deserializer);
     var var_disablePreferences = sse_decode_bool(deserializer);
+    var var_showSwipeHint = sse_decode_bool(deserializer);
     var var_folders = sse_decode_list_String(deserializer);
     return ChatPreferences(
       revision: var_revision,
@@ -5501,6 +5503,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       disableStream: var_disableStream,
       autoRead: var_autoRead,
       disablePreferences: var_disablePreferences,
+      showSwipeHint: var_showSwipeHint,
       folders: var_folders,
     );
   }
@@ -7233,6 +7236,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.disableStream, serializer);
     sse_encode_bool(self.autoRead, serializer);
     sse_encode_bool(self.disablePreferences, serializer);
+    sse_encode_bool(self.showSwipeHint, serializer);
     sse_encode_list_String(self.folders, serializer);
   }
 

@@ -240,7 +240,7 @@ void main() {
       await tester.tap(
         find.byWidgetPredicate((w) => w is ShellAction && w.label == '显示历史'),
       );
-      await until(tester, () => find.text('聊天历史').evaluate().isNotEmpty);
+      await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('会话操作'));
       await tester.pumpAndSettle();
@@ -380,7 +380,7 @@ void main() {
         await tester.tap(
           find.byWidgetPredicate((w) => w is ShellAction && w.label == '显示历史'),
         );
-        await until(tester, () => find.text('聊天历史').evaluate().isNotEmpty);
+        await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
         if (output.isNotEmpty) {
           await captureUi(tester, boundary, output, 'chat-history');

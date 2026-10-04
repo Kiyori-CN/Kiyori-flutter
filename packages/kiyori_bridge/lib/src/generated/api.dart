@@ -556,6 +556,7 @@ class ChatPreferences {
   final bool disableStream;
   final bool autoRead;
   final bool disablePreferences;
+  final bool showSwipeHint;
   final List<String> folders;
 
   const ChatPreferences({
@@ -573,6 +574,7 @@ class ChatPreferences {
     required this.disableStream,
     required this.autoRead,
     required this.disablePreferences,
+    required this.showSwipeHint,
     required this.folders,
   });
 
@@ -592,6 +594,7 @@ class ChatPreferences {
       disableStream.hashCode ^
       autoRead.hashCode ^
       disablePreferences.hashCode ^
+      showSwipeHint.hashCode ^
       folders.hashCode;
 
   @override
@@ -613,6 +616,7 @@ class ChatPreferences {
           disableStream == other.disableStream &&
           autoRead == other.autoRead &&
           disablePreferences == other.disablePreferences &&
+          showSwipeHint == other.showSwipeHint &&
           folders == other.folders;
 }
 

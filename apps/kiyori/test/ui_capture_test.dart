@@ -14,6 +14,46 @@ import 'support/ui_test_helpers.dart' show revealOnboarding;
 void main() {
   const output = String.fromEnvironment('KIYORI_CAPTURE');
   testWidgets(
+    'capture supplied screenshot primary surfaces at 360',
+    skip: output.isEmpty,
+    (tester) async {
+      await loadCaptureFonts(tester);
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.reset);
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundary,
+          child: KiyoriApp(connect: () async => FakeClient()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await captureUi(tester, boundary, output, 'screenshot-home-360');
+      for (final entry in [
+        (1, 'browser'),
+        (2, 'toolbox'),
+        (3, 'files'),
+        (4, 'settings'),
+      ]) {
+        await tester.tap(find.byKey(Key('nav-${entry.$1}')));
+        await tester.pumpAndSettle();
+        await captureUi(tester, boundary, output, 'screenshot-${entry.$2}-360');
+        if (entry.$1 == 1) {
+          await tester.tap(find.bySemanticsLabel('退出浏览器'));
+          await tester.pumpAndSettle();
+        }
+      }
+      await tester.tap(find.byKey(const Key('nav-0')));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(PageView), const Offset(600, 0));
+      await tester.pumpAndSettle();
+      await captureUi(tester, boundary, output, 'screenshot-minus-one-360');
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'capture actual Flutter shell for visual review',
     skip: output.isEmpty,
     (tester) async {

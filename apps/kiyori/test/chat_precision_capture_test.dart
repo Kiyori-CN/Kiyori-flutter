@@ -128,4 +128,142 @@ void main() {
       await tester.runAsync(fixture.close);
     }
   });
+
+  testWidgets(
+    'screenshot fixes preserve stream, model preferences and panel identity',
+    (tester) async {
+      const output = String.fromEnvironment('KIYORI_CAPTURE');
+      final fixture = ChatFixture();
+      final boundary = GlobalKey();
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.reset);
+      await tester.runAsync(() async {
+        await fixture.open();
+        fixture.answer = '## 你好！\n\n我是 Kiyori。\n\n- **功能**：保留完整流式内容。';
+        fixture.chunks = ['## 你好！\n\n', '我是 Kiyori。\n\n', '- **功能**：保留完整流式内容。'];
+        await fixture.chat.send('你好');
+      });
+      try {
+        if (output.isNotEmpty) await loadCaptureFonts(tester);
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: boundary,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: KiyoriTheme.light(),
+              home: Scaffold(body: ChatPage(controller: fixture.chat)),
+            ),
+          ),
+        );
+        await until(tester, () => !fixture.chat.loading);
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 250)),
+        );
+        await tester.pumpAndSettle();
+        expect(fixture.chat.snapshot!.messages.last.content, fixture.answer);
+        expect(tester.getTopLeft(find.text('Prompt')).dx, 48);
+        final prompt = tester.widget<Container>(
+          find
+              .ancestor(
+                of: find.text('Prompt'),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        expect(
+          (prompt.decoration! as BoxDecoration).color,
+          KiyoriTheme.light().colorScheme.primaryContainer,
+        );
+        expect(
+          tester.getSize(find.byKey(const Key('chat-input-surface'))).height,
+          lessThanOrEqualTo(124),
+        );
+        expect(
+          find.textContaining('AI 对话', findRichText: true),
+          findsOneWidget,
+        );
+        expect(find.text('## 你好！'), findsNothing);
+        if (output.isNotEmpty) {
+          await captureUi(tester, boundary, output, 'screenshot-chat-360');
+        }
+
+        await tester.tap(find.text('second-model').last);
+        await until(
+          tester,
+          () => find.byKey(const Key('chat-model-popup')).evaluate().isNotEmpty,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('思考:'));
+        await tester.pumpAndSettle();
+        expect(find.byType(Slider), findsNothing);
+        await tester.tap(find.text('思考模式'));
+        await until(tester, () => fixture.chat.preferences!.thinking);
+        await tester.pumpAndSettle();
+        expect(find.byType(Slider), findsOneWidget);
+        final beforeDrag = fixture.chat.preferences!;
+        final slider = tester.getRect(find.byType(Slider));
+        final gesture = await tester.startGesture(slider.center);
+        await gesture.moveTo(Offset(slider.left + 16, slider.center.dy));
+        await tester.pump();
+        await gesture.moveTo(Offset(slider.right - 16, slider.center.dy));
+        await tester.pump();
+        // 连续移动只预览，避免第一个异步保存占锁后丢掉最后一次拖动。
+        expect(fixture.chat.savingPreference, isFalse);
+        expect(fixture.chat.preferences!.revision, beforeDrag.revision);
+        expect(
+          fixture.chat.preferences!.thinkingQuality,
+          beforeDrag.thinkingQuality,
+        );
+        await gesture.up();
+        await until(
+          tester,
+          () =>
+              !fixture.chat.savingPreference &&
+              fixture.chat.preferences!.thinkingQuality == 5,
+        );
+        expect(fixture.chat.preferences!.revision, beforeDrag.revision + 1);
+        await tester.tap(find.text('Max模式'));
+        await until(tester, () => !fixture.chat.changing);
+        expect(fixture.chat.modelConfig!.draft.options.maxContextMode, isTrue);
+        if (output.isNotEmpty) {
+          await captureUi(tester, boundary, output, 'screenshot-model-360');
+        }
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.bySemanticsLabel('显示历史'));
+        await until(
+          tester,
+          () => find.byTooltip('隐藏对话手势提示').evaluate().isNotEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('对话历史'), findsOneWidget);
+        expect(find.text('未分组'), findsOneWidget);
+        if (output.isNotEmpty) {
+          await captureUi(tester, boundary, output, 'screenshot-history-360');
+        }
+        await tester.tap(find.byTooltip('隐藏对话手势提示'));
+        await until(
+          tester,
+          () =>
+              !fixture.chat.savingPreference &&
+              !fixture.chat.preferences!.showSwipeHint,
+        );
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        await tester.tap(find.bySemanticsLabel('显示历史'));
+        await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
+        expect(find.byTooltip('隐藏对话手势提示'), findsNothing);
+        final saved = await tester.runAsync(fixture.runtime.chatPreferences);
+        expect(saved!.thinkingQuality, 5);
+        expect(saved.showSwipeHint, isFalse);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(fixture.close);
+      }
+    },
+  );
 }

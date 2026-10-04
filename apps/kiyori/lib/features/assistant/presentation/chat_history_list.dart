@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
+import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
 import 'chat_history_management.dart';
@@ -59,7 +60,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
         final members = items.where((c) => c.folder == folder).toList();
         rows.add((
           key: key,
-          label: '${folder.isEmpty ? '未分组' : folder} (${members.length})',
+          label: folder.isEmpty ? '未分组' : folder,
           folder: folder.isEmpty ? null : folder,
           depth: depth,
           item: null,
@@ -157,12 +158,20 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                                   ? Icons.person_outline
                                   : Icons.folder_outlined,
                               size: 20,
+                              color:
+                                  row.key.startsWith('character/') &&
+                                      row.depth == 0
+                                  ? colors.onSurfaceVariant
+                                  : IconTone.folder.iconFor(context),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 row.label,
-                                style: const TextStyle(fontSize: 13),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),

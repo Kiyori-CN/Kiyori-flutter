@@ -22,6 +22,7 @@ pub struct Preferences {
     pub disable_stream: bool,
     pub auto_read: bool,
     pub disable_preferences: bool,
+    pub show_swipe_hint: bool,
 }
 impl Default for Preferences {
     fn default() -> Self {
@@ -39,6 +40,7 @@ impl Default for Preferences {
             disable_stream: false,
             auto_read: false,
             disable_preferences: false,
+            show_swipe_hint: true,
         }
     }
 }
@@ -127,6 +129,7 @@ impl AppStore {
             "disable_stream" => current.value.disable_stream = boolean()?,
             "auto_read" => current.value.auto_read = boolean()?,
             "disable_preferences" => current.value.disable_preferences = boolean()?,
+            "show_swipe_hint" => current.value.show_swipe_hint = boolean()?,
             "create_folder" => {
                 if value.trim().is_empty() || value.len() > 512 {
                     return Err(failure());
@@ -194,5 +197,28 @@ impl Runtime {
         value: String,
     ) -> Result<Snapshot, CoreError> {
         self.with_store(|s| s.change_chat_preference(revision, &key, &value))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Preferences;
+
+    #[test]
+    fn legacy_preferences_keep_swipe_hint_until_explicitly_hidden() {
+        let legacy: Preferences = serde_json::from_str(
+            r#"{"history_mode":"current","thinking":true,"thinking_quality":5}"#,
+        )
+        .unwrap();
+        assert!(legacy.show_swipe_hint);
+        assert_eq!(legacy.history_mode, "current");
+        assert_eq!(legacy.thinking_quality, 5);
+        let hidden = Preferences {
+            show_swipe_hint: false,
+            ..legacy
+        };
+        let restored: Preferences =
+            serde_json::from_str(&serde_json::to_string(&hidden).unwrap()).unwrap();
+        assert!(!restored.show_swipe_hint);
     }
 }

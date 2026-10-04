@@ -3,7 +3,42 @@
 更新时间：2026-10-04（Asia/Shanghai）。本文件是当前实施进度唯一权威；
 [路线图](roadmap.md)规定顺序，[历史记录](status-history.md)保留过往批次证据。
 
-## 当前任务：AI对话精确复刻与即时点击
+## 当前任务：十一组实机截图UI与交互复刻
+
+用户提供D:/03_Default/图片/截图的22张新旧实机JPEG，并授权本轮全部提交推送；
+基线main/962bc18bf9b6e78441851c152d7355c47eef9109，初始工作区干净。旧源码main/
+6b03b03aa082803bb279db5e78773583e2d91154只读干净。用户选择设备手动验收。
+逐屏结论与能力边界见[截图复刻审查](design/screenshot-parity-review.md)。
+
+已修正AI标题前缀、默认品牌头像、Prompt蓝色/横向边距、输入密度、角色面板头部、
+思考/off与程度条件、缩放开关和Max文案、历史头部/金色目录/分组/手势提示、统计选项，
+以及负一屏数据卡前16间距。AI浏览器/文件回调接到既有页面，Back恢复原pager和草稿。
+思考程度释放时保存最终值；手势提示隐藏经既有Rust偏好revision事务持久化，旧JSON兼容，
+schema/依赖不变。FFI生成已执行，不手改生成文件。
+
+定向19项通过（work/screenshot-parity-targeted-final.log），最终捕获4项通过
+（work/screenshot-parity-capture-final.log），134张布局PNG在work/screenshot-parity-capture-final。
+完整tools/verify.ps1 -WindowsIntegration通过（work/screenshot-parity-verify-delivery.log）：
+Rust81/fmt/Clippy、359 Dart格式/analyze、应用571（12跳过：11项可选捕获及1项真实供应商）、
+platform5、FFI18及Windows引擎5。连续拖动回归验证预览不改变revision，释放仅保存一次最终值。
+桥接-Check核对5个生成文件一致（work/screenshot-parity-bridge-check.log）。
+首次数量后缀/标题断言仍定位旧文字及4项花括号lint均已修正，保留失败日志，未降低业务断言。
+
+Android ARM64 Debug串行构建53.1s通过（work/screenshot-parity-android.log），
+Windows引擎测试后重建普通产品入口x64 Debug 11.2s通过（work/screenshot-parity-windows-delivery.log）。
+固定包artifacts/ui-preview/20261004-232210：APK117940874字节，SHA256
+2BEC475959782CE40CC6197AD6720724994B21B8F7AA1419381090A4F9AB061C；Windows84文件158624616字节。
+85副本哈希、APK身份/ARM64/v2签名/ZIP16K与4个原生库ELF、Windows x64/Flutter DLL pin通过，
+包含libkiyori_ffi.so与kiyori_ffi.dll；最终Dart kernel时间/哈希已核对。
+本轮28文件精确允许清单经凭据形态/私密配置/产物/大文件/链接/子模块审计，按授权普通提交推送main，
+最终ref见Git和固定包manifest.sourceCommit；过程日志、截图与安装包保持忽略。
+
+浏览器仍为空壳，天气、文件扫描/资源访问、设备附件、语音、工具执行及动态思考引导
+尚未完成；不能宣称全部功能或逐像素一致。真实供应商、同设备并排/键盘/触摸/Profile
+与Apple仍为verification_pending，不操作设备。截图重复前缀缺协议证据，合成完整流
+保持原文且Markdown正常，不做猜测去重。
+
+## 上一批：AI对话精确复刻与即时点击
 
 ### 顶栏多任务与CLASSIC附件增量
 

@@ -2,10 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/app/kiyori_app.dart';
 import 'package:kiyori/app/shell/bottom_navigation.dart';
+import 'package:kiyori/features/assistant/presentation/chat_page.dart';
 
 import 'support/fake_runtime.dart' show FakeClient;
 
 void main() {
+  testWidgets('AI toolbar destinations return to the same pager and draft', (
+    tester,
+  ) async {
+    await tester.pumpWidget(KiyoriApp(connect: () async => FakeClient()));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    expect(pager.page, 2);
+    await tester.enterText(find.byKey(const Key('chat-draft')), '返回后保留');
+    for (final destination in ['浏览器', '文件管理器']) {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ChatPage),
+          matching: find.bySemanticsLabel(destination),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('chat-draft')), findsNothing);
+      expect(
+        find.text(destination == '浏览器' ? 'about:blank' : '文件类型'),
+        findsOneWidget,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(pager.page, 2);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat-draft')))
+            .controller!
+            .text,
+        '返回后保留',
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
   testWidgets('horizontal drag follows after slop without rebuilding the bar', (
     tester,
   ) async {

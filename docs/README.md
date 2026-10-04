@@ -23,6 +23,7 @@
 
 ## 领域设计
 
+- [十一组实机截图复刻审查](design/screenshot-parity-review.md)：逐屏证据、UI修正、真实交互回归与业务缺口。
 - [全页面 UI 复刻方案](design/ui-replication-plan.md)：分层顺序、组件复用、页面保真与持续验收。
 - [设置全树复刻映射](design/settings-replication-map.md)：12项入口、子树、旧源、新实现、状态与测试索引。
 - [AI抽屉与业务映射](design/ai-replication-map.md)：根目的地、工作流存储切片、旧源与验收契约。
