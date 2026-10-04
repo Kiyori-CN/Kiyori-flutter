@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -138,6 +138,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<String> createModelConfig({required String name});
 
+  Future<String> createTransfer({required TransferSpec spec});
+
   Future<WorkflowRecord> createWorkflow({
     required String name,
     required String description,
@@ -172,9 +174,13 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required int revision,
   });
 
+  Future<void> deleteTransfer({required String id});
+
   Future<bool> deleteWorkflow({required String id});
 
   Future<int> deleteWorkflows({required List<String> ids});
+
+  Future<TransferHandle> downloadLocalModel({required String name});
 
   Future<String> duplicatePrompt({
     required String kind,
@@ -192,6 +198,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<List<WorkflowRecord>> listWorkflows();
 
+  Future<List<LocalModel>> localModels();
+
   Future<MemoryGraph> memoryGraph({required MemoryQuery query});
 
   Future<MemorySearchSettings> memorySearchSettings({required String space});
@@ -207,6 +215,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<KnowledgeSnapshot> queryKnowledge({required MemoryQuery query});
 
+  Future<List<LocalModel>> refreshLocalModels();
+
   Future<void> renameKnowledgeFolder({
     required String space,
     required String old,
@@ -216,6 +226,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<void> resetDefaultCharacter({required int revision});
 
   Future<void> resetFunctionModels();
+
+  Future<String> resourceFilePath({required String id, required String path});
 
   Future<void> retireModelSecret({required String reference});
 
@@ -337,6 +349,10 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required int concurrency,
   });
 
+  Future<TransferHandle> startTransfer({required String id});
+
+  Future<List<TransferSnapshot>> transfers();
+
   Future<WorkflowRecord> updateWorkflow({
     required String id,
     required String name,
@@ -350,6 +366,13 @@ abstract class TaskHandle implements RustOpaqueInterface {
   Future<void> cancel();
 
   Future<TaskEvent?> nextEvent();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TransferHandle>>
+abstract class TransferHandle implements RustOpaqueInterface {
+  Future<TransferSnapshot?> nextEvent();
+
+  Future<void> stop({required bool cancel});
 }
 
 class BridgeError implements FrbException {
@@ -1308,6 +1331,41 @@ class KnowledgeSpace {
           name == other.name;
 }
 
+class LocalModel {
+  final String name;
+  final double sizeGb;
+  final List<String> tags;
+  final String description;
+  final bool hasSource;
+
+  const LocalModel({
+    required this.name,
+    required this.sizeGb,
+    required this.tags,
+    required this.description,
+    required this.hasSource,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      sizeGb.hashCode ^
+      tags.hashCode ^
+      description.hashCode ^
+      hasSource.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocalModel &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          sizeGb == other.sizeGb &&
+          tags == other.tags &&
+          description == other.description &&
+          hasSource == other.hasSource;
+}
+
 class MemoryDraft {
   final String kind;
   final String title;
@@ -2227,6 +2285,117 @@ class TaskEvent {
 }
 
 enum TaskPhase { started, running, completed, cancelled }
+
+class TransferFile {
+  final String path;
+  final String url;
+  final BigInt size;
+  final String sha256;
+
+  const TransferFile({
+    required this.path,
+    required this.url,
+    required this.size,
+    required this.sha256,
+  });
+
+  @override
+  int get hashCode =>
+      path.hashCode ^ url.hashCode ^ size.hashCode ^ sha256.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TransferFile &&
+          runtimeType == other.runtimeType &&
+          path == other.path &&
+          url == other.url &&
+          size == other.size &&
+          sha256 == other.sha256;
+}
+
+class TransferSnapshot {
+  final String id;
+  final String owner;
+  final String name;
+  final String phase;
+  final String error;
+  final BigInt transferred;
+  final BigInt total;
+  final String currentFile;
+  final int fileIndex;
+  final int totalFiles;
+  final double bytesPerSecond;
+
+  const TransferSnapshot({
+    required this.id,
+    required this.owner,
+    required this.name,
+    required this.phase,
+    required this.error,
+    required this.transferred,
+    required this.total,
+    required this.currentFile,
+    required this.fileIndex,
+    required this.totalFiles,
+    required this.bytesPerSecond,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      owner.hashCode ^
+      name.hashCode ^
+      phase.hashCode ^
+      error.hashCode ^
+      transferred.hashCode ^
+      total.hashCode ^
+      currentFile.hashCode ^
+      fileIndex.hashCode ^
+      totalFiles.hashCode ^
+      bytesPerSecond.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TransferSnapshot &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          owner == other.owner &&
+          name == other.name &&
+          phase == other.phase &&
+          error == other.error &&
+          transferred == other.transferred &&
+          total == other.total &&
+          currentFile == other.currentFile &&
+          fileIndex == other.fileIndex &&
+          totalFiles == other.totalFiles &&
+          bytesPerSecond == other.bytesPerSecond;
+}
+
+class TransferSpec {
+  final String owner;
+  final String name;
+  final List<TransferFile> files;
+
+  const TransferSpec({
+    required this.owner,
+    required this.name,
+    required this.files,
+  });
+
+  @override
+  int get hashCode => owner.hashCode ^ name.hashCode ^ files.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TransferSpec &&
+          runtimeType == other.runtimeType &&
+          owner == other.owner &&
+          name == other.name &&
+          files == other.files;
+}
 
 class WorkflowRecord {
   final String id;

@@ -3,6 +3,7 @@
 ## 按阶段选择检查
 
 M1 已有真实工程。文档执行 `tools/check-foundation.ps1`；实现执行 `tools/verify.ps1`，需要 Windows 引擎实测时加 `-WindowsIntegration`。构建执行 `tools/build.ps1 -Platform android/windows`（二选一）。Gradle 入口在 `apps/kiyori/android`，不要使用旧工程根路径。
+根目录analyze排除Git忽略的work/artifacts临时研究与产物，仍覆盖全部产品Dart源码。
 
 build/verify 先核对实际工具版本。`build.ps1 -Mode debug/profile/release` 显式选择模式，默认
 Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入口与证据边界见
@@ -20,6 +21,13 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 | iOS | Mac 上 `flutter build ios --no-codesign`、模拟器/真机运行 | Apple 编译与对应运行层；签名发布另验 |
 
 ## 高价值测试
+
+local_models_business_test.dart以合成目录投影、真实Rust/FFI/SQLite下载6字节文件，验证
+暂停/Range续传/校验/重开/确认删除/刷新失败；transfer_runtime_test.dart覆盖无人消费和
+暂停订阅时Runtime关闭。Rust downloads/local_models测试清单路径、实体/范围/哈希、
+OS单执行者、迁移与完整目录→仓库→传输链。公开完整模型验收显式运行
+`cargo run -p kiyori_core --example verify_local_model_download -- <absolute-test-dir> <model-name>`，
+它会下载指定完整包并暂停续传；不纳入默认verify，不使用API凭据或用户文档。
 
 chat_business_test.dart使用真实DPAPI、生成FFI、SQLite和loopback验证界面发送/多轮/取消/
 错误/切换/重开、原子重发、消息修改与短凭据lease。带Capture可生成明暗/320大字键盘/

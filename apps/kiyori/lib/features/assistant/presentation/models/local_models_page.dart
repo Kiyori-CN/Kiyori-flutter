@@ -8,9 +8,15 @@ import 'local_model_presentation.dart';
 class LocalModelsPage extends StatefulWidget {
   const LocalModelsPage({
     this.snapshot = const LocalModelsPresentation(),
+    this.onRefresh,
+    this.onDownload,
+    this.onPause,
+    this.onDelete,
     super.key,
   });
   final LocalModelsPresentation snapshot;
+  final VoidCallback? onRefresh;
+  final void Function(String)? onDownload, onPause, onDelete;
   @override
   State<LocalModelsPage> createState() => _LocalModelsPageState();
 }
@@ -81,7 +87,13 @@ class _LocalModelsPageState extends State<LocalModelsPage> {
               onPressed: () => Navigator.pop(context),
               child: const Text('取消'),
             ),
-            const TextButton(onPressed: emptyAction, child: Text('删除')),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onDelete?.call(model.id);
+              },
+              child: const Text('删除'),
+            ),
           ],
         ),
       ),
@@ -110,7 +122,9 @@ class _LocalModelsPageState extends State<LocalModelsPage> {
     title: '本地模型下载',
     onBack: () => Navigator.maybePop(context),
     headerAction: IconButton(
-      onPressed: widget.snapshot.loading ? null : emptyAction,
+      onPressed: widget.snapshot.loading
+          ? null
+          : widget.onRefresh ?? emptyAction,
       tooltip: '刷新模型列表',
       icon: const Icon(Icons.refresh_outlined),
     ),
@@ -141,7 +155,7 @@ class _LocalModelsPageState extends State<LocalModelsPage> {
               const Text('加载失败'),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: emptyAction,
+                onPressed: widget.onRefresh ?? emptyAction,
                 icon: const Icon(Icons.refresh),
                 label: const Text('重试'),
               ),
@@ -182,6 +196,9 @@ class _LocalModelsPageState extends State<LocalModelsPage> {
                         key: ValueKey(filtered[index].id),
                         model: filtered[index],
                         onDelete: () => _delete(filtered[index]),
+                        onDownload: () =>
+                            widget.onDownload?.call(filtered[index].id),
+                        onPause: () => widget.onPause?.call(filtered[index].id),
                       ),
                     ),
             ),
@@ -205,20 +222,33 @@ class _ModelStatus extends StatelessWidget {
 }
 
 class _ModelCard extends StatelessWidget {
-  const _ModelCard({required this.model, required this.onDelete, super.key});
+  const _ModelCard({
+    required this.model,
+    required this.onDelete,
+    required this.onDownload,
+    required this.onPause,
+    super.key,
+  });
   final LocalModelPresentation model;
   final VoidCallback onDelete;
-  Widget _button(String title, IconData icon, {bool enabled = true}) =>
-      FilledButton.icon(
-        onPressed: enabled ? emptyAction : null,
-        icon: Icon(icon, size: 16),
-        label: Text(title),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          textStyle: const TextStyle(fontSize: 12),
-        ),
-      );
+  final VoidCallback onDownload, onPause;
+  Widget _button(
+    BuildContext context,
+    String title,
+    IconData icon, {
+    bool enabled = true,
+    double fontSize = 12,
+  }) => FilledButton.icon(
+    onPressed: enabled ? onDownload : null,
+    icon: Icon(icon, size: 16),
+    label: Text(title),
+    style: FilledButton.styleFrom(
+      minimumSize: const Size(0, 40),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      textStyle: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(fontSize: fontSize),
+    ),
+  );
   Widget _delete(BuildContext context) => SizedBox(
     width: 40,
     height: 40,
@@ -369,7 +399,7 @@ class _ModelCard extends StatelessWidget {
                       width: 40,
                       height: 40,
                       child: IconButton(
-                        onPressed: emptyAction,
+                        onPressed: onPause,
                         tooltip: '暂停下载',
                         icon: const Icon(Icons.pause, size: 18),
                       ),
@@ -385,7 +415,7 @@ class _ModelCard extends StatelessWidget {
                       '进度: ${(progress * 100).toInt()}%',
                       style: const TextStyle(fontSize: 11),
                     ),
-                    _button('继续下载', Icons.play_arrow),
+                    _button(context, '继续下载', Icons.play_arrow, fontSize: 11),
                     _delete(context),
                   ],
                 ),
@@ -401,7 +431,7 @@ class _ModelCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _button('重试', Icons.refresh),
+                  _button(context, '重试', Icons.refresh, fontSize: 11),
                 ],
               )
             else if (model.downloaded)
@@ -426,6 +456,7 @@ class _ModelCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: _button(
+                  context,
                   '开始下载',
                   Icons.download_outlined,
                   enabled: model.hasSource,

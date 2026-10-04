@@ -1223,6 +1223,96 @@ pub struct RuntimeHandle {
     inner: Arc<runtime::Runtime>,
 }
 
+pub struct LocalModel {
+    pub name: String,
+    pub size_gb: f64,
+    pub tags: Vec<String>,
+    pub description: String,
+    pub has_source: bool,
+}
+impl From<kiyori_core::local_models::LocalModel> for LocalModel {
+    fn from(v: kiyori_core::local_models::LocalModel) -> Self {
+        Self {
+            name: v.name,
+            size_gb: v.size_gb,
+            tags: v.tags,
+            description: v.description,
+            has_source: v.sources.contains_key("ModelScope"),
+        }
+    }
+}
+pub struct TransferSnapshot {
+    pub id: String,
+    pub owner: String,
+    pub name: String,
+    pub phase: String,
+    pub error: String,
+    pub transferred: u64,
+    pub total: u64,
+    pub current_file: String,
+    pub file_index: u32,
+    pub total_files: u32,
+    pub bytes_per_second: f64,
+}
+pub struct TransferFile {
+    pub path: String,
+    pub url: String,
+    pub size: u64,
+    pub sha256: String,
+}
+pub struct TransferSpec {
+    pub owner: String,
+    pub name: String,
+    pub files: Vec<TransferFile>,
+}
+impl From<TransferSpec> for kiyori_core::downloads::TransferSpec {
+    fn from(v: TransferSpec) -> Self {
+        Self {
+            owner: v.owner,
+            name: v.name,
+            files: v
+                .files
+                .into_iter()
+                .map(|f| kiyori_core::downloads::TransferFile {
+                    path: f.path,
+                    url: f.url,
+                    size: f.size,
+                    sha256: f.sha256,
+                })
+                .collect(),
+        }
+    }
+}
+impl From<kiyori_core::downloads::TransferSnapshot> for TransferSnapshot {
+    fn from(v: kiyori_core::downloads::TransferSnapshot) -> Self {
+        Self {
+            id: v.resource.id,
+            owner: v.owner,
+            name: v.resource.name,
+            phase: v.phase,
+            error: v.error,
+            transferred: v.transferred,
+            total: v.total,
+            current_file: v.current_file,
+            file_index: v.file_index,
+            total_files: v.total_files,
+            bytes_per_second: v.bytes_per_second,
+        }
+    }
+}
+#[frb(opaque)]
+pub struct TransferHandle {
+    inner: kiyori_core::downloads::TransferRun,
+}
+impl TransferHandle {
+    pub async fn next_event(&self) -> Result<Option<TransferSnapshot>, BridgeError> {
+        Ok(self.inner.next_event().await?.map(Into::into))
+    }
+    pub async fn stop(&self, cancel: bool) {
+        self.inner.stop(cancel).await;
+    }
+}
+
 #[frb(opaque)]
 pub struct ModelSecretsHandle {
     lease: kiyori_core::models::ModelSecretsLease,
@@ -1257,6 +1347,50 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn create_transfer(&self, spec: TransferSpec) -> Result<String, BridgeError> {
+        Ok(self.inner.create_transfer(spec.into())?)
+    }
+    pub fn local_models(&self) -> Result<Vec<LocalModel>, BridgeError> {
+        Ok(self
+            .inner
+            .local_models()?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+    pub async fn refresh_local_models(&self) -> Result<Vec<LocalModel>, BridgeError> {
+        Ok(self
+            .inner
+            .refresh_local_models()
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+    pub fn transfers(&self) -> Result<Vec<TransferSnapshot>, BridgeError> {
+        Ok(self
+            .inner
+            .transfers()?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+    pub async fn download_local_model(&self, name: String) -> Result<TransferHandle, BridgeError> {
+        Ok(TransferHandle {
+            inner: self.inner.download_local_model(name).await?,
+        })
+    }
+    pub async fn start_transfer(&self, id: String) -> Result<TransferHandle, BridgeError> {
+        Ok(TransferHandle {
+            inner: self.inner.start_transfer(id)?,
+        })
+    }
+    pub fn delete_transfer(&self, id: String) -> Result<(), BridgeError> {
+        Ok(self.inner.delete_transfer(id)?)
+    }
+    pub fn resource_file_path(&self, id: String, path: String) -> Result<String, BridgeError> {
+        Ok(self.inner.resource_file_path(id, path)?)
+    }
     pub fn chat_preferences(&self) -> Result<ChatPreferences, BridgeError> {
         Ok(self.inner.chat_preferences()?.into())
     }

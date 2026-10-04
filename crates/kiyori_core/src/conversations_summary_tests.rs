@@ -423,6 +423,7 @@ fn summary_count_ratio_budget_and_schema14_migration_preserve_history() {
     let id = runtime.create_conversation().unwrap();
     runtime.close();
     let store = AppStore::open(&dir.0).unwrap();
+    crate::downloads::remove_schema_for_fixture(&store.connection.lock().unwrap());
     store
         .connection
         .lock()
@@ -437,7 +438,7 @@ fn summary_count_ratio_budget_and_schema14_migration_preserve_history() {
     assert_eq!(
         conn.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
             .unwrap(),
-        15
+        17
     );
     assert!(summary::cached(&conn, &id).unwrap().is_none());
     drop(conn);

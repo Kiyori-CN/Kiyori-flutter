@@ -5,6 +5,13 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<String> createTransfer(api.TransferSpec spec);
+  Future<List<api.LocalModel>> localModels();
+  Future<List<api.LocalModel>> refreshLocalModels();
+  Future<List<api.TransferSnapshot>> transfers();
+  Future<TransferRun> downloadLocalModel(String name);
+  Future<TransferRun> startTransfer(String id);
+  Future<void> deleteTransfer(String id);
   Future<api.ConversationCatalog> conversationCatalog();
   Future<List<String>> searchConversations(String query);
   Future<api.ConversationStatistics> conversationStatistics(String id);
@@ -225,6 +232,11 @@ abstract interface class PreparedConversation {
     String? replyTo,
   });
   Future<void> close();
+}
+
+abstract interface class TransferRun {
+  Stream<api.TransferSnapshot> get events;
+  Future<void> stop({bool cancel = false});
 }
 
 final class _NativePreparedConversation implements PreparedConversation {
@@ -636,6 +648,7 @@ final class NativeRuntimeClient implements RuntimeClient {
   final api.RuntimeHandle _handle;
   final Set<_NativeDiagnosticRun> _runs = {};
   final Set<_NativeChatRun> _chatRuns = {};
+  final Set<_NativeTransferRun> _transfers = {};
   Future<void>? _closing;
 
   static Future<NativeRuntimeClient> open({String? dataDirectory}) async {
@@ -845,6 +858,7 @@ final class NativeRuntimeClient implements RuntimeClient {
     await _handle.close();
     await Future.wait(_preparations.toList().map((item) => item.close()));
     await Future.wait(_chatRuns.toList().map((run) => run.stop()));
+    await Future.wait(_transfers.toList().map((run) => run.stop()));
     await Future.wait(_runs.toList().map((run) => run.stop()));
     _handle.dispose();
   }
@@ -854,6 +868,60 @@ final class NativeRuntimeClient implements RuntimeClient {
     _ensureOpen();
     final handle = await _handle.startChat(request: request);
     return _trackChat(handle);
+  }
+
+  @override
+  Future<String> createTransfer(api.TransferSpec spec) {
+    _ensureOpen();
+    return _handle.createTransfer(spec: spec);
+  }
+
+  @override
+  Future<List<api.LocalModel>> localModels() {
+    _ensureOpen();
+    return _handle.localModels();
+  }
+
+  @override
+  Future<List<api.LocalModel>> refreshLocalModels() {
+    _ensureOpen();
+    return _handle.refreshLocalModels();
+  }
+
+  @override
+  Future<List<api.TransferSnapshot>> transfers() {
+    _ensureOpen();
+    return _handle.transfers();
+  }
+
+  @override
+  Future<void> deleteTransfer(String id) {
+    _ensureOpen();
+    return _handle.deleteTransfer(id: id);
+  }
+
+  @override
+  Future<TransferRun> downloadLocalModel(String name) async {
+    _ensureOpen();
+    return _trackTransfer(await _handle.downloadLocalModel(name: name));
+  }
+
+  @override
+  Future<TransferRun> startTransfer(String id) async {
+    _ensureOpen();
+    return _trackTransfer(await _handle.startTransfer(id: id));
+  }
+
+  Future<TransferRun> _trackTransfer(api.TransferHandle handle) async {
+    if (_closing != null) {
+      await handle.stop(cancel: false);
+      handle.dispose();
+      _ensureOpen();
+    }
+    late final _NativeTransferRun run;
+    run = _NativeTransferRun(handle, () => _transfers.remove(run));
+    _transfers.add(run);
+    return run;
   }
 
   @override
@@ -970,6 +1038,65 @@ final class NativeRuntimeClient implements RuntimeClient {
         concurrency: concurrency,
       ),
     );
+  }
+}
+
+final class _NativeTransferRun implements TransferRun {
+  _NativeTransferRun(this.handle, this.onDone) {
+    controller = StreamController<api.TransferSnapshot>(
+      onListen: () => pumping = pump(),
+      onPause: () => resume ??= Completer<void>(),
+      onResume: wake,
+      onCancel: stop,
+    );
+  }
+  final api.TransferHandle handle;
+  final void Function() onDone;
+  late final StreamController<api.TransferSnapshot> controller;
+  Future<void>? pumping, stopping;
+  Completer<void>? resume;
+  bool stopped = false, disposed = false;
+  @override
+  Stream<api.TransferSnapshot> get events => controller.stream;
+  void wake() {
+    resume?.complete();
+    resume = null;
+  }
+
+  @override
+  Future<void> stop({bool cancel = false}) async {
+    if (disposed) return;
+    stopped = true;
+    await (stopping ??= handle.stop(cancel: cancel));
+    wake();
+    if (pumping == null) unawaited(controller.close());
+    await pumping;
+    dispose();
+  }
+
+  Future<void> pump() async {
+    try {
+      while (!stopped) {
+        if (resume case final waiting?) await waiting.future;
+        if (stopped) break;
+        final event = await handle.nextEvent();
+        if (event == null || stopped) break;
+        controller.add(event);
+      }
+    } catch (error, stack) {
+      if (!stopped) controller.addError(error, stack);
+    } finally {
+      unawaited(controller.close());
+      await stopping;
+      dispose();
+    }
+  }
+
+  void dispose() {
+    if (disposed) return;
+    disposed = true;
+    handle.dispose();
+    onDone();
   }
 }
 

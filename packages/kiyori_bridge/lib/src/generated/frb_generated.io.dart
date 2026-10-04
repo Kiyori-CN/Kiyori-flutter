@@ -45,6 +45,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   get rust_arc_decrement_strong_count_TaskHandlePtr => wire
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandlePtr;
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_TransferHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandlePtr;
+
   @protected
   ChatHandle
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
@@ -78,6 +82,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   TaskHandle
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
+    dynamic raw,
+  );
+
+  @protected
+  TransferHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
     dynamic raw,
   );
 
@@ -118,6 +128,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TransferHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    dynamic raw,
+  );
+
+  @protected
   ChatHandle
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     dynamic raw,
@@ -150,6 +166,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   TaskHandle
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
+    dynamic raw,
+  );
+
+  @protected
+  TransferHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
     dynamic raw,
   );
 
@@ -217,6 +239,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TaskEvent dco_decode_box_autoadd_task_event(dynamic raw);
+
+  @protected
+  TransferSnapshot dco_decode_box_autoadd_transfer_snapshot(dynamic raw);
+
+  @protected
+  TransferSpec dco_decode_box_autoadd_transfer_spec(dynamic raw);
 
   @protected
   int dco_decode_box_autoadd_u_16(dynamic raw);
@@ -345,6 +373,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<KnowledgeSpace> dco_decode_list_knowledge_space(dynamic raw);
 
   @protected
+  List<LocalModel> dco_decode_list_local_model(dynamic raw);
+
+  @protected
   List<MemoryLink> dco_decode_list_memory_link(dynamic raw);
 
   @protected
@@ -383,7 +414,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PromptTool> dco_decode_list_prompt_tool(dynamic raw);
 
   @protected
+  List<TransferFile> dco_decode_list_transfer_file(dynamic raw);
+
+  @protected
+  List<TransferSnapshot> dco_decode_list_transfer_snapshot(dynamic raw);
+
+  @protected
   List<WorkflowRecord> dco_decode_list_workflow_record(dynamic raw);
+
+  @protected
+  LocalModel dco_decode_local_model(dynamic raw);
 
   @protected
   MemoryDraft dco_decode_memory_draft(dynamic raw);
@@ -460,6 +500,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TaskEvent? dco_decode_opt_box_autoadd_task_event(dynamic raw);
 
   @protected
+  TransferSnapshot? dco_decode_opt_box_autoadd_transfer_snapshot(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
 
   @protected
@@ -494,6 +537,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TaskPhase dco_decode_task_phase(dynamic raw);
+
+  @protected
+  TransferFile dco_decode_transfer_file(dynamic raw);
+
+  @protected
+  TransferSnapshot dco_decode_transfer_snapshot(dynamic raw);
+
+  @protected
+  TransferSpec dco_decode_transfer_spec(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -553,6 +605,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TransferHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ChatHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     SseDeserializer deserializer,
@@ -589,6 +647,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TransferHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ChatHandle
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     SseDeserializer deserializer,
@@ -621,6 +685,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   TaskHandle
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TransferHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
     SseDeserializer deserializer,
   );
 
@@ -704,6 +774,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TaskEvent sse_decode_box_autoadd_task_event(SseDeserializer deserializer);
+
+  @protected
+  TransferSnapshot sse_decode_box_autoadd_transfer_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TransferSpec sse_decode_box_autoadd_transfer_spec(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
@@ -848,6 +928,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<LocalModel> sse_decode_list_local_model(SseDeserializer deserializer);
+
+  @protected
   List<MemoryLink> sse_decode_list_memory_link(SseDeserializer deserializer);
 
   @protected
@@ -892,9 +975,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PromptTool> sse_decode_list_prompt_tool(SseDeserializer deserializer);
 
   @protected
+  List<TransferFile> sse_decode_list_transfer_file(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<TransferSnapshot> sse_decode_list_transfer_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<WorkflowRecord> sse_decode_list_workflow_record(
     SseDeserializer deserializer,
   );
+
+  @protected
+  LocalModel sse_decode_local_model(SseDeserializer deserializer);
 
   @protected
   MemoryDraft sse_decode_memory_draft(SseDeserializer deserializer);
@@ -985,6 +1081,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TransferSnapshot? sse_decode_opt_box_autoadd_transfer_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
 
   @protected
@@ -1019,6 +1120,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TaskPhase sse_decode_task_phase(SseDeserializer deserializer);
+
+  @protected
+  TransferFile sse_decode_transfer_file(SseDeserializer deserializer);
+
+  @protected
+  TransferSnapshot sse_decode_transfer_snapshot(SseDeserializer deserializer);
+
+  @protected
+  TransferSpec sse_decode_transfer_spec(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_16(SseDeserializer deserializer);
@@ -1085,6 +1195,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    TransferHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     ChatHandle self,
     SseSerializer serializer,
@@ -1127,6 +1244,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    TransferHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChatHandle(
     ChatHandle self,
     SseSerializer serializer,
@@ -1164,6 +1288,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle(
     TaskHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    TransferHandle self,
     SseSerializer serializer,
   );
 
@@ -1278,6 +1409,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_task_event(
     TaskEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_transfer_snapshot(
+    TransferSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_transfer_spec(
+    TransferSpec self,
     SseSerializer serializer,
   );
 
@@ -1471,6 +1614,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_local_model(
+    List<LocalModel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_memory_link(
     List<MemoryLink> self,
     SseSerializer serializer,
@@ -1540,10 +1689,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_transfer_file(
+    List<TransferFile> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_transfer_snapshot(
+    List<TransferSnapshot> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_workflow_record(
     List<WorkflowRecord> self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_local_model(LocalModel self, SseSerializer serializer);
 
   @protected
   void sse_encode_memory_draft(MemoryDraft self, SseSerializer serializer);
@@ -1654,6 +1818,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_transfer_snapshot(
+    TransferSnapshot? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
 
   @protected
@@ -1691,6 +1861,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_task_phase(TaskPhase self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_transfer_file(TransferFile self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_transfer_snapshot(
+    TransferSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_transfer_spec(TransferSpec self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);
@@ -1933,5 +2115,39 @@ class RustLibWire implements BaseWire {
       );
   late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandle =
       _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTaskHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_kiyori_bridge_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTransferHandlePtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }

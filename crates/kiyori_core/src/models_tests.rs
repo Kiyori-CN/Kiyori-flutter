@@ -313,6 +313,7 @@ fn context_invalid_options_roll_back_media_and_schema_six_migrates() {
             .is_err()
     );
     assert_eq!(store.context_settings().unwrap(), initial);
+    crate::downloads::remove_schema_for_fixture(&store.connection.lock().unwrap());
     store
         .connection
         .lock()

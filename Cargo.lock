@@ -895,6 +895,7 @@ dependencies = [
  "base64",
  "jieba-rs",
  "reqwest",
+ "ring",
  "rusqlite",
  "rustls",
  "serde",

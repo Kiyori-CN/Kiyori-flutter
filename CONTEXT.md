@@ -86,14 +86,18 @@ schema4保存空间检索权重、自动记录间隔/规则和图谱偏好；图
 700ms去抖与返回前刷写，失败留草稿；媒体重置不改变模型revision。纯快照测试不持久写入。
 功能模型分配复用模型摘要快照，选中项为页面草稿；加载、能力警告、连接测试结果不能由
 按钮虚构，必须来自注入快照。未知模型能力不等于不支持，不启动连接或复制旧服务单例。
-模型与API目录现投影Rust schema15，同一目录供功能分配、角色选择和独立上下文页。
+模型与API目录现投影Rust schema17，同一目录供功能分配、角色选择和独立上下文页。
 配置ID+模型名为稳定引用，重排不换绑，删除有引用模型须显式替代，角色关联推进revision。
 页面700ms去抖和离开前刷写串行保存；错误留草稿，成功后刷新失败不重复提交。
 密钥/key池/headers由kiyori_platform安全存储保护，SQLite只有不可变reference；
 普通参数与端点不属于加密数据。供应商端点仍是旧默认值；模型测试使用core/chat执行真实
 Chat/Responses/Messages/Gemini网络请求，Runtime单client、无重试/重定向、直接连接、固定Mozilla根。
 Messages按提供方采用x-api-key或Bearer，Gemini默认models根派生实际生成路径且密钥只放头部。
-MNN/llama.cpp和扩展提供方尚无实际adapter；明确失败，不以配置保存冒充执行。
+本地模型目录由core/local_models读取，同HTTP client与SQLite保存最后成功目录。
+core/downloads唯一持有前台Transfer，core/files持有应用私有ResourceRef；冻结revision/
+大小/SHA256，OS锁单执行者，Range/实体/全文件校验后原子交付。页面离开暂停其前台任务，
+重开对账不自动重发；尚无OS后台移交。MNN/llama.cpp推理和扩展提供方尚无实际adapter；
+明确失败，不以下载或配置保存冒充推理。见[ADR 0009](docs/decisions/0009-managed-model-transfers.md)。
 8事件队列背压、单事件1 MiB；Chat需finish与DONE，Responses需completed/incomplete终态及快照一致性。
 Responses使用input、store=false/background=false，max_tokens映射输出限制；思考不混入正文。
 请求取消等待worker释放，

@@ -41,6 +41,7 @@ import '../../features/assistant/presentation/models/models_controller.dart';
 import '../../features/assistant/presentation/models/persistent_models_page.dart';
 import '../../features/assistant/presentation/prompts/persona_presentation.dart';
 import '../../features/assistant/presentation/models/local_models_page.dart';
+import '../../features/assistant/presentation/models/persistent_local_models_page.dart';
 import '../../features/assistant/presentation/permissions/tool_permissions_page.dart';
 import '../../features/assistant/presentation/profile/user_profile_page.dart';
 import '../../features/assistant/presentation/server/lan_automation_page.dart';
@@ -98,7 +99,8 @@ class SettingsNavigation {
           )
         : PersistentModelsPage(
             controller: models!,
-            onManage: () => openPage(const LocalModelsPage()),
+            onManage: () =>
+                openPage(PersistentLocalModelsPage(connect: models!.connect)),
           ),
   );
 

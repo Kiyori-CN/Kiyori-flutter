@@ -38,6 +38,7 @@ mod summary;
 
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &Connection) {
+    crate::downloads::remove_schema_for_fixture(connection);
     connection.execute_batch("DROP TABLE conversation_summary_usage; DROP TABLE conversation_summaries; DROP TABLE conversation_variants; DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE conversation_folders; DROP TABLE chat_preferences;").unwrap();
 }
 

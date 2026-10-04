@@ -1,5 +1,9 @@
 # 模块目录与验收边界
 
+`core/files`首个ResourceRef用例管理应用私有模型资源；`core/downloads`保存并执行同库
+Transfer，`core/local_models`编译公共市场/仓库清单。Dart的PersistentLocalModelsPage
+投影这些事实及生命周期，不拥有下载HTTP或文件数据库。schema16/17、Range及校验见ADR0009。
+
 本表描述目标模块，业务按当前状态逐项实施。`core`指`crates/kiyori_core/src`；
 `feature`指`apps/kiyori/lib/features`；`native`指已建立安全存储adapter的
 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。

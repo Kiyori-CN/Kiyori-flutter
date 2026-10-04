@@ -25,6 +25,22 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<String> createTransfer(TransferSpec spec) =>
+      throw UnimplementedError();
+  @override
+  Future<List<LocalModel>> localModels() async => [];
+  @override
+  Future<List<LocalModel>> refreshLocalModels() async => [];
+  @override
+  Future<List<TransferSnapshot>> transfers() async => [];
+  @override
+  Future<TransferRun> downloadLocalModel(String name) =>
+      throw UnimplementedError();
+  @override
+  Future<TransferRun> startTransfer(String id) => throw UnimplementedError();
+  @override
+  Future<void> deleteTransfer(String id) async {}
+  @override
   Future<ChatRun> startConfiguredModelDirectory(
     String id,
     int revision,

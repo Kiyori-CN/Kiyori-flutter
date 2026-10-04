@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 15;
+const SCHEMA_VERSION: i32 = 17;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -248,6 +248,23 @@ impl AppStore {
                  usage_reported INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER, cache_write_tokens INTEGER, reasoning_tokens INTEGER);
                  PRAGMA user_version=15;"
             ).map_err(|_| error("Cannot migrate conversation summary projections."))?;
+        }
+        if version < 16 {
+            transaction.execute_batch(
+                "CREATE TABLE resources(id TEXT PRIMARY KEY NOT NULL,workspace TEXT NOT NULL,source TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL);
+                 CREATE TABLE transfers(id TEXT PRIMARY KEY NOT NULL REFERENCES resources(id) ON DELETE CASCADE,owner TEXT NOT NULL UNIQUE,phase TEXT NOT NULL,error TEXT NOT NULL DEFAULT '',spec TEXT NOT NULL);
+                 CREATE TABLE transfer_files(transfer_id TEXT NOT NULL REFERENCES transfers(id) ON DELETE CASCADE,path TEXT NOT NULL,confirmed INTEGER NOT NULL DEFAULT 0,etag TEXT,modified TEXT,verified INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(transfer_id,path));
+                 CREATE TABLE local_model_market(id INTEGER PRIMARY KEY CHECK(id=1),content TEXT NOT NULL);
+                 PRAGMA user_version=16;"
+            ).map_err(|_| error("Cannot migrate managed resources and transfers."))?;
+        }
+        if version < 17 {
+            transaction
+                .execute_batch(
+                    "ALTER TABLE transfers ADD COLUMN restart_required INTEGER NOT NULL DEFAULT 0;
+                 PRAGMA user_version=17;",
+                )
+                .map_err(|_| error("Cannot migrate transfer recovery state."))?;
         }
         transaction
             .commit()

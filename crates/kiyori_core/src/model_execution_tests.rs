@@ -169,6 +169,7 @@ fn independent_connections_serialize_cursor_and_schema_seven_migrates() {
     let path = directory();
     {
         let store = AppStore::open(&path).unwrap();
+        crate::downloads::remove_schema_for_fixture(&store.connection.lock().unwrap());
         store
             .connection
             .lock()

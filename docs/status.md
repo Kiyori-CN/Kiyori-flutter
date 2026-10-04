@@ -88,6 +88,39 @@ DeepSeek Responses流式首轮通过（work/live-ui-DEEPSEEK-summary-20261005-03
 改low/4096及对应协议字段后全部链路通过；不泛化代理兼容为官方能力。
 设备/Apple仍待验证；手动插入摘要消息属于后续聊天入口，未以自动总结冒充已完成。
 
+### 本地模型下载增量（本机验收通过，设备待验证）
+
+自动总结ca31065333c3e35f33a3acf64d9ee82a4e4f44db已提交普通推送，main/origin一致。
+新增core/files、downloads、local_models，schema16/17同库保存资源、冻结清单与文件进度；
+目录/单执行者/Range实体/全文件SHA256/原子交付、停止与重开恢复已接正式本地模型页。
+最终Rust131/fmt/Clippy、产品analyze、应用589（13条件跳过）、platform5、独立FFI20及
+Windows引擎5通过（work/model-download-verify-v3.log），桥-Check五文件一致。
+下载专项7项、市场/清单2项通过；正式UI使用合成目录与6字节文件，暂停后Range/If-Range
+续传、完成重开、确认删除及刷新失败保留旧列表通过（work/model-download-capture-v3.log）。
+11项布局/业务回归通过，最终66张PNG在work/model-download-review-v3，已审阅320暗色
+双倍字暂停态和横屏失败态；按钮沿主题继承字体，继续/重试按旧源11sp，修正独立样式方框。
+独立FFI无人消费/暂停订阅时Runtime关闭2项通过（work/model-download-ffi-close-v1.log）。
+首轮FFI恢复入口同步线程没有Tokio reactor，改async后重验；widget虚拟循环需结算清理
+后再真实重开，独立Dart测试证明关闭无死锁。所有失败日志保留，未降低断言。
+真实公共市场130项，Qwen3.5-0.8B-MNN共12文件547649117字节完整下载、暂停后续传、
+逐文件大小/SHA256、config读取与SQLite重开通过（work/model-download-live-v2.log）。
+首轮CDN403保留；下载增加User-Agent/no-cache避免过期签名Location缓存，HTTP失败明确
+区分断点冲突。终态落库错误现经事件Err可观察；Range/实体/编码/大小/哈希失败记录
+restart_required，只有用户重试重置未验证文件，正常中断仍续传，已验证前缀保留。
+schema16→17迁移保留冻结任务。verify-v2因根分析扫描work内上游旧Dart测试失败，按忽略
+目录契约排除work/artifacts后产品分析和v3完整验证通过；失败日志保留。
+Android ARM64 Debug最终24.2s与Windows x64 Debug20.1s串行构建通过。最终固定包
+artifacts/ui-preview/20261005-053253：APK118019774字节，SHA256
+B01FFA06119C53FBBD1F6D64E8527438F73AF9DF632463A82C66ED55DBFB441D；Windows84文件
+160085888字节。85副本哈希、APK身份/v2签名、ZIP16K/ELF、x64及Flutter DLL pin通过。
+36路径精确清单审计通过，按本任务授权提交普通推送；最终ref见Git与manifest.sourceCommit。
+
+本地推理前置spike仅在work：官方MNN ea44a3e与llama.cpp885c5bb Release库实际编译通过。
+已下载的Qwen3.5-0.8B-MNN真实CPU加载、加载前4线程/关闭思考、逐token生成得到5，
+status1/input31/output2；停止生成后reset并再次得到5，析构成功，日志native-model-spike/
+smoke-reuse-run.log。此独立执行不是产品adapter验收，正式native句柄/流式/取消及扩展仍有缺口。
+OS后台下载、同设备像素/键盘/触摸/Profile与Apple仍待验证；未安装或操作设备。
+
 ## 上一批：十一组实机截图UI与交互复刻
 
 用户提供D:/03_Default/图片/截图的22张新旧实机JPEG，并授权本轮全部提交推送；
