@@ -17,6 +17,7 @@ import 'chat_statistics.dart';
 import 'chat_input_options.dart';
 import 'chat_classic_input.dart';
 import 'chat_message_info.dart';
+import 'chat_input_surface.dart';
 
 /// 原聊天宿主；运行与持久化由注入的共享controller连接Rust。
 class ChatPage extends StatefulWidget {
@@ -176,6 +177,7 @@ class _ChatPageState extends State<ChatPage>
   Widget build(BuildContext context) {
     super.build(context);
     final c = Theme.of(context).colorScheme;
+    final dark = c.brightness == Brightness.dark;
     final characterName = chat?.character?.draft.name ?? 'Kiyori';
     return PopScope(
       canPop: selectedMessages == null,
@@ -210,33 +212,33 @@ class _ChatPageState extends State<ChatPage>
                       ),
                     ),
                   ),
-                  const ShellAction(
+                  ShellAction(
                     Icons.language,
                     '浏览器',
                     size: 48,
                     iconSize: 21,
-                    color: Color(0xFF2584E9),
+                    color: Color(dark ? 0xFF7DBAFF : 0xFF2584E9),
                   ),
-                  const ShellAction(
+                  ShellAction(
                     Icons.folder_outlined,
                     '文件管理器',
                     size: 48,
                     iconSize: 21,
-                    color: Color(0xFFB07C07),
+                    color: Color(dark ? 0xFFFFD16A : 0xFFB07C07),
                   ),
-                  const ShellAction(
+                  ShellAction(
                     Icons.terminal,
                     'AI 电脑',
                     size: 48,
                     iconSize: 21,
-                    color: Color(0xFF657CA8),
+                    color: Color(dark ? 0xFFA9BFEA : 0xFF657CA8),
                   ),
-                  const ShellAction(
+                  ShellAction(
                     Icons.article_outlined,
                     '对话详情',
                     size: 48,
                     iconSize: 21,
-                    color: Color(0xFF427FEB),
+                    color: Color(dark ? 0xFF92B8FF : 0xFF427FEB),
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -256,7 +258,7 @@ class _ChatPageState extends State<ChatPage>
                       Icons.history,
                       '显示历史',
                       size: 32,
-                      color: Color(0xFF2584E9),
+                      color: Color(dark ? 0xFF7DBAFF : 0xFF2584E9),
                       onTap: () async {
                         if (chat == null || openingHistory) return;
                         openingHistory = true;
@@ -276,7 +278,7 @@ class _ChatPageState extends State<ChatPage>
                       Icons.picture_in_picture_alt_rounded,
                       '打开悬浮窗',
                       size: 32,
-                      color: Color(0xFF607080),
+                      color: Color(dark ? 0xFFCBD5E1 : 0xFF607080),
                       onTap: () => localCapability('悬浮窗', '当前平台尚未接入悬浮聊天窗口。'),
                     ),
                     const SizedBox(width: 8),
@@ -311,14 +313,18 @@ class _ChatPageState extends State<ChatPage>
                                 Container(
                                   width: 24,
                                   height: 24,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFEDF6EF),
+                                  decoration: BoxDecoration(
+                                    color: Color(
+                                      dark ? 0xFF293729 : 0xFFEDF6EF,
+                                    ),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.person_rounded,
                                     size: 16,
-                                    color: Color(0xFF34974E),
+                                    color: Color(
+                                      dark ? 0xFF8BDC87 : 0xFF34974E,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
@@ -501,25 +507,7 @@ class _ChatPageState extends State<ChatPage>
                 },
               )
             else
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: .08),
-                      blurRadius: 14,
-                      offset: const Offset(0, -3),
-                    ),
-                  ],
-                ),
+              ChatInputSurface(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -591,7 +579,11 @@ class _ChatPageState extends State<ChatPage>
                                   final epoch = modals.epoch;
                                   final owner = chat!;
                                   try {
-                                    await owner.load();
+                                    if (owner.models == null) {
+                                      await owner.load();
+                                    } else {
+                                      unawaited(owner.load());
+                                    }
                                     if (context.mounted &&
                                         modals.valid(epoch)) {
                                       await showChatModels(

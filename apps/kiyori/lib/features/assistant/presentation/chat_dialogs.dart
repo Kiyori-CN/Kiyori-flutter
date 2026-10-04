@@ -10,6 +10,7 @@ import 'chat_modal_session.dart';
 import 'chat_characters.dart';
 import 'chat_history_management.dart';
 import 'chat_history_list.dart';
+import 'chat_panel_route.dart';
 
 Widget _registered(
   BuildContext context,
@@ -112,224 +113,269 @@ Future<void> showChatHistory(
 }) async {
   final epoch = session?.epoch;
   final register = epoch == null ? null : session!.registration(epoch);
-  await owner.load();
+  if (owner.catalog == null) {
+    await owner.load();
+  } else {
+    unawaited(owner.load());
+  }
   if (!context.mounted || (epoch != null && !session!.valid(epoch))) return;
-  await showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: '收起对话历史',
-    barrierColor: Colors.black.withValues(alpha: .32),
-    transitionDuration: const Duration(milliseconds: 260),
-    transitionBuilder: (_, animation, _, child) => SlideTransition(
-      position: Tween(
-        begin: const Offset(-1, 0),
-        end: Offset.zero,
-      ).animate(animation),
-      child: child,
-    ),
-    pageBuilder: (context, _, _) => _registered(
-      context,
-      register,
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Material(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: const BorderRadius.horizontal(
-            right: Radius.circular(16),
-          ),
-          clipBehavior: Clip.antiAlias,
-          elevation: 2,
-          child: SafeArea(
-            child: SizedBox(
-              width: AiDrawer.widthFor(MediaQuery.sizeOf(context).width),
-              child: _HistorySearchScope(
-                owner: owner,
-                builder: (context, search) => Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '聊天历史',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  search.query.text.trim().isEmpty
-                                      ? '共 ${owner.catalog?.conversations.length ?? 0} 个对话'
-                                      : '匹配 ${search.items.length} / 共 ${owner.catalog?.conversations.length ?? 0}',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: '聊天历史设置',
-                            onPressed: () => showHistorySettings(
-                              context,
-                              owner,
-                              onRoute: register,
-                            ),
-                            icon: const Icon(Icons.tune, size: 20),
-                          ),
-                          IconButton(
-                            tooltip: '收起对话历史',
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close, size: 20),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
-                        key: const Key('chat-history-search'),
-                        controller: search.query,
-                        onChanged: (_) => search.search(),
-                        style: const TextStyle(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: '搜索标题或正文',
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          suffixIcon: search.query.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: '清空搜索',
-                                  icon: const Icon(Icons.close, size: 18),
-                                  onPressed: () {
-                                    search.query.clear();
-                                    search.search();
-                                  },
-                                ),
-                          isDense: true,
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size(0, 40),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () async {
-                                if (await owner.create() && context.mounted) {
-                                  Navigator.pop(context);
-                                }
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('新建对话'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filledTonal(
-                            tooltip: '新建文件夹',
-                            icon: const Icon(
-                              Icons.create_new_folder_outlined,
-                              size: 20,
-                            ),
-                            onPressed: () => showHistoryFolderEditor(
-                              context,
-                              owner,
-                              onRoute: register,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(height: 1),
-                    if (search.searching) const LinearProgressIndicator(),
-                    if (search.failed)
-                      TextButton(
-                        onPressed: search.search,
-                        child: const Text('搜索失败，请重试'),
-                      ),
-                    if (owner.error != null)
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          owner.error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      child:
-                          search.items.isEmpty &&
-                              (search.query.text.isNotEmpty ||
-                                  owner.preferences?.historyMode != 'folder' ||
-                                  owner.preferences?.folders.isEmpty != false)
-                          ? SingleChildScrollView(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 40,
-                                ),
+  await Navigator.of(context).push(
+    ChatPanelRoute(
+      label: '收起对话历史',
+      builder: (context) => _registered(
+        context,
+        register,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: chatPanelTransition(
+            context,
+            Material(
+              key: const Key('chat-history-panel'),
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              elevation: 2,
+              child: SafeArea(
+                child: SizedBox(
+                  width: AiDrawer.widthFor(MediaQuery.sizeOf(context).width),
+                  child: _HistorySearchScope(
+                    owner: owner,
+                    builder: (context, search) => Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 4, 6),
+                          child: Row(
+                            children: [
+                              Expanded(
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      search.query.text.isEmpty
-                                          ? Icons.forum_outlined
-                                          : Icons.search_off,
-                                      size: 40,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: .55),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      search.query.text.isEmpty
-                                          ? '还没有对话'
-                                          : '没有匹配的对话',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
+                                    const Text(
+                                      '聊天历史',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    const SizedBox(height: 10),
                                     Text(
-                                      search.query.text.isEmpty
-                                          ? '新建一个对话开始协作，之后可以按角色卡或文件夹归类。'
-                                          : '没有匹配的聊天记录，请调整筛选条件。',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 12),
+                                      search.query.text.trim().isEmpty
+                                          ? '共 ${owner.catalog?.conversations.length ?? 0} 个对话'
+                                          : '匹配 ${search.items.length} / 共 ${owner.catalog?.conversations.length ?? 0}',
+                                      style: const TextStyle(fontSize: 11),
                                     ),
                                   ],
                                 ),
                               ),
-                            )
-                          : ChatHistoryList(
-                              owner: owner,
-                              items: search.items,
-                              searching: search.query.text.trim().isNotEmpty,
-                              onRoute: register,
+                              IconButton(
+                                tooltip: '聊天历史设置',
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 40,
+                                  height: 40,
+                                ),
+                                onPressed: () => showHistorySettings(
+                                  context,
+                                  owner,
+                                  onRoute: register,
+                                ),
+                                icon: const Icon(Icons.tune, size: 20),
+                              ),
+                              IconButton(
+                                tooltip: '收起对话历史',
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 40,
+                                  height: 40,
+                                ),
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close, size: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: TextField(
+                            key: const Key('chat-history-search'),
+                            controller: search.query,
+                            onChanged: (_) => search.search(),
+                            style: const TextStyle(fontSize: 14),
+                            maxLines: 1,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).unfocus(),
+                            decoration: InputDecoration(
+                              hintText: '搜索标题或正文',
+                              constraints: const BoxConstraints(minHeight: 42),
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 42,
+                              ),
+                              suffixIconConstraints: const BoxConstraints(
+                                minWidth: 34,
+                                minHeight: 34,
+                              ),
+                              prefixIcon: search.searching
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(10),
+                                      child: SizedBox.square(
+                                        dimension: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(Icons.search, size: 18),
+                              suffixIcon: search.query.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: '清空搜索',
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () {
+                                        search.query.clear();
+                                        search.search();
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                    ),
+                              isDense: true,
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(0, 40),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    if (await owner.create() &&
+                                        context.mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.add, size: 18),
+                                  label: const Text('新建对话'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filledTonal(
+                                tooltip: '新建文件夹',
+                                style: IconButton.styleFrom(
+                                  fixedSize: const Size(40, 40),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.create_new_folder_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () => showHistoryFolderEditor(
+                                  context,
+                                  owner,
+                                  onRoute: register,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(height: 1),
+                        if (search.searching) const LinearProgressIndicator(),
+                        if (search.failed)
+                          TextButton(
+                            onPressed: search.search,
+                            child: const Text('搜索失败，请重试'),
+                          ),
+                        if (owner.error != null)
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              owner.error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        Expanded(
+                          child:
+                              search.items.isEmpty &&
+                                  (search.query.text.isNotEmpty ||
+                                      owner.preferences?.historyMode !=
+                                          'folder' ||
+                                      owner.preferences?.folders.isEmpty !=
+                                          false)
+                              ? SingleChildScrollView(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 40,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          search.query.text.isEmpty
+                                              ? Icons.forum_outlined
+                                              : Icons.search_off,
+                                          size: 40,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: .55),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          search.query.text.isEmpty
+                                              ? '还没有对话'
+                                              : '没有匹配的对话',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          search.query.text.isEmpty
+                                              ? '新建一个对话开始协作，之后可以按角色卡或文件夹归类。'
+                                              : '没有匹配的聊天记录，请调整筛选条件。',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : ChatHistoryList(
+                                  owner: owner,
+                                  items: search.items,
+                                  searching: search.query.text
+                                      .trim()
+                                      .isNotEmpty,
+                                  onRoute: register,
+                                ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -448,28 +494,24 @@ Future<void> showChatCharacters(
 }) async {
   final epoch = session?.epoch;
   final register = epoch == null ? null : session!.registration(epoch);
-  await owner.load();
+  if (owner.prompts == null) {
+    await owner.load();
+  } else {
+    unawaited(owner.load());
+  }
   if (!context.mounted || (epoch != null && !session!.valid(epoch))) return;
-  await showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: '关闭角色选择',
-    barrierColor: Colors.black.withValues(alpha: .4),
-    transitionDuration: const Duration(milliseconds: 300),
-    transitionBuilder: (_, animation, _, child) => SlideTransition(
-      position: Tween(
-        begin: const Offset(0, -1),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-      child: child,
-    ),
-    pageBuilder: (context, _, _) => _registered(
-      context,
-      register,
-      ChatCharacters(
-        owner: owner,
-        onManage: onManage ?? () {},
-        onRoute: register,
+  await Navigator.of(context).push(
+    ChatPanelRoute(
+      label: '关闭角色选择',
+      fromTop: true,
+      builder: (context) => _registered(
+        context,
+        register,
+        ChatCharacters(
+          owner: owner,
+          onManage: onManage ?? () {},
+          onRoute: register,
+        ),
       ),
     ),
   );

@@ -7,6 +7,18 @@ class ChatMessageInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
+    String duration(int? milliseconds) => milliseconds == null
+        ? '未记录'
+        : milliseconds >= 1000
+        ? '${(milliseconds / 1000).toStringAsFixed(2)} s ($milliseconds ms)'
+        : '$milliseconds ms';
+    String date(int? milliseconds) {
+      if (milliseconds == null || milliseconds <= 0) return '未记录';
+      final value = DateTime.fromMillisecondsSinceEpoch(milliseconds);
+      String two(int n) => '$n'.padLeft(2, '0');
+      return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}.${value.millisecond.toString().padLeft(3, '0')}';
+    }
+
     Widget field(String label, String value) => Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,8 +39,9 @@ class ChatMessageInfo extends StatelessWidget {
     Widget card(List<Widget> children) => Card(
       color: c.surfaceContainerHighest.withValues(alpha: .55),
       margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           children: [
             for (final (i, child) in children.indexed) ...[
@@ -52,44 +65,47 @@ class ChatMessageInfo extends StatelessWidget {
                 '发送方',
                 message.role == 'user' ? '用户' : 'AI',
                 '角色名',
-                message.roleName ?? '未提供',
+                message.roleName?.isNotEmpty == true
+                    ? message.roleName!
+                    : '未记录',
               ),
               row(
                 '提供商',
-                '未提供',
-                '模型名称',
-                message.model.isEmpty ? '未提供' : message.model,
+                '未记录',
+                '模型',
+                message.model.isEmpty ? '未记录' : message.model,
               ),
             ]),
             const SizedBox(height: 12),
             card([
+              row('消息时间', '未记录', '发送时间', date(message.sentAt)),
               row(
-                '消息时间',
-                '未提供',
-                '发送时间',
-                message.sentAt == null
-                    ? '未提供'
-                    : DateTime.fromMillisecondsSinceEpoch(message.sentAt!)
-                          .toString(),
-              ),
-              row(
-                '等待时长',
-                message.firstOutputMs == null
-                    ? '未提供'
-                    : '${message.firstOutputMs} ms',
-                '输出时长',
-                message.durationMs == null ? '未提供' : '${message.durationMs} ms',
+                '等待耗时',
+                duration(message.firstOutputMs),
+                '输出耗时',
+                // 消息查询已使用 finished_at-first_output_at；统计查询才是总耗时。
+                duration(message.durationMs),
               ),
             ]),
             const SizedBox(height: 12),
             card([
-              row(
-                '输入 Token',
-                message.inputTokens?.toString() ?? '未提供',
-                '输出 Token',
-                message.outputTokens?.toString() ?? '未提供',
+              SizedBox(
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Token 统计',
+                      style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '↑ ${message.inputTokens ?? '未记录'}  ↓ ${message.outputTokens ?? '未记录'}  缓存 未记录',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
-              row('缓存 Token', '未提供', '状态', message.state),
             ]),
           ],
         ),

@@ -3,6 +3,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'chat_controller.dart';
 import 'chat_dialogs.dart';
+import 'chat_info_popup.dart';
 
 /// AGENT 输入栏弹出卡：透明宿主、右下300宽、420最大高。
 class ChatModelPopup extends StatefulWidget {
@@ -54,22 +55,8 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
     }
   }
 
-  Future<void> info(String title, String detail) => showDialog<void>(
-    context: context,
-    builder: (context) {
-      widget.onRoute?.call(ModalRoute.of(context)!);
-      return AlertDialog(
-        title: Text(title),
-        content: Text(detail),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
-      );
-    },
-  );
+  Future<void> info(String title, String detail) =>
+      showChatInfoPopup(context, title, detail, onRoute: widget.onRoute);
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -93,13 +80,18 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                     const Icon(Icons.psychology_outlined, size: 16),
                     IconButton(
                       tooltip: '思考设置说明',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 40,
+                        height: 40,
+                      ),
                       iconSize: 16,
                       icon: const Icon(Icons.info_outline),
                       onPressed: () => info(
                         '思考设置',
-                        '统一管理模型推理开关和思考程度。具体支持能力由当前供应商、API 协议和模型决定。',
+                        '统一管理模型推理开关和思考程度。具体支持能力由当前供应商、API 协议和模型决定；Kiyori 只发送该模型合同允许的参数。',
                       ),
                     ),
+                    const SizedBox(width: 8),
                     const Text('思考设置:', style: TextStyle(fontSize: 13)),
                     const SizedBox(width: 8),
                     Expanded(
@@ -178,9 +170,13 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.bolt_outlined, size: 16),
+                  const Icon(Icons.whatshot_outlined, size: 16),
                   IconButton(
                     tooltip: 'MAX说明',
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
+                    ),
                     iconSize: 16,
                     onPressed: () => info(
                       'MAX模式',
@@ -188,6 +184,7 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                     ),
                     icon: const Icon(Icons.info_outline),
                   ),
+                  const SizedBox(width: 8),
                   const Expanded(
                     child: Text('MAX', style: TextStyle(fontSize: 13)),
                   ),
@@ -207,6 +204,10 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                   const Icon(Icons.data_object, size: 16),
                   IconButton(
                     tooltip: '模型说明',
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
+                    ),
                     iconSize: 16,
                     onPressed: () =>
                         info('模型配置', '在这里选择一个已经配置好的模型，或者点击下方的管理配置去新建或修改模型'),
@@ -373,8 +374,8 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
         ),
         child: Material(
           key: const Key('chat-model-popup'),
-          color: colors.surfaceContainerLow,
-          elevation: 8,
+          color: colors.surfaceContainerHigh,
+          elevation: 3,
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(

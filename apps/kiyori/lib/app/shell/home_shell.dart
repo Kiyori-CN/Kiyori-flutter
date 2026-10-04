@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:kiyori_ui/kiyori_ui.dart' show KiyoriScrollBehavior;
 import 'package:flutter/services.dart';
 
 import '../../features/assistant/presentation/chat_page.dart';
@@ -249,7 +250,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: TickerMode(
                   enabled: destination == 0,
                   child: ScrollConfiguration(
-                    behavior: const MaterialScrollBehavior().copyWith(
+                    behavior: const KiyoriScrollBehavior().copyWith(
                       dragDevices: {
                         PointerDeviceKind.touch,
                         PointerDeviceKind.mouse,

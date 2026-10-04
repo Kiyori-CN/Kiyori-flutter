@@ -71,6 +71,7 @@ class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Kiyori',
     debugShowCheckedModeBanner: false,
+    scrollBehavior: const KiyoriScrollBehavior(),
     theme: KiyoriTheme.light(),
     darkTheme: KiyoriTheme.dark(),
     themeMode: ThemeMode.light,

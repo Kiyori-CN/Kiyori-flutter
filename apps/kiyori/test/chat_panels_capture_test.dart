@@ -64,7 +64,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(
           tester.getTopLeft(find.byKey(const Key('chat-character-panel'))).dy,
-          60,
+          124.5,
         );
         await tester.tap(find.byTooltip('角色排序'));
         await tester.pumpAndSettle();

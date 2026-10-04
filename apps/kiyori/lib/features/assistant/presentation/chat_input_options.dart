@@ -4,6 +4,8 @@ import 'chat_controller.dart';
 import 'chat_dialogs.dart';
 import 'chat_model_popup.dart';
 import 'chat_memory_folders.dart';
+import 'chat_info_popup.dart';
+import 'chat_option_toggle.dart';
 
 Future<void> showChatInputOptions(
   BuildContext context,
@@ -51,22 +53,8 @@ class _InputOptions extends StatefulWidget {
 
 class _InputOptionsState extends State<_InputOptions> {
   final expanded = <String>{};
-  Future<void> info(String title, String description) => showDialog<void>(
-    context: context,
-    builder: (context) {
-      widget.onRoute?.call(ModalRoute.of(context)!);
-      return AlertDialog(
-        title: Text(title),
-        content: Text(description),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
-      );
-    },
-  );
+  Future<void> info(String title, String description) =>
+      showChatInfoPopup(context, title, description, onRoute: widget.onRoute);
 
   Widget group(
     String title,
@@ -86,14 +74,29 @@ class _InputOptionsState extends State<_InputOptions> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              Icon(icon, size: 16),
+              Icon(
+                icon,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant
+                    .withValues(alpha: .7),
+              ),
               IconButton(
                 tooltip: '$title说明',
+                constraints: const BoxConstraints.tightFor(
+                  width: 40,
+                  height: 40,
+                ),
                 iconSize: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant
+                    .withValues(alpha: .7),
                 onPressed: () => info(title, description),
                 icon: const Icon(Icons.info_outline),
               ),
-              Text('$title:', style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 8),
+              Text(
+                title == '记忆' || title == '模型' ? '$title:' : title,
+                style: const TextStyle(fontSize: 13),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -112,35 +115,88 @@ class _InputOptionsState extends State<_InputOptions> {
                     ? Icons.keyboard_arrow_up
                     : Icons.keyboard_arrow_down,
                 size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant
+                    .withValues(alpha: .7),
               ),
             ],
           ),
         ),
       ),
       if (expanded.contains(title))
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        Container(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: .5),
+          padding: EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: title == '记忆' || title == '工具' ? 8 : 0,
+          ),
           child: Column(children: children),
         ),
     ],
   );
 
   Widget toggle(String title, String key, bool value, String description) =>
-      Row(
-        children: [
-          IconButton(
-            tooltip: '$title说明',
-            iconSize: 16,
-            onPressed: () => info(title, description),
-            icon: const Icon(Icons.info_outline),
-          ),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 13))),
-          Switch(
-            value: value,
-            onChanged: (v) => widget.owner.setPreference(key, '$v'),
-          ),
-        ],
+      ChatOptionToggle(
+        title: title,
+        icon: switch (key) {
+          'memory_auto' => Icons.save_outlined,
+          'disable_preferences' => Icons.data_object,
+          'disable_stream' => value ? Icons.block : Icons.speed,
+          _ => value ? Icons.volume_up_outlined : Icons.volume_off_outlined,
+        },
+        value: value,
+        onInfo: () => info(title, description),
+        onChanged: (v) => widget.owner.setPreference(key, '$v'),
       );
+
+  Widget manage(String title, VoidCallback onTap) => InkWell(
+    onTap: onTap,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 40),
+      child: Center(
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget permission(String value, String label, String selected) {
+    final c = Theme.of(context).colorScheme;
+    final active = value == selected;
+    return Expanded(
+      child: Material(
+        color: active ? c.primary : Colors.transparent,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: active ? c.primary : c.outline.withValues(alpha: .65),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => widget.owner.setPreference('permission', value),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: active ? c.onPrimary : c.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -163,10 +219,10 @@ class _InputOptionsState extends State<_InputOptions> {
             key: Key(
               widget.attachments ? 'chat-attachments' : 'chat-input-options',
             ),
-            elevation: 8,
+            elevation: 3,
             borderRadius: BorderRadius.circular(12),
             clipBehavior: Clip.antiAlias,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: widget.attachments
@@ -239,7 +295,7 @@ class _InputOptionsState extends State<_InputOptions> {
                                 .firstOrNull
                                 ?.name ??
                             '未选择',
-                        Icons.memory,
+                        Icons.data_object,
                         '选择当前对话使用的独立记忆空间',
                         [
                           for (final space
@@ -269,18 +325,71 @@ class _InputOptionsState extends State<_InputOptions> {
                               },
                               child: Container(
                                 width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color:
+                                      (widget
+                                                  .owner
+                                                  .character
+                                                  ?.draft
+                                                  .memorySpace ??
+                                              widget
+                                                  .owner
+                                                  .knowledge
+                                                  ?.activeSpace) ==
+                                          space.id
+                                      ? Theme.of(context).colorScheme.primary
+                                            .withValues(alpha: .1)
+                                      : Colors.transparent,
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 6,
                                 ),
                                 child: Text(
                                   space.name,
-                                  style: const TextStyle(fontSize: 13),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight:
+                                        (widget
+                                                    .owner
+                                                    .character
+                                                    ?.draft
+                                                    .memorySpace ??
+                                                widget
+                                                    .owner
+                                                    .knowledge
+                                                    ?.activeSpace) ==
+                                            space.id
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color:
+                                        (widget
+                                                    .owner
+                                                    .character
+                                                    ?.draft
+                                                    .memorySpace ??
+                                                widget
+                                                    .owner
+                                                    .knowledge
+                                                    ?.activeSpace) ==
+                                            space.id
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                  ),
                                 ),
                               ),
                             ),
+                          manage('管理配置', () {
+                            Navigator.pop(context);
+                            widget.onMemory?.call();
+                          }),
                           toggle(
-                            '自动更新记忆',
+                            '自动保存记忆',
                             'memory_auto',
                             p?.memoryAuto ?? true,
                             '记忆自动更新偏好；后台提取与定时任务尚未接入。',
@@ -289,19 +398,55 @@ class _InputOptionsState extends State<_InputOptions> {
                             '禁用用户偏好描述',
                             'disable_preferences',
                             p?.disablePreferences ?? false,
-                            '控制记忆中的用户偏好描述；当前文字请求未注入记忆内容。',
+                            '禁用后，系统提示词中不再注入 user.md 用户资料',
                           ),
-                          TextButton(
-                            onPressed: () =>
-                                info('手动更新记忆', '当前版本尚未接入对话记忆提取，原始消息保持不变。'),
-                            child: const Text('手动更新记忆'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              widget.onMemory?.call();
-                            },
-                            child: const Text('管理记忆'),
+                          InkWell(
+                            onTap: () {},
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.save_outlined,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: .7),
+                                  ),
+                                  IconButton(
+                                    tooltip: '手动触发记忆保存说明',
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: 40,
+                                      height: 40,
+                                    ),
+                                    onPressed: () => info(
+                                      '手动触发记忆保存',
+                                      '需要立即补存本次对话的有价值内容时，可手动触发记忆保存，直接写入长期记忆库。',
+                                    ),
+                                    icon: Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: .7),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      '手动触发记忆保存',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -328,75 +473,58 @@ class _InputOptionsState extends State<_InputOptions> {
                           _ => '询问',
                         },
                         Icons.security,
-                        '控制工具调用的默认权限；当前基本文字聊天尚未执行工具。',
+                        '用于控制 AI 工具调用时的全局默认策略：开启后，默认直接执行所有工具调用而不再弹出确认；你在“设置 - 工具权限管理”中为单个工具设置的例外规则仍然会优先生效。关闭后，默认对所有工具调用都弹出确认。',
                         [
                           Row(
                             children: [
-                              const Text('权限', style: TextStyle(fontSize: 12)),
-                              const SizedBox(width: 8),
-                              for (final entry in [
-                                ('forbid', '禁用'),
-                                ('ask', '询问'),
-                                ('allow', '允许'),
-                              ])
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 3,
-                                    ),
-                                    child: ChoiceChip(
-                                      label: Text(
-                                        entry.$2,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      showCheckmark: false,
-                                      selected: p?.permission == entry.$1,
-                                      onSelected: (_) =>
-                                          widget.owner.setPreference(
-                                            'permission',
-                                            entry.$1,
-                                          ),
-                                    ),
-                                  ),
+                              Text(
+                                '权限级别',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
+                              ),
+                              const SizedBox(width: 8),
+                              permission(
+                                'forbid',
+                                '禁用',
+                                p?.permission ?? 'ask',
+                              ),
+                              const SizedBox(width: 6),
+                              permission('ask', '询问', p?.permission ?? 'ask'),
+                              const SizedBox(width: 6),
+                              permission('allow', '允许', p?.permission ?? 'ask'),
                             ],
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              widget.onTools?.call();
-                            },
-                            child: const Text('管理工具'),
-                          ),
+                          manage('管理工具', () {
+                            Navigator.pop(context);
+                            widget.onTools?.call();
+                          }),
                         ],
                       ),
                       group(
                         '行为',
                         p?.disableStream == true ? '非流式' : '流式',
                         Icons.speed,
-                        '控制回复显示与自动朗读。',
+                        '禁用后，AI回复将一次性完整显示，而不是逐字流式显示',
                         [
                           toggle(
                             '禁用流式输出',
                             'disable_stream',
                             p?.disableStream ?? false,
-                            '开启后等待完整回复再显示；完成前停止会取消等待。',
+                            '禁用后，AI回复将一次性完整显示，而不是逐字流式显示',
                           ),
                           toggle(
                             '自动朗读消息',
                             'auto_read',
                             p?.autoRead ?? false,
-                            '启用后AI回复自动朗读；当前语音播放能力尚未接入。',
+                            '启用后，AI回复会自动朗读',
                           ),
                         ],
                       ),
-                      group(
-                        '插件',
-                        '0/0',
-                        Icons.hub_outlined,
-                        '插件可以向输入菜单注册附加开关。',
-                        [],
-                      ),
+                      group('插件', '0/0', Icons.hub_outlined, '管理包', []),
                       if (widget.owner.error != null)
                         Padding(
                           padding: const EdgeInsets.all(12),

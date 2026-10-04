@@ -34,10 +34,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('模型说明'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byKey(const Key('chat-info-popup')), findsOneWidget);
       visible.value = false;
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byKey(const Key('chat-info-popup')), findsNothing);
       expect(find.byKey(const Key('chat-model-popup')), findsNothing);
       expect(find.text('仍在当前页面'), findsOneWidget);
       expect(tester.takeException(), isNull);

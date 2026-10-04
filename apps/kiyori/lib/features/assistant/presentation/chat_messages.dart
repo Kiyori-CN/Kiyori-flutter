@@ -280,6 +280,8 @@ class ChatMessageTile extends StatelessWidget {
           Offset.zero & overlay.size,
         ),
         constraints: const BoxConstraints.tightFor(width: 180),
+        color: colors.surface,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         items: [
           for (final entry in actions)
@@ -397,7 +399,7 @@ class ChatMessageTile extends StatelessWidget {
         child: bubble
             ? bubbleBody
             : Container(
-                margin: EdgeInsets.fromLTRB(16, user ? 4 : 2, 16, user ? 4 : 8),
+                margin: EdgeInsets.fromLTRB(16, user ? 4 : 2, 16, user ? 4 : 2),
                 padding: user ? const EdgeInsets.all(16) : EdgeInsets.zero,
                 decoration: user
                     ? BoxDecoration(
@@ -415,7 +417,7 @@ class ChatMessageTile extends StatelessWidget {
                             user ? 'Prompt' : 'Response',
                             style: TextStyle(
                               fontSize: 11,
-                              color: colors.onSurfaceVariant,
+                              color: colors.onSurface.withValues(alpha: .7),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -423,13 +425,16 @@ class ChatMessageTile extends StatelessWidget {
                         ),
                         if (!user && roleName.isNotEmpty)
                           Flexible(
-                            child: Text(
-                              roleName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: colors.onSurface.withValues(alpha: .5),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                roleName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colors.onSurface.withValues(alpha: .5),
+                                ),
                               ),
                             ),
                           ),

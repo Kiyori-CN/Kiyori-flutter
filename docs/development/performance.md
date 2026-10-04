@@ -79,6 +79,12 @@ driver 写入被忽略的 `build/integration_response_data.json`（执行目录�
 
 ## 当前验收边界
 
+2026-10-04：`KiyoriScrollBehavior`经框架滚动通知解除Scrollable子树的指针屏蔽，
+解决Ballistic/Driven活动尚未结束时首击只停止运动的问题。保留框架hold、拖动仲裁和
+物理参数，不截获或重放指针，不新增全局Listener。共享行为从MaterialApp及首页pager
+继承；实际拖动仍取消同指针tap。`scroll_tap_test.dart`覆盖惯性（含释放首帧前）、程序滚动、未停稳分页
+与Android路由动画期间首次点击，属于widget状态机证明，非物理触摸时延数据。
+
 本轮本地自动测试与构建的实际结果在 [status](../status.md)。未授权设备安装，未采集
 Android 真机输入/帧 trace；iOS 缺 Apple 主机。用户报告的旧新手感差异保持
 `verification_pending`。增加浏览器平台视图、流式长对话、文档阅读前必须复跑相应场景，

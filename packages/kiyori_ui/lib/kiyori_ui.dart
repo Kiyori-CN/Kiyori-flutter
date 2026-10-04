@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 export 'src/shell_action.dart';
+export 'src/scroll_behavior.dart';
 export 'src/ai_sparkle_icon.dart';
 export 'src/primary_page.dart';
 export 'src/settings_components.dart';
@@ -43,6 +44,8 @@ abstract final class KiyoriTheme {
           onSurface: Color(dark ? 0xFFE8EAED : 0xFF202124),
           onSurfaceVariant: Color(dark ? 0xFFBDC1C6 : 0xFF5F6368),
           surfaceContainerLow: Color(dark ? 0xFF1A1A1A : 0xFFFAFAFA),
+          surfaceContainer: Color(dark ? 0xFF202124 : 0xFFF7F7F7),
+          surfaceContainerHigh: Color(dark ? 0xFF282A2D : 0xFFF1F3F4),
           surfaceContainerHighest: Color(dark ? 0xFF303134 : 0xFFE8EAED),
           outline: const Color(0xFF9AA0A6),
           outlineVariant: Color(dark ? 0xFF3C4043 : 0xFFDADCE0),

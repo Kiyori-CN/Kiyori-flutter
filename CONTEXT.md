@@ -33,6 +33,8 @@ UI 以旧 Kiyori Android 为保真基线；跨平台重构调整代码与目录�
 草稿在页面往返时继续保留。设置入口不打开开发诊断。
 
 AI左抽屉仍由HomeShell管理；工作流目录和抽屉计数共享WorkflowController的不可变投影。
+聊天历史与角色选择的面板/遮罩局限于状态栏和64px顶栏下方；与全高AI主导航抽屉不同。
+KiyoriScrollBehavior统一保留滚动时子控件首击，手势识别与停止运动仍由框架持有。
 持久化权威为既有Rust Runtime管理的SQLite，Application Support目录由app通过
 path_provider提供；Dart不维护第二存储。短事务提交后即为业务事实，页面退出仅抑制迟到
 回填；runtime关闭等待当前事务并释放连接，后续操作拒绝。schema更高/损坏时拒绝覆盖。

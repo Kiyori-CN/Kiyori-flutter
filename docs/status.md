@@ -3,7 +3,46 @@
 更新时间：2026-10-04（Asia/Shanghai）。本文件是当前实施进度唯一权威；
 [路线图](roadmap.md)规定顺序，[历史记录](status-history.md)保留过往批次证据。
 
-## 当前任务：设置全树与AI真实业务连续开发
+## 当前任务：AI对话精确复刻与即时点击
+
+本轮用户恢复开发并授权最终提交推送，基线main/40568a06d13009a65da6269961efb7f03b233be6，
+工作区干净；旧Kiyori-Android/6b03b03保持只读干净。沿聊天交互对照继续，未操作设备、
+指定供应商或远端CI。目标是顶部四入口、输入边缘/弹窗、消息渲染与软件滑动后点击。
+
+已修历史和角色面板/遮罩跨顶栏：以状态栏+64.5为边界，历史仅按自身宽度滑入，
+角色卡在内容区再向下60；回退和实体释放沿ChatModalSession。输入默认亮色按旧五层
+6px外扩阴影绘制、暗色按1px顶部线及2px辉光，暗底为surface/onSurface的8%混色。
+模型/设置/附件使用旧surfaceContainerHigh、3px阴影，说明改为220宽右下卡。
+统计恢复完整中文说明、五卡结构、窄屏/大字纵排、数字格式及完整复制摘要；未知事实
+仍显示未提供，不伪造缓存/推理/上下文指标。角色语义色、消息标题贴右、复制预览高度、
+消息信息字段及输出耗时含义已核对：消息durationMs已是输出耗时，不能再减等待。
+已有目录先显示再刷新，不等待整套目录读取。面板和遮罩响应打开期间安全区变化；
+设置二级区域恢复旧标题冒号、语义色、40高权限胶囊、管理配置顺序与记忆保存文案。
+
+点击根因由本机Flutter源码与回归确认：ScrollPosition在惯性/驱动activity中屏蔽子树。
+KiyoriScrollBehavior在滚动通知时解除该屏蔽，保留arena/hold/slop/物理模拟；无点击重放。
+5项覆盖惯性首击、驱动首击、手指释放首帧前、翻页未停稳首击、Android路由入场点击；
+最终联合生命周期/动态安全区/消息时长回归9项通过，work/chat-final-regression.log。
+最终59张捕获通过并审阅代表图，work/chat-precision-capture-v4；覆盖五视口与设置二级、
+模型和编辑弹层。完整tools/verify.ps1 -WindowsIntegration通过，证据
+work/chat-precision-verify-v3.log：56文档/4脚本、Rust73/fmt/Clippy、354 Dart格式/
+analyze、Flutter562（11条件跳过）、platform5、独立FFI18及Windows引擎5。
+首轮惯性失败、测试花括号lint、动态inset夹具未指定DPR的失败日志均保留，修正后通过；
+没有降低断言。Android ARM64 Debug（51.5s）和普通Windows x64 Debug（19.8s）
+串行构建通过，日志work/chat-precision-android.log与chat-precision-windows.log。
+固定包artifacts/ui-preview/20261004-140954，保留之前预览包；APK117919777字节，SHA256
+627BB3B91AE8CF5ED5C275E89D49010580A1A868052B98C625466D5D94350C4B。
+Windows84文件158538192字节；85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及
+Windows x64/Flutter DLL pin通过。原生runner/DLL增量复用，当前Dart由kernel核对。
+27源码/测试/文档精确允许清单通过，无敏感模式/链接/gitlink/异常大文件；未改依赖、
+Rust公共API、桥或schema。按本轮授权提交并普通推送main，最终提交/ref以Git和固定包
+manifest的sourceCommit为准，产物及证据不进入Git。
+
+这不是整个AI全功能或像素验收：附件设备读取、语音/悬浮窗、工具插件执行、群组运行、
+外部Markdown图片链接、数学/复杂XML渲染、历史角色文件夹作用域、统计细分真实采集等
+仍需继续；Android旧新并排、实际键盘触摸/Profile与Apple仍verification_pending。
+
+## 上一批预览交付记录
 
 本轮从已交付766eb0c承接，重新逐项核对[聊天交互对照](design/chat-replication-checklist.md)。
 用户于2026-10-04要求适时停止开发并构建、提交、推送以手动安装APK检查。

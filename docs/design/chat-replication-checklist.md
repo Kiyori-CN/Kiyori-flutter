@@ -38,6 +38,21 @@ AiMessageComposable 的模型提供方与模型名称默认隐藏、角色默认
 指定供应商合成请求、Android实机与Profile。没有同环境并排证据不声称像素完全一致。
 真实请求只允许用户指定端点和模型；密钥不得进入任何证据。设备/Apple/Profile独立列项。
 
+## 2026-10-04 精确几何复核
+
+历史宿主源为AIChatScreen的Scaffold内容Box，边界是状态栏+主栏64及分隔线0.5；
+角色选择在同一边界内向下60、横20。新ChatPanelRoute同时限制遮罩与面板，历史
+动画距离取面板自身宽度。输入默认不透明/非浮动：AgentChatInputSection的
+outerDiffuseShadow用五层、spread6、alpha0.025递减，暗色topEdgeHighlight为line1、
+alpha0.05、glow2/0.015；不能替换成普通14模糊阴影。玻璃与浮动偏好仍属待接入分支。
+
+AgentInfoPopup为右下220宽、bottom52/end12、16内距、16粗标题、14/20正文，
+没有确定按钮。模型/设置/附件卡使用KiyoriSurfaceTokens的popupElevation3和
+surfaceContainerHigh。ChatStatisticsSheet的说明全文来自values/strings.xml，
+StatisticsCard圆角16/内16/间10，行宽不足300或字比例大于1.3时纵排；统计事实来源
+尚缺缓存/推理与上下文估算，字段保持未知。消息信息的durationMs已由核心使用
+finished_at-first_output_at计算，UI不能再次扣除等待；统计durationMs则为请求总耗时。
+
 ## 阶段预览交付边界（2026-10-04）
 
 用户要求收住本轮开发，先构建并推送供手动安装检查。当前实现不作为全部入口复刻完成证据。

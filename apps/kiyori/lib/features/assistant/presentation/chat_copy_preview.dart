@@ -104,7 +104,7 @@ class _CopyPreviewState extends State<_CopyPreview> {
           ],
         ),
         const SizedBox(height: 12),
-        Expanded(
+        Flexible(
           child: showPlain && plain == null
               ? Center(
                   child: failed
@@ -113,6 +113,7 @@ class _CopyPreviewState extends State<_CopyPreview> {
                 )
               : Align(
                   alignment: Alignment.topCenter,
+                  heightFactor: 1,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 520),
                     child: TextField(
@@ -120,7 +121,6 @@ class _CopyPreviewState extends State<_CopyPreview> {
                       controller: editor,
                       readOnly: true,
                       maxLines: null,
-                      expands: true,
                       textAlignVertical: TextAlignVertical.top,
                       style: const TextStyle(fontSize: 14),
                       decoration: const InputDecoration(
