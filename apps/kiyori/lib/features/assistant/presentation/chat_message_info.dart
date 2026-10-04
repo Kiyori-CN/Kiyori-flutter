@@ -100,7 +100,7 @@ class ChatMessageInfo extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '↑ ${message.inputTokens ?? '未记录'}  ↓ ${message.outputTokens ?? '未记录'}  缓存 未记录',
+                      '↑ ${message.inputTokens ?? '未记录'}  ↓ ${message.outputTokens ?? '未记录'}  缓存 ${message.cacheReadTokens ?? '未记录'}',
                       style: const TextStyle(fontSize: 14),
                     ),
                   ],

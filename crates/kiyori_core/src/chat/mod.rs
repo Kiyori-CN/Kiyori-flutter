@@ -4,6 +4,7 @@ mod responses;
 mod sse;
 #[cfg(test)]
 mod tests;
+mod usage;
 
 use crate::runtime::{CoreError, ErrorCode};
 use reqwest::{
@@ -78,6 +79,9 @@ pub enum ChatEvent {
         input: u64,
         output: u64,
         total: u64,
+        cache_read: Option<u64>,
+        cache_write: Option<u64>,
+        reasoning: Option<u64>,
     },
     Completed {
         reason: String,
@@ -598,19 +602,7 @@ async fn decode(
         }
     }
     if let Some(usage) = value.get("usage").filter(|v| !v.is_null()) {
-        let field = |name| {
-            usage
-                .get(name)
-                .and_then(Value::as_u64)
-                .ok_or_else(ChatFailure::protocol)
-        };
-        let _ = sender
-            .send(ChatEvent::Usage {
-                input: field("prompt_tokens")?,
-                output: field("completion_tokens")?,
-                total: field("total_tokens")?,
-            })
-            .await;
+        let _ = sender.send(usage::parse(usage)?).await;
     }
     Ok(())
 }

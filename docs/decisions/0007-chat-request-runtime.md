@@ -115,7 +115,7 @@ Markdown不加载外部图片，代码块复制写系统剪贴板；工具/媒�
 chat_business_test覆盖真实DPAPI/FFI/SQLite/loopback与UI两轮、取消、失败、切换、重复发送、
 重开、消息编辑/删除、事务重发和短lease并发。chat_live_test默认跳过，只接受显式环境注入
 授权端点/模型/凭据，且不截图/打印凭据；2026-10-03指定服务两轮与重开通过，见当前状态。
-Windows组件测试不等于Android设备、Profile或Apple验收。当前schema13须恢复一致备份回滚。
+Windows组件测试不等于Android设备、Profile或Apple验收。当前schema14须恢复一致备份回滚。
 
 ## 统计证据补充（2026-10-04）
 
@@ -125,6 +125,18 @@ schema10增加运行记录的usage_reported与first_output_at，同一SQLite事�
 首次正文时刻由核心首次非空Text事件写入，未观测的历史时刻保持空；不推算历史速度。
 本次迁移无删除，不接受旧二进制重新打开新库；回滚必须同时恢复升级前二进制及一致数据备份。
 面板通过现有Runtime查询，打开时订阅刷新、关闭时释放，不建立第二套计费账本。
+
+schema14增加Run的可空cache_read_tokens/cache_write_tokens/reasoning_tokens；旧记录保持NULL。
+core/chat/usage按旧OpenAIResponsesProvider.parseUsageCounts核对字段别名、整数范围、
+缓存桶和输入总数关系及推理不超过输出。缓存异常排除细分，输入/输出总数仍保留；
+total由输入+输出得到，不重复计入推理。超出i64范围的总量明确拒绝，防止无符号转存回绕。
+同一次Run的usage以最后有效样本替换，分支复制保留字段；累计仅包含非running请求，
+逐请求饱和相加避免SQLite SUM溢出。缓存率按有效缓存样本的输入token加权，分母0时为0%；
+没有有效样本则未知。按旧展示语义，累计写入/推理无正值仍显示未提供，最近请求保留明确0。
+当前未接入上下文token估算及进程内速度tracker，这两项继续未知，不以累计用量推算。
+新增可空列不删除历史；新二进制必须完成迁移，旧二进制拒绝schema14。回滚恢复升级前
+一致数据库与匹配二进制，不降低user_version。chat_usage_test覆盖真实FFI、两轮合成请求、
+有效分母、分支、重开及统计面板；core回归覆盖schema13迁移、替换和未报告/零值。
 
 ## 验证与回滚边界
 

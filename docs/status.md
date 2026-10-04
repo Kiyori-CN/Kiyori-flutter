@@ -5,6 +5,33 @@
 
 ## 当前任务：AI对话精确复刻与即时点击
 
+继续原目标，当前统计增量基线main/fb52ede229fafc0f5ffa097fa1c8c1db51bfff31，工作区干净。
+按旧ProviderUsageSnapshot、OpenAIResponsesProvider.parseUsageCounts与统计抽屉语义，
+接入缓存读取/写入、推理细分、有效缓存分母、未分类输入和覆盖率。schema14新增三个可空列，
+旧历史保持未知，同Run重复usage替换，分支复制保留；累计排除仍在运行的请求。
+消息信息读取真实缓存字段。未提供、明确0和无效缓存分桶分别处理；异常桶不丢有效输入/输出，
+整数范围校验及饱和聚合防止回绕/SQLite求和溢出。上下文估算和进程内速度仍待接入。
+Rust76项通过，generate-bridge.ps1 -Check五输出一致；真实FFI/两轮/分支/重开/界面专项5项
+通过，work/chat-usage-ui-v2.log；截图work/chat-usage-capture-v2确认总输入10000、有效分母1000、
+读取600时60.0%，最近未报告时为未知。完整tools/verify.ps1 -WindowsIntegration通过，
+work/chat-usage-verify-v2.log记录Rust76、355 Dart格式/analyze、应用563（11条件跳过）、
+platform5、独立FFI18及Windows引擎5。之后发现UI总量直接相加的极值回绕，按旧Long
+饱和加法修复；新增真实请求/SQLite/界面回归先失败后通过，日志chat-usage-overflow-before
+与after，最终专项2项通过；修改后格式检查和flutter analyze通过。
+最终Android ARM64 Debug（74.5s）、普通Windows产品入口x64 Debug（19.3s）串行构建通过，
+日志work/chat-usage-android.log、chat-usage-windows.log。固定包artifacts/ui-preview/20261004-144535，
+APK117917248字节，SHA256 67D89B41260440D009845FBCD1516E3224FDBE228B4F7EE7C0DC2D3FD280F748；
+Windows84文件158547304字节。85副本哈希、APK身份/ARM64/v2签名/ZIP16K/ELF及
+Windows x64/Flutter DLL pin通过，最新Dart kernel已核对；原生runner增量复用。
+本批21文件精确清单交付，未升级依赖；按当前授权提交并普通推送main，最终ref以Git和
+固定包manifest的sourceCommit为准。源码、测试及正式文档进入Git，固定包与过程证据不入库。
+仍需修复最近请求从历史Run恢复与旧进程内样本生命周期的差异，并接上下文估算/速度；
+基础usage缺少输入或输出仍按协议错误处理，尚未对齐旧版不完整样本语义。
+不据本批细分接入宣称全部统计或聊天复刻完成；设备并排/触摸/Profile仍待验证。
+回滚须恢复schema14升级前一致数据库与匹配二进制，不修改user_version或直接降级开库。
+
+### 已交付的界面与点击修复
+
 本轮用户恢复开发并授权最终提交推送，基线main/40568a06d13009a65da6269961efb7f03b233be6，
 工作区干净；旧Kiyori-Android/6b03b03保持只读干净。沿聊天交互对照继续，未操作设备、
 指定供应商或远端CI。目标是顶部四入口、输入边缘/弹窗、消息渲染与软件滑动后点击。
@@ -39,7 +66,7 @@ Rust公共API、桥或schema。按本轮授权提交并普通推送main，最终
 manifest的sourceCommit为准，产物及证据不进入Git。
 
 这不是整个AI全功能或像素验收：附件设备读取、语音/悬浮窗、工具插件执行、群组运行、
-外部Markdown图片链接、数学/复杂XML渲染、历史角色文件夹作用域、统计细分真实采集等
+外部Markdown图片链接、数学/复杂XML渲染、历史角色文件夹作用域、上下文估算与速度等
 仍需继续；Android旧新并排、实际键盘触摸/Profile与Apple仍verification_pending。
 
 ## 上一批预览交付记录

@@ -62,6 +62,7 @@ class _StatisticsState extends State<_Statistics> {
         () => value = const ConversationStatistics(
           requests: 0,
           reportedRequests: 0,
+          cacheReportedRequests: 0,
           recentModel: '',
         ),
       );
@@ -104,12 +105,39 @@ class _StatisticsState extends State<_Statistics> {
     final output = recent
         ? v?.recentOutputTokens?.toInt()
         : v?.outputTokens?.toInt();
+    // 与旧 saturatedProviderUsageLongSum 一致，累计总量不能溢出成负值。
+    const maxTokens = 0x7fffffffffffffff;
+    final total = input == null || output == null
+        ? null
+        : input > maxTokens - output
+        ? maxTokens
+        : input + output;
     final requests = recent
         ? (v?.recentModel.isNotEmpty == true ? 1 : 0)
         : v?.requests;
     final reported = recent
         ? (input != null && output != null ? 1 : 0)
         : v?.reportedRequests;
+    final cacheRead = recent ? v?.recentCacheReadTokens : v?.cacheReadTokens;
+    final cacheWrite = recent ? v?.recentCacheWriteTokens : v?.cacheWriteTokens;
+    final reasoning = recent ? v?.recentReasoningTokens : v?.reasoningTokens;
+    final cacheReported = recent
+        ? (cacheRead == null ? 0 : 1)
+        : v?.cacheReportedRequests;
+    final cacheInput = recent
+        ? (cacheRead == null ? null : input)
+        : v?.cacheInputTokens;
+    final uncached = recent
+        ? (input == null ? null : input - (cacheRead ?? 0) - (cacheWrite ?? 0))
+        : v?.uncachedInputTokens;
+    final cacheRate = cacheInput == null || cacheRead == null
+        ? null
+        : cacheInput == 0
+        ? 0.0
+        : cacheRead / cacheInput;
+    final cachePercent = cacheRate == null
+        ? '未提供'
+        : '${(cacheRate * 100).toStringAsFixed(1)}%';
     String number(int? n) =>
         n?.toString().replaceAllMapped(
           RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -121,21 +149,21 @@ class _StatisticsState extends State<_Statistics> {
     final rows = [
       ('输入', number(input)),
       ('输出', number(output)),
-      ('总用量', number(input == null || output == null ? null : input + output)),
-      ('推理细分（若有）', '未提供'),
+      ('总用量', number(total)),
+      ('推理细分（若有）', number(reasoning)),
     ];
     final coverage = [
       ('模型请求数', number(requests)),
       ('用量覆盖', v == null ? '未提供' : '$reported/$requests'),
-      ('缓存覆盖', '未提供'),
+      ('缓存覆盖', v == null ? '未提供' : '$cacheReported/$reported'),
     ];
     final cache = [
-      ('缓存读取', '未提供'),
-      ('缓存写入', '未提供'),
-      ('普通 / 未分类输入', number(input)),
-      ('输入 token 缓存读取率', '未提供'),
-      ('可计量输入 · 读取率分母', '未提供'),
-      ('缺少有效缓存指标的输入', number(input)),
+      ('缓存读取', number(cacheRead)),
+      ('缓存写入', number(cacheWrite)),
+      ('普通 / 未分类输入', number(uncached)),
+      ('输入 token 缓存读取率', cachePercent),
+      ('可计量输入 · 读取率分母', number(cacheInput)),
+      ('缺少有效缓存指标的输入', number(input == null ? null : input - (cacheInput ?? 0))),
     ];
     final c = Theme.of(context).colorScheme;
     return Column(
@@ -234,7 +262,7 @@ class _StatisticsState extends State<_Statistics> {
                 note: _cacheNote,
                 leading: [
                   Text(
-                    '未提供',
+                    cachePercent,
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
@@ -245,7 +273,7 @@ class _StatisticsState extends State<_Statistics> {
                     '输入 token 缓存读取率',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
-                  const LinearProgressIndicator(value: 0),
+                  LinearProgressIndicator(value: cacheRate ?? 0),
                 ],
               ),
               _card(

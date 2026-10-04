@@ -68,6 +68,7 @@ pub struct Message {
     pub duration_ms: Option<i64>,
     pub input_tokens: Option<i64>,
     pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConversationSnapshot {
@@ -91,6 +92,15 @@ pub struct Statistics {
     pub recent_model: String,
     pub first_output_ms: Option<i64>,
     pub duration_ms: Option<i64>,
+    pub cache_reported_requests: u32,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
+    pub reasoning_tokens: Option<i64>,
+    pub cache_input_tokens: Option<i64>,
+    pub uncached_input_tokens: Option<i64>,
+    pub recent_cache_read_tokens: Option<i64>,
+    pub recent_cache_write_tokens: Option<i64>,
+    pub recent_reasoning_tokens: Option<i64>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -225,26 +235,75 @@ impl AppStore {
             .map_err(|_| invalid("聊天存储锁不可用"))?;
         let tx = connection.transaction().map_err(storage)?;
         exists(&tx, id)?;
-        let (requests, reported_requests, input_tokens, output_tokens) = tx.query_row(
-            "SELECT count(*),coalesce(sum(usage_reported),0),sum(CASE WHEN usage_reported=1 THEN input_tokens END),sum(CASE WHEN usage_reported=1 THEN output_tokens END) FROM conversation_runs WHERE conversation_id=?1",
-            [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))
-        ).map_err(storage)?;
+        // 逐请求饱和相加，避免SQLite SUM溢出导致整张统计抽屉不可读。
+        let mut requests = 0u32;
+        let mut reported_requests = 0u32;
+        let mut cache_reported_requests = 0u32;
+        let (mut input_tokens, mut output_tokens) = (0i64, 0i64);
+        let (mut cache_read_tokens, mut cache_write_tokens, mut reasoning_tokens) =
+            (0i64, 0i64, 0i64);
+        let (mut cache_input_tokens, mut uncached_input_tokens) = (0i64, 0i64);
+        {
+            let mut statement = tx.prepare("SELECT usage_reported,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,reasoning_tokens FROM conversation_runs WHERE conversation_id=?1 AND state<>'running'").map_err(storage)?;
+            let rows = statement
+                .query_map([id], |r| {
+                    Ok((
+                        r.get::<_, bool>(0)?,
+                        r.get::<_, i64>(1)?,
+                        r.get::<_, i64>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                        r.get::<_, Option<i64>>(4)?,
+                        r.get::<_, Option<i64>>(5)?,
+                    ))
+                })
+                .map_err(storage)?;
+            for row in rows {
+                let (reported, input, output, read, write, reasoning) = row.map_err(storage)?;
+                requests = requests.saturating_add(1);
+                if !reported {
+                    continue;
+                }
+                reported_requests = reported_requests.saturating_add(1);
+                input_tokens = input_tokens.saturating_add(input);
+                output_tokens = output_tokens.saturating_add(output);
+                reasoning_tokens = reasoning_tokens.saturating_add(reasoning.unwrap_or(0));
+                if let Some(read) = read {
+                    cache_reported_requests = cache_reported_requests.saturating_add(1);
+                    cache_read_tokens = cache_read_tokens.saturating_add(read);
+                    cache_write_tokens = cache_write_tokens.saturating_add(write.unwrap_or(0));
+                    cache_input_tokens = cache_input_tokens.saturating_add(input);
+                    uncached_input_tokens =
+                        uncached_input_tokens.saturating_add(input - read - write.unwrap_or(0));
+                } else {
+                    uncached_input_tokens = uncached_input_tokens.saturating_add(input);
+                }
+            }
+        }
         use rusqlite::OptionalExtension;
         let recent = tx.query_row(
-            "SELECT CASE WHEN usage_reported=1 THEN input_tokens END,CASE WHEN usage_reported=1 THEN output_tokens END,model,first_output_at-created_at,finished_at-created_at FROM conversation_runs WHERE conversation_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1",
-            [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))
-        ).optional().map_err(storage)?.unwrap_or((None,None,String::new(),None,None));
+            "SELECT CASE WHEN usage_reported=1 THEN input_tokens END,CASE WHEN usage_reported=1 THEN output_tokens END,model,first_output_at-created_at,finished_at-created_at,cache_read_tokens,cache_write_tokens,reasoning_tokens FROM conversation_runs WHERE conversation_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1",
+            [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))
+        ).optional().map_err(storage)?.unwrap_or((None,None,String::new(),None,None,None,None,None));
         tx.commit().map_err(storage)?;
         Ok(Statistics {
             requests,
             reported_requests,
-            input_tokens,
-            output_tokens,
+            input_tokens: (reported_requests > 0).then_some(input_tokens),
+            output_tokens: (reported_requests > 0).then_some(output_tokens),
             recent_input_tokens: recent.0,
             recent_output_tokens: recent.1,
             recent_model: recent.2,
             first_output_ms: recent.3,
             duration_ms: recent.4,
+            cache_reported_requests,
+            cache_read_tokens: (cache_reported_requests > 0).then_some(cache_read_tokens),
+            cache_write_tokens: (cache_write_tokens > 0).then_some(cache_write_tokens),
+            reasoning_tokens: (reasoning_tokens > 0).then_some(reasoning_tokens),
+            cache_input_tokens: (cache_reported_requests > 0).then_some(cache_input_tokens),
+            uncached_input_tokens: (reported_requests > 0).then_some(uncached_input_tokens),
+            recent_cache_read_tokens: recent.5,
+            recent_cache_write_tokens: recent.6,
+            recent_reasoning_tokens: recent.7,
         })
     }
     fn run_lock(&self, id: &str) -> Result<File, CoreError> {
@@ -343,8 +402,8 @@ impl AppStore {
                 record,
             )
             .map_err(storage)?;
-        let messages = tx.prepare("SELECT m.id,coalesce(m.run_id,''),m.role,m.content,m.state,coalesce(r.error,''),coalesce(r.model,''),r.role_name,r.created_at,r.first_output_at-r.created_at,r.finished_at-r.first_output_at,CASE WHEN r.usage_reported=1 THEN r.input_tokens END,CASE WHEN r.usage_reported=1 THEN r.output_tokens END,m.variant,max(m.variant,coalesce((SELECT max(v.variant) FROM conversation_variants v WHERE v.message_id=m.id),0))+1 FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id WHERE m.conversation_id=?1 ORDER BY m.position").map_err(storage)?
-            .query_map([id],|r|Ok(Message {id:r.get(0)?,run_id:r.get(1)?,role:r.get(2)?,content:r.get(3)?,state:r.get(4)?,error:r.get(5)?,model:r.get(6)?,role_name:r.get(7)?,sent_at:r.get(8)?,first_output_ms:r.get(9)?,duration_ms:r.get(10)?,input_tokens:r.get(11)?,output_tokens:r.get(12)?,variant:r.get(13)?,variant_count:r.get(14)?})).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+        let messages = tx.prepare("SELECT m.id,coalesce(m.run_id,''),m.role,m.content,m.state,coalesce(r.error,''),coalesce(r.model,''),r.role_name,r.created_at,r.first_output_at-r.created_at,r.finished_at-r.first_output_at,CASE WHEN r.usage_reported=1 THEN r.input_tokens END,CASE WHEN r.usage_reported=1 THEN r.output_tokens END,m.variant,max(m.variant,coalesce((SELECT max(v.variant) FROM conversation_variants v WHERE v.message_id=m.id),0))+1,r.cache_read_tokens FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id WHERE m.conversation_id=?1 ORDER BY m.position").map_err(storage)?
+            .query_map([id],|r|Ok(Message {id:r.get(0)?,run_id:r.get(1)?,role:r.get(2)?,content:r.get(3)?,state:r.get(4)?,error:r.get(5)?,model:r.get(6)?,role_name:r.get(7)?,sent_at:r.get(8)?,first_output_ms:r.get(9)?,duration_ms:r.get(10)?,input_tokens:r.get(11)?,output_tokens:r.get(12)?,variant:r.get(13)?,variant_count:r.get(14)?,cache_read_tokens:r.get(15)?})).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
         tx.commit().map_err(storage)?;
         Ok(ConversationSnapshot {
             conversation,
@@ -728,7 +787,7 @@ impl AppStore {
                 let branch = identity(&tx)?;
                 tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) SELECT ?2,title||' (分支)',character_id,?3,?3,1,folder FROM conversations WHERE id=?1", params![id,branch,now()]).map_err(storage)?;
                 // 分支复制独立运行快照与完整消息；源对话删除/编辑不会级联影响分支。
-                tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
+                tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id,cache_read_tokens,cache_write_tokens,reasoning_tokens) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id,r.cache_read_tokens,r.cache_write_tokens,r.reasoning_tokens FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state,variant) SELECT ?3||'/'||id,?3,CASE WHEN run_id IS NULL THEN NULL ELSE ?3||'/'||run_id END,position,role,content,state,variant FROM conversation_messages WHERE conversation_id=?1 AND position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_variants SELECT ?3||'/'||v.message_id,v.variant,CASE WHEN v.run_id IS NULL THEN NULL ELSE ?3||'/'||v.run_id END,v.content,v.state FROM conversation_variants v JOIN conversation_messages m ON m.id=v.message_id WHERE m.conversation_id=?1 AND m.position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute(
@@ -1093,10 +1152,29 @@ impl AppStore {
                     tx.execute("UPDATE conversation_runs SET first_output_at=coalesce(first_output_at,max(created_at,?2)) WHERE id=?1",params![run,now()]).map_err(storage)?;
                 }
             }
-            chat::ChatEvent::Usage { input, output, .. } => {
+            chat::ChatEvent::Usage {
+                input,
+                output,
+                cache_read,
+                cache_write,
+                reasoning,
+                ..
+            } => {
+                let to_storage = |value: u64| {
+                    i64::try_from(value).map_err(|_| invalid("供应商用量超出存储范围"))
+                };
+                let (input, output) = (to_storage(*input)?, to_storage(*output)?);
+                let read = cache_read.map(to_storage).transpose()?;
+                let write = cache_write.map(to_storage).transpose()?;
+                let reasoning = reasoning
+                    .map(to_storage)
+                    .transpose()?
+                    .filter(|value| *value <= output);
+                let valid =
+                    read.is_some_and(|read| read <= input && write.unwrap_or(0) <= input - read);
                 tx.execute(
-                    "UPDATE conversation_runs SET input_tokens=?2,output_tokens=?3,usage_reported=1 WHERE id=?1",
-                    params![run, *input as i64, *output as i64],
+                    "UPDATE conversation_runs SET input_tokens=?2,output_tokens=?3,usage_reported=1,cache_read_tokens=?4,cache_write_tokens=?5,reasoning_tokens=?6 WHERE id=?1",
+                    params![run, input, output, if valid {read} else {None}, if valid {write} else {None}, reasoning],
                 )
                 .map_err(storage)?;
             }

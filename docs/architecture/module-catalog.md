@@ -4,7 +4,7 @@
 `feature`指`apps/kiyori/lib/features`；`native`指已建立安全存储adapter的
 `packages/kiyori_platform`。不存在“其它功能都放工具箱”的兜底模块。
 
-core/models拥有配置、功能绑定、参数验证与安全引用账本；schema13的core/conversations拥有
+core/models拥有配置、功能绑定、参数验证与安全引用账本；schema14的core/conversations拥有
 会话、消息、Run、恢复锁与历史修改事务，复用同一storage；core/context将chat绑定的
 上下文选项与全局媒体偏好按各自revision在同一事务保存。native安全存储只保护
 不可变payload，Dart的ModelsController/ModelEditSession编排保存和短期草稿，不另建数据库。

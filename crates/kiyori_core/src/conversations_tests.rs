@@ -169,7 +169,7 @@ fn usage_distinguishes_reported_zero_and_unknown_across_schema9_migration() {
     runtime.with_store(|store| {
         let connection = store.connection.lock().unwrap();
         connection.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,input_tokens,output_tokens) VALUES('old',?1,'completed','default',1,'old-model',1,12,3)",[&id]).unwrap();
-        connection.execute_batch("DROP TABLE conversation_variants; ALTER TABLE conversation_messages DROP COLUMN variant; ALTER TABLE conversation_runs DROP COLUMN role_id; ALTER TABLE conversation_runs DROP COLUMN role_name; ALTER TABLE conversation_runs DROP COLUMN usage_reported; ALTER TABLE conversation_runs DROP COLUMN first_output_at; ALTER TABLE conversations DROP COLUMN folder; ALTER TABLE conversations DROP COLUMN pinned; ALTER TABLE conversations DROP COLUMN locked; ALTER TABLE conversations DROP COLUMN sort_order; DROP TABLE conversation_folders; DROP TABLE chat_preferences; PRAGMA user_version=9;").unwrap();
+        connection.execute_batch("ALTER TABLE conversation_runs DROP COLUMN cache_read_tokens; ALTER TABLE conversation_runs DROP COLUMN cache_write_tokens; ALTER TABLE conversation_runs DROP COLUMN reasoning_tokens; DROP TABLE conversation_variants; ALTER TABLE conversation_messages DROP COLUMN variant; ALTER TABLE conversation_runs DROP COLUMN role_id; ALTER TABLE conversation_runs DROP COLUMN role_name; ALTER TABLE conversation_runs DROP COLUMN usage_reported; ALTER TABLE conversation_runs DROP COLUMN first_output_at; ALTER TABLE conversations DROP COLUMN folder; ALTER TABLE conversations DROP COLUMN pinned; ALTER TABLE conversations DROP COLUMN locked; ALTER TABLE conversations DROP COLUMN sort_order; DROP TABLE conversation_folders; DROP TABLE chat_preferences; PRAGMA user_version=9;").unwrap();
         Ok(())
     }).unwrap();
     runtime.close();
@@ -180,7 +180,8 @@ fn usage_distinguishes_reported_zero_and_unknown_across_schema9_migration() {
     assert_eq!(stats.first_output_ms, None);
     upgraded.with_store(|store| {
         store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at) VALUES('zero',?1,'running','default',1,'zero-model',2)",[&id]).unwrap();
-        store.persist_conversation_event("zero",chat::ChatEvent::Usage {input:0,output:0,total:0})?;
+        store.persist_conversation_event("zero",chat::ChatEvent::Usage {input:0,output:0,total:0,cache_read:None,cache_write:None,reasoning:None})?;
+        store.persist_conversation_event("zero",chat::ChatEvent::Cancelled)?;
         Ok(())
     }).unwrap();
     let stats = upgraded.conversation_statistics(id).unwrap();
@@ -189,8 +190,77 @@ fn usage_distinguishes_reported_zero_and_unknown_across_schema9_migration() {
     assert_eq!(stats.recent_input_tokens, Some(0));
     assert_eq!(stats.recent_output_tokens, Some(0));
     assert_eq!(stats.input_tokens, Some(12));
-    assert_eq!(stats.duration_ms, None);
+    assert!(stats.duration_ms.is_some());
     upgraded.close();
+}
+
+#[test]
+fn usage_details_replace_samples_survive_reopen_and_migrate_unknown() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let id = runtime.create_conversation().unwrap();
+    runtime.with_store(|store| {
+        store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,input_tokens,output_tokens,usage_reported) VALUES('old',?1,'completed','default',1,'old-model',1,100,20,1)",[&id]).unwrap();
+        store.connection.lock().unwrap().execute_batch("ALTER TABLE conversation_runs DROP COLUMN cache_read_tokens; ALTER TABLE conversation_runs DROP COLUMN cache_write_tokens; ALTER TABLE conversation_runs DROP COLUMN reasoning_tokens; PRAGMA user_version=13;").unwrap();
+        Ok(())
+    }).unwrap();
+    runtime.close();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let migrated = runtime.conversation_statistics(id.clone()).unwrap();
+    assert_eq!(migrated.cache_read_tokens, None);
+    assert_eq!(migrated.cache_reported_requests, 0);
+    assert_eq!(migrated.uncached_input_tokens, Some(100));
+    runtime.with_store(|store| {
+        store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at) VALUES('new',?1,'running','default',1,'model',2)",[&id]).unwrap();
+        for read in [50,60,60] {
+            store.persist_conversation_event("new",chat::ChatEvent::Usage {input:200,output:30,total:230,cache_read:Some(read),cache_write:Some(10),reasoning:Some(20)})?;
+        }
+        let active = store.conversation_statistics(&id)?;
+        assert_eq!(active.reported_requests,1);
+        assert_eq!(active.recent_cache_read_tokens,Some(60));
+        store.persist_conversation_event("new",chat::ChatEvent::Cancelled)?;
+        Ok(())
+    }).unwrap();
+    let stats = runtime.conversation_statistics(id.clone()).unwrap();
+    assert_eq!(stats.requests, 2);
+    assert_eq!(stats.reported_requests, 2);
+    assert_eq!(stats.input_tokens, Some(300));
+    assert_eq!(stats.cache_read_tokens, Some(60));
+    assert_eq!(stats.cache_write_tokens, Some(10));
+    assert_eq!(stats.reasoning_tokens, Some(20));
+    assert_eq!(stats.cache_input_tokens, Some(200));
+    assert_eq!(stats.uncached_input_tokens, Some(230));
+    assert_eq!(stats.cache_reported_requests, 1);
+    runtime.close();
+    let reopened = Runtime::with_data_dir(&dir.0).unwrap();
+    assert_eq!(reopened.conversation_statistics(id.clone()).unwrap(), stats);
+    reopened
+        .with_store(|store| {
+            store.connection.lock().unwrap().execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at) VALUES('zero',?1,'running','default',1,'model',3)",[&id]).unwrap();
+            store.persist_conversation_event(
+                "zero",
+                chat::ChatEvent::Usage {
+                    input: 200,
+                    output: 30,
+                    total: 230,
+                    cache_read: Some(0),
+                    cache_write: Some(0),
+                    reasoning: Some(0),
+                },
+            )?;
+            store.persist_conversation_event("zero",chat::ChatEvent::Cancelled)?;
+            Ok(())
+        })
+        .unwrap();
+    let zero = reopened.conversation_statistics(id).unwrap();
+    assert_eq!(zero.recent_cache_read_tokens, Some(0));
+    assert_eq!(zero.recent_cache_write_tokens, Some(0));
+    assert_eq!(zero.recent_reasoning_tokens, Some(0));
+    assert_eq!(zero.cache_read_tokens, Some(60));
+    // 旧版累计对写入与推理0保留未提供，最近请求能区分0。
+    assert_eq!(zero.cache_write_tokens, Some(10));
+    assert_eq!(zero.reasoning_tokens, Some(20));
+    reopened.close();
 }
 
 #[tokio::test]

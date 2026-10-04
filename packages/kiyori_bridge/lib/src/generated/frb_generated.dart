@@ -4180,8 +4180,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConversationMessage dco_decode_conversation_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 15)
-      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
+    if (arr.length != 16)
+      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
     return ConversationMessage(
       variant: dco_decode_u_32(arr[0]),
       variantCount: dco_decode_u_32(arr[1]),
@@ -4198,6 +4198,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       durationMs: dco_decode_opt_box_autoadd_i_64(arr[12]),
       inputTokens: dco_decode_opt_box_autoadd_i_64(arr[13]),
       outputTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
+      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
     );
   }
 
@@ -4217,8 +4218,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConversationStatistics dco_decode_conversation_statistics(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 9)
-      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    if (arr.length != 18)
+      throw Exception('unexpected arr length: expect 18 but see ${arr.length}');
     return ConversationStatistics(
       requests: dco_decode_u_32(arr[0]),
       reportedRequests: dco_decode_u_32(arr[1]),
@@ -4229,6 +4230,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       recentModel: dco_decode_String(arr[6]),
       firstOutputMs: dco_decode_opt_box_autoadd_i_64(arr[7]),
       durationMs: dco_decode_opt_box_autoadd_i_64(arr[8]),
+      cacheReportedRequests: dco_decode_u_32(arr[9]),
+      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[10]),
+      cacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[11]),
+      reasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[12]),
+      cacheInputTokens: dco_decode_opt_box_autoadd_i_64(arr[13]),
+      uncachedInputTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
+      recentCacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
+      recentCacheWriteTokens: dco_decode_opt_box_autoadd_i_64(arr[16]),
+      recentReasoningTokens: dco_decode_opt_box_autoadd_i_64(arr[17]),
     );
   }
 
@@ -5585,6 +5595,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_durationMs = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_inputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_outputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_cacheReadTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
     return ConversationMessage(
       variant: var_variant,
       variantCount: var_variantCount,
@@ -5601,6 +5612,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       durationMs: var_durationMs,
       inputTokens: var_inputTokens,
       outputTokens: var_outputTokens,
+      cacheReadTokens: var_cacheReadTokens,
     );
   }
 
@@ -5631,6 +5643,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_recentModel = sse_decode_String(deserializer);
     var var_firstOutputMs = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_durationMs = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_cacheReportedRequests = sse_decode_u_32(deserializer);
+    var var_cacheReadTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_cacheWriteTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_reasoningTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_cacheInputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_uncachedInputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_recentCacheReadTokens = sse_decode_opt_box_autoadd_i_64(
+      deserializer,
+    );
+    var var_recentCacheWriteTokens = sse_decode_opt_box_autoadd_i_64(
+      deserializer,
+    );
+    var var_recentReasoningTokens = sse_decode_opt_box_autoadd_i_64(
+      deserializer,
+    );
     return ConversationStatistics(
       requests: var_requests,
       reportedRequests: var_reportedRequests,
@@ -5641,6 +5668,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       recentModel: var_recentModel,
       firstOutputMs: var_firstOutputMs,
       durationMs: var_durationMs,
+      cacheReportedRequests: var_cacheReportedRequests,
+      cacheReadTokens: var_cacheReadTokens,
+      cacheWriteTokens: var_cacheWriteTokens,
+      reasoningTokens: var_reasoningTokens,
+      cacheInputTokens: var_cacheInputTokens,
+      uncachedInputTokens: var_uncachedInputTokens,
+      recentCacheReadTokens: var_recentCacheReadTokens,
+      recentCacheWriteTokens: var_recentCacheWriteTokens,
+      recentReasoningTokens: var_recentReasoningTokens,
     );
   }
 
@@ -7237,6 +7273,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_i_64(self.durationMs, serializer);
     sse_encode_opt_box_autoadd_i_64(self.inputTokens, serializer);
     sse_encode_opt_box_autoadd_i_64(self.outputTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.cacheReadTokens, serializer);
   }
 
   @protected
@@ -7264,6 +7301,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.recentModel, serializer);
     sse_encode_opt_box_autoadd_i_64(self.firstOutputMs, serializer);
     sse_encode_opt_box_autoadd_i_64(self.durationMs, serializer);
+    sse_encode_u_32(self.cacheReportedRequests, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.cacheReadTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.cacheWriteTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.reasoningTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.cacheInputTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.uncachedInputTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.recentCacheReadTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.recentCacheWriteTokens, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.recentReasoningTokens, serializer);
   }
 
   @protected

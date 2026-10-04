@@ -4726,6 +4726,7 @@ impl SseDecode for crate::api::ConversationMessage {
         let mut var_durationMs = <Option<i64>>::sse_decode(deserializer);
         let mut var_inputTokens = <Option<i64>>::sse_decode(deserializer);
         let mut var_outputTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_cacheReadTokens = <Option<i64>>::sse_decode(deserializer);
         return crate::api::ConversationMessage {
             variant: var_variant,
             variant_count: var_variantCount,
@@ -4742,6 +4743,7 @@ impl SseDecode for crate::api::ConversationMessage {
             duration_ms: var_durationMs,
             input_tokens: var_inputTokens,
             output_tokens: var_outputTokens,
+            cache_read_tokens: var_cacheReadTokens,
         };
     }
 }
@@ -4770,6 +4772,15 @@ impl SseDecode for crate::api::ConversationStatistics {
         let mut var_recentModel = <String>::sse_decode(deserializer);
         let mut var_firstOutputMs = <Option<i64>>::sse_decode(deserializer);
         let mut var_durationMs = <Option<i64>>::sse_decode(deserializer);
+        let mut var_cacheReportedRequests = <u32>::sse_decode(deserializer);
+        let mut var_cacheReadTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_cacheWriteTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_reasoningTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_cacheInputTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_uncachedInputTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_recentCacheReadTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_recentCacheWriteTokens = <Option<i64>>::sse_decode(deserializer);
+        let mut var_recentReasoningTokens = <Option<i64>>::sse_decode(deserializer);
         return crate::api::ConversationStatistics {
             requests: var_requests,
             reported_requests: var_reportedRequests,
@@ -4780,6 +4791,15 @@ impl SseDecode for crate::api::ConversationStatistics {
             recent_model: var_recentModel,
             first_output_ms: var_firstOutputMs,
             duration_ms: var_durationMs,
+            cache_reported_requests: var_cacheReportedRequests,
+            cache_read_tokens: var_cacheReadTokens,
+            cache_write_tokens: var_cacheWriteTokens,
+            reasoning_tokens: var_reasoningTokens,
+            cache_input_tokens: var_cacheInputTokens,
+            uncached_input_tokens: var_uncachedInputTokens,
+            recent_cache_read_tokens: var_recentCacheReadTokens,
+            recent_cache_write_tokens: var_recentCacheWriteTokens,
+            recent_reasoning_tokens: var_recentReasoningTokens,
         };
     }
 }
@@ -6585,6 +6605,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::ConversationMessage {
             self.duration_ms.into_into_dart().into_dart(),
             self.input_tokens.into_into_dart().into_dart(),
             self.output_tokens.into_into_dart().into_dart(),
+            self.cache_read_tokens.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -6634,6 +6655,15 @@ impl flutter_rust_bridge::IntoDart for crate::api::ConversationStatistics {
             self.recent_model.into_into_dart().into_dart(),
             self.first_output_ms.into_into_dart().into_dart(),
             self.duration_ms.into_into_dart().into_dart(),
+            self.cache_reported_requests.into_into_dart().into_dart(),
+            self.cache_read_tokens.into_into_dart().into_dart(),
+            self.cache_write_tokens.into_into_dart().into_dart(),
+            self.reasoning_tokens.into_into_dart().into_dart(),
+            self.cache_input_tokens.into_into_dart().into_dart(),
+            self.uncached_input_tokens.into_into_dart().into_dart(),
+            self.recent_cache_read_tokens.into_into_dart().into_dart(),
+            self.recent_cache_write_tokens.into_into_dart().into_dart(),
+            self.recent_reasoning_tokens.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -7658,6 +7688,7 @@ impl SseEncode for crate::api::ConversationMessage {
         <Option<i64>>::sse_encode(self.duration_ms, serializer);
         <Option<i64>>::sse_encode(self.input_tokens, serializer);
         <Option<i64>>::sse_encode(self.output_tokens, serializer);
+        <Option<i64>>::sse_encode(self.cache_read_tokens, serializer);
     }
 }
 
@@ -7681,6 +7712,15 @@ impl SseEncode for crate::api::ConversationStatistics {
         <String>::sse_encode(self.recent_model, serializer);
         <Option<i64>>::sse_encode(self.first_output_ms, serializer);
         <Option<i64>>::sse_encode(self.duration_ms, serializer);
+        <u32>::sse_encode(self.cache_reported_requests, serializer);
+        <Option<i64>>::sse_encode(self.cache_read_tokens, serializer);
+        <Option<i64>>::sse_encode(self.cache_write_tokens, serializer);
+        <Option<i64>>::sse_encode(self.reasoning_tokens, serializer);
+        <Option<i64>>::sse_encode(self.cache_input_tokens, serializer);
+        <Option<i64>>::sse_encode(self.uncached_input_tokens, serializer);
+        <Option<i64>>::sse_encode(self.recent_cache_read_tokens, serializer);
+        <Option<i64>>::sse_encode(self.recent_cache_write_tokens, serializer);
+        <Option<i64>>::sse_encode(self.recent_reasoning_tokens, serializer);
     }
 }
 

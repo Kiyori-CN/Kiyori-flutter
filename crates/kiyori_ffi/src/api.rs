@@ -51,6 +51,7 @@ pub struct ConversationMessage {
     pub duration_ms: Option<i64>,
     pub input_tokens: Option<i64>,
     pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
 }
 pub struct ConversationSnapshot {
     pub conversation: Conversation,
@@ -79,6 +80,7 @@ impl From<kiyori_core::conversations::ConversationSnapshot> for ConversationSnap
                     duration_ms: m.duration_ms,
                     input_tokens: m.input_tokens,
                     output_tokens: m.output_tokens,
+                    cache_read_tokens: m.cache_read_tokens,
                 })
                 .collect(),
         }
@@ -99,6 +101,15 @@ pub struct ConversationStatistics {
     pub recent_model: String,
     pub first_output_ms: Option<i64>,
     pub duration_ms: Option<i64>,
+    pub cache_reported_requests: u32,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
+    pub reasoning_tokens: Option<i64>,
+    pub cache_input_tokens: Option<i64>,
+    pub uncached_input_tokens: Option<i64>,
+    pub recent_cache_read_tokens: Option<i64>,
+    pub recent_cache_write_tokens: Option<i64>,
+    pub recent_reasoning_tokens: Option<i64>,
 }
 
 pub struct ChatPreferences {
@@ -278,6 +289,7 @@ impl ChatHandle {
                     input,
                     output,
                     total,
+                    ..
                 } => {
                     result.phase = ChatPhase::Usage;
                     result.input_tokens = input;
@@ -1199,6 +1211,15 @@ impl RuntimeHandle {
             recent_model: v.recent_model,
             first_output_ms: v.first_output_ms,
             duration_ms: v.duration_ms,
+            cache_reported_requests: v.cache_reported_requests,
+            cache_read_tokens: v.cache_read_tokens,
+            cache_write_tokens: v.cache_write_tokens,
+            reasoning_tokens: v.reasoning_tokens,
+            cache_input_tokens: v.cache_input_tokens,
+            uncached_input_tokens: v.uncached_input_tokens,
+            recent_cache_read_tokens: v.recent_cache_read_tokens,
+            recent_cache_write_tokens: v.recent_cache_write_tokens,
+            recent_reasoning_tokens: v.recent_reasoning_tokens,
         })
     }
     pub fn conversation_catalog(&self) -> Result<ConversationCatalog, BridgeError> {

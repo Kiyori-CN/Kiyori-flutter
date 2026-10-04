@@ -53,6 +53,7 @@ class FakeClient implements RuntimeClient {
   @override
   Future<ConversationStatistics> conversationStatistics(String id) async =>
       const ConversationStatistics(
+        cacheReportedRequests: 0,
         requests: 0,
         reportedRequests: 0,
         recentModel: '',

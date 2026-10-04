@@ -813,6 +813,7 @@ class ConversationMessage {
   final PlatformInt64? durationMs;
   final PlatformInt64? inputTokens;
   final PlatformInt64? outputTokens;
+  final PlatformInt64? cacheReadTokens;
 
   const ConversationMessage({
     required this.variant,
@@ -830,6 +831,7 @@ class ConversationMessage {
     this.durationMs,
     this.inputTokens,
     this.outputTokens,
+    this.cacheReadTokens,
   });
 
   @override
@@ -848,7 +850,8 @@ class ConversationMessage {
       firstOutputMs.hashCode ^
       durationMs.hashCode ^
       inputTokens.hashCode ^
-      outputTokens.hashCode;
+      outputTokens.hashCode ^
+      cacheReadTokens.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -869,7 +872,8 @@ class ConversationMessage {
           firstOutputMs == other.firstOutputMs &&
           durationMs == other.durationMs &&
           inputTokens == other.inputTokens &&
-          outputTokens == other.outputTokens;
+          outputTokens == other.outputTokens &&
+          cacheReadTokens == other.cacheReadTokens;
 }
 
 class ConversationSnapshot {
@@ -903,6 +907,15 @@ class ConversationStatistics {
   final String recentModel;
   final PlatformInt64? firstOutputMs;
   final PlatformInt64? durationMs;
+  final int cacheReportedRequests;
+  final PlatformInt64? cacheReadTokens;
+  final PlatformInt64? cacheWriteTokens;
+  final PlatformInt64? reasoningTokens;
+  final PlatformInt64? cacheInputTokens;
+  final PlatformInt64? uncachedInputTokens;
+  final PlatformInt64? recentCacheReadTokens;
+  final PlatformInt64? recentCacheWriteTokens;
+  final PlatformInt64? recentReasoningTokens;
 
   const ConversationStatistics({
     required this.requests,
@@ -914,6 +927,15 @@ class ConversationStatistics {
     required this.recentModel,
     this.firstOutputMs,
     this.durationMs,
+    required this.cacheReportedRequests,
+    this.cacheReadTokens,
+    this.cacheWriteTokens,
+    this.reasoningTokens,
+    this.cacheInputTokens,
+    this.uncachedInputTokens,
+    this.recentCacheReadTokens,
+    this.recentCacheWriteTokens,
+    this.recentReasoningTokens,
   });
 
   @override
@@ -926,7 +948,16 @@ class ConversationStatistics {
       recentOutputTokens.hashCode ^
       recentModel.hashCode ^
       firstOutputMs.hashCode ^
-      durationMs.hashCode;
+      durationMs.hashCode ^
+      cacheReportedRequests.hashCode ^
+      cacheReadTokens.hashCode ^
+      cacheWriteTokens.hashCode ^
+      reasoningTokens.hashCode ^
+      cacheInputTokens.hashCode ^
+      uncachedInputTokens.hashCode ^
+      recentCacheReadTokens.hashCode ^
+      recentCacheWriteTokens.hashCode ^
+      recentReasoningTokens.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -941,7 +972,16 @@ class ConversationStatistics {
           recentOutputTokens == other.recentOutputTokens &&
           recentModel == other.recentModel &&
           firstOutputMs == other.firstOutputMs &&
-          durationMs == other.durationMs;
+          durationMs == other.durationMs &&
+          cacheReportedRequests == other.cacheReportedRequests &&
+          cacheReadTokens == other.cacheReadTokens &&
+          cacheWriteTokens == other.cacheWriteTokens &&
+          reasoningTokens == other.reasoningTokens &&
+          cacheInputTokens == other.cacheInputTokens &&
+          uncachedInputTokens == other.uncachedInputTokens &&
+          recentCacheReadTokens == other.recentCacheReadTokens &&
+          recentCacheWriteTokens == other.recentCacheWriteTokens &&
+          recentReasoningTokens == other.recentReasoningTokens;
 }
 
 class DiaryDocument {

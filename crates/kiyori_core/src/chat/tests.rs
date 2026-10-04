@@ -85,7 +85,8 @@ async fn nonstream_chat_and_responses_use_json_and_preserve_usage() {
             ChatEvent::Usage {
                 input: 2,
                 output: 3,
-                total: 5
+                total: 5,
+                ..
             }
         )));
         assert!(matches!(events.last(),Some(ChatEvent::Completed {reason,..}) if reason=="stop"));
@@ -210,7 +211,10 @@ async fn responses_request_stream_and_usage_do_not_require_chat_done() {
             ChatEvent::Usage {
                 input: 2,
                 output: 3,
-                total: 5
+                total: 5,
+                cache_read: None,
+                cache_write: None,
+                reasoning: None,
             },
             ChatEvent::Completed {
                 reason: "stop".into(),
@@ -296,7 +300,10 @@ async fn real_post_stream_usage_and_terminal_once() {
             ChatEvent::Usage {
                 input: 2,
                 output: 1,
-                total: 3
+                total: 3,
+                cache_read: None,
+                cache_write: None,
+                reasoning: None,
             },
             ChatEvent::Completed {
                 reason: "stop".into(),

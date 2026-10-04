@@ -245,19 +245,7 @@ impl Decoder {
                     return Err(ChatFailure::protocol());
                 }
                 if let Some(usage) = response.get("usage").filter(|v| !v.is_null()) {
-                    let field = |name| {
-                        usage
-                            .get(name)
-                            .and_then(Value::as_u64)
-                            .ok_or_else(ChatFailure::protocol)
-                    };
-                    let _ = sender
-                        .send(ChatEvent::Usage {
-                            input: field("input_tokens")?,
-                            output: field("output_tokens")?,
-                            total: field("total_tokens")?,
-                        })
-                        .await;
+                    let _ = sender.send(usage::parse(usage)?).await;
                 }
                 return Ok(Some(reason.into()));
             }
