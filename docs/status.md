@@ -5,6 +5,27 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG 产品管理入口（本机完整验证与双端构建通过）
+
+本批基线main/f077d87已核对干净。AI抽屉扩展驻留页按旧四标签/搜索/分类和插件卡片迁移，
+插件选择TOOLPKG复用Windows/Android模型分片句柄；原包详情后台核验hash/revision，
+作者/分类/API版本来自同archive。启停、导入、详情与确认卸载复用同Runtime，成功刷新
+模型provider目录；版本变化关闭旧模态，删除确认不替换为后来同ID新包。关闭等待详情租约。
+core extensions13项通过（manager-core-v3），初次Weak误用编译失败已修，日志v1保留。
+UI正式Rust安装/启停/详情/取消删除/卸载/重开、Shell查询与聊天草稿驻留及导入生命周期
+定向通过（manager-ui-v2/v3）；布局8项、明暗/320大字/横屏/桌面16张截图通过（capture-v3）。
+完整tools/verify.ps1 -WindowsIntegration通过（work/toolpkg-manager-verify-v1.log）：
+foundation65、Rust核心165/HTTP2/provider_chat5/原生6、fmt/Clippy、387 Dart格式/analyze、
+应用626（16条件跳过）、platform9、独立FFI22（1条件跳过）、Windows引擎5。
+桥Check五文件一致（manager-bridge-check-v1）。Android ARM64 Debug137.2秒与普通Windows
+x64 Debug21.5秒串行通过，日志work/toolpkg-manager-android-v1.log/windows-v1.log。
+固定包artifacts/ui-preview/20261005-135332：APK136830890字节，SHA256
+6756110FDDC2B0BD309F09FDA7D92BDAE9431ACE793B003D059EE941FDDE81BF；Windows97文件
+170063134字节。98份副本hash、APK身份/v2签名/ZIP16K/ELF、x64/Flutter DLL pin与13份
+许可证两端/源一致审计通过（work/toolpkg-manager-artifacts-20261005-135332）。
+35路径精确允许清单审计后按原任务授权提交普通推送，最终ref见Git与manifest.sourceCommit。
+不把界面截图或Debug构建称为同设备像素验收。包排序/完整格式兼容与原生能力仍需继续。
+
 ### TOOLPKG HTTP 与正式聊天接线（本机、真实端点验收与双端构建通过）
 
 本批基线main/bfd92689，承接同任务受控HTTP未提交实现。模型owner复用同Runtime网络

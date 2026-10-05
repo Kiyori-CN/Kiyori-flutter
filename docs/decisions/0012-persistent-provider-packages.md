@@ -51,6 +51,12 @@ worker。包入口每次读取验证摘要，篡改/缺失拒绝。安装Future�
 
 ## 验证与剩余边界
 
+AI抽屉的插件管理复用同一包目录与change_extension。详情端口按revision持包共享租约，
+blocking worker有界核验原archive摘要并读取作者、分类和API版本；关闭取消并等待租约。
+Windows/Android的TOOLPKG选择复用模型文件的句柄/SAF端口与1 MiB分片，只增加文件类型。
+导入模态等待文件及Rust暂存释放；取消不写目录。启停不乐观修改事实，失败重新读取；
+卸载确认绑定原revision，包变更/删除时精确关闭所属详情与确认。UI不获取路径或URI。
+
 core回归覆盖安装/升级/重开/启停/墓碑代次、四handler、取消等待、跨Runtime共享锁、
 CRC/路径/未知native、入口篡改和pending恢复；真实FFI测试执行合成包的QuickJS、SQLite
 及订阅/未消费关闭。当前验证结果见[status](../status.md)，不把计划写成实证。

@@ -75,6 +75,33 @@ async fn install(r: &Arc<Runtime>, bytes: Vec<u8>) -> Result<ExtensionPackage, C
     import.finish().await
 }
 #[tokio::test]
+async fn metadata_is_bounded_and_tampered_original_is_rejected_without_changing_directory() {
+    let dir = Directory::new();
+    let r = runtime(&dir, Arc::new(AtomicUsize::new(0)));
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    zip.start_file("manifest.json", options).unwrap();
+    zip.write_all(json!({"schema_version":1,"toolpkg_id":"meta","version":"1.0.0","main":"main.js","author":["甲","乙"],"category":{"zh":"AI"},"api_version":"1.0"}).to_string().as_bytes()).unwrap();
+    zip.start_file("main.js", options).unwrap();
+    zip.write_all(b"exports.registerToolPkg=function(){};")
+        .unwrap();
+    let p = install(&r, zip.finish().unwrap().into_inner())
+        .await
+        .unwrap();
+    let details = r.extension_details(p.id.clone(), p.revision).await.unwrap();
+    assert_eq!(details.authors, ["甲", "乙"]);
+    assert_eq!(details.category, "AI");
+    let path = r
+        .persistent_store()
+        .unwrap()
+        .managed_path(&p.resource.id, "archive.toolpkg")
+        .unwrap();
+    std::fs::write(path, b"tampered").unwrap();
+    assert!(r.extension_details(p.id.clone(), p.revision).await.is_err());
+    assert_eq!(r.extension_packages().unwrap()[0].revision, p.revision);
+    r.close();
+}
+#[tokio::test]
 async fn install_handlers_reopen_upgrade_disable_and_uninstall_preserve_identity() {
     let dir = Directory::new();
     let active = Arc::new(AtomicUsize::new(0));
@@ -84,6 +111,18 @@ async fn install_handlers_reopen_upgrade_disable_and_uninstall_preserve_identity
         .unwrap();
     assert_eq!(first.revision, 1);
     assert!(first.enabled);
+    let details = r
+        .extension_details(first.id.clone(), first.revision)
+        .await
+        .unwrap();
+    assert_eq!(details.package.archive_hash, first.archive_hash);
+    assert!(details.authors.is_empty());
+    assert_eq!(details.api_version, "1.0");
+    assert!(
+        r.extension_details(first.id.clone(), first.revision + 1)
+            .await
+            .is_err()
+    );
     let provider = r.extension_providers().unwrap().pop().unwrap();
     assert_eq!(provider.id, "TOOLPKG:com.kiyori.fixture:fixture");
     for handler in [

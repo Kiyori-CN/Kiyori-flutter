@@ -2,7 +2,9 @@
 
 `core/extensions`拥有持久TOOLPKG包、受控导入、恢复账本、目录身份与撤销；
 FFI公开包/目录/导入/四handler端口，Dart外观管理句柄与关闭。schema19复用同SQLite
-和ResourceRef，执行仍归core/scripts；管理UI尚未完成。core/extensions/http复用同client
+和ResourceRef，执行仍归core/scripts；feature/extensions/presentation投影AI抽屉包管理，
+Windows/Android与模型导入共用分片文件端口。详情后台核验原包，不建立第二目录数据库。
+core/extensions/http复用同client
 并限定URL/认证，core/chat/extension连接正式目录/正文/用量/取消和总结；合同见ADR0013。
 
 `core/scripts`实现执行预算、取消/关闭等待与有界结果；`packages/kiyori_platform/scripts`

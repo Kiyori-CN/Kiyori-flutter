@@ -16,6 +16,7 @@ export 'src/generated/api.dart'
         TransferFile,
         TransferSpec,
         ExtensionPackage,
+        ExtensionDetails,
         ExtensionProvider,
         ExtensionHandler,
         ExtensionEvent,

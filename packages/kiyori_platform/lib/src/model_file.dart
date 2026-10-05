@@ -28,12 +28,21 @@ ModelFilePicker createModelFilePicker() => Platform.isWindows
     ? WindowsModelFilePicker()
     : const ChannelModelFilePicker();
 
+/// 扩展与模型复用同一个分片文件端口，仅切换宿主允许的文件类型。
+ModelFilePicker createExtensionFilePicker() => Platform.isWindows
+    ? WindowsModelFilePicker(extensionPackage: true)
+    : const ChannelModelFilePicker(extensionPackage: true);
+
 class ChannelModelFilePicker implements ModelFilePicker {
-  const ChannelModelFilePicker();
+  const ChannelModelFilePicker({this.extensionPackage = false});
+  final bool extensionPackage;
   static const channel = MethodChannel('kiyori/model_file');
   @override
   Future<ModelFileSource?> select() async {
-    final result = await _call<Map<Object?, Object?>>('select');
+    final result = await _call<Map<Object?, Object?>>(
+      'select',
+      extensionPackage ? {'kind': 'toolpkg'} : null,
+    );
     if (result == null) return null;
     final name = result['name'], token = result['token'];
     if (name is! String || token is! String) {

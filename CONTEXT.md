@@ -30,7 +30,10 @@ core/extensions复用AppStore/ResourceRef；schema19保存TOOLPKG包和安装恢
 取消等待旧worker释放包租约；卸载墓碑使重装不接受旧请求。JS入口每次验证hash。
 首版只支持schema1 JSON/单JS源；受控HTTP与正式ChatRun复用同client/Registry/Gate，
 JS只接凭据引用，限定GET目录/POST生成，取消等待VM/HTTP释放，终态核对全文和用量。
-动态provider来自同Runtime，撤销不替换配置引用；管理UI尚未接入。
+动态provider来自同Runtime，撤销不替换配置引用；AI抽屉扩展页的插件导入、详情、启停和
+确认卸载已接同owner，成功后刷新模型目录。文件选择复用模型分片句柄，原包详情按revision
+在blocking worker核验hash，撤销及Runtime关闭等待读取释放。详情/删除确认绑定原revision，
+变更关闭旧模态；其它扩展标签和未接动作只保留原外观。包完整格式兼容与排序继续实施。
 ZIP data descriptor/HJSON/schema2及其他旧宿主能力继续实施，详见ADR0012与status。
 
 core/scripts拥有脚本期限、4并发槽、8事件背压和取消树；platform/scripts持有单次

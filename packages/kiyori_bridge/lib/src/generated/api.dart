@@ -225,6 +225,11 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required int revision,
   });
 
+  Future<ExtensionDetails> extensionDetails({
+    required String id,
+    required int revision,
+  });
+
   Future<List<ExtensionPackage>> extensionPackages();
 
   Future<List<ExtensionProvider>> extensionProviders();
@@ -1230,6 +1235,37 @@ class DiarySummary {
 }
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
+
+class ExtensionDetails {
+  final ExtensionPackage package;
+  final List<String> authors;
+  final String category;
+  final String apiVersion;
+
+  const ExtensionDetails({
+    required this.package,
+    required this.authors,
+    required this.category,
+    required this.apiVersion,
+  });
+
+  @override
+  int get hashCode =>
+      package.hashCode ^
+      authors.hashCode ^
+      category.hashCode ^
+      apiVersion.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionDetails &&
+          runtimeType == other.runtimeType &&
+          package == other.package &&
+          authors == other.authors &&
+          category == other.category &&
+          apiVersion == other.apiVersion;
+}
 
 class ExtensionEvent {
   final ExtensionPhase phase;

@@ -90,7 +90,8 @@ Android/Windows产品构建及包审计。Android设备运行和Apple编译独�
 core/extensions现已实现schema19包持久化、受控ZIP导入、安装/升级/启停/卸载与代次撤销，
 公共FFI及Dart桥已接入；具体合同与兼容缺口见[ADR 0012](../decisions/0012-persistent-provider-packages.md)。
 包生命周期核心及真实QuickJS/FFI、整体验证与双端构建已通过。受控网络、动态目录与
-正式ChatRun/总结接线已实现，当前验收见status；管理UI和完整旧包兼容仍待实现。
+正式ChatRun/总结接线已实现，当前验收见status；AI抽屉插件导入/详情/启停/卸载已接，
+排序与完整旧包兼容仍待实现，未接扩展标签动作保留旧外观。
 精确网络、配额与结果合同见[ADR 0013](../decisions/0013-controlled-provider-http.md)。
 
 正式源码位于core/scripts与platform/scripts，内存1–128 MiB、栈64 KiB–1 MiB、

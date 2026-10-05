@@ -2,11 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/app/shell/home_shell.dart';
 import 'package:kiyori/features/assistant/presentation/ai_drawer.dart';
+import 'package:kiyori/features/extensions/presentation/extensions_controller.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'support/ui_capture.dart';
+import 'support/fake_runtime.dart';
 
 void main() {
+  testWidgets(
+    'drawer opens resident extension page and returns to preserved chat draft',
+    (tester) async {
+      final extensions = ExtensionsController(() async => FakeClient());
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: KiyoriTheme.light(),
+          home: HomeShell(extensions: extensions),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+      pager.jumpToPage(2);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('chat-draft')), '保留草稿');
+      await tester.tap(find.bySemanticsLabel('菜单').hitTestable().first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('main.packages')));
+      await tester.pumpAndSettle();
+      expect(find.text('脚本').hitTestable(), findsOneWidget);
+      await tester.tap(find.text('插件'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).hitTestable(), '插件查询');
+      await tester.tap(find.bySemanticsLabel('菜单').hitTestable().first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('main.ai_chat')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat-draft')))
+            .controller!
+            .text,
+        '保留草稿',
+      );
+      await tester.tap(find.bySemanticsLabel('菜单').hitTestable().first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('main.packages')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byType(TextField).hitTestable())
+            .controller!
+            .text,
+        '插件查询',
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      extensions.dispose();
+    },
+  );
   testWidgets(
     'AI drawer system Back, scrim, same entry, toolbox and settings preserve chat draft',
     (tester) async {

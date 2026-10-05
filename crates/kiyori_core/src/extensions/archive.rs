@@ -75,7 +75,20 @@ impl Manifest {
         label(&self.description)?;
         for (name, value) in &self.extra {
             let allowed = match name.as_str() {
-                "author" | "category" | "logo" => true,
+                "author" => match value {
+                    Value::String(v) => v.len() <= 1024 && !v.contains('\0'),
+                    Value::Array(values) => {
+                        values.len() <= 32
+                            && values.iter().all(|v| {
+                                v.as_str()
+                                    .is_some_and(|v| v.len() <= 1024 && !v.contains('\0'))
+                            })
+                    }
+                    Value::Null => true,
+                    _ => false,
+                },
+                "category" => label(value).is_ok(),
+                "logo" => true,
                 "api_version" => value.as_str().is_some_and(|v| v == "1" || v == "1.0"),
                 "requires"
                 | "environment"

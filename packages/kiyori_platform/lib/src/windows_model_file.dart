@@ -5,17 +5,20 @@ import 'model_file.dart';
 import 'windows_text_exchange.dart';
 
 class WindowsModelFilePicker implements ModelFilePicker {
-  WindowsModelFilePicker({Future<String?> Function()? select})
-    : _select =
-          select ??
-          (() => selectWindowsFile(
-            false,
-            '',
-            label: 'GGUF 模型',
-            pattern: '*.gguf',
-            extension: 'gguf',
-          ));
+  WindowsModelFilePicker({
+    Future<String?> Function()? select,
+    this.extensionPackage = false,
+  }) : _select =
+           select ??
+           (() => selectWindowsFile(
+             false,
+             '',
+             label: extensionPackage ? 'ToolPkg 插件' : 'GGUF 模型',
+             pattern: extensionPackage ? '*.toolpkg' : '*.gguf',
+             extension: extensionPackage ? 'toolpkg' : 'gguf',
+           ));
   final Future<String?> Function() _select;
+  final bool extensionPackage;
   static bool busy = false;
   @override
   Future<ModelFileSource?> select() async {
@@ -28,7 +31,10 @@ class WindowsModelFilePicker implements ModelFilePicker {
         return null;
       }
       final name = path.replaceAll('\\', '/').split('/').last;
-      if (!name.toLowerCase().endsWith('.gguf')) {
+      if (!name.toLowerCase().endsWith(
+            extensionPackage ? '.toolpkg' : '.gguf',
+          ) ||
+          name.contains(RegExp(r'[/\\:\x00]'))) {
         throw const ModelFileException('invalid_name');
       }
       final source = _WindowsModelFile(name, await File(path).open());

@@ -19,6 +19,8 @@ import '../../features/knowledge/presentation/knowledge_controller.dart';
 import '../../features/assistant/presentation/prompts/prompts_controller.dart';
 import '../../features/assistant/presentation/models/models_controller.dart';
 import '../../features/knowledge/presentation/knowledge_page.dart';
+import '../../features/extensions/presentation/extensions_controller.dart';
+import '../../features/extensions/presentation/extensions_page.dart';
 import 'settings_navigation.dart';
 import 'bottom_navigation.dart';
 import 'home_page.dart';
@@ -31,10 +33,12 @@ class HomeShell extends StatefulWidget {
     this.prompts,
     this.models,
     this.chat,
+    this.extensions,
     super.key,
   });
   final ModelsController? models;
   final ChatController? chat;
+  final ExtensionsController? extensions;
   final PromptsController? prompts;
   final WorkflowController? workflows;
   final KnowledgeController? knowledge;
@@ -61,6 +65,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget? aiToolbox;
   Widget? aiWorkflows;
   Widget? aiKnowledge;
+  Widget? aiExtensions;
   final knowledgeKey = GlobalKey<KnowledgePageState>();
   final workflowKey = GlobalKey<WorkflowPageState>();
   late final drawerPlugins = <AiDrawerEntry>[];
@@ -95,6 +100,10 @@ class _HomeShellState extends State<HomeShell> {
     final workflows = widget.workflows;
     if (workflows != null && !workflows.loaded && !workflows.loading) {
       unawaited(workflows.load());
+    }
+    final extensions = widget.extensions;
+    if (extensions != null && !extensions.loaded && !extensions.loading) {
+      unawaited(extensions.load());
     }
   }
 
@@ -134,6 +143,15 @@ class _HomeShellState extends State<HomeShell> {
           onMenu: openAiDrawer,
         );
         go(2);
+      case 'main.packages':
+        final extensions = widget.extensions;
+        if (extensions == null) return;
+        selectedAiEntry = entry.id;
+        aiExtensions ??= ExtensionsPage(
+          controller: extensions,
+          onMenu: openAiDrawer,
+        );
+        go(2);
       case 'main.memory_base':
         final knowledge = widget.knowledge;
         if (knowledge == null) return;
@@ -153,6 +171,7 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     widget.workflows?.addListener(_workflowsChanged);
+    widget.extensions?.addListener(_workflowsChanged);
     // 首帧先显示首页；随后准备相邻轻量页面，避免第一次手指移动才布局。
     // 这里只预热 UI，不允许页面 build 启动网络、文件扫描或业务任务。
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -163,6 +182,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     widget.workflows?.removeListener(_workflowsChanged);
+    widget.extensions?.removeListener(_workflowsChanged);
     pager.dispose();
     super.dispose();
   }
@@ -329,6 +349,24 @@ class _HomeShellState extends State<HomeShell> {
                                             ),
                                           ),
                                         ),
+                                      if (aiExtensions != null)
+                                        Offstage(
+                                          offstage:
+                                              selectedAiEntry !=
+                                              'main.packages',
+                                          child: ExcludeFocus(
+                                            excluding:
+                                                selectedAiEntry !=
+                                                'main.packages',
+                                            child: TickerMode(
+                                              enabled:
+                                                  settled == 2 &&
+                                                  selectedAiEntry ==
+                                                      'main.packages',
+                                              child: aiExtensions!,
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   )
                                 : pages[index],
@@ -389,6 +427,9 @@ class _HomeShellState extends State<HomeShell> {
               toolboxCount: ToolboxPresentation.all.length,
               workflowCount: widget.workflows?.loaded == true
                   ? widget.workflows!.records.length
+                  : null,
+              packageCount: widget.extensions?.loaded == true
+                  ? widget.extensions!.packages.length
                   : null,
               open: aiDrawerOpen,
               selected: selectedAiEntry,

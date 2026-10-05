@@ -118,6 +118,11 @@ secret回显、共享client、停滞体取消、重定向/超量拒绝。platfor
 provider_chat执行正式目录、流式/缓冲、system、多轮、自动/手动总结和SQLite重开，
 以及单并发活动/排队禁用、非法用量/缺失及伪造终态、捕获HTTP失败和网络超时。
 model_extension_business_test通过真实FFI验证旧抽屉选择、保存/重开与撤销保留配置。
+extensions_business_test从插件产品UI经真实文件句柄、QuickJS/FFI/SQLite安装、启停、详情、
+取消删除、卸载与重开；extension_import_lifecycle_test验证取消/失败释放、启停事实恢复及
+同ID新revision关闭详情和确认，不删除新包。extensions_capture_test覆盖明暗、320宽双倍字、
+横屏和桌面；本机字体截图不替代同设备像素验证。model_file_test验证TOOLPKG/GGUF共用
+同一有界句柄和类型限制，移动channel mock仅证明调用合同。
 默认测试不调用真实供应商，真实端点结果和设备像素验收分别记录。
 
 首轮 Android arm64 真机、Windows x64；Android x64 模拟器在需要时添加。iOS 没有 Mac/iPhone，明确保留待验证，后续先模拟器再真机。旧应用和新应用并存需查安装包标识、Provider、数据目录、终端 home/socket/端口，再测试同时启动。

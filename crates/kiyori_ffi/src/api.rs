@@ -1391,6 +1391,19 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub async fn extension_details(
+        &self,
+        id: String,
+        revision: u32,
+    ) -> Result<ExtensionDetails, BridgeError> {
+        let details = self.inner.extension_details(id, revision).await?;
+        Ok(ExtensionDetails {
+            package: details.package.into(),
+            authors: details.authors,
+            category: details.category,
+            api_version: details.api_version,
+        })
+    }
     pub fn extension_packages(&self) -> Result<Vec<ExtensionPackage>, BridgeError> {
         Ok(self
             .inner
@@ -2103,6 +2116,12 @@ pub struct ExtensionPackage {
     pub archive_hash: String,
     pub source_hash: String,
     pub cleanup_pending: u32,
+}
+pub struct ExtensionDetails {
+    pub package: ExtensionPackage,
+    pub authors: Vec<String>,
+    pub category: String,
+    pub api_version: String,
 }
 impl From<kiyori_core::extensions::ExtensionPackage> for ExtensionPackage {
     fn from(v: kiyori_core::extensions::ExtensionPackage) -> Self {

@@ -26,6 +26,13 @@ void main() {
       final package = await install(runtime);
       expect(package.enabled, isTrue);
       expect(package.cleanupPending, 0);
+      final details = await runtime.extensionDetails(
+        package.id,
+        package.revision,
+      );
+      expect(details.package.archiveHash, package.archiveHash);
+      expect(details.apiVersion, '1.0');
+      expect(details.authors, isEmpty);
       final provider = (await runtime.extensionProviders()).single;
       Future<List<ExtensionEvent>> invoke(ExtensionHandler handler) async {
         final run = await runtime.startExtension(

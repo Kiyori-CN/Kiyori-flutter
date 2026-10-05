@@ -7,6 +7,65 @@ import 'package:kiyori_platform/src/windows_model_file.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('ToolPkg uses the same bounded Windows file owner and rejects model extension', () async {
+    final root = await Directory.systemTemp.createTemp('kiyori-package-file-');
+    final file = File('${root.path}/fixture.TOOLPKG');
+    await file.writeAsBytes([1, 2, 3]);
+    final picker = WindowsModelFilePicker(
+      extensionPackage: true,
+      select: () async => file.path,
+    );
+    ModelFileSource? source;
+    try {
+      await expectLater(
+        WindowsModelFilePicker(select: () async => file.path).select(),
+        throwsA(isA<ModelFileException>()),
+      );
+      source = await picker.select();
+      expect(source!.name, 'fixture.TOOLPKG');
+      expect(await source.read(), [1, 2, 3]);
+      await expectLater(
+        WindowsModelFilePicker(select: () async => null).select(),
+        throwsA(isA<ModelFileException>()),
+      );
+      await source.close();
+      expect(
+        await WindowsModelFilePicker(select: () async => null).select(),
+        isNull,
+      );
+      expect(await file.readAsBytes(), [1, 2, 3]);
+    } finally {
+      await source?.close();
+      await root.delete(recursive: true);
+    }
+  });
+  test(
+    'ToolPkg mobile selection routes kind through the existing channel',
+    () async {
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(ChannelModelFilePicker.channel, (
+        call,
+      ) async {
+        if (call.method == 'select') {
+          expect(call.arguments, {'kind': 'toolpkg'});
+          return null;
+        }
+        fail('Unexpected method');
+      });
+      try {
+        expect(
+          await const ChannelModelFilePicker(extensionPackage: true).select(),
+          isNull,
+        );
+      } finally {
+        messenger.setMockMethodCallHandler(
+          ChannelModelFilePicker.channel,
+          null,
+        );
+      }
+    },
+  );
   test(
     'SAF contract token lifecycle, bounded read and native error redaction',
     () async {

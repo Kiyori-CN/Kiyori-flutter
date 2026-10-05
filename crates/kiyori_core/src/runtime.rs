@@ -269,6 +269,7 @@ impl Runtime {
         self.cancellation.cancel();
         // JS中断由blocking worker检查；等待其RAII析构，不能仅断开事件订阅。
         self.scripts.wait_idle();
+        self.extensions.wait_idle();
         // 关闭等待当前短事务提交；后续操作在持锁后检查关闭状态，不能迟到写入。
         if let Ok(mut store) = self.store.lock() {
             store.take();

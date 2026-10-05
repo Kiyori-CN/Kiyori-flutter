@@ -14,6 +14,7 @@ import '../features/knowledge/presentation/knowledge_controller.dart';
 import '../features/assistant/presentation/prompts/prompts_controller.dart';
 import '../features/assistant/presentation/models/models_controller.dart';
 import '../features/assistant/presentation/chat_controller.dart';
+import '../features/extensions/presentation/extensions_controller.dart';
 
 class KiyoriApp extends StatefulWidget {
   const KiyoriApp({required this.connect, this.diagnostics = false, super.key});
@@ -32,6 +33,7 @@ class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
   late final PromptsController prompts;
   late final ModelsController models;
   late final ChatController chat;
+  late final ExtensionsController extensions;
   @override
   void initState() {
     super.initState();
@@ -45,6 +47,10 @@ class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
       openNativeSecretStore,
     );
     chat = ChatController(controller.connectedClient, openNativeSecretStore);
+    extensions = ExtensionsController(
+      controller.connectedClient,
+      onChanged: models.refreshProviders,
+    );
     unawaited(controller.initialize());
   }
 
@@ -63,6 +69,7 @@ class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
     prompts.dispose();
     models.dispose();
     chat.dispose();
+    extensions.dispose();
     controller.dispose();
     super.dispose();
   }
@@ -95,6 +102,7 @@ class _KiyoriAppState extends State<KiyoriApp> with WidgetsBindingObserver {
             prompts: prompts,
             models: models,
             chat: chat,
+            extensions: extensions,
           ),
   );
 }

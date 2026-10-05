@@ -57,6 +57,9 @@ class ModelsController extends ChangeNotifier {
     await load();
   }
 
+  /// 包生命周期提交后不能复用此前读取的provider快照。
+  Future<void> refreshProviders() => _refreshCommitted();
+
   Future<ModelConfig> refreshCommittedConfig(
     String id,
     int minimumRevision,

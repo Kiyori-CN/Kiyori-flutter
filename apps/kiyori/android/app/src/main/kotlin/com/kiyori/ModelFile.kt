@@ -19,6 +19,7 @@ class ModelFile(private val activity: Activity, messenger: BinaryMessenger) {
     private val stream = AtomicReference<InputStream?>()
     private var signal = CancellationSignal()
     private var pending: MethodChannel.Result? = null
+    private var extension = ".gguf"
     @Volatile private var token: String? = null
     @Volatile private var detached = false
     init { channel.setMethodCallHandler(::handle) }
@@ -28,6 +29,11 @@ class ModelFile(private val activity: Activity, messenger: BinaryMessenger) {
         when (call.method) {
             "select" -> {
                 if (pending != null || token != null) { result.error("busy", null, null); return }
+                extension = when (call.argument<String>("kind")) {
+                    null, "gguf" -> ".gguf"
+                    "toolpkg" -> ".toolpkg"
+                    else -> { result.error("unsupported", null, null); return }
+                }
                 pending = result
                 signal = CancellationSignal()
                 try {
@@ -72,6 +78,7 @@ class ModelFile(private val activity: Activity, messenger: BinaryMessenger) {
         val id = UUID.randomUUID().toString()
         token = id
         val selectionSignal = signal
+        val selectedExtension = extension
         worker.execute {
             var value: Any? = null
             var error: String? = null
@@ -79,7 +86,7 @@ class ModelFile(private val activity: Activity, messenger: BinaryMessenger) {
                 val name = activity.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null, selectionSignal).use { cursor ->
                     if (cursor != null && cursor.moveToFirst()) cursor.getString(0) else null
                 }
-                if (name == null || !name.lowercase().endsWith(".gguf") || name.any { it in "/\\:\u0000" }) {
+                if (name == null || !name.lowercase().endsWith(selectedExtension) || name.any { it in "/\\:\u0000" }) {
                     error = "invalid_name"
                 } else {
                     val descriptor = activity.contentResolver.openAssetFileDescriptor(uri, "r", selectionSignal)

@@ -5,6 +5,7 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<api.ExtensionDetails> extensionDetails(String id, int revision);
   Future<List<api.ExtensionPackage>> extensionPackages();
   Future<List<api.ExtensionProvider>> extensionProviders();
   Future<ExtensionImportRun> beginExtensionImport();
@@ -442,6 +443,12 @@ final class _NativeModelSecretsWrite implements ModelSecretsWrite {
 final class NativeRuntimeClient implements RuntimeClient {
   final _extensionImports = <_NativeExtensionImport>{};
   final _extensionRuns = <_NativeExtensionRun>{};
+  @override
+  Future<api.ExtensionDetails> extensionDetails(String id, int revision) {
+    _ensureOpen();
+    return _handle.extensionDetails(id: id, revision: revision);
+  }
+
   @override
   Future<List<api.ExtensionPackage>> extensionPackages() {
     _ensureOpen();

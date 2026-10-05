@@ -60,6 +60,13 @@ pub struct ExtensionProvider {
     pub display_name: String,
     pub description: String,
 }
+#[derive(Debug, Clone)]
+pub struct ExtensionDetails {
+    pub package: ExtensionPackage,
+    pub authors: Vec<String>,
+    pub category: String,
+    pub api_version: String,
+}
 fn stable_id(package: &str, provider: &str) -> String {
     format!("TOOLPKG:{package}:{provider}")
 }
@@ -124,6 +131,30 @@ impl Drop for Suspended {
     }
 }
 impl Registry {
+    pub(crate) fn wait_idle(&self) {
+        let scopes: Vec<_> = self
+            .scopes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .values()
+            .filter_map(std::sync::Weak::upgrade)
+            .collect();
+        for scope in scopes {
+            let mut state = scope
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            for token in state.calls.values() {
+                token.cancel();
+            }
+            while !state.calls.is_empty() {
+                state = scope
+                    .wake
+                    .wait(state)
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+            }
+        }
+    }
     pub(crate) fn prepare(
         &self,
         store: &AppStore,
@@ -208,7 +239,7 @@ impl Registry {
             .state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if state.blocked {
+        if state.blocked || token.is_cancelled() {
             return Err(error("扩展正在变更，请稍后重试"));
         }
         let file = package_lock(store, id)?;
@@ -362,6 +393,86 @@ impl AppStore {
     }
 }
 impl Runtime {
+    /// 仅详情读取原包；持共享租约并在blocking worker核验摘要，不在UI帧中解压。
+    pub async fn extension_details(
+        &self,
+        id: String,
+        revision: u32,
+    ) -> Result<ExtensionDetails, CoreError> {
+        let store = self.persistent_store()?;
+        let cancellation = self.cancellation.child_token();
+        let lease = self.extensions.lease(&store, &id, cancellation.clone())?;
+        tokio::task::spawn_blocking(move || {
+            let _lease = lease;
+            let package = store.extension(&id)?;
+            if package.revision != revision {
+                return Err(error("扩展已变更，请重新打开详情"));
+            }
+            let path = store.managed_path(&package.resource.id, "archive.toolpkg")?;
+            let mut file = File::open(path).map_err(|_| error("扩展原包不可读"))?;
+            if file.metadata().map_err(|_| error("扩展原包不可读"))?.len() > MAX_ARCHIVE {
+                return Err(error("扩展原包超过限制"));
+            }
+            let mut digest = ring::digest::Context::new(&SHA256);
+            let mut chunk = [0u8; 64 * 1024];
+            let mut total = 0u64;
+            loop {
+                if cancellation.is_cancelled() {
+                    return Err(error("扩展详情读取已取消"));
+                }
+                let size = file.read(&mut chunk).map_err(|_| error("扩展原包不可读"))?;
+                if size == 0 {
+                    break;
+                }
+                total += size as u64;
+                if total > MAX_ARCHIVE {
+                    return Err(error("扩展原包超过限制"));
+                }
+                digest.update(&chunk[..size]);
+            }
+            let digest: String = digest
+                .finish()
+                .as_ref()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            if digest != package.archive_hash {
+                return Err(error("扩展原包完整性校验失败"));
+            }
+            let manifest = archive::read(&mut file)?.manifest;
+            let authors = match manifest.extra.get("author") {
+                None | Some(Value::Null) => vec![],
+                Some(Value::String(author)) => vec![author.clone()],
+                Some(Value::Array(values)) => values
+                    .iter()
+                    .map(|v| {
+                        v.as_str()
+                            .map(str::to_owned)
+                            .ok_or_else(|| error("扩展作者无效"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+                _ => return Err(error("扩展作者无效")),
+            };
+            if authors.len() > 32 || authors.iter().any(|v| v.len() > 1024 || v.contains('\0')) {
+                return Err(error("扩展作者无效"));
+            }
+            let category = archive::label(manifest.extra.get("category").unwrap_or(&Value::Null))?;
+            let api_version = manifest
+                .extra
+                .get("api_version")
+                .and_then(Value::as_str)
+                .unwrap_or("1.0")
+                .to_owned();
+            Ok(ExtensionDetails {
+                package,
+                authors,
+                category,
+                api_version,
+            })
+        })
+        .await
+        .map_err(|_| error("扩展详情读取中断"))?
+    }
     pub fn extension_packages(&self) -> Result<Vec<ExtensionPackage>, CoreError> {
         self.with_store(|store|{
             let ids=store.connection.lock().map_err(|_|error("扩展存储锁不可用"))?.prepare("SELECT package_id FROM extension_packages WHERE resource_id IS NOT NULL ORDER BY name,package_id").map_err(|_|error("扩展目录读取失败"))?.query_map([],|r|r.get::<_,String>(0)).map_err(|_|error("扩展目录读取失败"))?.collect::<Result<Vec<_>,_>>().map_err(|_|error("扩展目录读取失败"))?;

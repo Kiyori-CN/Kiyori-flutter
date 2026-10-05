@@ -25,6 +25,9 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ExtensionDetails> extensionDetails(String id, int revision) =>
+      throw UnimplementedError();
+  @override
   Future<List<ExtensionPackage>> extensionPackages() async => [];
   @override
   Future<List<ExtensionProvider>> extensionProviders() async => [];
