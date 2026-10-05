@@ -23,6 +23,10 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+portable归档验证独立Node中文/Emoji旧19字段hash、P256链头ASCII签名、payload哈希与
+修订/当前投影关联，篡改拒绝和重开封印复用；诊断验证64KiB/8MiB预算、首尾UTF16、
+去重锚点、动态围栏、路径/账户假名化与幂等。旧Android进程导入仍未实测。
+
 platform/audit用Windows真实DPAPI/AES-GCM/P256验证nonce随机、重开同身份、密文
 篡改与缺失/损坏密钥拒绝、schema20迁移失败回滚/触发器恢复、正文搜索分页/链头
 保留及持久签名复用/损坏拒绝。产品FFI固定装配native，Rust参考夹具只保留纯核心

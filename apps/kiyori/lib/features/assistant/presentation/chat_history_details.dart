@@ -1590,7 +1590,7 @@ class _ExportDialogState extends State<_ExportDialog> {
         final ok = await widget.exchange.save(
           bytes,
           name:
-              'kiyori-conversation-${DateTime.now().millisecondsSinceEpoch}.${format == 'zip' ? 'zip' : 'md'}',
+              'kiyori-conversation-${DateTime.now().millisecondsSinceEpoch}.${format == 'zip' ? 'kiyori-audit' : 'md'}',
           mime: format == 'zip' ? 'application/zip' : 'text/markdown',
         );
         if (!mounted) return;

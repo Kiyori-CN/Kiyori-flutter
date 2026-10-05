@@ -8,6 +8,9 @@ use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::{Value, json};
 use std::io::{Cursor, Write};
 
+#[path = "conversation_audit_archive.rs"]
+pub(crate) mod archive;
+
 pub(crate) const SCHEMA: &str = "
 ALTER TABLE conversations ADD COLUMN parent_id TEXT REFERENCES conversations(id) ON DELETE SET NULL;
 CREATE TABLE conversation_audit_events(
@@ -34,7 +37,7 @@ PRAGMA user_version=21;";
 const MAX_EXPORT: usize = 64 * 1024 * 1024;
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(c: &Connection) {
-    c.execute_batch("DROP TABLE IF EXISTS conversation_audit_security; DROP TABLE IF EXISTS conversation_audit_seals; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
+    c.execute_batch("DROP TABLE IF EXISTS conversation_audit_portable_seals; DROP TABLE IF EXISTS conversation_audit_security; DROP TABLE IF EXISTS conversation_audit_seals; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
     let has_parent = c
         .prepare("PRAGMA table_info(conversations)")
         .unwrap()
@@ -270,16 +273,13 @@ impl AppStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(db)?;
         initialize(&tx, id)?;
-        let size:i64=tx.query_row("SELECT coalesce(sum(payload_bytes),0) FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|r.get(0)).map_err(db)?;
+        let size:i64=tx.query_row("SELECT (SELECT coalesce(sum(payload_bytes),0) FROM conversation_audit_events WHERE conversation_id=?1)+(SELECT coalesce(sum(length(CAST(content AS BLOB))),0) FROM conversation_messages WHERE conversation_id=?1)+(SELECT coalesce(sum(length(CAST(v.content AS BLOB))),0) FROM conversation_variants v JOIN conversation_messages m ON m.id=v.message_id WHERE m.conversation_id=?1)",[id],|r|r.get(0)).map_err(db)?;
         if size > (MAX_EXPORT / 2) as i64 {
             return Err(error("审计导出超过64 MiB边界；原始记录未截断"));
         }
         let mut events = Vec::new();
         let mut previous = String::new();
         let rows=tx.prepare("SELECT sequence,recorded_at,category,event_type,summary,kiyori_audit_unprotect(payload),previous_hash,event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence").map_err(db)?.query_map([id],|r|Ok((r.get::<_,i64>(0)?,r.get::<_,i64>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,String>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?,r.get::<_,String>(7)?))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
-        let mut markdown = String::from(
-            "# Kiyori 对话诊断\n\n记录范围：基础事件和消息修订。迁移前历史、未接入的工具事件未知。\n\n",
-        );
         for (seq, at, category, kind, summary, payload, prev, event) in rows {
             if prev != previous
                 || hash(
@@ -300,14 +300,19 @@ impl AppStore {
             }
             previous = event.clone();
             let data: Value = serde_json::from_str(&payload).map_err(|_| error("审计正文损坏"))?;
-            markdown.push_str(&format!(
-                "## {seq} · {summary}\n\n{category} / {kind} · {at}\n\n```json\n{}\n```\n\n",
-                serde_json::to_string_pretty(&data).map_err(|_| error("无法编码审计正文"))?
-            ));
             events.push(json!({"conversationId":id,"sequence":seq,"recordedAt":at,"category":category,"eventType":kind,"summary":summary,"payload":data,"previousEventSha256":prev,"eventSha256":event}));
         }
-        let result = if format == "markdown" {
-            redact(&markdown).into_bytes()
+        let result = if self.audit_crypto.persistent() {
+            let snapshot = archive::build(&tx, id, events)?;
+            if format == "markdown" {
+                archive::seal_snapshot(&tx, &*self.audit_crypto, &snapshot)?;
+                archive::markdown(&snapshot, true)?.into_bytes()
+            } else {
+                archive::package(&tx, &*self.audit_crypto, &snapshot)?
+            }
+        } else if format == "markdown" {
+            // 参考运行时也使用相同阅读投影；旧四文件包只保留纯核心签名夹具兼容。
+            archive::markdown(&archive::build(&tx, id, events)?, true)?.into_bytes()
         } else {
             let events = serde_json::to_vec(&events).map_err(|_| error("无法编码事件包"))?;
             let messages = serde_json::to_vec(&messages(&tx, id, None)?)

@@ -18,6 +18,7 @@
 - [ADR 0011：受控脚本执行器](decisions/0011-controlled-script-executor.md)：CommonJS/Promise真实调用、限额、取消析构和静态构建。
 - [ADR 0014：历史目录与基础审计](decisions/0014-conversation-history-and-audit.md)：删除替代事务、分组作用域、消息修订、事件链与导出边界。
 - [ADR 0015：审计正文保护](decisions/0015-audit-native-protection.md)：平台AES-GCM与持久P-256签名、schema21迁移和密钥恢复边界。
+- [ADR 0016：旧格式审计导出](decisions/0016-portable-audit-export.md)：schema1移植投影、链头封印、诊断预算与假名化。
 
 ## 架构
 

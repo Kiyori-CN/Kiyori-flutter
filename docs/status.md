@@ -5,113 +5,71 @@
 
 ## 当前任务：对话历史左抽屉旧源还原
 
-任务状态：部分完成；首批已提交推送，续批实现、本机验证与双端检查包已完成，设备验收待验证。基线为
-2026-10-05 main/c8dc3274，起始工作区
-干净，与origin/main一致；旧源只读Kiyori-Android/6b03b03。用户已授权本批全部提交普通
-推送到main，未授权设备安装、供应商调用或发布。详细来源/参数与范围见
-[复刻方案](design/chat-history-replication.md)，持久化契约见
-[ADR0014](decisions/0014-conversation-history-and-audit.md)。
+任务状态：部分完成。抽屉、设置、双向滑动、菜单、分组与相关弹窗已经按旧源实施并
+通过本机回归；同设备像素、字体、触摸和Profile尚未验收，详情所依赖的完整旧工具与
+附件事实仍有缺口，不能称“整个抽屉所有功能完美复刻”。基线为2026-10-05
+main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a clean继续。
+用户授权全部提交普通推送至origin/main；设备授权问题尚未答复，未安装或操作MuMu，
+未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
+[复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-删除当前聊天与替代处于同一SQLite事务；同绑定最新会话优先，无候选则新建并选择，
-删除所有聊天仍保留真实空会话。单删继承分组，整组删除不继承；分组冻结角色/群组
-作用域和成员revision，锁定/生成/版本冲突原子拒绝。设置三模式、自动角色/聊天、
-搜索并集/防抖、菜单八动作、可见桶排序/完整桶置底、跨分组拖排、快滚和折叠保留
-已实施。滑动按旧依赖96dp、禁方向1/10、400ms回位与600ms涟漪；标题/行高/字号/
-图标/语义明暗色按旧源核对。会话和分组移除释放实体及所属确认，不误关历史目录。
+### 已实施行为
 
-详情接入基础事件链、真实消息修订/备注、正文分页、Markdown/签名ZIP及Android SAF/
-Windows文件导出。schema20不改写旧消息；旧修订/供应商原始事件未知，签名仅证明
-自包含包完整性。旧版供应商/工具完整事件、封印/附件/旧包导入尚未接入，原始事件
-搜索限已加载元数据，不能称整个旧详情工作台完全复刻。iOS导出不可用。
+- 删除当前聊天与选择替代处于同一SQLite事务；同绑定最新会话优先，无候选则新建并
+  选择。手动删空始终保留真实空会话，单删继承分组、整组删除不继承。
+- 标题、计数、角色头像、三级目录、搜索、新建、手势提示、分支导轨、置顶/锁定/
+  生成状态按旧源投影；搜索400ms防抖并拒绝迟到，折叠状态保留，快滚使用真实extent。
+- 右滑编辑、左滑删除采用旧96dp阈值；禁方向阻力1/10、400ms回位、600ms涟漪，锁定
+  禁左滑。拖排松手一次提交；可见桶上/下移动，完整桶置底，失败恢复真实目录。
+- 设置采用紧凑三项单选与两项开关，标题14/20、说明12/16、10/14内距、8间距；
+  即时持久化，固定标题/完成操作和可滚动正文。管理菜单八项与旧语义图标/明暗色一致。
+- 编辑、删除、分组管理/新建/重命名与解散/连同对话删除使用冻结实体/revision/成员
+  作用域，锁定、生成和并发冲突原子拒绝。遮罩按旧空闲退出；有草稿先确认，忙碌时
+  拒绝退出和重复提交，实体失效只释放所属路由。
+- 详情时间线/对话/原始事件、独立查询/滚动、修订/备注、正文分页、当前/未读入口已
+  接真实owner。12000 UTF-16分页不拆代理对，空正文编辑保留身份与历史；原始事件
+  按旧行为仅搜已加载元数据，时间线承担独立完整正文检索。
+- 实际请求/终态和总结审计复用Run/EventSender；平台审计payload使用Android Keystore
+  与Windows DPAPI/AES-GCM保护，持久P-256签名绑定本机公钥，缺密钥/坏封印拒绝替换。
+- 导出改为旧schema1的九类文件、payload引用/去重、修订与当前投影、链头ASCII签名，
+  扩展名为.kiyori-audit。原始八字段源链不改写，BASIC移植投影明确标记未知事实；
+  旧messageTimestamp为观察定位符，真实Run用量/时刻单独投影。Markdown采用旧
+  64KiB/8MiB预算、重复引用、首尾UTF16、动态围栏、账户/路径假名与嵌套JSON凭据遮蔽。
+  数据与回滚契约见[ADR0014](decisions/0014-conversation-history-and-audit.md)、
+  [ADR0015](decisions/0015-audit-native-protection.md)、[ADR0016](decisions/0016-portable-audit-export.md)。
 
-完整`tools/verify.ps1 -WindowsIntegration`通过（work/history-verify-v4.log）：foundation67、
-tooling4、Rust核心177/HTTP3/provider_chat13/原生6、398 Dart格式与analyze、应用635
-（17条件跳过）、platform11、独立FFI22（1条件跳过）、Windows引擎5。Rust三项旧源/
-真实API条件跳过，不代表真实供应商验收。桥Check五输出一致（history-bridge-check-v3）。
-最终UI联合11项通过（history-final-ui-v3），包括删空、固定阈值/禁方向、草稿/实体失效、
-设置语义、真实备注/签名导出、导出失败留弹窗和重试、向下拖排及快滚首尾；最终analyze-v2
-无问题。捕获五窗口50张（history-drawer-capture-v6），明暗、窄屏大字键盘、横屏和桌面
-代表图已审阅。短横屏快滚溢出、拖排提交时旧目录回填、测试旧预期/异步等待已修；最后
-错误目录直接调用Flutter导致DLL/字体加载失败，改用正式test-ui入口通过。桥v2的Windows
-映射占用重试后通过；失败日志均保留，没有禁用检查或降低产品断言。
+### 最终本机证据
 
-串行普通入口Android/Windows Debug最终构建24.7s/19.4s通过（history-android-v2与
-history-windows-v2）；首次完整构建167.1s/61.3s同样成功。固定包位于
-`artifacts/ui-preview/20261006-003401/`：APK137248567字节，SHA256
-`9B9B6EE366F34463FF1B01D9AEF888BFE34FCA8F4C5CEC75FB22CFC929725E05`；Windows99文件
-170771978字节。APK身份com.kiyori/ARM64/min24/target37/v2签名、ZIP16K/ELF对齐、53表情、
-15份两端许可证、Windows x64/Flutter DLL pin及100副本逐文件hash通过。manifest保存完整
-哈希与来源，最终sourceCommit在Git交付后记录；证据为work/history-artifacts-20261006-003401。
-739文件树审计无warning/大文件/相对导入环；47路径精确允许清单通过，未改依赖和lock。
-2026-10-06提交前fetch/ls-remote确认origin/main仍c8dc3274，ahead/behind0/0。47路径已提交为
-`89c75c662e223fc6e14a6b3215d06204c1fe4bd3`并普通推送；ls-remote核对远端相同，0/0且
-工作区干净。交付只包含本批源码、测试和正式文档；后续本节的交付记录补充只改文档，
-固定manifest保存最终Git来源及实现提交，过程证据和二进制未入库。
+冻结产品源码后tools/verify.ps1 -WindowsIntegration完整通过（work/history-portable-verify-v2.log）：
+foundation69/tooling4、Rust core184/HTTP3/provider13/native6/native-audit1、398 Dart格式、
+Clippy与analyze无错误、app639（17条件跳过）/platform11/FFI22（1条件跳过）/Windows5。
+Rust三项旧源/真实API条件跳过，不代表真实供应商验证。公共FFI未变化，前序桥Check五
+输出一致。UI联合15项通过（history-portable-ui-v3），捕获五窗口60PNG于
+work/history-drawer-capture-v15：390明暗、320双倍字/180键盘、844横屏与1280桌面。
+实际审阅明暗设置/菜单/删除/编辑/分组/导出、窄屏备注、横屏设置，未见框架溢出。
 
-同设备像素/字体、真实触摸、TalkBack、系统SAF/文件选择器、Profile和Apple仍
-verification_pending。整体完全复刻仍需接入工具完整事件、旧封印/附件及旧包
-兼容；随后在获授权设备进行并排视觉/手势/Profile验收。旧AuditRaw限定已加载事件，
-全文检索由时间线承担，不将原始事件全记录检索列为旧行为缺口。
+原生最终合成包history-portable-native-final.kiyori-audit经独立Node校验通过：6事件/
+6payload/2修订/1当前投影/1真实P256封印；UTF8字节哈希、JSONL引用、修订指针、
+链头ASCII签名与篡改拒绝一致（history-portable-independent-final.json）。中文/Emoji
+独立向量为de21c29b11ad0bcc959b35d4ff39d704de063761ae9141cd9182a7cecb76e933。
+普通Android/Windows Debug串行构建131.5s/20.0s通过（history-portable双端v1）。
+最终固定包artifacts/ui-preview/20261006-043450：APK137640968字节，SHA256
+5ECF25B25B188B274BF751165921C084A5797F65628EF46A577A6977565BF349；Windows101文件171424483字节。
+APK身份com.kiyori/ARM64/min24/target37/v2签名、ZIP16K/ELF、53表情、17两端许可证、
+Windows x64/DLL pin及102副本hash审计通过。完整产物hash与最终Git来源保存manifest，
+二进制和过程日志不入库；交付使用精确22路径源码/测试/正式文档清单，普通推送main。
 
-续批从main/a420ce5继续：已实现独立标签查询/滚动、独立正文检索游标、
-搜索无匹配仍可加载更早页、紧凑raw行和时间线最新/未读入口。请求审计接既有EventSender，
-真实发送前原子保存语义体/attempt，HTTP状态/协议和单终态共用Run，扩展在最终计数与
-条件总结后记录，本地推理保留最终参数/history，自动/手动总结均有SUMMARY事实。
-认证/header值及常见无空格JSON凭据先遮蔽；失败阻外发，取消/超时等写入与worker释放。
-公共FFI/schema/依赖未变。终态先释放上游及save闭包会话锁再交给UI，修复总结结束后
-立即下一轮偶发“此会话正在生成，请先停止”；回归不靠额外cancel/wait规避竞态。
-最终verify-v5通过：foundation67/tooling4、Rust核心181/HTTP3/provider13/native6、398
-Dart格式/analyze、app636（17条件跳过）/platform11/FFI22（1条件跳过）/Windows5。
-最终capture-v4联合12项通过，v10五窗口60张，已审阅明暗raw展开、窄屏双倍字、设置与
-横屏导出。普通入口Android23.0s/Windows19.3s串行构建通过（continuation双端v2）。
-新固定包`artifacts/ui-preview/20261006-020350/`：APK137352338字节，SHA256
-`FA8CDB1986A347E74FB19142CEEDDAC413025B7F699D4E2D3F458C0DFA8D0970`；Windows99文件
-170969602字节。身份/v2签名/ZIP16K与ELF/53表情/15许可证/x64/DLL pin/100副本hash
-审计通过。16路径精确清单与凭据/产物/链接/嵌套Git/子模块审计通过；提交前fetch与
-ls-remote确认远端仍a420ce5，最终Git来源在交付manifest中固化。旧工具事件、Keystore加密/
-持久ECDSA封印、完整旧包与附件仍未接，不宣称完整审计复刻。无设备或供应商操作。
-SaveableStateProvider不保留普通remember的展开集，已按旧行为切标签释放；之前将
-查询、列表与展开一并称为saveable不准确。截图发现展开JSON的ellipsis会提前省略，
-改为完整换行并增加RenderParagraph断言。失败日志保留，未禁用检查或降低产品断言。
+### 已修问题与剩余验收
 
-该续批已提交普通推送为ad10c4e20e81d15ab72de8e9667476dd0ec44bb9，远端一致、0/0、clean；
-020350固定manifest已核对100文件并固化来源。继续从该提交核对详情色表与正文分页：
-旧详情自带SettingsTheme，已修页面/卡片/图标色、16/12/14圆角、备注180/编辑220和8间距、
-空闲遮罩退出与写入互斥。正文12000 UTF-16按代理对安全边界分页，搜索跳到首个命中；
-消息标签仅用户/AI并按timestamp检索，空正文修订保留身份/原文/历史用量。事件Run和
-终态同次查询投影，未知字段保持未知。核心审计7项通过；UI-v1联合14项通过（真实
-FFI空修订、12000跨Emoji拼接与正文搜索定位），v11已审阅明暗详情/raw及备注输入。
-截图后修正输入顶部对齐、标签48最小高/卡片背景/3高圆角指示线及raw行6间距。
-最终UI-v3联合14项通过，v13五窗口60张，已审阅明暗详情/raw及备注和窄屏双倍字。
-最终verify-v2完整通过：foundation67/tooling4、core181/HTTP3/provider13/native6、398
-Dart格式/analyze、app638（17条件跳过）/platform11/FFI22（1条件跳过）/Windows5。
-普通入口Android184.9s/Windows19.5s串行构建成功，日志为history-details双端v1。
-固定包`artifacts/ui-preview/20261006-024610/`：APK137363321字节，SHA256
-`4CA179517572EA54E6AE05F7B0C96BC09AEDA791547AC4733592577E7C8EFDFB`；Windows99文件
-171010874字节。100副本hash、APK身份/v2/ZIP16K/ELF、53表情/15许可证/x64/DLL pin通过。
-8路径精确清单与凭据/产物/链接/嵌套Git/子模块审计通过，按授权提交普通推送；最终
-sourceCommit在manifest中固化。最后几何补丁括号错误已修，失败v2日志保留，未降低断言。
-整体目标保持部分完成，继续旧包/平台持久封印及剩余导出选项几何；设备验收仍待验证。
+已修拖排向下少移一项、短横屏快滚溢出、终态会话锁释放竞态、展开JSON提前省略、
+当前variant被旧副本回填、遮罩不能空闲退出和嵌套JSON凭据未逐层遮蔽。portable-core-v5
+曾遇到既有下载用例40ms等待竞争（0而非3字节）；未改该实现/断言，v6/v7/v9和最终
+完整verify-v2通过。其它编译/诊断失败日志保留，没有禁用检查或降低产品断言。
 
-详情批次已提交普通推送为6674271e92db22cfb3cf8dfff460e315fb63da21，远端相等、0/0且
-clean；024610 manifest核对100文件并固化来源。下一安全增量从该clean基线实施：
-platform/audit实现Keystore/JNI与Windows DPAPI/AES-GCM/P256，FFI显式装配到同AppStore；
-schema21保存大小/Run投影、安全公钥和持久封印，旧明文迁移失败回滚。导出选项14圆角
-与页面背景已修，3间距原本正确。native-v2真实Windows用例与core-native-v3的core181/
-native1通过；Clippy-v2无警告。Android-v1发现jni0.22名称/签名类型需JNIString/jni_sig，
-修正后v2普通构建196.6s成功；签名核验修补发生于构建中，v2仅诊断，最终构建须重跑。
-新增真实schema20失败回滚、缺失密钥/安全公钥绑定和损坏封印拒绝已通过；最终
-verify-v1完整通过：foundation68/tooling4、core181/HTTP3/provider13/native6/native-audit1、
-398 Dart格式/analyze、app638（17跳过）/platform11/FFI22（1跳过）/Windows5。
-桥Check五输出一致。最终history-crypto-ui-v1联合14项通过，capture-v14五窗口60PNG，
-已审阅明暗导出、设置、备注、横屏导出和窄屏双倍字备注。普通入口Android141.5s/
-Windows20.5s串行成功；固定包`artifacts/ui-preview/20261006-033641/`，APK137437049字节，
-SHA256`4A24086FBB53E3655FDA1A5FCDB0A6DDB2BE50AE6D92FB528F41BFFB69E83057`，Windows
-101文件171082075字节。102副本hash、身份/v2/ZIP16K/ELF、53表情、17两端许可证与x64/
-DLL pin通过，APK确认JNI bind符号及AuditCrypto类。34路径精确清单审计后按授权提交推送，
-最终Git来源固化到manifest。当前独立四文件ZIP还不是旧完整包，整体保持部分完成。
-本次旧源复查确认左抽屉/详情没有导入入口，旧包导入归备份模块，不扩大本任务入口；
-详情可达的签名包导出与Markdown预算/去重/假名化继续，未实现工具owner不伪造事件。
+下一验收门槛为获授权专用设备并排核对像素/字体、左右滑动/回弹/拖排、TalkBack、
+系统SAF与文件选择器、真实Keystore和Profile。旧Android进程归档兼容未实测。
+未实现工具/附件owner的旧完整事件仍待后续业务切片，不能用BASIC投影补造。旧包导入
+位于备份模块，旧抽屉/详情没有导入入口，本轮不新增入口。Apple构建与iOS导出仍未验证。
 
 ## 上一任务：模型与 API 全功能旧源复刻
 

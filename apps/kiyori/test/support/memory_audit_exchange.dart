@@ -6,6 +6,7 @@ import 'package:kiyori_platform/kiyori_platform.dart';
 class MemoryAuditExchange implements AuditExchange {
   Uint8List? bytes;
   String? mime;
+  String? name;
   bool failNext = false;
   @override
   Future<bool> save(
@@ -19,6 +20,7 @@ class MemoryAuditExchange implements AuditExchange {
     }
     this.bytes = Uint8List.fromList(bytes);
     this.mime = mime;
+    this.name = name;
     return true;
   }
 }

@@ -51,8 +51,8 @@ Rust Runtime/SQLite继续唯一持久owner，Dart只管理草稿与几何。错�
 
 详情页已有时间线/对话/原始事件、搜索、展开、消息编辑与修订、追加备注、Markdown
 及签名ZIP导出。真实基础记录由schema20保存，正文分页保留原文。旧版工具完整事件、
-旧封印、附件及旧审计包导入未接；原始事件搜索仅覆盖已加载元数据，不能
-称为完整旧审计工作台。格式与回滚限制见[ADR0014](../decisions/0014-conversation-history-and-audit.md)。
+附件尚未接入；原始事件搜索仅覆盖已加载元数据。当前运行时未提供的完整工具执行
+事实不补造，不能称为完整旧审计工作台。基础数据与回滚限制见[ADR0014](../decisions/0014-conversation-history-and-audit.md)。
 
 续批按旧`SaveableStateProvider(tab.name)`保留各标签查询与滚动；非saveable的展开集
 按旧`remember`在离开标签时释放。已加载目录和
@@ -65,8 +65,8 @@ Rust Runtime/SQLite继续唯一持久owner，Dart只管理草稿与几何。错�
 HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HTTP、扩展最终handler、
 本地推理最终输入以及自动/手动总结共用owner；失败阻止继续外发，不引入自动重试。
 请求审计正文先遮蔽认证/自定义header值及常见凭据；原始聊天仍按既有契约保存。
-旧工具执行事件、Keystore加密与持久ECDSA封印、旧完整包结构仍需接入，不能由
-上述请求钩子和当前自包含Ed25519包推断为完成。
+旧工具执行事件尚未接入；请求钩子只能证明实际记录的请求与终态，不代表完整旧执行器。
+产品原生正文保护与持久签名已接入，详见下述ADR0015/0016。
 
 详情采用旧KiyoriSettingsTheme的页面/卡片/文字/弱化图标色表；卡片16、状态12、
 输入14圆角，消息编辑220高、备注180高及8间距。对话标签只投影用户/AI消息，搜索
@@ -78,9 +78,12 @@ HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HT
 
 安全增量按[ADR0015](../decisions/0015-audit-native-protection.md)把产品审计payload保护
 及持久P-256签名接到同AppStore；schema21元数据不需要逐行解密正文。导出选项按旧
-14圆角/页面背景/3间距，现有3间距已正确，修正剩余背景与圆角。当前包仍独立四文件
-格式，旧payload refs/修订投影/附件/链头封印与旧包导入继续接入，不将安全端口等同于
-完整旧归档。Android真实Keystore与Apple仍待验证。
+14圆角/页面背景/3间距，现有3间距已正确，修正剩余背景与圆角。安全端口本身不证明
+归档格式兼容，产品格式以ADR0016为准。Android真实Keystore与Apple仍待验证。
+
+产品导出已经按[ADR0016](../decisions/0016-portable-audit-export.md)改为旧schema1的
+BASIC移植投影、链头ASCII封印与九类文件；原始源链和未知覆盖标记继续保留。
+旧导入不在抽屉/详情入口，设备与旧Android进程兼容测试仍未运行。
 
 回归入口为`chat_history_states_test.dart`和`chat_history_parity_test.dart`，使用真实
 FFI/SQLite。`chat_history_drawer_capture_test.dart`覆盖390明/暗、320双倍字/180键盘、

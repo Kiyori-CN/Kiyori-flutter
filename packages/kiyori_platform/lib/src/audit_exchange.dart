@@ -28,9 +28,9 @@ class PlatformAuditExchange implements AuditExchange {
     return selectWindowsFile(
       true,
       name,
-      label: zip ? 'ZIP审计包' : 'Markdown诊断',
-      pattern: zip ? '*.zip' : '*.md',
-      extension: zip ? 'zip' : 'md',
+      label: zip ? 'Kiyori 审计包' : 'Markdown诊断',
+      pattern: zip ? '*.kiyori-audit' : '*.md',
+      extension: zip ? 'kiyori-audit' : 'md',
     );
   }
 

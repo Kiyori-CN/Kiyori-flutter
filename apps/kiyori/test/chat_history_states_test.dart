@@ -16,6 +16,65 @@ import 'support/memory_audit_exchange.dart';
 
 void main() {
   testWidgets(
+    'legacy barrier taps dismiss idle confirmations and protect editor drafts',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+      });
+      try {
+        late BuildContext host;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                host = context;
+                return const Scaffold(body: Text('底层页面'));
+              },
+            ),
+          ),
+        );
+        Future<void> barrier() async {
+          await tester.tapAt(const Offset(8, 8));
+          await tester.pumpAndSettle();
+        }
+
+        showHistoryDelete(host, f.chat, f.chat.snapshot!.conversation);
+        await tester.pumpAndSettle();
+        expect(find.text('确认删除聊天'), findsOneWidget);
+        await barrier();
+        expect(find.text('确认删除聊天'), findsNothing);
+        expect(f.chat.catalog!.conversations, hasLength(1));
+        showHistoryMetadata(host, f.chat, f.chat.snapshot!.conversation);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), '保留的标题');
+        await barrier();
+        expect(find.text('放弃未保存的修改？'), findsOneWidget);
+        await tester.tap(find.text('取消').last);
+        await tester.pumpAndSettle();
+        expect(find.text('保留的标题'), findsOneWidget);
+        await barrier();
+        await tester.tap(find.text('放弃修改'));
+        await tester.pumpAndSettle();
+        expect(find.text('编辑标题'), findsNothing);
+        showHistoryFolderEditor(host, f.chat);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), '保留的分组');
+        await barrier();
+        expect(find.text('放弃未保存的修改？'), findsOneWidget);
+        await tester.tap(find.text('取消').last);
+        await tester.pumpAndSettle();
+        expect(find.text('保留的分组'), findsOneWidget);
+        expect(find.text('底层页面'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+  testWidgets(
     'legacy text pages preserve UTF16 boundary and locate payload search',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -741,6 +800,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(exchange.mime, 'application/zip');
+      expect(exchange.name, endsWith('.kiyori-audit'));
       expect(exchange.bytes!.take(2), [0x50, 0x4b]);
       expect(find.text('导出对话详情'), findsNothing);
       expect(tester.takeException(), isNull);

@@ -32,7 +32,7 @@ Future<void> _showHistoryDelete(
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) => showDialog<void>(
   context: context,
-  barrierDismissible: false,
+  barrierDismissible: true,
   builder: (context) {
     onRoute?.call(ModalRoute.of(context)!);
     return _DeleteChat(owner: owner, item: item);
@@ -343,7 +343,7 @@ Future<void> _showHistoryMetadata(
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) => showDialog<void>(
   context: context,
-  barrierDismissible: false,
+  barrierDismissible: true,
   builder: (context) {
     onRoute?.call(ModalRoute.of(context)!);
     return _MetadataEditor(owner: owner, item: item, onRoute: onRoute);

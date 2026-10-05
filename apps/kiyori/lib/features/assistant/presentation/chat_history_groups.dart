@@ -62,7 +62,7 @@ Future<void> _showHistoryFolderEditor(
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) => showDialog<void>(
   context: context,
-  barrierDismissible: false,
+  barrierDismissible: true,
   builder: (context) {
     onRoute?.call(ModalRoute.of(context)!);
     return _FolderEditor(
