@@ -960,6 +960,7 @@ class _EventCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     _eventTime(event['recordedAt'] as int),
                     style: TextStyle(
@@ -968,6 +969,7 @@ class _EventCard extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Icon(
                     open ? Icons.expand_less : Icons.expand_more,
                     size: 18,
@@ -976,11 +978,18 @@ class _EventCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 7),
-              Text(
-                event['summary'] as String,
-                maxLines: open ? null : 2,
-                overflow: open ? TextOverflow.clip : TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, height: 20 / 14),
+              SelectionArea(
+                // Flutter选区的tap会胜过外层InkWell；内层tap保留旧单击展开，长按仍选字。
+                child: GestureDetector(
+                  onTap: onTap,
+                  excludeFromSemantics: true,
+                  child: Text(
+                    event['summary'] as String,
+                    maxLines: open ? null : 2,
+                    overflow: open ? TextOverflow.clip : TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, height: 20 / 14),
+                  ),
+                ),
               ),
               if (event['terminalState'] != null) ...[
                 const SizedBox(height: 7),
@@ -996,7 +1005,9 @@ class _EventCard extends StatelessWidget {
                 ),
               ],
               if (open) ...[
-                const Divider(),
+                const SizedBox(height: 7),
+                const Divider(height: 1),
+                const SizedBox(height: 7),
                 SelectionArea(
                   child: Text(
                     'eventId=${event['eventId']}\n'
@@ -1295,9 +1306,12 @@ class _AuditPayloadState extends State<_AuditPayload> {
         buffer.write(value);
       }
       setState(() => text = buffer.toString());
-    } catch (_) {
+    } catch (failure) {
       if (mounted && generation == epoch) {
-        setState(() => error = '读取 payload 失败，可再次展开重试');
+        // 只保留异常类型，沿旧源提示重试；不把可能含路径/凭据的异常正文放进界面。
+        setState(
+          () => error = '读取 payload 失败，可再次展开重试：\n${failure.runtimeType}',
+        );
       }
     }
   }
@@ -1308,24 +1322,40 @@ class _AuditPayloadState extends State<_AuditPayload> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 7),
-        Text(
-          '[0] 正文（application/json，字节：${widget.event['bytes']}）',
-          style: const TextStyle(
-            fontSize: 12,
-            height: 16 / 12,
-            fontWeight: FontWeight.w500,
+        const SizedBox(height: 8),
+        if (error != null) ...[
+          SelectionArea(
+            child: Text(
+              error!,
+              style: TextStyle(
+                fontSize: 12,
+                height: 16 / 12,
+                fontFamily: 'monospace',
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
           ),
-        ),
-        if (error != null)
-          TextButton(onPressed: load, child: Text(error!))
-        else if (text == null)
+          const SizedBox(height: 8),
+          TextButton(onPressed: load, child: const Text('重新加载详情')),
+        ] else if (text == null)
           const SizedBox.square(
             dimension: 20,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        else
+        else ...[
+          SelectionArea(
+            child: Text(
+              '[0] 正文（application/json，字节：${widget.event['bytes']}）',
+              style: const TextStyle(
+                fontSize: 12,
+                height: 16 / 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           _PagedText(text: text!, query: widget.query),
+        ],
       ],
     );
   }

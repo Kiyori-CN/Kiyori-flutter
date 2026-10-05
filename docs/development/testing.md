@@ -51,6 +51,9 @@ current默认与未绑定同桶覆盖列表/菜单/拖排/分组冻结，charact
 松手只增加一次移动revision，返回/取消完成后无持续帧。haptics_test验证Android原生
 requested/declined/unsupported/unavailable、无CLOCK_TICK回退与iOS标准调用；mock与
 Android编译不能证明设备触觉。捕获追加明暗代理、上边缘视口裁剪与取消恢复图。
+chat_history_payload使用真实SQLite目录/事件/正文和仅在读取边界注入的失败/等待，
+验证旧独立重试文案、成功恢复、摘要单击展开与长按复制；收起期间停止后续分片，
+重开从第0页重新读取且保留完整中文。捕获参数同时追加明暗失败/恢复与加载状态。
 chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
 测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
 工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。

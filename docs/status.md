@@ -13,7 +13,28 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：拖排过程、取消与触觉
+### 最新增量：详情正文加载、重试与选择
+
+从main/a4cdfe9干净基线继续核对旧ConversationDetailsScreen。恢复事件头8dp间距、
+展开分隔线两侧7dp与正文组8dp；摘要支持长按选择复制，单击仍展开。正文加载中只
+显示20dp/2dp进度，失败使用原文案/异常类型及独立“重新加载详情”，成功后才展示
+元数据和全文；不回显异常原始消息。唯一SQLite owner、schema与公开FFI保持原契约。
+真实SQLite读端故障注入先复现摘要不可选择和加载提前显示元数据，before-v2失败证据
+保留；新增选择区域曾消费单击，已用内层同回调修复并保留UI-v2证据。最终定向27项
+通过（work/history-payload-ui-v4.log），含明暗重试、长按复制、单击展开、收起停止后续
+分片、迟到拒绝与重开完整原文。84张捕获图位于work/history-drawer-capture-v24，失败/
+恢复/加载明暗实图已审阅。完整tools/verify.ps1 -WindowsIntegration通过
+（work/history-payload-verify-v1.log）：foundation69/tooling4、Rust core188/HTTP3/
+provider13/native6/native-audit1、402 Dart格式、Clippy/analyze、app652（17条件跳过）/
+platform13/独立FFI22（1条件跳过）/Windows引擎5。Rust三项条件忽略不表示真实供应商或
+旧源环境验收。普通Android/Windows Debug串行23.0s/19.6s通过
+（history-payload双端v1）。固定artifacts/ui-preview/20261006-071741：APK137694033字节，
+SHA256 C48DB7C46BA58BDA4FE827846F1E7F37D2EEE2DA2073329D9673FFF1D61FF494；Windows101文件
+171609675字节。102副本hash、APK身份/v2/ZIP16K/ELF、53表情、17两端许可证与Windows
+x64/DLL pin通过（work/history-payload-delivery-v1.log）。本增量5路径精确清单审计后普通
+推送main，最终ref与sourceCommit以Git及固定manifest为准。
+
+### 前序增量：拖排过程、取消与触觉
 
 从main/c26949a干净基线继续，旧源6b03b03保持只读干净。手柄采用二维Press拖动，
 本地中点让位前拒绝非法首项/置顶落点；跨角色头、空/折叠桶解析分组与绑定，隐藏桶

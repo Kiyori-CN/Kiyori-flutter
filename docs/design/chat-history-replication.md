@@ -117,6 +117,13 @@ HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HT
 旧元数据布局，已记录Run/终态由同一次SQLite分页查询投影，未知Provider身份不补造。
 空闲弹窗允许遮罩关闭，写入中由PopScope拒绝退出与重复提交。
 
+详情续核对恢复旧事件头各项8dp间距、展开分隔线前后7dp、正文组8dp。摘要允许长按
+选择复制，同时保留单击展开；Flutter选择区域会消费tap，因此在文本内层保持同一展开
+回调，长按仍由框架选择仲裁。正文加载中只显示20dp/2dp进度，失败显示旧错误文案、
+异常类型与独立“重新加载详情”；不提前显示正文元数据，不回显异常中的路径或认证值。
+重试成功后显示元数据和完整正文，收起等待中的正文停止后续分片与迟到回填，重开重新
+读取同SQLite；不改变审计事实、schema、公开FFI或未接入的工具/附件业务边界。
+
 安全增量按[ADR0015](../decisions/0015-audit-native-protection.md)把产品审计payload保护
 及持久P-256签名接到同AppStore；schema21元数据不需要逐行解密正文。导出选项按旧
 14圆角/页面背景/3间距，现有3间距已正确，修正剩余背景与圆角。安全端口本身不证明
@@ -125,6 +132,31 @@ HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HT
 产品导出已经按[ADR0016](../decisions/0016-portable-audit-export.md)改为旧schema1的
 BASIC移植投影、链头ASCII封印与九类文件；原始源链和未知覆盖标记继续保留。
 旧导入不在抽屉/详情入口，设备与旧Android进程兼容测试仍未运行。
+
+## 完整工具与附件的后续实施条件
+
+旧`ToolExecutionManager`1254–1394记录REQUESTED、STARTED、COMPLETED/FAILED/REUSED；
+请求actor为PROVIDER，执行actor为KIYORI，绑定providerCallId。规范化arguments与
+tool_result为独立payload，完整输出另保存为附件。旧`ConversationAuditSavedOutput`
+仅支持linux_ssh/windows_control的显式输出文件，校验根目录、前缀、log类型与8MiB
+边界；拒绝/丢失/超限保留捕获状态，使审计为PARTIAL并记录附件不可用原因。
+新`core/chat/tool_probe`仅为无副作用echo模型探测，`core/files`只实现托管模型资源；
+当前不能从这两者推导实际工具权限、执行或用户附件事实。
+
+补齐应按依赖分四步，属于超出抽屉投影的M2业务范围，尚未实施：
+
+1. 在同Runtime建立统一tools契约，手动与AI共用schema验证、权限裁决、撤销、超时和
+   取消；引用既有ResourceRef与native句柄。先交付一个真实可授权用例，禁止第二文件
+   数据库、独立聊天工具执行器或从结果文本读取任意路径。
+2. 由实际执行owner在副作用前保存请求/开始事实，失败阻止执行；终态等待worker与
+   资源释放，不把结果未知当成功或自动重试。事件固定Run、call和parent/source引用，
+   工具输出通过明确ResourceRef进入审计，同一事务写事件/多payload引用与链。
+3. 多payload保存label、ordinal、role、mediaType、encoding和字节数；保留现有已签名
+   源链，采用版本化增量迁移，导出同时验证引用、全文哈希、捕获状态与封印。备份与
+   回滚需覆盖数据库和平台密钥，不能改写旧签名或用COMPLETE冒充未知历史。
+4. 详情按旧事件展开逐项呈现文本/二进制元数据、重试和分页；本地合成服务验证拒绝、
+   撤权、取消、失败、重复调用、并发删除、重开、坏附件和导出篡改。真实供应商及
+   设备SAF/Keystore/并排像素/Profile须另获对应授权；通过这些证据才关闭完整功能缺口。
 
 回归入口为`chat_history_states_test.dart`和`chat_history_parity_test.dart`，使用真实
 FFI/SQLite。`chat_history_drawer_capture_test.dart`覆盖390明/暗、320双倍字/180键盘、
