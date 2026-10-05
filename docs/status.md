@@ -5,6 +5,33 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG 清单与流式ZIP兼容（本机完整验证与双端构建通过）
+
+本批基线main/7d95fb9核对干净。根HJSON→根JSON→嵌套HJSON→嵌套JSON按旧优先级
+选择，目录深度/小写名稳定排序，排除依赖清单；入口相对清单父目录且保留大小写不敏感
+引用。缺schema/version/API版本采用旧1/空/1.0.0默认，版本文本有界；schema2接受有界
+distribution.include构建元数据，API1.0.1沿同窄宿主；声明其它能力仍明确拒绝。
+JSON/HJSON共用有界visitor，拒绝重复键、32层递归、容器超过1024项与尾部数据。
+候选deser-hjson2.2.6中文单引号触发UTF8边界panic，已替换serde-hjson1.1.0且关闭
+preserve_order；失败日志manifest-core-v1保留，中文/Emoji、多行、无根括号专项通过。
+ZIP解压/CRC仍由zip8.6.0执行，新增局部/中央完整连续布局核验，支持32/64位data
+descriptor；拒绝隐藏同名条目、metadata/CRC/descriptor篡改、前缀、间隙和重叠。
+定向18项通过（work/toolpkg-manifest-core-v7.log），单引号/转义/注释/无引号撇号与多行
+中文保留；真实QuickJS嵌套HJSON安装/计数/重开和未改旧示例四handler受控HTTP4项通过
+（manifest-http-v2）。新增用例误用ScriptEvent比较/取消签名编译失败已修，日志v1保留；
+首次verify未处理cancel Result被Clippy拒绝已修，verify-v1保留。完整verify-v2通过：
+foundation65、核心169/HTTP3/provider_chat5/原生6、387 Dart格式/analyze、应用626
+（16条件跳过）、platform9、FFI22（1条件跳过）、Windows引擎5。追加单引号归一化后
+verify-v3发现new_line无效赋值，现已移除且失败日志保留；最终verify-v4成功，核心170项，
+其余相同，包括387 Dart格式/analyze和Windows引擎5项。Android ARM64 Debug141.6秒、
+普通Windows x64 Debug20.8秒串行通过，日志work/toolpkg-manifest-android-v1.log/windows-v1.log。
+固定包artifacts/ui-preview/20261005-145935：APK136886975字节，SHA256
+D662C37F5E7DA9F69D475D534A85D16E0085D16CE46A4CB0E127F2A8C4BECF9E；Windows99文件
+170128706字节。100副本hash、APK身份/v2签名/ZIP16K/ELF、Windows x64/Flutter DLL pin和
+15份许可证两端/源一致审计通过（work/toolpkg-manifest-artifacts-20261005-145935）。
+22路径精确允许清单交付，最终提交与远端ref见Git及固定manifest.sourceCommit。
+完整旧包能力、排序/分类、Provider测试/计数产品接线与设备/Apple仍继续，整体部分完成。
+
 ### TOOLPKG 产品管理入口（本机完整验证与双端构建通过）
 
 本批基线main/f077d87已核对干净。AI抽屉扩展驻留页按旧四标签/搜索/分类和插件卡片迁移，

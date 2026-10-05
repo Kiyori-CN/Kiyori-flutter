@@ -23,6 +23,11 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+core/extensions/archive_tests覆盖根/嵌套JSON/HJSON选择、中文/Emoji/多行、默认字段、
+schema2分发元数据、重复键/递归/尾部、相对/大小写入口、失败不回退或覆盖旧包；
+真实ZipWriter流式32/64位descriptor与局部/中央篡改、隐藏条目验证完整布局，解压CRC
+仍使用正式zip。包完整旧宿主能力、同设备视觉与Apple不由这些核心用例证明。
+
 native_model_ui_live_test.dart默认跳过，显式KIYORI_NATIVE_TEST_DATA指向独立已下载MNN验收库
 后走真实设置/保存/ChatPage/富文本/用量/重开；native_inference_live_test.dart补停止与目录。
 gguf_import_live_test.dart显式KIYORI_GGUF_TEST_FILE选择已核对的公开Qwen2.5-0.5B Q4_0完整文件，

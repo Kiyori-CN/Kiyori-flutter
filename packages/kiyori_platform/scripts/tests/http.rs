@@ -242,6 +242,62 @@ async fn original_provider_runs_four_handlers_with_controlled_http() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn streamed_nested_hjson_provider_executes_real_vm_and_reopens() {
+    let root = std::env::temp_dir().join(format!(
+        "kiyori-hjson-vm-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let runtime = Arc::new(Runtime::with_data_dir(&root).unwrap());
+    runtime.set_script_adapter(Arc::new(NativeScripts)).unwrap();
+    let mut writer = ZipWriter::new_stream(Vec::new());
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    writer
+        .start_file("package/manifest.hjson", options)
+        .unwrap();
+    writer.write_all("toolpkg_id: fixture\nmain: dist/main.js\ndisplay_name: 测试供应商😀\napi_version: 1.0.1\n".as_bytes()).unwrap();
+    writer.start_file("package/dist/main.js", options).unwrap();
+    writer.write_all(SOURCE.as_bytes()).unwrap();
+    let importer = runtime.begin_extension_import().unwrap();
+    importer
+        .append(writer.finish().unwrap().into_inner())
+        .unwrap();
+    let package = importer.finish().await.unwrap();
+    assert_eq!(package.name, "测试供应商😀");
+    let provider = runtime.extension_providers().unwrap().remove(0);
+    let run = runtime
+        .start_extension(
+            provider.id,
+            provider.revision,
+            ProviderHandler::CalculateInputTokens,
+            json!({"chatHistory":[{"content":"你好😀"}]}),
+            Default::default(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        matches!(run.next_event().await.unwrap(),Some(ScriptEvent::Completed(value)) if value==json!({"tokens":7}))
+    );
+    run.cancel_and_wait().await.unwrap();
+    drop(importer);
+    runtime.close();
+    let reopened = Runtime::with_data_dir(&root).unwrap();
+    assert_eq!(
+        reopened
+            .extension_details(package.id, package.revision)
+            .await
+            .unwrap()
+            .api_version,
+        "1.0.1"
+    );
+    reopened.close();
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn package_revocation_stops_http_and_releases_vm_before_returning() {
     let root = std::env::temp_dir().join(format!(
         "kiyori-http-revoke-{}-{}",

@@ -11,6 +11,7 @@ rusqlite.workspace = true
 jieba-rs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde-hjson.workspace = true
 reqwest.workspace = true
 rustls.workspace = true
 webpki-root-certs.workspace = true

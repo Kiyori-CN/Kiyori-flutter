@@ -1,13 +1,14 @@
-//! 不直接extract；先用流式读取限制实际条目，再用正式目录验证CRC与数据重叠。
+//! 不直接extract；核对所有局部/中央条目布局，再由正式ZIP reader有界解压校验CRC。
 use super::*;
 use std::{
     collections::BTreeMap,
     io::{Read, Seek},
 };
-use zip::{
-    CompressionMethod, ZipArchive,
-    read::{ZipFile, read_zipfile_from_stream},
-};
+use zip::{CompressionMethod, ZipArchive, read::ZipFile};
+#[path = "manifest.rs"]
+mod manifest;
+#[path = "zip_layout.rs"]
+mod zip_layout;
 
 const MAX_ENTRIES: usize = 1024;
 const MAX_EXPANDED: u64 = 16 * 1024 * 1024;
@@ -15,8 +16,10 @@ const MAX_FILE: u64 = 4 * 1024 * 1024;
 
 #[derive(Clone, Deserialize, Serialize)]
 pub(super) struct Manifest {
+    #[serde(default = "schema_default")]
     pub schema_version: u32,
     pub toolpkg_id: String,
+    #[serde(default)]
     pub version: String,
     pub main: String,
     #[serde(default)]
@@ -25,8 +28,18 @@ pub(super) struct Manifest {
     pub description: Value,
     #[serde(default = "enabled_default")]
     pub enabled_by_default: bool,
+    #[serde(default)]
+    pub distribution: Option<Distribution>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
+}
+#[derive(Clone, Deserialize, Serialize)]
+pub(super) struct Distribution {
+    #[serde(default)]
+    pub include: Vec<String>,
+}
+fn schema_default() -> u32 {
+    1
 }
 fn enabled_default() -> bool {
     true
@@ -59,20 +72,37 @@ pub(super) fn label(value: &Value) -> Result<String, CoreError> {
 }
 impl Manifest {
     pub(super) fn validate(&self) -> Result<(), CoreError> {
-        let version = self.version.split('.').collect::<Vec<_>>();
-        if self.schema_version != 1
+        if !matches!(self.schema_version, 1 | 2)
             || !crate::scripts::valid_id(&self.toolpkg_id)
-            || version.len() != 3
-            || version.iter().any(|p| {
-                p.is_empty() || !p.bytes().all(|b| b.is_ascii_digit()) || p.parse::<u32>().is_err()
-            })
+            || self.version.len() > 128
+            || self.version.chars().any(char::is_control)
             || !files::valid_relative(&self.main)
-            || !self.main.ends_with(".js")
+            || !self.main.to_ascii_lowercase().ends_with(".js")
         {
             return Err(error("扩展manifest身份、版本或入口不受支持"));
         }
         label(&self.display_name)?;
         label(&self.description)?;
+        // distribution只描述构建产物的选入项，安装不执行glob或访问宿主文件。
+        if self.schema_version == 2
+            && self
+                .distribution
+                .as_ref()
+                .is_none_or(|d| d.include.is_empty())
+        {
+            return Err(error("schema2扩展缺少distribution.include"));
+        }
+        if self.distribution.as_ref().is_some_and(|d| {
+            d.include.len() > 1024
+                || d.include.iter().any(|pattern| {
+                    pattern.is_empty()
+                        || pattern.len() > 240
+                        || pattern.chars().any(char::is_control)
+                        || !files::valid_relative(&pattern.replace(['*', '?'], "x"))
+                })
+        }) {
+            return Err(error("扩展distribution.include无效"));
+        }
         for (name, value) in &self.extra {
             let allowed = match name.as_str() {
                 "author" => match value {
@@ -89,7 +119,10 @@ impl Manifest {
                 },
                 "category" => label(value).is_ok(),
                 "logo" => true,
-                "api_version" => value.as_str().is_some_and(|v| v == "1" || v == "1.0"),
+                // 1/1.0是本项目首批包的兼容别名；旧源缺键默认1.0.0。
+                "api_version" => value
+                    .as_str()
+                    .is_some_and(|v| matches!(v.trim(), "1" | "1.0" | "1.0.0" | "1.0.1")),
                 "requires"
                 | "environment"
                 | "subpackages"
@@ -204,17 +237,31 @@ impl Preflight {
 }
 pub(super) fn read(file: &mut File) -> Result<CheckedArchive, CoreError> {
     file.rewind().map_err(|_| error("扩展包不可读"))?;
+    let mut archive = ZipArchive::new(&mut *file).map_err(|_| error("扩展ZIP终态无效"))?;
+    if archive.len() > MAX_ENTRIES
+        || archive.offset() != 0
+        || archive
+            .has_overlapping_files()
+            .map_err(|_| error("扩展ZIP布局无效"))?
+    {
+        return Err(error("扩展ZIP数量、前缀或数据重叠"));
+    }
+    let directory = archive.central_directory_start();
+    let mut layout = Vec::new();
     let mut visitor = Preflight {
         entries: Default::default(),
         central: Default::default(),
         count: 0,
         expanded: 0,
     };
-    loop {
-        let entry = read_zipfile_from_stream(&mut *file).map_err(|_| error("扩展ZIP文件头无效"))?;
-        let Some(mut entry) = entry else {
-            break;
-        };
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|_| error("扩展ZIP条目不可读"))?;
+        visitor
+            .visit_additional_metadata(&entry)
+            .map_err(|_| error("扩展ZIP目录或链接无效"))?;
+        layout.push(zip_layout::Entry::from_file(&entry)?);
         visitor
             .visit_file(&mut entry)
             .map_err(|_| error("扩展ZIP路径、数量、大小、压缩或CRC无效"))?;
@@ -222,45 +269,80 @@ pub(super) fn read(file: &mut File) -> Result<CheckedArchive, CoreError> {
     if visitor.entries.is_empty() {
         return Err(error("扩展ZIP没有文件"));
     }
-    file.rewind().map_err(|_| error("扩展包不可读"))?;
-    let mut archive = ZipArchive::new(file).map_err(|_| error("扩展ZIP终态无效"))?;
-    if archive.len() != visitor.count
-        || archive.offset() != 0
-        || archive
-            .has_overlapping_files()
-            .map_err(|_| error("扩展ZIP布局无效"))?
-    {
-        return Err(error("扩展ZIP重复、前缀或数据重叠"));
-    }
-    for index in 0..archive.len() {
-        let entry = archive
-            .by_index_raw(index)
-            .map_err(|_| error("扩展ZIP目录不可读"))?;
-        visitor
-            .visit_additional_metadata(&entry)
-            .map_err(|_| error("扩展ZIP目录或链接无效"))?;
-    }
     if visitor.central != visitor.entries {
         return Err(error("扩展ZIP目录与文件不一致"));
     }
-    let manifest_text = read_entry(&mut archive, "manifest.json", 64 * 1024)?;
-    let manifest: Manifest =
-        serde_json::from_slice(&manifest_text).map_err(|_| error("扩展manifest不是有效JSON"))?;
+    let manifest_name = archive
+        .file_names()
+        .filter(|path| manifest_candidate(path))
+        .min_by_key(|path| manifest_order(path))
+        .map(str::to_owned)
+        .ok_or_else(|| error("扩展缺少JSON或HJSON清单"))?;
+    let manifest_text = read_entry(&mut archive, &manifest_name, 64 * 1024)?;
+    let manifest = manifest::parse(
+        &manifest_text,
+        manifest_name.to_ascii_lowercase().ends_with(".hjson"),
+    )?;
     manifest.validate()?;
-    let source = String::from_utf8(read_entry(&mut archive, &manifest.main, 2 * 1024 * 1024)?)
+    let entry_name = match manifest_name.rsplit_once('/') {
+        Some((base, _)) => format!("{base}/{}", manifest.main),
+        None => manifest.main.clone(),
+    };
+    if !files::valid_relative(&entry_name) {
+        return Err(error("扩展入口路径无效"));
+    }
+    let source = String::from_utf8(read_entry(&mut archive, &entry_name, 2 * 1024 * 1024)?)
         .map_err(|_| error("扩展入口必须为UTF-8 JavaScript"))?;
     if source.is_empty() || source.contains('\0') {
         return Err(error("扩展入口无效"));
     }
+    drop(archive);
+    zip_layout::check(file, directory, &mut layout)?;
     Ok(CheckedArchive { manifest, source })
+}
+fn manifest_candidate(path: &str) -> bool {
+    let mut parts = path.rsplit('/');
+    let filename = parts.next().unwrap_or_default();
+    matches!(
+        filename.to_ascii_lowercase().as_str(),
+        "manifest.json" | "manifest.hjson"
+    ) && !parts.any(|part| {
+        matches!(
+            part.to_ascii_lowercase().as_str(),
+            "node_modules" | "__pycache__" | ".git" | ".backup" | ".history" | ".gradle" | ".idea"
+        )
+    })
+}
+fn manifest_order(path: &str) -> (u8, usize, String, &str) {
+    // 与旧findManifestEntry共用优先规则，不能在高优先清单失败后偷偷改读另一个。
+    let nested = path.contains('/');
+    let hjson = path.to_ascii_lowercase().ends_with(".hjson");
+    let priority = match (nested, hjson) {
+        (false, true) => 0,
+        (false, false) => 1,
+        (true, true) => 2,
+        (true, false) => 3,
+    };
+    (
+        priority,
+        path.matches('/').count(),
+        path.to_ascii_lowercase(),
+        path,
+    )
 }
 fn read_entry<R: Read + Seek>(
     archive: &mut ZipArchive<R>,
     name: &str,
     limit: u64,
 ) -> Result<Vec<u8>, CoreError> {
+    // 已拒绝大小写别名；旧入口按大小写不敏感索引读取，保留该引用行为。
+    let actual = archive
+        .file_names()
+        .find(|entry| entry.eq_ignore_ascii_case(name))
+        .map(str::to_owned)
+        .ok_or_else(|| error("扩展缺少manifest或入口"))?;
     let file = archive
-        .by_name(name)
+        .by_name(&actual)
         .map_err(|_| error("扩展缺少manifest或入口"))?;
     if !file.is_file()
         || file.is_symlink()

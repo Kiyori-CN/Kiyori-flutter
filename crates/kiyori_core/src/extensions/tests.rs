@@ -117,7 +117,7 @@ async fn install_handlers_reopen_upgrade_disable_and_uninstall_preserve_identity
         .unwrap();
     assert_eq!(details.package.archive_hash, first.archive_hash);
     assert!(details.authors.is_empty());
-    assert_eq!(details.api_version, "1.0");
+    assert_eq!(details.api_version, "1.0.0");
     assert!(
         r.extension_details(first.id.clone(), first.revision + 1)
             .await
@@ -269,7 +269,7 @@ async fn unsafe_paths_native_entries_case_aliases_bad_manifest_crc_and_tampering
         assert!(r.extension_packages().unwrap().is_empty());
     }
     assert!(
-        install(&r, package("fixture", "bad", vec![]))
+        install(&r, package("fixture", &"x".repeat(129), vec![]))
             .await
             .is_err()
     );

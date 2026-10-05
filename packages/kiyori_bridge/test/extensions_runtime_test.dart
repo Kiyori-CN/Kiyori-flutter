@@ -31,7 +31,7 @@ void main() {
         package.revision,
       );
       expect(details.package.archiveHash, package.archiveHash);
-      expect(details.apiVersion, '1.0');
+      expect(details.apiVersion, '1.0.0');
       expect(details.authors, isEmpty);
       final provider = (await runtime.extensionProviders()).single;
       Future<List<ExtensionEvent>> invoke(ExtensionHandler handler) async {

@@ -22,6 +22,8 @@ void registerNativeInferenceLicenses() {
       'zlib-rs': ['zlib-rs'],
       'indexmap': ['indexmap'],
       'typed-path': ['typed-path'],
+      'serde-hjson': ['serde-hjson 1.1.0'],
+      'num-traits': ['num-traits 0.2.19'],
     };
     for (final entry in entries.entries) {
       final text = await rootBundle.loadString(

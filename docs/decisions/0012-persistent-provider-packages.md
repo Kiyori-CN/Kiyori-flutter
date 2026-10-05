@@ -22,12 +22,21 @@ core/extensions复用Runtime、AppStore、ResourceRef和core/scripts。schema19�
 
 固定官方zip8.6.0，MIT，关闭默认feature，仅Stored/Deflated与纯Rust zlib-rs；
 [官方API](https://docs.rs/zip/8.6.0/zip/read/struct.ZipFile.html)用于路径、链接、CRC与重叠检查。
-上游索引会合并完全同名条目，先通过公开流式读取端口核对实际局部条目，再用中央目录
-核对路径/大小/CRC和重叠；不直接extract，不自行解析ZIP结构。
+上游索引会合并完全同名条目，流式reader不能验证未知大小descriptor。因此读取公开
+header_start/data_start/central_header_start，核对连续局部/中央条目、名称、标志、大小、
+CRC与32/64位descriptor；缺项/重复项造成间隙或不一致，明确拒绝。解压/实际CRC和
+ZIP64目录解析继续使用zip，不直接extract。布局字段依据[PKWARE规范](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)。
 
-首个合同只接受schema1 manifest.json和单JS入口，不支持HJSON/schema2、依赖、环境变量、
-subpackage、wasm/native资源、工作流或workspace模板。ZIP局部头必须含真实大小和CRC，
-data descriptor包当前明确拒绝；此兼容缺口需继续处理，不能称所有旧包可用。
+清单合同支持schema1/2 JSON/HJSON和单JS入口，distribution.include只作构建元数据，
+schema2要求非空，安装不执行glob。API缺键默认1.0.0，1.0.1复用相同已实现的窄宿主，
+旧首批1/1.0别名继续可读；API版本声明不授予额外能力。版本缺键为空，有界文本保留
+预发行版本。根HJSON/根JSON/嵌套HJSON/嵌套JSON按旧优先级、深度、名称选唯一清单，
+失败不回退；JS入口相对选中清单父目录，大小写别名仍拒绝。
+采用[serde-hjson1.1.0](https://docs.rs/serde-hjson/1.1.0/serde_hjson/)，关闭默认排序feature；
+JSON/HJSON共享自定义visitor，在递归前限制32层、每容器1024项，拒绝重复键和尾部内容。
+HJSON单/双引号和多行字符串按旧hjson-java3源码的转义/缩进规则进行有界词法归一化，
+注释和无引号正文不参与替换；避免上游旧语法子集遗漏单引号、以及中文索引panic。
+不支持依赖、环境变量、subpackage、wasm/native资源、工作流或workspace模板，不能称所有旧包可用。
 限制：archive16 MiB、条目1024、解压总16 MiB、单文件4 MiB、manifest64 KiB、JS2 MiB、
 压缩比200。所有路径复用files有效相对路径规则，拒绝链接、特殊文件、大小写别名、
 dot目录/私密文件、加密、未知压缩、原生/bytecode。完整校验后在正式QuickJS运行注册，

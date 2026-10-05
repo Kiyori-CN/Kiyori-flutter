@@ -461,7 +461,7 @@ impl Runtime {
                 .extra
                 .get("api_version")
                 .and_then(Value::as_str)
-                .unwrap_or("1.0")
+                .unwrap_or("1.0.0")
                 .to_owned();
             Ok(ExtensionDetails {
                 package,

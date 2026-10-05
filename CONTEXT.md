@@ -28,13 +28,15 @@
 core/extensions复用AppStore/ResourceRef；schema19保存TOOLPKG包和安装恢复账本，
 目录键为TOOLPKG:package_id:provider_id并绑定revision。启停/升级/卸载先撤销新调用、
 取消等待旧worker释放包租约；卸载墓碑使重装不接受旧请求。JS入口每次验证hash。
-首版只支持schema1 JSON/单JS源；受控HTTP与正式ChatRun复用同client/Registry/Gate，
+提供方包支持schema1/2 JSON/HJSON清单与单JS源，schema2的distribution仅是构建元数据；
+缺字段沿旧默认值，清单选择/相对入口共用有界解析。受控HTTP与正式ChatRun复用同client/Registry/Gate，
 JS只接凭据引用，限定GET目录/POST生成，取消等待VM/HTTP释放，终态核对全文和用量。
 动态provider来自同Runtime，撤销不替换配置引用；AI抽屉扩展页的插件导入、详情、启停和
 确认卸载已接同owner，成功后刷新模型目录。文件选择复用模型分片句柄，原包详情按revision
 在blocking worker核验hash，撤销及Runtime关闭等待读取释放。详情/删除确认绑定原revision，
 变更关闭旧模态；其它扩展标签和未接动作只保留原外观。包完整格式兼容与排序继续实施。
-ZIP data descriptor/HJSON/schema2及其他旧宿主能力继续实施，详见ADR0012与status。
+ZIP支持32/64位data descriptor，完整局部/中央布局与CRC核验不能遗漏隐藏重复条目。
+依赖、环境、子包及其他旧宿主能力继续实施，详见ADR0012与status。
 
 core/scripts拥有脚本期限、4并发槽、8事件背压和取消树；platform/scripts持有单次
 QuickJS-NG runtime/context，FFI装配，核心不依赖具体引擎。CommonJS注册及调用分别
