@@ -430,9 +430,11 @@ impl AppStore {
             .connection
             .lock()
             .map_err(|_| invalid("聊天存储锁不可用"))?;
+        // 旧Kotlin长度按UTF-16；单Emoji为两单元，不能用SQLite码点length排除正文。
+        let search_body = query.encode_utf16().take(2).count() >= 2;
         // 标题和完整正文使用同一查询快照；百分号/下划线是文字，不能成为SQL通配符。
-        connection.prepare("SELECT c.id FROM conversations c WHERE ?1='' OR instr(lower(c.title),lower(?1))>0 OR instr(lower(c.folder),lower(?1))>0 OR (length(?1)>=2 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id AND instr(lower(m.content),lower(?1))>0)) ORDER BY c.updated_at DESC,c.id")
-            .map_err(storage)?.query_map([query], |row| row.get(0)).map_err(storage)?
+        connection.prepare("SELECT c.id FROM conversations c WHERE ?1='' OR instr(lower(c.title),lower(?1))>0 OR instr(lower(c.folder),lower(?1))>0 OR (?2 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id AND instr(lower(m.content),lower(?1))>0)) ORDER BY c.updated_at DESC,c.id")
+            .map_err(storage)?.query_map(params![query, search_body], |row| row.get(0)).map_err(storage)?
             .collect::<Result<Vec<_>, _>>().map_err(storage)
     }
 

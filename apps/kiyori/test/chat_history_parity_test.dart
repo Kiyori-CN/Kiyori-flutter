@@ -9,6 +9,177 @@ import 'chat_business_test.dart' show ChatFixture, until;
 
 void main() {
   testWidgets(
+    'history keeps Unicode title and folder matches after body search',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+        await f.chat.change(
+          f.chat.snapshot!.conversation,
+          'rename',
+          'ÉCOLE 标题',
+        );
+        await f.chat.create();
+        await f.chat.setPreference('create_folder', 'ÉCOLE');
+        await f.chat.change(
+          f.chat.snapshot!.conversation,
+          'metadata',
+          jsonEncode({'title': '目录会话', 'folder': 'ÉCOLE'}),
+        );
+        await f.chat.create();
+        await f.chat.send('正文中的 éco 关键字');
+        await f.chat.change(f.chat.snapshot!.conversation, 'rename', '正文会话');
+      });
+      try {
+        late BuildContext host;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                host = context;
+                return const Scaffold();
+              },
+            ),
+          ),
+        );
+        showChatHistory(host, f.chat);
+        await tester.pumpAndSettle();
+        final field = find.byKey(const Key('chat-history-search'));
+        await tester.enterText(field, 'éco');
+        await tester.pump(const Duration(milliseconds: 399));
+        expect(find.text('ÉCOLE 标题'), findsOneWidget);
+        expect(find.text('目录会话'), findsOneWidget);
+        expect(find.text('正文会话'), findsNothing);
+        await tester.pump(const Duration(milliseconds: 1));
+        await until(
+          tester,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
+        expect(find.text('ÉCOLE 标题'), findsOneWidget);
+        expect(find.text('目录会话'), findsOneWidget);
+        expect(find.text('正文会话'), findsOneWidget);
+        expect(find.text('匹配 3 / 共 3'), findsOneWidget);
+        // 重读等值目录只刷新宿主状态，不重新隐藏正文命中或进入防抖。
+        await tester.runAsync(f.chat.load);
+        await tester.pump();
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.text('正文会话'), findsOneWidget);
+        // 目录值确实变化时仍按旧源重新搜索，并即时更新标题匹配。
+        await tester.runAsync(() async {
+          final item = f.chat.catalog!.conversations.firstWhere(
+            (c) => c.title == 'ÉCOLE 标题',
+          );
+          await f.chat.change(item, 'rename', '已改名');
+        });
+        await tester.pump(const Duration(milliseconds: 400));
+        await until(
+          tester,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
+        expect(find.text('已改名'), findsNothing);
+        expect(find.text('匹配 2 / 共 3'), findsOneWidget);
+        await tester.runAsync(() async {
+          final item = f.chat.catalog!.conversations.firstWhere(
+            (c) => c.title == '已改名',
+          );
+          await f.chat.change(item, 'rename', 'ΟΣ İI ß');
+        });
+        for (final text in ['ος', 'ıi']) {
+          await tester.enterText(field, text);
+          await tester.pump(const Duration(milliseconds: 400));
+          await until(
+            tester,
+            () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+          );
+          expect(find.text('ΟΣ İI ß'), findsOneWidget);
+        }
+        // 旧比较为单字符大小写映射，不能把ß扩展为两个S。
+        await tester.enterText(field, 'SS');
+        await tester.pump(const Duration(milliseconds: 400));
+        await until(
+          tester,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
+        expect(find.text('ΟΣ İI ß'), findsNothing);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'history debounce survives unrelated notifications and single emoji searches body',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+        await f.chat.send('正文独立样本 🧭');
+        await f.chat.change(f.chat.snapshot!.conversation, 'rename', '正文会话');
+      });
+      try {
+        late BuildContext host;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                host = context;
+                return const Scaffold();
+              },
+            ),
+          ),
+        );
+        showChatHistory(host, f.chat);
+        await tester.pumpAndSettle();
+        final field = find.byKey(const Key('chat-history-search'));
+        await tester.enterText(field, '正文独立样本');
+        for (var i = 0; i < 6; i++) {
+          f.chat.dismissError();
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump();
+        }
+        expect(find.text('正文会话'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        await tester.enterText(field, '🧭');
+        await tester.pump(const Duration(milliseconds: 400));
+        await until(
+          tester,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
+        expect(find.text('正文会话'), findsOneWidget);
+        // 改词及清空取消上一代搜索，迟到结果不能覆盖完整目录。
+        await tester.enterText(field, '不存在');
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(find.byTooltip('清空搜索'));
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('共 1 个对话'), findsOneWidget);
+        expect(find.text('正文会话'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
     'empty folders remain reachable and swipe editing preserves draft',
     (tester) async {
       tester.view.physicalSize = const Size(600, 1000);

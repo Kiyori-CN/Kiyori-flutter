@@ -13,7 +13,35 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：分支行、滑动状态与默认角色作用域
+### 最新增量：搜索刷新、大小写与UTF-16边界
+
+从main/9a08ed5干净基线继续。确认并修复异步结果覆盖Unicode标题/分组命中、无关
+owner通知反复重置400ms防抖、标题/分组lowercase遗漏词尾sigma和土耳其I，以及SQL
+码点长度遗漏单Emoji正文检索四处差异。目录按记录值比较，等值重读只刷新投影；
+异步正文与即时命中取并集，BMP单字不查正文。旧SQLite大小写与字面%/_规则保留。
+没有schema、公开Rust/FFI类型、桥生成或依赖变动；README更正已被替代的导出格式描述。
+
+新增回归先在原实现复现失败，日志search-core-before/search-ui-before和
+search-unicode-before保留。修复后核心专项1项、UI/聊天联合32项通过（search-core-v1/
+search-ui-v2）；捕获联合21项通过（search-capture-v2），五窗口73PNG位于
+work/history-drawer-capture-v19，追加正文搜索结果。首轮捕获在短横屏断言未滚动的惰性
+列表条目失败；最终按真实列表滚动并验证条目可点击，search-capture-v1失败证据保留。
+完整tools/verify.ps1 -WindowsIntegration通过（work/history-search-verify-v1.log）：
+foundation69/tooling4、core188/HTTP3/provider13/native6/native-audit1、398 Dart格式、
+Clippy/analyze、app645（17条件跳过）/platform11/独立FFI22（1条件跳过）/Windows引擎5。
+Rust三项条件忽略不表示真实供应商或旧源环境验收。完整verify后仅补正式文档，产品
+源码没有再变。普通Android/Windows Debug串行137.8s/20.5s通过（search双端v1）。
+固定artifacts/ui-preview/20261006-055806：APK137664656字节，SHA256
+6D84D8F01E9A9EFCDAD56DF1F508FBF2B364E65A44B29F4CE167D421888F307D；Windows101文件171535499字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证、Windows x64/DLL
+pin审计通过（work/history-search-delivery-v1.log）；前序固定包保留。交付使用10路径
+精确源码/测试/正式文档允许清单普通推送main，最终ref与sourceCommit见Git及manifest。
+
+源码对照另确认拖排开始/让位触觉、拖动期非法落点拒绝与代理横滑动作仍未完整对齐，
+详见复刻方案。完整工具/附件事实及同设备像素/字体/触摸/TalkBack/Profile仍未闭环；
+整体目标继续部分完成，不能称全部功能或像素级复刻通过。
+
+### 前序增量：分支行、滑动状态与默认角色作用域
 
 从main/df9eb81干净基线继续。已修分支父标题多占一行、图标错误，恢复AccountTree与
 时间·父标题同一行；角色/分组展开、会话当前/置顶/锁定/生成及标题管理/拖动读屏说明

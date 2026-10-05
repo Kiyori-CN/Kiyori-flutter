@@ -108,6 +108,54 @@ async fn drain(run: &chat::ChatRun) -> Vec<chat::ChatEvent> {
 }
 
 #[tokio::test]
+async fn history_body_search_uses_utf16_threshold_and_literal_sqlite_case_rules() {
+    let dir = Directory::new();
+    let (endpoint, worker) = fixture(1, response("单字 汉 🧭 %_ MÉMO", "stop"));
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    configure(&runtime, endpoint);
+    let id = runtime.create_conversation().unwrap();
+    let prepared = runtime.prepare_conversation(id.clone()).unwrap();
+    let run = runtime
+        .start_conversation(prepared, "独立合成输入".into(), payload())
+        .unwrap();
+    assert!(matches!(
+        drain(&run).await.last(),
+        Some(chat::ChatEvent::Completed { .. })
+    ));
+    assert_eq!(worker.join().unwrap().len(), 1);
+    let item = runtime.conversation(id.clone()).unwrap().conversation;
+    runtime
+        .change_conversation(
+            id.clone(),
+            item.revision,
+            "rename".into(),
+            "独立会话".into(),
+        )
+        .unwrap();
+    assert_eq!(
+        runtime.search_conversations(" 🧭 ").unwrap(),
+        vec![id.clone()]
+    );
+    assert!(runtime.search_conversations("汉").unwrap().is_empty());
+    assert_eq!(
+        runtime.search_conversations("%_").unwrap(),
+        vec![id.clone()]
+    );
+    assert!(
+        runtime
+            .search_conversations("%_missing")
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        runtime.search_conversations("mÉmo").unwrap(),
+        vec![id.clone()]
+    );
+    assert!(runtime.search_conversations("mémo").unwrap().is_empty());
+    runtime.close();
+}
+
+#[tokio::test]
 async fn real_two_turns_freeze_selected_config_role_history_and_reopen() {
     let dir = Directory::new();
     let (endpoint, worker) = fixture(2, response("合成回复", "stop"));

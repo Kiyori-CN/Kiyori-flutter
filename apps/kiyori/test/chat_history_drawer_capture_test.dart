@@ -88,6 +88,30 @@ void main() {
         );
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-history');
+        await tester.enterText(
+          find.byKey(const Key('chat-history-search')),
+          '历史视觉验证',
+        );
+        await tester.pump(const Duration(milliseconds: 400));
+        await until(
+          tester,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('匹配 2 / 共 14'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('分支来源对话'),
+          80,
+          scrollable: find.descendant(
+            of: find.byType(ReorderableListView),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('分支来源对话').hitTestable(), findsOneWidget);
+        await captureUi(tester, boundary, output, '${scenario.$1}-search');
+        await tester.tap(find.byTooltip('清空搜索'));
+        await tester.pumpAndSettle();
         if (scenario.$1.startsWith('phone-')) {
           for (final direction in [1.0, -1.0]) {
             final pointer = await tester.startGesture(

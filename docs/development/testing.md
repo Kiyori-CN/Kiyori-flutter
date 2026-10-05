@@ -42,6 +42,10 @@ current默认与未绑定同桶覆盖列表/菜单/拖排/分组冻结，charact
 群聊隔离、锁定/成员冲突回滚、自动默认复用未绑定历史。UI回归覆盖分支与普通行
 等高、父标题/AccountTree、展开/当前/置顶/锁定/生成语义、Oklab阈值/反向中间帧、
 触发后回位背景、PointerCancel不执行动作及动画停止后无持续帧请求。
+搜索回归覆盖Unicode标题/分组与正文异步并集、等值目录重读和持续无关通知不重置400ms
+防抖、改名后重新查询、清空拒绝迟到结果；核心核对单Emoji的UTF-16正文门槛、BMP单字
+不查正文、SQLite ASCII大小写与百分号/下划线字面语义。真实loopback只用合成正文。
+大小写回归包含É、希腊词尾sigma、土耳其I及ß不扩展SS；五窗口捕获追加正文筛选结果。
 chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
 测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
 工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart' show IconTone;
@@ -539,6 +540,7 @@ class _HistorySearchScope extends StatefulWidget {
 
 class _HistorySearchScopeState extends State<_HistorySearchScope> {
   final query = TextEditingController();
+  List<Conversation> directory = const [];
   Set<String>? matches;
   int generation = 0;
   Timer? timer;
@@ -564,13 +566,19 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
   @override
   void initState() {
     super.initState();
+    directory = widget.owner.catalog?.conversations ?? const [];
     widget.owner.addListener(changed);
   }
 
   void changed() {
     if (mounted) {
+      final next = widget.owner.catalog?.conversations ?? <Conversation>[];
+      final directoryChanged = !listEquals(directory, next);
+      directory = next;
       setState(() {});
-      if (query.text.isNotEmpty) search();
+      // 与旧LaunchedEffect(query, histories)一致：草稿、偏好和忙碌通知
+      // 只刷新投影；反复重置正文防抖会让搜索无法结束并丢掉已有命中。
+      if (directoryChanged && query.text.isNotEmpty) search();
     }
   }
 
@@ -578,6 +586,9 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
     final version = ++generation;
     timer?.cancel();
     final text = query.text.trim();
+    // Kotlin ignoreCase先比较大写，再比较其小写；单纯lowercase遗漏ς/σ和ı/I。
+    // Dart使用不扩展长度的Unicode单字符映射，ß不会被当成两个S。
+    final folded = text.toUpperCase().toLowerCase();
     setState(() {
       searching = text.length >= 2;
       failed = false;
@@ -586,8 +597,8 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
           : {
               for (final item
                   in widget.owner.catalog?.conversations ?? <Conversation>[])
-                if (item.title.toLowerCase().contains(text.toLowerCase()) ||
-                    item.folder.toLowerCase().contains(text.toLowerCase()))
+                if (item.title.toUpperCase().toLowerCase().contains(folded) ||
+                    item.folder.toUpperCase().toLowerCase().contains(folded))
                   item.id,
             };
     });
@@ -599,7 +610,9 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
         );
         if (!mounted || generation != version) return;
         setState(() {
-          matches = result.toSet();
+          // SQLite正文大小写规则不能覆盖UI已得到的Unicode标题/分组命中。
+          // 旧源始终把这两类结果取并集，失败时也保留即时结果。
+          matches = {...?matches, ...result};
           searching = false;
         });
       } catch (_) {
