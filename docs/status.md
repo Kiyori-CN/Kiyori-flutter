@@ -43,8 +43,10 @@ history-windows-v2）；首次完整构建167.1s/61.3s同样成功。固定包�
 15份两端许可证、Windows x64/Flutter DLL pin及100副本逐文件hash通过。manifest保存完整
 哈希与来源，最终sourceCommit在Git交付后记录；证据为work/history-artifacts-20261006-003401。
 739文件树审计无warning/大文件/相对导入环；47路径精确允许清单通过，未改依赖和lock。
-2026-10-06提交前fetch/ls-remote确认origin/main仍c8dc3274，ahead/behind0/0。提交普通推送
-仅包含本批源码、测试和正式文档，最终身份以包含本节的Git提交与固定manifest为准。
+2026-10-06提交前fetch/ls-remote确认origin/main仍c8dc3274，ahead/behind0/0。47路径已提交为
+`89c75c662e223fc6e14a6b3215d06204c1fe4bd3`并普通推送；ls-remote核对远端相同，0/0且
+工作区干净。交付只包含本批源码、测试和正式文档；后续本节的交付记录补充只改文档，
+固定manifest保存最终Git来源及实现提交，过程证据和二进制未入库。
 
 同设备像素/字体、真实触摸、TalkBack、系统SAF/文件选择器、Profile和Apple仍
 verification_pending。整体完全复刻仍需接入供应商/工具原始事件、旧封印/附件及旧包
