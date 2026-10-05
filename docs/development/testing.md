@@ -63,6 +63,9 @@ model_connection_test.dart用真实Rust及loopback探测聊天和system口令并
 该测试同时运行Chat/Responses；core/chat的Responses回归覆盖input/token参数映射、usage、无DONE终态、
 incomplete、工具/失败/断流、思考不进入正文及最终快照不一致。供应商实测仅在明确授权后运行，
 密钥不得写入测试源码/日志；单个端点的成功不泛化为其他供应商或完整聊天页验收。
+Responses流式回归包括reasoning_text的content_part added/done与思考条目终态，验证思考
+不进入正文，同时保留未知输出拒绝、最终正文指纹和不完整终态检查。真实矩阵可设置
+KIYORI_LIVE_REQUIRE_ALL=1，逐条断言所选能力通过；探索模式的退出码不能代替脱敏JSON审阅。
 pool_runtime_test.dart验证真实并发上限、启用/未标记筛选、重复值独立ID、401和取消不污染标记。
 model_pool_business_test.dart验证DPAPI逐项保存/重开、清标记、输入失效、宿主移除以及暂停等待在途保存。
 model_execution_tests.rs验证轮询重开、revision隔离、标记/回退规则、随机候选边界、schema7迁移、

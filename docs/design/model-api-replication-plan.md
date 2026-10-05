@@ -97,3 +97,10 @@ Sol6.1支持low/medium/high/xhigh/max，不支持none/minimal；自动映射五�
 DeepSeek仍沿旧DeepSeekModelContract的low/high/max映射，UI后三档都映射max；真实验证
 覆盖三个不同请求值和流式/非流式，不用重复等价请求增加通过数量。原生Chat工具探测的
 reasoning_content只存于有界执行对象、在工具结果续答中回放；不发送给Dart或落入会话表。
+
+Responses思考内容遵循[DeepSeek官方流式合同](https://api-docs.deepseek.com/guides/responses_api/)：
+`reasoning`条目的`reasoning_text`使用content_part added/done及reasoning_text delta/done。
+解码器允许这些明确类型且不发布为正文；未知内容类型、非文本reasoning_text、缺少终态及
+最终正文快照不一致仍失败。回归以官方完整事件序列经loopback运行，不能只测delta。
+真实测试设置`KIYORI_LIVE_REQUIRE_ALL=1`时断言所选矩阵每一条结果通过；未设置时用于
+探索供应商不同能力，退出成功仅代表至少一个聊天场景通过，完整结果必须逐条审阅。

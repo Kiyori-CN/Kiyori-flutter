@@ -56,7 +56,21 @@ fn validate_item(item: &Value, tools: bool) -> Result<(), ChatFailure> {
             }
             Ok(())
         }
-        Some("reasoning") => Ok(()),
+        Some("reasoning") => {
+            // DeepSeek以reasoning_text片段提供思考；其他供应商可只给summary/密文。
+            // 允许省略content，但不能把reasoning外壳中的未知媒体当作已支持输出。
+            if let Some(content) = item.get("content") {
+                for part in content.as_array().ok_or_else(ChatFailure::protocol)? {
+                    if part.get("type").and_then(Value::as_str) != Some("reasoning_text") {
+                        return Err(unsupported());
+                    }
+                    if part.get("text").and_then(Value::as_str).is_none() {
+                        return Err(ChatFailure::protocol());
+                    }
+                }
+            }
+            Ok(())
+        }
         Some("function_call") if tools => {
             for key in ["id", "call_id", "name", "arguments"] {
                 let value = item
@@ -243,8 +257,19 @@ impl Decoder {
                 }
             }
             "response.content_part.added" | "response.content_part.done" => {
-                if value.pointer("/part/type").and_then(Value::as_str) != Some("output_text") {
-                    return Err(unsupported());
+                match value.pointer("/part/type").and_then(Value::as_str) {
+                    Some("output_text") => {}
+                    // 与reasoning delta一样，只核对类型；思考不进入助手正文或历史。
+                    Some("reasoning_text") => {
+                        if value
+                            .pointer("/part/text")
+                            .and_then(Value::as_str)
+                            .is_none()
+                        {
+                            return Err(ChatFailure::protocol());
+                        }
+                    }
+                    _ => return Err(unsupported()),
                 }
             }
             "response.completed" | "response.incomplete" => {

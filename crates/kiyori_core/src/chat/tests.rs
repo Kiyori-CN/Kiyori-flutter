@@ -762,8 +762,12 @@ fn body() -> String {
 fn responses_body(status: &str, reason: Option<&str>, text: &str) -> String {
     let mut events = vec![
         json!({"type":"response.created"}),
-        json!({"type":"response.output_item.added","item":{"type":"reasoning","id":"r"}}),
+        json!({"type":"response.output_item.added","output_index":0,"item":{"type":"reasoning","id":"r","content":[]}}),
+        json!({"type":"response.content_part.added","output_index":0,"content_index":0,"item_id":"r","part":{"type":"reasoning_text","text":""}}),
         json!({"type":"response.reasoning_text.delta","delta":"private-reasoning-fixture"}),
+        json!({"type":"response.reasoning_text.done","text":"private-reasoning-fixture"}),
+        json!({"type":"response.content_part.done","output_index":0,"content_index":0,"item_id":"r","part":{"type":"reasoning_text","text":"private-reasoning-fixture"}}),
+        json!({"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"r","content":[{"type":"reasoning_text","text":"private-reasoning-fixture"}]}}),
         json!({"type":"response.output_item.added","item":{"type":"message","role":"assistant","id":"m","content":[]}}),
     ];
     for delta in ["你", "好"] {
@@ -772,7 +776,7 @@ fn responses_body(status: &str, reason: Option<&str>, text: &str) -> String {
     events.push(json!({"type":"response.output_text.done","text":"你好"}));
     events.push(json!({"type":format!("response.{status}"),"response":{
         "status":status,"error":null,"incomplete_details":reason.map(|r| json!({"reason":r})),
-        "output":[{"type":"reasoning","id":"r"},{"type":"message","role":"assistant","id":"m","content":[{"type":"output_text","text":text}]}],
+        "output":[{"type":"reasoning","id":"r","content":[{"type":"reasoning_text","text":"private-reasoning-fixture"}]},{"type":"message","role":"assistant","id":"m","content":[{"type":"output_text","text":text}]}],
         "usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}}));
     events
         .into_iter()
@@ -864,6 +868,9 @@ async fn responses_incomplete_errors_tools_and_missing_terminal_are_explicit() {
         (responses_body("completed", None, ""), Some(ChatFailureKind::Interrupted)),
         ("data: {\"type\":\"response.failed\",\"error\":\"private-error\"}\n\n".into(), Some(ChatFailureKind::Protocol)),
         ("data: {\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\"}}\n\n".into(), Some(ChatFailureKind::Unsupported)),
+        ("data: {\"type\":\"response.content_part.added\",\"part\":{\"type\":\"output_audio\"}}\n\n".into(), Some(ChatFailureKind::Unsupported)),
+        ("data: {\"type\":\"response.content_part.done\",\"part\":{\"type\":\"reasoning_text\",\"text\":42}}\n\n".into(), Some(ChatFailureKind::Protocol)),
+        ("data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"reasoning\",\"content\":[{\"type\":\"output_audio\"}]}}\n\n".into(), Some(ChatFailureKind::Unsupported)),
         ("data: {\"type\":\"response.created\"}\n\n".into(), Some(ChatFailureKind::Interrupted)),
         ("data: [DONE]\n\n".into(), Some(ChatFailureKind::Protocol)),
     ] {

@@ -5,6 +5,34 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### Responses 思考内容修复（本机与真实端点验收通过）
+
+本批main/10648e5开始时干净，旧源6b03b03重新核对只读干净。DeepSeek官方合同中的
+reasoning_text会经过content_part added/done；此前decoder仅接受output_text，导致
+三个Responses流式思考档位被拒绝。现在仅允许明确reasoning_text且验证文本字段，
+reasoning条目中的未知类型仍失败，思考不进入助手正文；完整终态及最终正文指纹保持。
+官方完整事件顺序loopback、未知媒体/畸形思考/不完整终态等定向6项通过
+（work/responses-reasoning-core-v1.log）。测试新增KIYORI_LIVE_REQUIRE_ALL=1严格矩阵模式。
+
+用户授权的真实Responses复测逐条审阅通过：DeepSeek档位1/2/3×流式/非流式×
+chat/system/tool共18业务与2目录记录，20/20；脱敏证据
+work/live-DEEPSEEK-20261005-102329.json。中转gpt-6.1-sol档位1–5同矩阵30业务与2目录，
+32/32，开启require_all；work/live-OPENAI_GENERIC-20261005-102613.json。
+旧失败日志保留；这不证明音频/视频/Gemini或所有提供方功能通过。
+
+完整tools/verify.ps1通过（work/responses-reasoning-verify-v1.log）：foundation63、
+Rust核心152/原生6（旧源1条件跳过）、fmt/Clippy、378 Dart格式/analyze、应用611
+（16条件跳过）、platform7和独立FFI20（1条件跳过）。公共API未变，桥-Check五文件一致。
+既有Windows引擎5项证据沿用，当前无桥/生命周期修改，不重复启动引擎集成。
+Android ARM64 Debug105.8秒、普通Windows x64 Debug56.9秒串行通过。
+固定包artifacts/ui-preview/20261005-104236：APK118043927字节，SHA256
+C27D04918B0698BC326FAAE727773304C9C759DC77DD73F4E213EB6C0981FF7F；Windows92文件
+168732723字节。93副本hash、APK身份/v2签名/ZIP16K/ELF、x64/Flutter DLL pin与八份
+许可证两端/源一致通过，证据work/responses-reasoning-artifacts-20261005-104236。
+6路径精确允许清单审计后按原任务授权提交普通推送，最终ref见Git与manifest.sourceCommit。
+TOOLPKG包生命周期、受控HTTP、动态目录和正式聊天接线继续实施；整体Goal active。
+没有设备操作，像素/触摸/Profile和Apple仍verification_pending。
+
 ### TOOLPKG 正式执行端口（实施中）
 
 本批基线main/a1014f8，开始时工作区干净。core/scripts现建立类型化执行错误、

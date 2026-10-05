@@ -202,6 +202,13 @@ void main() {
           isNotEmpty,
           reason: 'No protocol completed a real synthetic chat',
         );
+        if (Platform.environment['KIYORI_LIVE_REQUIRE_ALL'] == '1') {
+          expect(
+            results.where((row) => row['passed'] != true),
+            isEmpty,
+            reason: 'Authorized selected capability matrix has failed rows',
+          );
+        }
       } finally {
         await runtime.close();
         await root.delete(recursive: true);
