@@ -48,7 +48,7 @@ void main() {
     }
   });
   testWidgets(
-    'conversation switch closes fullscreen draft and history without popping host',
+    'conversation switch closes fullscreen draft and preserves host-owned history',
     (tester) async {
       final fixture = ChatFixture();
       await tester.runAsync(fixture.open);
@@ -83,8 +83,12 @@ void main() {
         await tester.pumpAndSettle();
         await tester.runAsync(fixture.chat.create);
         await tester.pumpAndSettle();
-        expect(find.text('对话历史'), findsNothing);
+        expect(find.text('对话历史'), findsOneWidget);
+        expect(find.text('共 3 个对话'), findsOneWidget);
         expect(find.byType(ChatPage), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+        expect(find.text('对话历史'), findsNothing);
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox());

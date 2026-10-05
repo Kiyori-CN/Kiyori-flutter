@@ -52,6 +52,8 @@ class _ChatPageState extends State<ChatPage>
   DialogRoute<void>? fullscreen;
   DialogRoute<void>? messageEditor;
   final modals = ChatModalSession();
+  // 历史目录的寿命归宿主；删除当前会话产生替代会话时仍须保留目录和确认反馈。
+  final historyModals = ChatModalSession();
   bool openingModel = false, openingHistory = false, openingCharacter = false;
   bool classicAttachments = false;
   Set<String>? selectedMessages;
@@ -116,6 +118,7 @@ class _ChatPageState extends State<ChatPage>
       classicAttachments = false;
       selectedMessages = null;
       modals.invalidate();
+      historyModals.invalidate();
       closeFullscreen();
       closeMessageEditor();
       oldWidget.controller?.removeListener(changed);
@@ -176,7 +179,7 @@ class _ChatPageState extends State<ChatPage>
     if (owner == null || openingHistory) return;
     setState(() => openingHistory = true);
     try {
-      await showChatHistory(context, owner, session: modals);
+      await showChatHistory(context, owner, session: historyModals);
     } finally {
       if (mounted) setState(() => openingHistory = false);
     }
@@ -200,6 +203,7 @@ class _ChatPageState extends State<ChatPage>
     closeFullscreen();
     closeMessageEditor();
     modals.dispose();
+    historyModals.dispose();
     chat?.removeListener(changed);
     draft.dispose();
     super.dispose();

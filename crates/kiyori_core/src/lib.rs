@@ -3,6 +3,7 @@
 pub mod chat;
 pub mod chat_preferences;
 pub mod context;
+pub mod conversation_audit;
 pub mod conversations;
 pub mod diary;
 pub mod downloads;

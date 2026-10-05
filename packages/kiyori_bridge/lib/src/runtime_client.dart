@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'generated/api.dart' as api;
 import 'generated/frb_generated.dart';
@@ -27,6 +28,10 @@ abstract interface class RuntimeClient {
   Future<void> deleteTransfer(String id);
   Future<api.ConversationCatalog> conversationCatalog();
   Future<List<String>> searchConversations(String query);
+  Future<String> conversationAudit(String id, int before, String query);
+  Future<String> conversationAuditPayload(String id, int sequence, int page);
+  Future<void> appendConversationNote(String id, String note);
+  Future<Uint8List> exportConversationAudit(String id, String format);
   Future<api.ConversationStatistics> conversationStatistics(String id);
   Future<api.ChatPreferences> chatPreferences();
   Future<api.ChatPreferences> changeChatPreference(
@@ -555,6 +560,34 @@ final class NativeRuntimeClient implements RuntimeClient {
   Future<api.ConversationSnapshot> conversation(String id) {
     _ensureOpen();
     return _handle.conversation(id: id);
+  }
+
+  @override
+  Future<String> conversationAudit(String id, int before, String query) {
+    _ensureOpen();
+    return _handle.conversationAudit(id: id, before: before, query: query);
+  }
+
+  @override
+  Future<String> conversationAuditPayload(String id, int sequence, int page) {
+    _ensureOpen();
+    return _handle.conversationAuditPayload(
+      id: id,
+      sequence: sequence,
+      page: page,
+    );
+  }
+
+  @override
+  Future<void> appendConversationNote(String id, String note) {
+    _ensureOpen();
+    return _handle.appendConversationNote(id: id, note: note);
+  }
+
+  @override
+  Future<Uint8List> exportConversationAudit(String id, String format) {
+    _ensureOpen();
+    return _handle.exportConversationAudit(id: id, format: format);
   }
 
   @override

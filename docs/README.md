@@ -16,6 +16,7 @@
 - [ADR 0009：托管模型传输](decisions/0009-managed-model-transfers.md)：ResourceRef、单执行者、断点校验和原子交付。
 - [ADR 0010：本地模型推理](decisions/0010-native-model-inference.md)：平台句柄、资源租约、静态构建与停止等待。
 - [ADR 0011：受控脚本执行器](decisions/0011-controlled-script-executor.md)：CommonJS/Promise真实调用、限额、取消析构和静态构建。
+- [ADR 0014：历史目录与基础审计](decisions/0014-conversation-history-and-audit.md)：删除替代事务、分组作用域、消息修订、事件链与导出边界。
 
 ## 架构
 
@@ -33,6 +34,7 @@
 - [设置全树复刻映射](design/settings-replication-map.md)：12项入口、子树、旧源、新实现、状态与测试索引。
 - [AI抽屉与业务映射](design/ai-replication-map.md)：根目的地、工作流存储切片、旧源与验收契约。
 - [聊天交互复刻对照](design/chat-replication-checklist.md)：配置、操作栏、输入、消息与嵌套状态的旧源及验收要求。
+- [对话历史左抽屉复刻](design/chat-history-replication.md)：列表/滑动/分组/嵌套模态的完整旧源对照、事务与验收边界。
 - [UI 复刻契约](design/ui-parity.md)：原项目依据、首页三页、图标与底栏、空点击及验证范围。
 - [角色卡与提示词](design/character-prompts.md)：旧源码深度、角色/群组成员草稿、目录身份、嵌套弹层与业务接入边界。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。

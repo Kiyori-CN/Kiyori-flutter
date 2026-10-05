@@ -40,14 +40,19 @@ mod summary;
 mod manual_summary;
 pub use manual_summary::PreparedSummary;
 
+#[path = "conversations_history.rs"]
+pub(crate) mod history;
+
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &Connection) {
     crate::downloads::remove_schema_for_fixture(connection);
-    connection.execute_batch("DROP TABLE conversation_summary_usage; DROP TABLE conversation_summaries; DROP TABLE conversation_variants; DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE conversation_folders; DROP TABLE chat_preferences;").unwrap();
+    connection.execute_batch("DROP TABLE IF EXISTS conversation_audit_key; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE conversation_summary_usage; DROP TABLE conversation_summaries; DROP TABLE conversation_variants; DROP TABLE conversation_messages; DROP TABLE conversation_runs; DROP TABLE conversation_state; DROP TABLE conversations; DROP TABLE conversation_folders; DROP TABLE chat_preferences;").unwrap();
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Conversation {
+    pub parent_id: Option<String>,
+    pub parent_title: Option<String>,
     pub id: String,
     pub title: String,
     pub character_id: String,
@@ -195,19 +200,21 @@ fn touch(tx: &Connection, id: &str) -> Result<(), CoreError> {
 }
 fn record(row: &rusqlite::Row<'_>) -> rusqlite::Result<Conversation> {
     Ok(Conversation {
-        id: row.get(0)?,
-        title: row.get(1)?,
-        character_id: row.get(2)?,
-        character_name: row.get(3)?,
-        revision: row.get(4)?,
-        updated_at: row.get(5)?,
-        message_count: row.get(6)?,
-        folder: row.get(7)?,
-        pinned: row.get(8)?,
-        locked: row.get(9)?,
+        parent_id: row.get(0)?,
+        parent_title: row.get(1)?,
+        id: row.get(2)?,
+        title: row.get(3)?,
+        character_id: row.get(4)?,
+        character_name: row.get(5)?,
+        revision: row.get(6)?,
+        updated_at: row.get(7)?,
+        message_count: row.get(8)?,
+        folder: row.get(9)?,
+        pinned: row.get(10)?,
+        locked: row.get(11)?,
     })
 }
-const SELECT_CONVERSATIONS: &str = "SELECT c.id,c.title,c.character_id,coalesce(p.name,c.character_id),c.revision,c.updated_at,(SELECT count(*) FROM conversation_messages m WHERE m.conversation_id=c.id),c.folder,c.pinned,c.locked FROM conversations c LEFT JOIN prompt_characters p ON p.id=c.character_id";
+const SELECT_CONVERSATIONS: &str = "SELECT c.parent_id, parent.title, c.id,c.title,c.character_id,coalesce(p.name,g.name,nullif(c.character_id,''),'未绑定'),c.revision,c.updated_at,(SELECT count(*) FROM conversation_messages m WHERE m.conversation_id=c.id),c.folder,c.pinned,c.locked FROM conversations c LEFT JOIN conversations parent ON parent.id=c.parent_id LEFT JOIN prompt_characters p ON p.id=c.character_id LEFT JOIN prompt_groups g ON g.id=c.character_id";
 
 fn selection(tx: &Connection, id: &str, target: Option<&str>) -> Result<Selection, CoreError> {
     exists(tx, id)?;
@@ -341,7 +348,7 @@ impl AppStore {
             recent_reasoning_tokens: recent.7,
         })
     }
-    fn run_lock(&self, id: &str) -> Result<File, CoreError> {
+    pub(crate) fn run_lock(&self, id: &str) -> Result<File, CoreError> {
         if id.len() != 32 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
             return Err(invalid("会话标识无效"));
         }
@@ -369,6 +376,15 @@ impl AppStore {
             if let Ok(_guard) = self.run_lock(&id) {
                 tx.execute("UPDATE conversation_messages SET state='interrupted' WHERE conversation_id=?1 AND state='running'",[&id]).map_err(storage)?;
                 tx.execute("UPDATE conversation_runs SET state='interrupted',error='上次生成已中断，未自动重试',finished_at=?2 WHERE conversation_id=?1 AND state='running'",params![id,now()]).map_err(storage)?;
+                crate::conversation_audit::initialize(tx, &id)?;
+                crate::conversation_audit::append(
+                    tx,
+                    &id,
+                    "EXECUTION",
+                    "RUN_INTERRUPTED",
+                    "上次生成已中断，未自动重试",
+                    serde_json::json!({"messages":crate::conversation_audit::messages(tx,&id,None)?}),
+                )?;
                 touch(tx, &id)?;
             }
         }
@@ -415,7 +431,7 @@ impl AppStore {
             .lock()
             .map_err(|_| invalid("聊天存储锁不可用"))?;
         // 标题和完整正文使用同一查询快照；百分号/下划线是文字，不能成为SQL通配符。
-        connection.prepare("SELECT c.id FROM conversations c WHERE ?1='' OR instr(lower(c.title),lower(?1))>0 OR EXISTS(SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id AND instr(lower(m.content),lower(?1))>0) ORDER BY c.updated_at DESC,c.id")
+        connection.prepare("SELECT c.id FROM conversations c WHERE ?1='' OR instr(lower(c.title),lower(?1))>0 OR instr(lower(c.folder),lower(?1))>0 OR (length(?1)>=2 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id AND instr(lower(m.content),lower(?1))>0)) ORDER BY c.updated_at DESC,c.id")
             .map_err(storage)?.query_map([query], |row| row.get(0)).map_err(storage)?
             .collect::<Result<Vec<_>, _>>().map_err(storage)
     }
@@ -499,12 +515,7 @@ impl AppStore {
                     |r| r.get(0),
                 )
                 .map_err(storage)?;
-            crate::prompts::read_character(&tx, &character)?;
-            tx.execute(
-                "UPDATE prompt_active SET character_id=?1,group_id=NULL WHERE id=1",
-                [character],
-            )
-            .map_err(storage)?;
+            history::activate_binding(&tx, &character)?;
         }
         tx.execute(
             "UPDATE conversation_state SET active_id=?1 WHERE id=1",
@@ -586,16 +597,8 @@ impl AppStore {
                 if value.title.trim().is_empty() || value.title.len() > 4096 {
                     return Err(invalid("标题为空或过长"));
                 }
-                if let Some(character) = &value.character
-                    && !tx
-                        .query_row(
-                            "SELECT EXISTS(SELECT 1 FROM prompt_characters WHERE id=?1)",
-                            [character],
-                            |r| r.get::<_, bool>(0),
-                        )
-                        .map_err(storage)?
-                {
-                    return Err(invalid("角色已不存在"));
+                if let Some(character) = &value.character {
+                    history::validate_binding(&tx, character)?;
                 }
                 if !value.folder.is_empty()
                     && !tx
@@ -635,8 +638,10 @@ impl AppStore {
                 if locked {
                     return Err(invalid("已锁定的对话不能删除，请先解锁"));
                 }
+                history::prepare_deletion(&tx, &[id.into()], true)?;
                 tx.execute("DELETE FROM conversations WHERE id=?1", [id])
                     .map_err(storage)?;
+                history::ensure_active(&tx)?;
             }
             "character" => {
                 crate::prompts::read_character(&tx, value)?;
@@ -677,7 +682,8 @@ impl AppStore {
                 .map_err(storage)?;
                 touch(&tx, id)?;
             }
-            "up" | "down" | "bottom" | "before" => {
+            "move" => history::move_item(&tx, id, value)?,
+            "up" | "down" | "bottom" | "before" | "after" => {
                 let (folder, pinned, character): (String, bool, String) = tx
                     .query_row(
                         "SELECT folder,pinned,character_id FROM conversations WHERE id=?1",
@@ -695,15 +701,20 @@ impl AppStore {
                 let target = match action {
                     "up" => position.saturating_sub(1),
                     "down" => (position + 1).min(ids.len() - 1),
-                    "before" => {
+                    "before" | "after" => {
                         let target = ids
                             .iter()
                             .position(|entry| entry == value)
                             .ok_or_else(|| invalid("只能在同一分组和置顶状态内排序"))?;
-                        if target > position {
+                        let before = if target > position {
                             target - 1
                         } else {
                             target
+                        };
+                        if action == "after" && value != id {
+                            before + 1
+                        } else {
+                            before
                         }
                     }
                     _ => ids.len() - 1,
@@ -719,6 +730,15 @@ impl AppStore {
                 }
             }
             "clear" => {
+                crate::conversation_audit::initialize(&tx, id)?;
+                crate::conversation_audit::append(
+                    &tx,
+                    id,
+                    "MESSAGE",
+                    "MESSAGES_CLEARED",
+                    "清空前的消息原文",
+                    serde_json::json!({"messages":crate::conversation_audit::messages(&tx,id,None)?}),
+                )?;
                 tx.execute(
                     "DELETE FROM conversation_summaries WHERE conversation_id=?1",
                     [id],
@@ -774,6 +794,15 @@ impl AppStore {
             )
             .map_err(storage)?;
         if action != "branch" {
+            crate::conversation_audit::initialize(&tx, id)?;
+            crate::conversation_audit::append(
+                &tx,
+                id,
+                "MESSAGE",
+                "MESSAGE_BEFORE_CHANGE",
+                "消息修改前的原文",
+                serde_json::json!({"action":action,"messageId":message,"messages":crate::conversation_audit::changed_messages(&tx,id,message,action,text)?}),
+            )?;
             // 修改/删除/切换版本后不能把旧摘要作为新历史事实继续使用。
             tx.execute(
                 "DELETE FROM conversation_summaries WHERE conversation_id=?1",
@@ -842,7 +871,7 @@ impl AppStore {
             }
             "branch" => {
                 let branch = identity(&tx)?;
-                tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) SELECT ?2,title||' (分支)',character_id,?3,?3,1,folder FROM conversations WHERE id=?1", params![id,branch,now()]).map_err(storage)?;
+                tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder,parent_id) SELECT ?2,title||' (分支)',character_id,?3,?3,1,folder,?1 FROM conversations WHERE id=?1", params![id,branch,now()]).map_err(storage)?;
                 // 分支复制独立运行快照与完整消息；源对话删除/编辑不会级联影响分支。
                 tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id,cache_read_tokens,cache_write_tokens,reasoning_tokens,kind) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id,r.cache_read_tokens,r.cache_write_tokens,r.reasoning_tokens,r.kind FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state,variant) SELECT ?3||'/'||id,?3,CASE WHEN run_id IS NULL THEN NULL ELSE ?3||'/'||run_id END,position,role,content,state,variant FROM conversation_messages WHERE conversation_id=?1 AND position<=?2",params![id,position,branch]).map_err(storage)?;
@@ -880,6 +909,15 @@ impl AppStore {
             _ => return Err(invalid("未知消息操作")),
         }
         touch(&tx, id)?;
+        crate::conversation_audit::initialize(&tx, id)?;
+        crate::conversation_audit::append(
+            &tx,
+            id,
+            "MESSAGE",
+            "MESSAGE_CHANGED",
+            "消息历史已更新",
+            serde_json::json!({"action":action,"messageId":message,"messages":crate::conversation_audit::changed_messages(&tx,id,message,action,text)?}),
+        )?;
         tx.commit().map_err(storage)
     }
 }
@@ -1139,6 +1177,8 @@ impl Runtime {
                 let title=text.trim().chars().take(30).collect::<String>();
                 tx.execute("UPDATE conversations SET title=?2 WHERE id=?1 AND title='新对话'",params![prepared.conversation,title]).map_err(storage)?;
             }
+            crate::conversation_audit::initialize(&tx,&prepared.conversation)?;
+            crate::conversation_audit::append(&tx,&prepared.conversation,"EXECUTION","RUN_STARTED","开始生成回复",serde_json::json!({"runId":run_id,"model":selected.model,"character":selected.character,"messages":crate::conversation_audit::messages(&tx,&prepared.conversation,Some(&run_id))?}))?;
             touch(&tx,&prepared.conversation)?;
             tx.commit().map_err(storage)?;
             Ok((request,run_id,(context*1024.) as i64))
@@ -1422,6 +1462,15 @@ impl AppStore {
                 params![run, state, error, now()],
             )
             .map_err(storage)?;
+            crate::conversation_audit::initialize(&tx, &conversation)?;
+            crate::conversation_audit::append(
+                &tx,
+                &conversation,
+                "EXECUTION",
+                "RUN_FINISHED",
+                "执行已结束",
+                serde_json::json!({"runId":run,"state":state,"error":error,"messages":crate::conversation_audit::messages(&tx,&conversation,Some(run))?}),
+            )?;
         }
         touch(&tx, &conversation)?;
         tx.commit().map_err(storage)?;

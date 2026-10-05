@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 
@@ -24,6 +25,18 @@ class FakeRun implements DiagnosticRun {
 }
 
 class FakeClient implements RuntimeClient {
+  @override
+  Future<String> conversationAudit(String id, int before, String query) =>
+      throw UnimplementedError();
+  @override
+  Future<String> conversationAuditPayload(String id, int sequence, int page) =>
+      throw UnimplementedError();
+  @override
+  Future<void> appendConversationNote(String id, String note) =>
+      throw UnimplementedError();
+  @override
+  Future<Uint8List> exportConversationAudit(String id, String format) =>
+      throw UnimplementedError();
   @override
   Future<ExtensionDetails> extensionDetails(String id, int revision) =>
       throw UnimplementedError();

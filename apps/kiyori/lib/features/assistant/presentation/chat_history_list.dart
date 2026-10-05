@@ -1,12 +1,26 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
+import 'chat_character_avatar.dart';
 import 'chat_history_management.dart';
-import 'chat_dialogs.dart';
+import 'chat_history_swipe.dart';
+import 'chat_history_widgets.dart';
 
-/// 原历史目录的角色/文件夹层级。折叠只影响投影，搜索始终展开匹配路径。
+typedef _Row = ({
+  String key,
+  String label,
+  String? folder,
+  String? binding,
+  int depth,
+  Conversation? item,
+});
+
+/// 目录/折叠为UI投影；拖排只在松手时提交，持久顺序仍来自唯一Rust owner。
 class ChatHistoryList extends StatefulWidget {
   const ChatHistoryList({
     required this.owner,
@@ -24,53 +38,66 @@ class ChatHistoryList extends StatefulWidget {
 }
 
 class _ChatHistoryListState extends State<ChatHistoryList> {
-  final collapsed = <String>{};
-  final rows =
-      <
-        ({
-          String key,
-          String label,
-          String? folder,
-          int depth,
-          Conversation? item,
-        })
-      >[];
+  Set<String> get collapsed => widget.owner.historyCollapsed;
+  final rows = <_Row>[];
+  final scroll = ScrollController();
+  Timer? clock;
+  bool committing = false;
   @override
   void initState() {
     super.initState();
     rebuildRows();
+    clock = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    clock?.cancel();
+    scroll.dispose();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(ChatHistoryList old) {
     super.didUpdateWidget(old);
-    rebuildRows();
+    // 提交开始的busy通知仍带旧目录，不能把已经让位的拖排草稿跳回原位。
+    if (!committing) rebuildRows();
   }
 
   void rebuildRows() {
     rows.clear();
     final mode = widget.owner.preferences?.historyMode ?? 'folder';
-    void folders(List<Conversation> items, String prefix, int depth) {
+    void folders(
+      List<Conversation> items,
+      String prefix,
+      int depth,
+      String? binding,
+    ) {
       final names = <String>{for (final c in items) c.folder};
       if (!widget.searching && mode == 'folder') {
         names.addAll(widget.owner.preferences?.folders ?? []);
       }
       for (final folder in names) {
-        final key = '$prefix/folder/$folder';
-        final members = items.where((c) => c.folder == folder).toList();
+        final key = jsonEncode(['folder', prefix, folder]);
         rows.add((
           key: key,
           label: folder.isEmpty ? '未分组' : folder,
           folder: folder.isEmpty ? null : folder,
+          binding: binding,
           depth: depth,
           item: null,
         ));
-        if (!widget.searching && collapsed.contains(key)) continue;
-        for (final c in members) {
+        if (!widget.searching && collapsed.contains(key)) {
+          continue;
+        }
+        for (final c in items.where((c) => c.folder == folder)) {
           rows.add((
             key: c.id,
             label: c.title,
             folder: null,
+            binding: binding,
             depth: depth,
             item: c,
           ));
@@ -81,315 +108,719 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
     if (mode == 'character') {
       for (final id in {for (final c in widget.items) c.characterId}) {
         final members = widget.items.where((c) => c.characterId == id).toList();
-        final key = 'character/$id';
+        final key = jsonEncode(['character', id]);
+        final group = widget.owner.prompts?.groups
+            .where((g) => g.id == id)
+            .firstOrNull;
         rows.add((
           key: key,
-          label: '${members.first.characterName} (${members.length})',
+          label: group == null
+              ? members.first.characterName
+              : '群聊: ${group.draft.name}',
           folder: null,
+          binding: id,
           depth: 0,
           item: null,
         ));
         if (!widget.searching && collapsed.contains(key)) continue;
-        folders(members, key, 1);
+        folders(members, key, 1, id);
       }
     } else {
-      folders(widget.items, mode, 0);
+      folders(
+        widget.items,
+        mode,
+        0,
+        mode == 'current' ? historyBinding(widget.owner) : null,
+      );
     }
   }
 
-  String relativeTime(int time) {
-    final elapsed = DateTime.now().millisecondsSinceEpoch - time.toInt();
-    if (elapsed < 60000) return '刚刚';
-    if (elapsed < 3600000) return '${elapsed ~/ 60000} 分钟前';
-    if (elapsed < 86400000) return '${elapsed ~/ 3600000} 小时前';
-    return '${elapsed ~/ 86400000} 天前';
+  Widget rail(double height) => SizedBox(
+    width: 22,
+    child: Padding(
+      padding: const EdgeInsets.only(left: 10, right: 8),
+      child: Center(
+        child: Container(
+          width: 2,
+          height: height,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.outlineVariant
+                .withValues(alpha: .7),
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      ),
+    ),
+  );
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    if (widget.searching ||
+        widget.owner.changing ||
+        oldIndex < 0 ||
+        oldIndex >= rows.length) {
+      return;
+    }
+    final original = rows[oldIndex].item;
+    if (original == null) return;
+    final proposed = List<_Row>.from(rows);
+    final moving = proposed.removeAt(oldIndex);
+    proposed.insert(newIndex, moving);
+    String? folder, binding;
+    bool foundHeader = false;
+    for (var i = 0; i <= newIndex; i++) {
+      final row = proposed[i];
+      if (row.item == null) {
+        if (row.key.startsWith('["folder"')) {
+          folder = row.folder ?? '';
+          binding = row.binding;
+          foundHeader = true;
+        } else {
+          foundHeader = false;
+        }
+      }
+    }
+    if (!foundHeader) return;
+    final mode = widget.owner.preferences?.historyMode ?? 'folder';
+    final targetBinding = mode == 'character'
+        ? binding ?? ''
+        : original.characterId;
+    final candidates = <Conversation>[];
+    String currentFolder = '', currentBinding = '';
+    for (final row in proposed) {
+      if (row.item == null) {
+        if (row.key.startsWith('["folder"')) {
+          currentFolder = row.folder ?? '';
+          currentBinding = row.binding ?? '';
+        }
+      } else if (currentFolder == folder &&
+          (mode != 'character' || currentBinding == targetBinding)) {
+        candidates.add(row.item!);
+      }
+    }
+    bool seenNormal = false;
+    for (final item in candidates) {
+      if (!item.pinned) {
+        seenNormal = true;
+      } else if (seenNormal) {
+        return;
+      }
+    }
+    final bucket = candidates
+        .where((c) => c.pinned == original.pinned)
+        .toList();
+    final index = bucket.indexWhere((c) => c.id == original.id);
+    final next = index >= 0 && index + 1 < bucket.length
+        ? bucket[index + 1]
+        : null;
+    final previous = index > 0 ? bucket[index - 1] : null;
+    final anchor = next ?? previous;
+    setState(() {
+      committing = true;
+      rows
+        ..clear()
+        ..addAll(proposed);
+    });
+    await widget.owner.change(
+      original,
+      'move',
+      jsonEncode({
+        'folder': folder,
+        'character': targetBinding,
+        'anchor': anchor?.id,
+        'anchor_revision': anchor?.revision,
+        'before': next != null,
+      }),
+    );
+    if (mounted) {
+      setState(() {
+        committing = false;
+        rebuildRows();
+      });
+    }
   }
 
   @override
-  Widget build(BuildContext context) => ListView.builder(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-    itemCount: rows.length,
-    findChildIndexCallback: (key) {
-      final index = rows.indexWhere((row) => ValueKey(row.key) == key);
-      return index < 0 ? null : index;
-    },
-    itemBuilder: (context, index) {
-      final row = rows[index];
-      final item = row.item;
-      final colors = Theme.of(context).colorScheme;
-      if (item == null) {
-        return Padding(
-          key: ValueKey(row.key),
-          padding: EdgeInsets.only(left: row.depth * 12, top: 4, bottom: 2),
-          child: Material(
-            color: colors.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) => Stack(
+    children: [
+      ReorderableListView.builder(
+        scrollController: scroll,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        buildDefaultDragHandles: false,
+        itemCount: rows.length,
+        onReorderItem: reorder,
+        proxyDecorator: (child, index, animation) => Material(
+          elevation: 6,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          child: child,
+        ),
+        itemBuilder: (context, index) {
+          final row = rows[index];
+          return Padding(
+            key: ValueKey(row.key),
+            padding: const EdgeInsets.only(bottom: 2),
+            child: row.item == null ? header(row) : entry(row, index),
+          );
+        },
+      ),
+      Positioned(
+        right: 0,
+        top: 12,
+        bottom: 12,
+        width: 16,
+        child: _HistoryQuickScroll(controller: scroll),
+      ),
+    ],
+  );
+  Widget header(_Row row) {
+    final colors = Theme.of(context).colorScheme;
+    final expanded = widget.searching || !collapsed.contains(row.key);
+    final character = row.key.startsWith('["character"');
+    void toggle() {
+      if (widget.searching) return;
+      setState(() {
+        if (!collapsed.remove(row.key)) collapsed.add(row.key);
+        rebuildRows();
+      });
+    }
+
+    void manage() => showHistoryFolderManagement(
+      context,
+      widget.owner,
+      row.folder!,
+      binding: row.binding,
+      onRoute: widget.onRoute,
+    );
+    if (character) {
+      final group = widget.owner.prompts?.groups
+          .where((g) => g.id == row.binding)
+          .firstOrNull;
+      return Padding(
+        padding: const EdgeInsets.only(top: 12, bottom: 4),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.searching ? null : toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
+                if (group == null)
+                  ChatCharacterAvatar(
+                    characterId: row.binding,
+                    size: 24,
+                    background: colors.primaryContainer,
+                    foreground: colors.onPrimaryContainer,
+                  )
+                else
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.groups,
+                      size: 15,
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: InkWell(
-                    onTap: widget.searching
-                        ? null
-                        : () => setState(() {
-                            if (!collapsed.remove(row.key)) {
-                              collapsed.add(row.key);
-                            }
-                            rebuildRows();
-                          }),
-                    onLongPress: row.folder == null
-                        ? null
-                        : () => showHistoryFolderManagement(
-                            context,
-                            widget.owner,
-                            row.folder!,
-                            onRoute: widget.onRoute,
-                          ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              row.key.startsWith('character/') && row.depth == 0
-                                  ? Icons.person_outline
-                                  : Icons.folder_outlined,
-                              size: 20,
-                              color:
-                                  row.key.startsWith('character/') &&
-                                      row.depth == 0
-                                  ? colors.onSurfaceVariant
-                                  : IconTone.folder.iconFor(context),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                row.label,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Icon(
-                              !widget.searching && collapsed.contains(row.key)
-                                  ? Icons.keyboard_arrow_down
-                                  : Icons.keyboard_arrow_up,
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                      ),
+                  child: Text(
+                    row.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 20 / 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.primary,
                     ),
                   ),
                 ),
-                if (row.folder != null)
-                  IconButton(
-                    tooltip: '管理文件夹',
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.more_vert, size: 18),
-                    onPressed: () => showHistoryFolderManagement(
-                      context,
-                      widget.owner,
-                      row.folder!,
-                      onRoute: widget.onRoute,
-                    ),
-                  ),
+                const SizedBox(width: 8),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: colors.onSurfaceVariant,
+                ),
               ],
             ),
           ),
-        );
-      }
-      final selected = widget.owner.snapshot?.conversation.id == item.id;
-      void manage() => showHistoryManagement(
-        context,
-        widget.owner,
-        item,
-        onRoute: widget.onRoute,
+        ),
       );
-      return Padding(
-        key: ValueKey(item.id),
-        padding: EdgeInsets.only(left: row.depth * 12, bottom: 2),
-        child: gestures(
-          item,
-          Material(
-            color: selected
-                ? colors.secondaryContainer
-                : colors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              children: [
-                LongPressDraggable<Conversation>(
-                  data: item,
-                  maxSimultaneousDrags:
-                      widget.searching || widget.owner.changing ? 0 : 1,
-                  feedback: Material(
-                    elevation: 6,
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 240,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          if (row.depth > 0) rail(36),
+          Expanded(
+            child: Material(
+              color: colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: widget.searching ? null : toggle,
+                      onLongPress: row.folder == null || widget.searching
+                          ? null
+                          : manage,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.folder_outlined,
+                                size: 18,
+                                color: historyTone(context, IconTone.folder),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  row.label,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 20 / 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                expanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  child: IconButton(
-                    onPressed: manage,
-                    tooltip: '移动对话',
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 48,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.drag_handle, size: 16),
-                  ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onLongPress: manage,
-                    onTap: () async {
-                      final route = ModalRoute.of(context);
-                      if (await widget.owner.select(item.id) &&
-                          route?.isActive == true) {
-                        route!.navigator?.removeRoute(route);
-                      }
-                    },
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item.title,
+                  if (row.folder != null)
+                    IconButton(
+                      tooltip: '管理分组',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: manage,
+                      icon: Icon(
+                        Icons.more_vert,
+                        size: 18,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 6),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget entry(_Row row, int index) {
+    final item = row.item!;
+    final colors = Theme.of(context).colorScheme;
+    final selected = widget.owner.snapshot?.conversation.id == item.id;
+    final enabled = !widget.owner.changing;
+    final foreground = selected
+        ? colors.onSecondaryContainer
+        : colors.onSurface;
+    final meta = selected
+        ? colors.onSecondaryContainer.withValues(alpha: .78)
+        : colors.onSurfaceVariant;
+    void manage() => showHistoryManagement(
+      context,
+      widget.owner,
+      item,
+      onRoute: widget.onRoute,
+      visible: widget.items,
+    );
+    Widget button(Widget icon, String tip, VoidCallback tap) => IconButton(
+      tooltip: tip,
+      onPressed: enabled ? tap : null,
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+      padding: EdgeInsets.zero,
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: icon,
+    );
+    return Row(
+      children: [
+        if (row.depth > 0) rail(52),
+        Expanded(
+          child: HistorySwipe(
+            key: ValueKey('swipe-${item.id}'),
+            edit: enabled
+                ? () => showHistoryMetadata(
+                    context,
+                    widget.owner,
+                    item,
+                    onRoute: widget.onRoute,
+                  )
+                : null,
+            delete: enabled && !item.locked
+                ? () => showHistoryDelete(
+                    context,
+                    widget.owner,
+                    item,
+                    onRoute: widget.onRoute,
+                  )
+                : null,
+            child: Material(
+              color: selected
+                  ? colors.secondaryContainer
+                  : colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 52),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        enabled: enabled && !widget.searching,
+                        child: button(
+                          Icon(
+                            Icons.drag_handle,
+                            size: 16,
+                            color: meta.withValues(alpha: .6),
+                          ),
+                          '移动对话',
+                          manage,
+                        ),
+                      ),
+                      Expanded(
+                        child: InkWell(
+                          onLongPress: enabled ? manage : null,
+                          onTap: enabled
+                              ? () async {
+                                  final r = ModalRoute.of(context);
+                                  if (await widget.owner.select(item.id) &&
+                                      r?.isActive == true) {
+                                    r!.navigator?.removeRoute(r);
+                                  }
+                                }
+                              : null,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 48),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          item.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            height: 20 / 14,
+                                            fontWeight: selected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                            color: foreground,
+                                          ),
+                                        ),
+                                      ),
+                                      if (widget
+                                              .owner
+                                              .executions[item.id]
+                                              ?.active ==
+                                          true) ...[
+                                        const SizedBox(width: 4),
+                                        const SizedBox.square(
+                                          dimension: 11,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                      if (item.pinned) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.push_pin,
+                                          size: 13,
+                                          color: meta,
+                                        ),
+                                      ],
+                                      if (item.locked) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(Icons.lock, size: 13, color: meta),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (item.parentId != null)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.subdirectory_arrow_right,
+                                          size: 11,
+                                          color: meta,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Expanded(
+                                          child: Text(
+                                            item.parentTitle ?? '',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              height: 16 / 11,
+                                              color: meta,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  Text(
+                                    historyTime(item.updatedAt),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: selected
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
+                                      fontSize: 11,
+                                      height: 16 / 11,
+                                      color: meta,
                                     ),
                                   ),
-                                ),
-                                if (item.pinned)
-                                  const Icon(Icons.push_pin, size: 13),
-                                if (item.locked)
-                                  const Icon(Icons.lock, size: 13),
-                              ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              relativeTime(item.updatedAt),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      button(
+                        Icon(Icons.more_vert, size: 18, color: meta),
+                        '会话操作',
+                        manage,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryQuickScroll extends StatefulWidget {
+  const _HistoryQuickScroll({required this.controller});
+  final ScrollController controller;
+  @override
+  State<_HistoryQuickScroll> createState() => _HistoryQuickScrollState();
+}
+
+class _HistoryQuickScrollState extends State<_HistoryQuickScroll> {
+  bool handling = false;
+  ScrollPosition? observed;
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(changed);
+    WidgetsBinding.instance.addPostFrameCallback((_) => changed());
+  }
+
+  void changed() {
+    if (widget.controller.hasClients &&
+        observed != widget.controller.position) {
+      observed?.isScrollingNotifier.removeListener(changed);
+      observed = widget.controller.position;
+      observed!.isScrollingNotifier.addListener(changed);
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    observed?.isScrollingNotifier.removeListener(changed);
+    widget.controller.removeListener(changed);
+    super.dispose();
+  }
+
+  Future<void> go(double target) async {
+    final c = widget.controller;
+    final end = target > 0;
+    await c.animateTo(
+      target,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.fastOutSlowIn,
+    );
+    // 惰性列表第一次extent是估算；末行布局后继续校准，不留下尚未显示的尾部。
+    for (var i = 0; end && i < 8 && mounted && c.hasClients; i++) {
+      WidgetsBinding.instance.ensureVisualUpdate();
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted ||
+          !c.hasClients ||
+          c.position.maxScrollExtent - c.offset < 1) {
+        break;
+      }
+      c.jumpTo(c.position.maxScrollExtent);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, bounds) {
+      final c = widget.controller;
+      if (!c.hasClients ||
+          !c.position.hasContentDimensions ||
+          c.position.maxScrollExtent <= 0) {
+        return const SizedBox.shrink();
+      }
+      final colors = Theme.of(context).colorScheme;
+      final p = c.position;
+      final max = p.maxScrollExtent;
+      // 极短横屏视口仍保留上下入口；只在放不下旧48dp按钮时按可见高度约束。
+      final buttonHeight = ((bounds.maxHeight - 16) / 2).clamp(0.0, 48.0);
+      Widget button(bool enabled, IconData icon, String label, double target) =>
+          SizedBox(
+            width: 16,
+            height: buttonHeight,
+            child: Material(
+              color: enabled
+                  ? colors.surfaceContainerHighest.withValues(alpha: .62)
+                  : Colors.transparent,
+              shape: const StadiumBorder(),
+              elevation: enabled ? 1 : 0,
+              child: InkWell(
+                onTap: enabled ? () => go(target) : null,
+                child: Icon(
+                  icon,
+                  size: 14,
+                  color: colors.onSurfaceVariant.withValues(
+                    alpha: enabled ? 1 : .22,
+                  ),
+                ),
+              ),
+            ),
+          );
+      return Opacity(
+        opacity: (handling || p.isScrollingNotifier.value) ? .9 : .5,
+        child: Column(
+          children: [
+            Semantics(
+              label: '滚动到顶部',
+              button: true,
+              child: button(
+                p.extentBefore > 0,
+                Icons.keyboard_arrow_up,
+                '滚动到顶部',
+                0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: LayoutBuilder(
+                  builder: (context, bounds) {
+                    final fraction =
+                        (p.viewportDimension / (p.viewportDimension + max))
+                            .clamp(.12, 1.0);
+                    final thumb = (bounds.maxHeight * fraction).clamp(
+                      bounds.maxHeight < 36 ? bounds.maxHeight : 36.0,
+                      bounds.maxHeight,
+                    );
+                    final travel = (bounds.maxHeight - thumb).clamp(
+                      1.0,
+                      double.infinity,
+                    );
+                    void jump(double y) =>
+                        c.jumpTo(((y - thumb / 2) / travel).clamp(0, 1) * max);
+                    return Semantics(
+                      label: '历史记录快速滚动',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (d) => jump(d.localPosition.dy),
+                        onVerticalDragStart: (d) {
+                          setState(() => handling = true);
+                          jump(d.localPosition.dy);
+                        },
+                        onVerticalDragUpdate: (d) => c.jumpTo(
+                          (c.offset + d.delta.dy * max / travel).clamp(0, max),
+                        ),
+                        onVerticalDragEnd: (_) =>
+                            setState(() => handling = false),
+                        onVerticalDragCancel: () =>
+                            setState(() => handling = false),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 2,
+                              height: bounds.maxHeight,
+                              decoration: BoxDecoration(
+                                color: colors.outlineVariant.withValues(
+                                  alpha: .35,
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                            Positioned(
+                              top: (c.offset / max).clamp(0, 1) * travel,
+                              child: Container(
+                                width: 8,
+                                height: thumb,
+                                decoration: BoxDecoration(
+                                  color: colors.primary.withValues(alpha: .55),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
-                IconButton(
-                  tooltip: '会话操作',
-                  onPressed: manage,
-                  icon: const Icon(Icons.more_vert, size: 18),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 4),
+            Semantics(
+              label: '滚动到底部',
+              button: true,
+              child: button(
+                p.extentAfter > 0,
+                Icons.keyboard_arrow_down,
+                '滚动到底部',
+                max,
+              ),
+            ),
+          ],
         ),
       );
     },
-  );
-
-  Widget gestures(Conversation item, Widget child) => DragTarget<Conversation>(
-    onWillAcceptWithDetails: (d) =>
-        !widget.searching &&
-        !widget.owner.changing &&
-        d.data.id != item.id &&
-        d.data.folder == item.folder &&
-        d.data.pinned == item.pinned &&
-        (widget.owner.preferences?.historyMode == 'folder' ||
-            d.data.characterId == item.characterId),
-    onAcceptWithDetails: (d) => widget.owner.change(d.data, 'before', item.id),
-    builder: (context, candidates, rejected) => Dismissible(
-      key: ValueKey('swipe-${item.id}'),
-      direction: widget.owner.changing
-          ? DismissDirection.none
-          : item.locked
-          ? DismissDirection.startToEnd
-          : DismissDirection.horizontal,
-      dismissThresholds: {
-        DismissDirection.startToEnd: .4,
-        DismissDirection.endToStart: .4,
-      },
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          await showHistoryMetadata(
-            context,
-            widget.owner,
-            item,
-            onRoute: widget.onRoute,
-          );
-        } else if (await confirmChatAction(
-              context,
-              '删除对话？',
-              '确定删除“${item.title}”及其全部消息？',
-              onRoute: widget.onRoute,
-            ) &&
-            context.mounted) {
-          await widget.owner.change(item, 'delete', '');
-        }
-        // 正式目录刷新移除行，动画不作为业务成功的事实来源。
-        return false;
-      },
-      background: Container(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.all(16),
-        color: Theme.of(context).colorScheme.primaryContainer,
-        child: const Icon(Icons.edit_outlined),
-      ),
-      secondaryBackground: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.all(16),
-        color: Theme.of(context).colorScheme.errorContainer,
-        child: const Icon(Icons.delete_outline),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: candidates.isEmpty
-              ? null
-              : Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-        ),
-        child: child,
-      ),
-    ),
   );
 }

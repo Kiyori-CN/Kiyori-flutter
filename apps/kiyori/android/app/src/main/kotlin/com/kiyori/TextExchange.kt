@@ -27,23 +27,28 @@ class TextExchange(private val activity: Activity, messenger: BinaryMessenger) {
     init { channel.setMethodCallHandler(::handle) }
 
     private fun handle(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method !in listOf("importText", "exportText")) { result.notImplemented(); return }
+        if (call.method !in listOf("importText", "exportText", "exportAudit")) { result.notImplemented(); return }
         if (detached) { result.error("detached", null, null); return }
         if (pending != null) { result.error("busy", null, null); return }
-        val save = call.method == "exportText"
+        val audit = call.method == "exportAudit"
+        val save = call.method != "importText"
         val name = call.argument<String>("suggestedName") ?: "text.txt"
         if (save && (name.isEmpty() || name.any { it in "/\\:\u0000" })) {
             result.error("invalid_name", null, null); return
         }
-        val bytes = if (save) call.argument<String>("text")?.toByteArray(Charsets.UTF_8) else null
+        val mime = if (audit) call.argument<String>("mime") else "text/plain"
+        if (audit && mime !in listOf("application/zip", "text/markdown")) {
+            result.error("invalid_name", null, null); return
+        }
+        val bytes = if (audit) call.argument<ByteArray>("bytes") else if (save) call.argument<String>("text")?.toByteArray(Charsets.UTF_8) else null
         if (save && bytes == null) { result.error("io_failed", null, null); return }
-        if (bytes != null && bytes.size > LIMIT) { bytes.fill(0); result.error("too_large", null, null); return }
+        if (bytes != null && bytes.size > if (audit) 64 * LIMIT else LIMIT) { bytes.fill(0); result.error("too_large", null, null); return }
         pending = result
         signal = CancellationSignal()
         export = bytes
         val intent = Intent(if (save) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = if (save) "text/plain" else "text/*"
+            type = if (save) mime else "text/*"
             if (save) putExtra(Intent.EXTRA_TITLE, name)
         }
         try { activity.startActivityForResult(intent, if (save) SAVE else OPEN) }

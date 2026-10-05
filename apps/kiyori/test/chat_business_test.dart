@@ -556,8 +556,8 @@ void main() {
       final field = find.byKey(const Key('message-editor-raw'));
       await tester.enterText(field, '菜单编辑后的回复');
       await tester.tap(find.text('保存'));
-      await tester.pumpAndSettle();
       await until(tester, () => !f.chat.changing);
+      await tester.pumpAndSettle();
       expect(f.chat.snapshot!.messages.last.content, '菜单编辑后的回复');
       await tester.tap(
         find.byWidgetPredicate((w) => w is ShellAction && w.label == '显示历史'),
@@ -576,8 +576,8 @@ void main() {
         '菜单重命名',
       );
       await tester.tap(find.text('保存'));
-      await tester.pumpAndSettle();
       await until(tester, () => !f.chat.changing);
+      await tester.pumpAndSettle();
       expect(f.chat.snapshot!.conversation.title, '菜单重命名');
       await tester.enterText(
         find.byKey(const Key('chat-history-search')),
@@ -842,7 +842,10 @@ void main() {
           ),
           true,
         );
-        expect(f.chat.catalog!.conversations, isEmpty);
+        expect(f.chat.catalog!.conversations, hasLength(1));
+        expect(f.chat.snapshot!.conversation.id, isNot(stale.id));
+        expect(f.chat.catalog!.activeId, f.chat.snapshot!.conversation.id);
+        expect(f.chat.snapshot!.messages, isEmpty);
       } finally {
         await tester.runAsync(f.close);
       }

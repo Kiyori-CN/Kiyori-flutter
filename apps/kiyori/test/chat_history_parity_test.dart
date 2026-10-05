@@ -41,11 +41,11 @@ void main() {
         await tester.pumpAndSettle();
         await tester.drag(find.text('新对话'), const Offset(170, 0));
         await tester.pumpAndSettle();
-        expect(find.text('绑定角色'), findsOneWidget);
+        expect(find.text('绑定角色卡'), findsOneWidget);
         await tester.enterText(find.byType(TextField).last, '改后标题');
         await tester.tap(find.text('取消'));
         await tester.pumpAndSettle();
-        expect(find.text('放弃修改？'), findsOneWidget);
+        expect(find.text('放弃未保存的修改？'), findsOneWidget);
         await tester.tap(find.text('取消').last);
         await tester.pumpAndSettle();
         expect(find.widgetWithText(TextField, '改后标题'), findsOneWidget);
@@ -106,17 +106,17 @@ void main() {
         showHistoryFolderEditor(host, f.chat);
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), '学习');
-        await tester.tap(find.text('保存'));
+        await tester.tap(find.text('创建'));
         await until(tester, () => !f.chat.savingPreference);
         await tester.pumpAndSettle();
         expect(find.widgetWithText(TextField, '学习'), findsOneWidget);
-        expect(find.text('新建文件夹'), findsOneWidget);
+        expect(find.text('新建分组'), findsOneWidget);
         await tester.tap(find.text('取消'));
         await tester.pumpAndSettle();
-        expect(find.text('放弃修改？'), findsOneWidget);
-        await tester.tap(find.text('确定'));
+        expect(find.text('放弃未保存的修改？'), findsOneWidget);
+        await tester.tap(find.text('放弃修改'));
         await tester.pumpAndSettle();
-        expect(find.text('新建文件夹'), findsNothing);
+        expect(find.text('新建分组'), findsNothing);
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox());

@@ -470,6 +470,9 @@ impl AppStore {
             return Err(invalid("Tags cannot be active prompts."));
         }
         exists(&tx, table, &id)?;
+        if crate::chat_preferences::read(&tx)?.value.auto_chat {
+            crate::conversations::history::select_latest(&tx, &id)?;
+        }
         let (card, group) = if kind == "character" {
             (Some(id), None)
         } else {

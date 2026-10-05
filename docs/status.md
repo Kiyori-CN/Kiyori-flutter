@@ -1,9 +1,56 @@
 # 当前实施状态
 
-更新时间：2026-10-05（Asia/Shanghai）。本文件是当前实施进度唯一权威；
+更新时间：2026-10-06（Asia/Shanghai）。本文件是当前实施进度唯一权威；
 [路线图](roadmap.md)规定顺序，[历史记录](status-history.md)保留过往批次证据。
 
-## 当前任务：模型与 API 全功能旧源复刻
+## 当前任务：对话历史左抽屉旧源还原
+
+任务状态：部分完成；本批实现、本机验证与双端检查包已完成，设备验收待验证。基线为
+2026-10-05 main/c8dc3274，起始工作区
+干净，与origin/main一致；旧源只读Kiyori-Android/6b03b03。用户已授权本批全部提交普通
+推送到main，未授权设备安装、供应商调用或发布。详细来源/参数与范围见
+[复刻方案](design/chat-history-replication.md)，持久化契约见
+[ADR0014](decisions/0014-conversation-history-and-audit.md)。
+
+删除当前聊天与替代处于同一SQLite事务；同绑定最新会话优先，无候选则新建并选择，
+删除所有聊天仍保留真实空会话。单删继承分组，整组删除不继承；分组冻结角色/群组
+作用域和成员revision，锁定/生成/版本冲突原子拒绝。设置三模式、自动角色/聊天、
+搜索并集/防抖、菜单八动作、可见桶排序/完整桶置底、跨分组拖排、快滚和折叠保留
+已实施。滑动按旧依赖96dp、禁方向1/10、400ms回位与600ms涟漪；标题/行高/字号/
+图标/语义明暗色按旧源核对。会话和分组移除释放实体及所属确认，不误关历史目录。
+
+详情接入基础事件链、真实消息修订/备注、正文分页、Markdown/签名ZIP及Android SAF/
+Windows文件导出。schema20不改写旧消息；旧修订/供应商原始事件未知，签名仅证明
+自包含包完整性。旧版供应商/工具完整事件、封印/附件/旧包导入尚未接入，原始事件
+搜索限已加载元数据，不能称整个旧详情工作台完全复刻。iOS导出不可用。
+
+完整`tools/verify.ps1 -WindowsIntegration`通过（work/history-verify-v4.log）：foundation67、
+tooling4、Rust核心177/HTTP3/provider_chat13/原生6、398 Dart格式与analyze、应用635
+（17条件跳过）、platform11、独立FFI22（1条件跳过）、Windows引擎5。Rust三项旧源/
+真实API条件跳过，不代表真实供应商验收。桥Check五输出一致（history-bridge-check-v3）。
+最终UI联合11项通过（history-final-ui-v3），包括删空、固定阈值/禁方向、草稿/实体失效、
+设置语义、真实备注/签名导出、导出失败留弹窗和重试、向下拖排及快滚首尾；最终analyze-v2
+无问题。捕获五窗口50张（history-drawer-capture-v6），明暗、窄屏大字键盘、横屏和桌面
+代表图已审阅。短横屏快滚溢出、拖排提交时旧目录回填、测试旧预期/异步等待已修；最后
+错误目录直接调用Flutter导致DLL/字体加载失败，改用正式test-ui入口通过。桥v2的Windows
+映射占用重试后通过；失败日志均保留，没有禁用检查或降低产品断言。
+
+串行普通入口Android/Windows Debug最终构建24.7s/19.4s通过（history-android-v2与
+history-windows-v2）；首次完整构建167.1s/61.3s同样成功。固定包位于
+`artifacts/ui-preview/20261006-003401/`：APK137248567字节，SHA256
+`9B9B6EE366F34463FF1B01D9AEF888BFE34FCA8F4C5CEC75FB22CFC929725E05`；Windows99文件
+170771978字节。APK身份com.kiyori/ARM64/min24/target37/v2签名、ZIP16K/ELF对齐、53表情、
+15份两端许可证、Windows x64/Flutter DLL pin及100副本逐文件hash通过。manifest保存完整
+哈希与来源，最终sourceCommit在Git交付后记录；证据为work/history-artifacts-20261006-003401。
+739文件树审计无warning/大文件/相对导入环；47路径精确允许清单通过，未改依赖和lock。
+2026-10-06提交前fetch/ls-remote确认origin/main仍c8dc3274，ahead/behind0/0。提交普通推送
+仅包含本批源码、测试和正式文档，最终身份以包含本节的Git提交与固定manifest为准。
+
+同设备像素/字体、真实触摸、TalkBack、系统SAF/文件选择器、Profile和Apple仍
+verification_pending。整体完全复刻仍需接入供应商/工具原始事件、旧封印/附件及旧包
+兼容并补原始事件全记录检索；随后在获授权设备进行并排视觉/手势/Profile验收。
+
+## 上一任务：模型与 API 全功能旧源复刻
 
 任务状态：部分完成。按用户2026-10-05要求，在本批验证、构建和提交推送后停止；
 整体目标保留，恢复时从插件排序/分类及完整旧包能力继续。当前源码已经接入模型配置、

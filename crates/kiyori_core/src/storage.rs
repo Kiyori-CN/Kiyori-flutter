@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 19;
+const SCHEMA_VERSION: i32 = 20;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -274,6 +274,11 @@ impl AppStore {
             transaction
                 .execute_batch(crate::extensions::SCHEMA)
                 .map_err(|_| error("Cannot migrate extension packages."))?;
+        }
+        if version < 20 {
+            transaction
+                .execute_batch(crate::conversation_audit::SCHEMA)
+                .map_err(|_| error("Cannot migrate conversation audit storage."))?;
         }
         transaction
             .commit()

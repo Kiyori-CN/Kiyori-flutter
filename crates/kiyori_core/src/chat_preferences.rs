@@ -101,7 +101,14 @@ impl AppStore {
             "false" => Ok(false),
             _ => Err(failure()),
         };
+        let mut execution_guards = Vec::new();
         match key {
+            "history_group" => {
+                execution_guards = crate::conversations::history::apply_group(self, &tx, value)?
+            }
+            "history_create" => {
+                crate::conversations::history::create(&tx, value, "")?;
+            }
             "history_mode" if matches!(value, "folder" | "character" | "current") => {
                 current.value.history_mode = value.into()
             }
@@ -183,6 +190,7 @@ impl AppStore {
         .map_err(|_| failure())?;
         let result = read(&tx)?;
         tx.commit().map_err(|_| failure())?;
+        drop(execution_guards);
         Ok(result)
     }
 }

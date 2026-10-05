@@ -1,4 +1,6 @@
 use super::*;
+#[path = "conversations_audit_tests.rs"]
+mod audit_tests;
 #[path = "conversations_summary_tests.rs"]
 mod summary_tests;
 use serde_json::{Value, json};
@@ -441,7 +443,7 @@ fn history_selection_rename_delete_conflict_and_schema8_migration() {
         .change_conversation(a, 2, "delete".into(), "".into())
         .unwrap();
     let catalog = runtime.conversation_catalog().unwrap();
-    assert_eq!(catalog.active_id, None);
+    assert_eq!(catalog.active_id, Some(b.clone()));
     assert_eq!(catalog.conversations[0].id, b);
     runtime.close();
 }
@@ -517,6 +519,140 @@ fn folders_flags_order_and_metadata_are_persistent_and_atomic() {
     assert!(reopened.conversation(a).unwrap().conversation.locked);
     assert!(reopened.chat_preferences().unwrap().folders.is_empty());
     reopened.close();
+}
+
+#[test]
+fn last_conversation_delete_atomically_replaces_and_restores_active() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let original = runtime.create_conversation().unwrap();
+    runtime
+        .change_conversation(original.clone(), 1, "delete".into(), String::new())
+        .unwrap();
+    let catalog = runtime.conversation_catalog().unwrap();
+    assert_eq!(catalog.conversations.len(), 1);
+    let replacement = &catalog.conversations[0];
+    assert_ne!(replacement.id, original);
+    assert_eq!(replacement.title, "新对话");
+    assert_eq!(replacement.message_count, 0);
+    assert_eq!(catalog.active_id.as_deref(), Some(replacement.id.as_str()));
+    assert!(
+        runtime
+            .change_conversation(original, 1, "delete".into(), String::new())
+            .is_err()
+    );
+    let unchanged = runtime.conversation_catalog().unwrap();
+    assert_eq!(catalog, unchanged);
+    runtime.close();
+    let reopened = Runtime::with_data_dir(&dir.0).unwrap();
+    assert_eq!(catalog, reopened.conversation_catalog().unwrap());
+    reopened.close();
+}
+
+#[test]
+fn history_groups_scope_conflicts_locks_and_replacement_are_atomic() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let mut prefs = runtime.chat_preferences().unwrap();
+    let create = json!({"action":"create","name":"学习","binding":"default_character"}).to_string();
+    prefs = runtime
+        .change_chat_preference(prefs.revision, "history_group".into(), create)
+        .unwrap();
+    let first = runtime.conversation_catalog().unwrap().conversations[0].clone();
+    assert_eq!(first.folder, "学习");
+    prefs = runtime
+        .change_chat_preference(
+            prefs.revision,
+            "history_group".into(),
+            json!({"action":"create","name":"学习","binding":""}).to_string(),
+        )
+        .unwrap();
+    let second = runtime
+        .conversation_catalog()
+        .unwrap()
+        .conversations
+        .iter()
+        .find(|c| c.character_id.is_empty())
+        .unwrap()
+        .clone();
+    let rename=json!({"action":"rename","name":"学习","next_name":"改名","binding":"default_character","members":{first.id.clone():first.revision}}).to_string();
+    prefs = runtime
+        .change_chat_preference(prefs.revision, "history_group".into(), rename)
+        .unwrap();
+    assert_eq!(
+        runtime
+            .conversation(second.id.clone())
+            .unwrap()
+            .conversation,
+        second
+    );
+    let current = runtime.conversation(first.id.clone()).unwrap().conversation;
+    assert_eq!(current.folder, "改名");
+    runtime
+        .change_conversation(
+            current.id.clone(),
+            current.revision,
+            "locked".into(),
+            "true".into(),
+        )
+        .unwrap();
+    let stale=json!({"action":"delete","name":"改名","binding":"default_character","members":{current.id.clone():current.revision}}).to_string();
+    assert!(
+        runtime
+            .change_chat_preference(prefs.revision, "history_group".into(), stale)
+            .is_err()
+    );
+    let locked = runtime
+        .conversation(current.id.clone())
+        .unwrap()
+        .conversation;
+    let deletion=json!({"action":"delete","name":"改名","binding":"default_character","members":{locked.id.clone():locked.revision}}).to_string();
+    assert!(
+        runtime
+            .change_chat_preference(prefs.revision, "history_group".into(), deletion)
+            .is_err()
+    );
+    assert!(
+        runtime
+            .chat_preferences()
+            .unwrap()
+            .folders
+            .contains(&"改名".into())
+    );
+    runtime
+        .change_conversation(
+            locked.id.clone(),
+            locked.revision,
+            "locked".into(),
+            "false".into(),
+        )
+        .unwrap();
+    let all = runtime.conversation_catalog().unwrap();
+    let members = all
+        .conversations
+        .iter()
+        .filter(|c| c.folder == "改名")
+        .map(|c| (c.id.clone(), c.revision))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    prefs = runtime
+        .change_chat_preference(
+            prefs.revision,
+            "history_group".into(),
+            json!({"action":"delete","name":"改名","binding":null,"members":members}).to_string(),
+        )
+        .unwrap();
+    assert_eq!(
+        runtime.conversation_catalog().unwrap().conversations.len(),
+        1
+    );
+    assert!(prefs.folders.contains(&"学习".into()));
+    prefs=runtime.change_chat_preference(prefs.revision,"history_group".into(),json!({"action":"delete","name":"学习","binding":null,"members":{second.id:second.revision}}).to_string()).unwrap();
+    assert!(prefs.folders.is_empty());
+    let catalog = runtime.conversation_catalog().unwrap();
+    assert_eq!(catalog.conversations.len(), 1);
+    assert!(catalog.active_id.is_some());
+    assert_eq!(catalog.conversations[0].folder, "");
+    runtime.close();
 }
 
 #[test]
@@ -781,7 +917,12 @@ async fn reply_and_branch_keep_complete_content_and_independent_history() {
             String::new(),
         )
         .unwrap();
-    assert_eq!(runtime.conversation(branch).unwrap(), branched);
+    let surviving = runtime.conversation(branch).unwrap();
+    assert_eq!(surviving.messages, branched.messages);
+    assert_eq!(surviving.summary, branched.summary);
+    assert_eq!(surviving.conversation.parent_id, None);
+    assert_eq!(surviving.conversation.parent_title, None);
+    assert_eq!(surviving.conversation.title, branched.conversation.title);
     runtime.close();
 }
 

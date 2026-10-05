@@ -234,17 +234,14 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.tap(find.bySemanticsLabel('显示历史'));
-        await until(
-          tester,
-          () => find.byTooltip('隐藏对话手势提示').evaluate().isNotEmpty,
-        );
+        await until(tester, () => find.byTooltip('不再提示').evaluate().isNotEmpty);
         await tester.pumpAndSettle();
         expect(find.text('对话历史'), findsOneWidget);
         expect(find.text('未分组'), findsOneWidget);
         if (output.isNotEmpty) {
           await captureUi(tester, boundary, output, 'screenshot-history-360');
         }
-        await tester.tap(find.byTooltip('隐藏对话手势提示'));
+        await tester.tap(find.byTooltip('不再提示'));
         await until(
           tester,
           () =>
@@ -255,7 +252,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.bySemanticsLabel('显示历史'));
         await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
-        expect(find.byTooltip('隐藏对话手势提示'), findsNothing);
+        expect(find.byTooltip('不再提示'), findsNothing);
         final saved = await tester.runAsync(fixture.runtime.chatPreferences);
         expect(saved!.thinkingQuality, 5);
         expect(saved.showSwipeHint, isFalse);

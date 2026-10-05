@@ -57,7 +57,12 @@ class ChatController extends ChangeNotifier {
         key,
         value,
       );
-      if (key.endsWith('_folder')) await load();
+      if (key.endsWith('_folder') ||
+          key == 'history_group' ||
+          key == 'history_create') {
+        final directory = await (await connect()).conversationCatalog();
+        await load(id: directory.activeId);
+      }
       return true;
     } catch (failure) {
       error = _error(failure);
@@ -72,6 +77,7 @@ class ChatController extends ChangeNotifier {
   String? error;
   int _generation = 0;
   final drafts = <String, String>{};
+  final historyCollapsed = <String>{};
   final executions = <String, ChatExecution>{};
   String get draftId => snapshot?.conversation.id ?? 'new';
   ChatExecution? get execution => executions[snapshot?.conversation.id];
@@ -139,6 +145,11 @@ class ChatController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  void dismissError() {
+    error = null;
+    _notify();
+  }
+
   String _error(Object value) =>
       value is BridgeError ? value.message : '聊天操作失败，请保留输入并重试';
 
@@ -154,7 +165,10 @@ class ChatController extends ChangeNotifier {
       final promptDirectory = await runtime.promptCatalog();
       final chatPreferences = await runtime.chatPreferences();
       final knowledgeDirectory = await runtime.knowledgeSnapshot();
-      final selected = id ?? snapshot?.conversation.id ?? directory.activeId;
+      final previous = id ?? snapshot?.conversation.id;
+      final selected = directory.conversations.any((c) => c.id == previous)
+          ? previous
+          : directory.activeId;
       final exists = directory.conversations.any((c) => c.id == selected);
       final value = exists ? await runtime.conversation(selected!) : null;
       final stats = exists

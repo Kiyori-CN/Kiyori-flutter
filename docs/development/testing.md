@@ -23,6 +23,16 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+历史目录：core/conversations验证删空后同事务创建/选择替代、同绑定最新回退、单删继承
+分组/整组不继承、同名作用域隔离、锁定/成员版本冲突原子拒绝、排序与自动角色/聊天。
+conversations_audit_tests覆盖schema19迁移保留、Unicode正文分页、全记录搜索、真实修订/
+备注重开、链篡改拒绝与ZIP签名/文件哈希。chat_history_states/parity从真实FFI/SQLite
+验证滑动96dp/禁方向阻力、草稿确认、实体与分组移除释放所属路由、设置单一语义、
+备注/导出、向下拖排及快滚首尾；chat_precision_capture补真实宿主横屏安全区边界。
+chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
+测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
+工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。
+
 provider_chat验证密钥池只调用连接handler；发送前计数使用最终history并更新同会话窗口，
 与Usage分开。覆盖十进制旧别名/边界、单并发不自锁、无效/超预算阻止发送和计数/连接中
 撤销等HTTP/VM释放，不把取消记为密钥不可用。model_extension_business_test执行正式

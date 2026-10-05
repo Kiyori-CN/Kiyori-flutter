@@ -11,6 +11,7 @@ import 'chat_modal_session.dart';
 import 'chat_characters.dart';
 import 'chat_history_management.dart';
 import 'chat_history_list.dart';
+import 'chat_history_widgets.dart';
 import 'chat_panel_route.dart';
 
 Widget _registered(
@@ -167,6 +168,7 @@ Future<void> showChatHistory(
                                       '对话历史',
                                       style: TextStyle(
                                         fontSize: 16,
+                                        height: 24 / 16,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -174,13 +176,19 @@ Future<void> showChatHistory(
                                       search.query.text.trim().isEmpty
                                           ? '共 ${owner.catalog?.conversations.length ?? 0} 个对话'
                                           : '匹配 ${search.items.length} / 共 ${owner.catalog?.conversations.length ?? 0}',
-                                      style: const TextStyle(fontSize: 11),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        height: 16 / 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                tooltip: '聊天历史设置',
+                                tooltip: '聊天记录设置',
                                 style: IconButton.styleFrom(
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
@@ -272,6 +280,18 @@ Future<void> showChatHistory(
                             ),
                           ),
                         ),
+                        if (search.failed)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 16, 0),
+                            child: Text(
+                              '正文搜索失败，当前仅显示标题匹配。请重新输入关键词后重试。',
+                              style: TextStyle(
+                                fontSize: 11,
+                                height: 16 / 11,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 10),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -286,7 +306,10 @@ Future<void> showChatHistory(
                                     ),
                                   ),
                                   onPressed: () async {
-                                    if (await owner.create() &&
+                                    if (await owner.setPreference(
+                                          'history_create',
+                                          historyBinding(owner),
+                                        ) &&
                                         context.mounted) {
                                       Navigator.pop(context);
                                     }
@@ -297,7 +320,7 @@ Future<void> showChatHistory(
                               ),
                               const SizedBox(width: 8),
                               IconButton.filledTonal(
-                                tooltip: '新建文件夹',
+                                tooltip: '新建分组',
                                 style: IconButton.styleFrom(
                                   fixedSize: const Size(40, 40),
                                   tapTargetSize:
@@ -309,7 +332,7 @@ Future<void> showChatHistory(
                                 icon: Icon(
                                   Icons.create_new_folder_outlined,
                                   size: 20,
-                                  color: IconTone.folder.iconFor(context),
+                                  color: historyTone(context, IconTone.folder),
                                 ),
                                 onPressed: () => showHistoryFolderEditor(
                                   context,
@@ -335,7 +358,7 @@ Future<void> showChatHistory(
                                       .onSurfaceVariant
                                       .withValues(alpha: .7),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     '右滑编辑，左滑删除；点“更多”可管理对话',
@@ -349,7 +372,7 @@ Future<void> showChatHistory(
                                   ),
                                 ),
                                 IconButton(
-                                  tooltip: '隐藏对话手势提示',
+                                  tooltip: '不再提示',
                                   constraints: const BoxConstraints.tightFor(
                                     width: 28,
                                     height: 28,
@@ -371,21 +394,10 @@ Future<void> showChatHistory(
                             ),
                           ),
                         const Divider(height: 1),
-                        if (search.searching) const LinearProgressIndicator(),
-                        if (search.failed)
-                          TextButton(
-                            onPressed: search.search,
-                            child: const Text('搜索失败，请重试'),
-                          ),
                         if (owner.error != null)
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              owner.error!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
+                          HistoryInlineBanner(
+                            message: owner.error!,
+                            dismiss: owner.dismissError,
                           ),
                         Expanded(
                           child:
@@ -398,39 +410,97 @@ Future<void> showChatHistory(
                               ? SingleChildScrollView(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 40,
+                                      horizontal: 36,
+                                      vertical: 48,
                                     ),
                                     child: Column(
                                       children: [
-                                        Icon(
-                                          search.query.text.isEmpty
-                                              ? Icons.forum_outlined
-                                              : Icons.search_off,
-                                          size: 40,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant
-                                              .withValues(alpha: .55),
-                                        ),
+                                        if (search.searching)
+                                          const SizedBox.square(
+                                            dimension: 28,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 3,
+                                            ),
+                                          )
+                                        else
+                                          Icon(
+                                            search.query.text.isEmpty
+                                                ? Icons.forum_outlined
+                                                : Icons.search_off,
+                                            size: 40,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant
+                                                .withValues(alpha: .55),
+                                          ),
                                         const SizedBox(height: 10),
                                         Text(
-                                          search.query.text.isEmpty
+                                          search.searching
+                                              ? '正在搜索'
+                                              : search.query.text.isEmpty
                                               ? '还没有对话'
                                               : '没有匹配的对话',
                                           style: const TextStyle(
                                             fontSize: 14,
+                                            height: 20 / 14,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                         const SizedBox(height: 10),
                                         Text(
-                                          search.query.text.isEmpty
+                                          search.searching
+                                              ? '正在匹配对话正文，标题结果会先显示。'
+                                              : search.query.text.isEmpty
                                               ? '新建一个对话开始协作，之后可以按角色卡或文件夹归类。'
                                               : '没有匹配的聊天记录，请调整筛选条件。',
                                           textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 12),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            height: 16 / 12,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                         ),
+                                        const SizedBox(height: 10),
+                                        if (!search.searching)
+                                          TextButton(
+                                            onPressed:
+                                                search.query.text.isNotEmpty
+                                                ? () {
+                                                    search.query.clear();
+                                                    search.search();
+                                                    FocusScope.of(context)
+                                                        .unfocus();
+                                                  }
+                                                : () async {
+                                                    if (await owner
+                                                            .setPreference(
+                                                              'history_create',
+                                                              historyBinding(
+                                                                owner,
+                                                              ),
+                                                            ) &&
+                                                        context.mounted) {
+                                                      final route =
+                                                          ModalRoute.of(
+                                                            context,
+                                                          );
+                                                      if (route?.isActive ==
+                                                          true) {
+                                                        route!.navigator
+                                                            ?.removeRoute(
+                                                              route,
+                                                            );
+                                                      }
+                                                    }
+                                                  },
+                                            child: Text(
+                                              search.query.text.isNotEmpty
+                                                  ? '清空搜索'
+                                                  : '新建对话',
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -475,7 +545,9 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
     for (final item in widget.owner.catalog?.conversations ?? <Conversation>[])
       if ((matches == null || matches!.contains(item.id)) &&
           (widget.owner.preferences?.historyMode != 'current' ||
-              item.characterId == widget.owner.character?.id))
+              item.characterId ==
+                  (widget.owner.prompts?.activeGroup ??
+                      widget.owner.character?.id)))
         item,
   ];
 
@@ -497,12 +569,20 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
     timer?.cancel();
     final text = query.text.trim();
     setState(() {
-      searching = text.isNotEmpty;
+      searching = text.length >= 2;
       failed = false;
-      if (text.isEmpty) matches = null;
+      matches = text.isEmpty
+          ? null
+          : {
+              for (final item
+                  in widget.owner.catalog?.conversations ?? <Conversation>[])
+                if (item.title.toLowerCase().contains(text.toLowerCase()) ||
+                    item.folder.toLowerCase().contains(text.toLowerCase()))
+                  item.id,
+            };
     });
-    if (text.isEmpty) return;
-    timer = Timer(const Duration(milliseconds: 200), () async {
+    if (text.length < 2) return;
+    timer = Timer(const Duration(milliseconds: 400), () async {
       try {
         final result = await (await widget.owner.connect()).searchConversations(
           text,

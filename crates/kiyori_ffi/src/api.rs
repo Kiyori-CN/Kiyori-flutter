@@ -8,6 +8,8 @@ pub struct ChatMessage {
 }
 
 pub struct Conversation {
+    pub parent_id: Option<String>,
+    pub parent_title: Option<String>,
     pub id: String,
     pub title: String,
     pub character_id: String,
@@ -22,6 +24,8 @@ pub struct Conversation {
 impl From<kiyori_core::conversations::Conversation> for Conversation {
     fn from(v: kiyori_core::conversations::Conversation) -> Self {
         Self {
+            parent_id: v.parent_id,
+            parent_title: v.parent_title,
             id: v.id,
             title: v.title,
             character_id: v.character_id,
@@ -1564,6 +1568,32 @@ impl RuntimeHandle {
     }
     pub fn search_conversations(&self, query: String) -> Result<Vec<String>, BridgeError> {
         Ok(self.inner.search_conversations(&query)?)
+    }
+    pub fn conversation_audit(
+        &self,
+        id: String,
+        before: i64,
+        query: String,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.conversation_audit(id, before, query)?)
+    }
+    pub fn conversation_audit_payload(
+        &self,
+        id: String,
+        sequence: i64,
+        page: u32,
+    ) -> Result<String, BridgeError> {
+        Ok(self.inner.conversation_audit_payload(id, sequence, page)?)
+    }
+    pub fn append_conversation_note(&self, id: String, note: String) -> Result<(), BridgeError> {
+        Ok(self.inner.append_conversation_note(id, note)?)
+    }
+    pub fn export_conversation_audit(
+        &self,
+        id: String,
+        format: String,
+    ) -> Result<Vec<u8>, BridgeError> {
+        Ok(self.inner.export_conversation_audit(id, format)?)
     }
     pub fn conversation(&self, id: String) -> Result<ConversationSnapshot, BridgeError> {
         Ok(self.inner.conversation(id)?.into())

@@ -31,6 +31,7 @@ CREATE TABLE extension_installs(resource_id TEXT PRIMARY KEY REFERENCES resource
 PRAGMA user_version=19;";
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &rusqlite::Connection) {
+    crate::conversation_audit::remove_schema_for_fixture(connection);
     // 旧版本夹具必须先去掉子表，不能留下19版结构再伪装旧user_version。
     connection
         .execute_batch("DROP TABLE extension_installs; DROP TABLE extension_packages;")

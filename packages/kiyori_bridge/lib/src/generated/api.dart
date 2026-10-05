@@ -88,6 +88,11 @@ abstract class ModelSecretsHandle implements RustOpaqueInterface {
 abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<void> activatePrompt({required String kind, required String id});
 
+  Future<void> appendConversationNote({
+    required String id,
+    required String note,
+  });
+
   Future<void> appendDiary({
     required String space,
     required String id,
@@ -154,6 +159,18 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<ContextSettings> contextSettings();
 
   Future<ConversationSnapshot> conversation({required String id});
+
+  Future<String> conversationAudit({
+    required String id,
+    required PlatformInt64 before,
+    required String query,
+  });
+
+  Future<String> conversationAuditPayload({
+    required String id,
+    required PlatformInt64 sequence,
+    required int page,
+  });
 
   Future<ConversationCatalog> conversationCatalog();
 
@@ -223,6 +240,11 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String kind,
     required String id,
     required int revision,
+  });
+
+  Future<Uint8List> exportConversationAudit({
+    required String id,
+    required String format,
   });
 
   Future<ExtensionDetails> extensionDetails({
@@ -846,6 +868,8 @@ class ContextSettings {
 }
 
 class Conversation {
+  final String? parentId;
+  final String? parentTitle;
   final String id;
   final String title;
   final String characterId;
@@ -858,6 +882,8 @@ class Conversation {
   final bool locked;
 
   const Conversation({
+    this.parentId,
+    this.parentTitle,
     required this.id,
     required this.title,
     required this.characterId,
@@ -872,6 +898,8 @@ class Conversation {
 
   @override
   int get hashCode =>
+      parentId.hashCode ^
+      parentTitle.hashCode ^
       id.hashCode ^
       title.hashCode ^
       characterId.hashCode ^
@@ -888,6 +916,8 @@ class Conversation {
       identical(this, other) ||
       other is Conversation &&
           runtimeType == other.runtimeType &&
+          parentId == other.parentId &&
+          parentTitle == other.parentTitle &&
           id == other.id &&
           title == other.title &&
           characterId == other.characterId &&
