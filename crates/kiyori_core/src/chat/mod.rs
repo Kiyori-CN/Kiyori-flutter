@@ -87,9 +87,17 @@ pub struct ChatRequest {
 }
 pub struct Prelude {
     pub(crate) request: ChatRequest,
+    pub(crate) condition: Option<PreludeCondition>,
+    pub(crate) activate: Option<PreludeActivation>,
     pub(crate) finish: Box<dyn FnOnce(String) -> Result<Vec<ChatMessage>, CoreError> + Send>,
     pub(crate) usage: Box<dyn FnMut(ChatEvent) -> Result<(), CoreError> + Send>,
 }
+pub(crate) struct PreludeCondition {
+    pub threshold: f64,
+    pub by_count: bool,
+}
+pub(crate) type PreludeActivation =
+    Box<dyn FnOnce(&mut ChatRequest) -> Result<(), CoreError> + Send>;
 pub type CredentialSource =
     Box<dyn FnMut() -> Result<(String, Vec<(String, String)>), CoreError> + Send>;
 
@@ -393,57 +401,90 @@ async fn execute(
     mut input: ChatRequest,
     sender: &EventSender,
 ) -> Result<(), ChatFailure> {
-    if let Some(mut prelude) = input.prelude.take() {
-        let (queue, mut receiver) = mpsc::channel(8);
-        let summary_sender = EventSender {
-            sender: queue,
-            observation: None,
-            cancellation: sender.cancellation.clone(),
-            workers: sender.workers.clone(),
-        };
-        // 同一worker内并行收集有界事件与执行；取消丢弃两个future，结束前无孤儿请求。
-        let generate = async {
-            let reason = execute_once(client, &mut prelude.request, &summary_sender).await;
-            drop(summary_sender);
-            reason
-        };
-        let collect = async {
-            let mut content = String::new();
-            while let Some(event) = receiver.recv().await {
-                match event {
-                    ChatEvent::Text(text) => {
-                        if content.len() + text.len() > 8 * 1024 * 1024 {
-                            return Err(ChatFailure::new(
-                                ChatFailureKind::Protocol,
-                                "总结超过8 MiB限制；原文保留",
-                            ));
-                        }
-                        content.push_str(&text);
-                    }
-                    usage @ ChatEvent::Usage { .. } => (prelude.usage)(usage).map_err(|_| {
-                        ChatFailure::new(ChatFailureKind::Interrupted, "总结用量保存失败；原文保留")
-                    })?,
-                    _ => {}
-                }
-            }
-            Ok(content)
-        };
-        let (reason, content) = tokio::try_join!(generate, collect)?;
-        if reason != "stop" || content.trim().is_empty() {
-            return Err(ChatFailure::new(
-                ChatFailureKind::Interrupted,
-                "总结未完整结束；原文保留，未继续聊天请求",
-            ));
-        }
-        input.messages = (prelude.finish)(content)
-            .map_err(|e| ChatFailure::new(ChatFailureKind::InvalidInput, &e.message))?;
-        if let Some(tracker) = &sender.observation {
-            let mut tracker = tracker
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            tracker.rebase_context(&input.messages);
-        }
+    if input
+        .prelude
+        .as_ref()
+        .is_some_and(|p| p.condition.is_none())
+        && let Some(prelude) = input.prelude.take()
+    {
+        execute_prelude(client, &mut input, sender, *prelude).await?;
     }
+    execute_request(client, input, sender).await
+}
+
+async fn execute_prelude(
+    client: &Arc<Client>,
+    input: &mut ChatRequest,
+    sender: &EventSender,
+    mut prelude: Prelude,
+) -> Result<(), ChatFailure> {
+    if sender.cancellation.is_cancelled() {
+        return Err(ChatFailure::new(
+            ChatFailureKind::Interrupted,
+            "请求已取消；原文保留",
+        ));
+    }
+    if let Some(activate) = prelude.activate.take() {
+        activate(&mut prelude.request)
+            .map_err(|e| ChatFailure::new(ChatFailureKind::InvalidInput, &e.message))?;
+    }
+    let (queue, mut receiver) = mpsc::channel(8);
+    let summary_sender = EventSender {
+        sender: queue,
+        observation: None,
+        cancellation: sender.cancellation.clone(),
+        workers: sender.workers.clone(),
+    };
+    // 同一worker内并行收集有界事件与执行；取消丢弃两个future，结束前无孤儿请求。
+    let generate = async {
+        let reason = execute_once(client, &mut prelude.request, &summary_sender).await;
+        drop(summary_sender);
+        reason
+    };
+    let collect = async {
+        let mut content = String::new();
+        while let Some(event) = receiver.recv().await {
+            match event {
+                ChatEvent::Text(text) => {
+                    if content.len() + text.len() > 8 * 1024 * 1024 {
+                        return Err(ChatFailure::new(
+                            ChatFailureKind::Protocol,
+                            "总结超过8 MiB限制；原文保留",
+                        ));
+                    }
+                    content.push_str(&text);
+                }
+                usage @ ChatEvent::Usage { .. } => (prelude.usage)(usage).map_err(|_| {
+                    ChatFailure::new(ChatFailureKind::Interrupted, "总结用量保存失败；原文保留")
+                })?,
+                _ => {}
+            }
+        }
+        Ok(content)
+    };
+    let (reason, content) = tokio::try_join!(generate, collect)?;
+    if reason != "stop" || content.trim().is_empty() {
+        return Err(ChatFailure::new(
+            ChatFailureKind::Interrupted,
+            "总结未完整结束；原文保留，未继续聊天请求",
+        ));
+    }
+    input.messages = (prelude.finish)(content)
+        .map_err(|e| ChatFailure::new(ChatFailureKind::InvalidInput, &e.message))?;
+    if let Some(tracker) = &sender.observation {
+        let mut tracker = tracker
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        tracker.rebase_context(&input.messages);
+    }
+    Ok(())
+}
+
+async fn execute_request(
+    client: &Arc<Client>,
+    mut input: ChatRequest,
+    sender: &EventSender,
+) -> Result<(), ChatFailure> {
     let timeout = input.timeout_ms;
     let probing = input.probe.is_some();
     let local = input.local.is_some();

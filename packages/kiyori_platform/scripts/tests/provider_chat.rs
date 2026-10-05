@@ -31,6 +31,8 @@ sendMessage:{function:async e=>{const p=e.eventPayload,c=p.config;let buffer='',
  return {text,usage};}}});
 "#;
 const CREDENTIALS: &str = r#"{"version":3,"apiKey":"synthetic-fixture-key","headers":{},"usePool":false,"keys":[],"rotation":"ROUND_ROBIN"}"#;
+#[path = "provider_chat/threshold.rs"]
+mod threshold;
 struct Fixture {
     root: std::path::PathBuf,
     runtime: Arc<Runtime>,
@@ -94,6 +96,9 @@ impl Drop for Fixture {
     }
 }
 fn read(listener: &TcpListener) -> (TcpStream, String, Value) {
+    read_with_key(listener, "synthetic-fixture-key")
+}
+fn read_with_key(listener: &TcpListener, expected_key: &str) -> (TcpStream, String, Value) {
     let start = Instant::now();
     let mut socket = loop {
         match listener.accept() {
@@ -121,7 +126,7 @@ fn read(listener: &TcpListener) -> (TcpStream, String, Value) {
     assert!(
         headers
             .to_lowercase()
-            .contains("authorization: bearer synthetic-fixture-key")
+            .contains(&format!("authorization: bearer {expected_key}"))
     );
     assert!(!headers.contains("__kiyori_"));
     let length = headers
@@ -144,6 +149,7 @@ fn read(listener: &TcpListener) -> (TcpStream, String, Value) {
     };
     assert!(
         !body.to_string().contains("synthetic-fixture-key")
+            && !body.to_string().contains(expected_key)
             && !body.to_string().contains("__kiyori_")
     );
     (socket, headers, body)

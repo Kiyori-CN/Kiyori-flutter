@@ -15,6 +15,7 @@ mod checks;
 pub struct ExtensionInput {
     pub thinking: bool,
     pub(super) connection_test: bool,
+    pub(crate) context_limit: Option<i64>,
     draft: ModelConfigDraft,
     binding: Option<Result<Binding, CoreError>>,
 }
@@ -30,6 +31,7 @@ impl ExtensionInput {
         Self {
             thinking: false,
             connection_test: false,
+            context_limit: None,
             draft,
             binding: None,
         }
@@ -247,6 +249,7 @@ pub(super) async fn execute(
         .clone();
     let draft = extension.draft.clone();
     let thinking = extension.thinking;
+    let context_limit = extension.context_limit;
     if !(100..=600_000).contains(&input.timeout_ms)
         || input.model.trim().is_empty()
         || input.model.len() > 512
@@ -283,8 +286,13 @@ pub(super) async fn execute(
         "type":if value.is_string(){"STRING"}else if value.is_boolean(){"BOOLEAN"}else if value.is_i64()||value.is_u64(){"INT"}else{"FLOAT"},
             "category":"OTHER","enabled":true,"custom":true})).collect();
     let host = Arc::new(
-        ModelHttpHost::with_client(client, &draft, input.api_key.clone(), input.headers.clone())
-            .map_err(failure)?,
+        ModelHttpHost::with_client(
+            client.clone(),
+            &draft,
+            input.api_key.clone(),
+            input.headers.clone(),
+        )
+        .map_err(failure)?,
     );
     let mut history: Vec<_> = input.messages.iter().map(|m| json!({"kind":m.role.to_uppercase(),"content":m.content,"toolName":null,"metadata":{}})).collect();
     if let Some(tool) = input
@@ -337,18 +345,30 @@ pub(super) async fn execute(
             permit.clone(),
         )
         .await?;
+        if let Some(prelude) = input.prelude.take() {
+            let condition = prelude.condition.as_ref().ok_or_else(protocol)?;
+            if condition.by_count || count as f64 >= condition.threshold {
+                // 计数已结束；总结可使用同一配置的单并发槽，不能带着聊天许可等待它。
+                drop(permit);
+                drop(call);
+                Box::pin(super::execute_prelude(&client, input, sender, *prelude)).await?;
+                // 总结改变了最终history，重新计数；原条件已经消费，不能再次触发。
+                return Box::pin(execute(client, input, sender)).await;
+            }
+        }
+        let mut limit = context_limit.unwrap_or(0);
         if let Some(tracker) = &sender.observation {
             let mut tracker = tracker
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            let limit = tracker.snapshot().context_limit;
-            if limit > 0 && count > limit {
-                return Err(ChatFailure::new(
-                    ChatFailureKind::InvalidInput,
-                    "扩展计算的输入超过上下文上限；原文保留，请调整上下文或总结",
-                ));
-            }
+            limit = tracker.snapshot().context_limit;
             tracker.set_context_tokens(count);
+        }
+        if limit > 0 && count > limit {
+            return Err(ChatFailure::new(
+                ChatFailureKind::InvalidInput,
+                "扩展计算的输入超过上下文上限；原文保留，请调整上下文或总结",
+            ));
         }
         let run = binding
             .scripts

@@ -1095,13 +1095,17 @@ impl Runtime {
             messages.extend_from_slice(&after);
             let options=&selected.config.draft.options;
             let context=if options.max_context_mode {options.max_context_length} else {options.context_length};
-            let should_summarize=!recent.is_empty() && summary::triggered(options,&messages,user_count,context);
-            if !should_summarize { summary::budget(&messages,context)?; }
+            let provider_window=selected.config.draft.provider.starts_with("TOOLPKG:");
+            let conditional=provider_window && options.summary_enabled && !recent.is_empty();
+            let should_summarize=conditional || (!recent.is_empty() && summary::triggered(options,&messages,user_count,context));
+            if provider_window { summary::bounded(&messages)?; }
+            else if !should_summarize { summary::budget(&messages,context)?; }
             let (api_key,headers)=model_execution::select_credentials(&tx,&selected.config.id,&payload)?;
             let mut request=chat::probe::prepare(selected.config.draft.clone(),api_key,headers,"chat")?;
             request.admission=Some(self.model_limits.configure(&selected.config.id,selected.config.revision,options.request_limit,options.concurrent_limit));
             request.probe=None; request.messages=messages; request.model=selected.model.clone(); request.timeout_ms=600_000;
             request.stream = !selected.preferences.disable_stream;
+            if let Some(extension)=&mut request.extension { extension.context_limit=Some((context*1024.) as i64); }
             apply_thinking(&mut request,&selected.preferences)?;
             // 重发的截断与新消息同事务提交；凭据/配置校验失败不得先删历史。
             if replace_from.is_some() && !regenerating {
@@ -1113,11 +1117,12 @@ impl Runtime {
                 request.prelude=Some(Box::new(summary::prepare(summary::Input{
                     tx:&tx, selected:&selected,recent,previous,through,conversation:prepared.conversation.clone(),payload:&payload,
                     summary_payload:summary_payload.as_deref(),store:store.clone(),context,limits:&self.model_limits,run_id:run_id.clone(),after,target:prepared.target.clone(),
+                    condition:conditional.then_some(chat::PreludeCondition{threshold:context*1024.*options.summary_threshold,by_count:options.summary_by_count && user_count>=options.summary_count as usize}),
                 })?));
             }
             let position:i64=tx.query_row("SELECT coalesce(max(position)+1,0) FROM conversation_messages WHERE conversation_id=?1",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
             tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,role_name,role_id) VALUES(?1,?2,'running',?3,?4,?5,?6,?7,?8)",params![run_id,prepared.conversation,selected.config.id,selected.config.revision,selected.model,now(),selected.role_name,selected.character]).map_err(storage)?;
-            if should_summarize {
+            if should_summarize && !conditional {
                 tx.execute("INSERT INTO conversation_summary_usage(run_id,model) VALUES(?1,?2)",params![run_id,selected.summary.as_ref().ok_or_else(||invalid("总结模型绑定不可用"))?.name]).map_err(storage)?;
             }
             if regenerating {

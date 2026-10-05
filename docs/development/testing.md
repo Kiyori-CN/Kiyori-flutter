@@ -26,7 +26,9 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 provider_chat验证密钥池只调用连接handler；发送前计数使用最终history并更新同会话窗口，
 与Usage分开。覆盖十进制旧别名/边界、单并发不自锁、无效/超预算阻止发送和计数/连接中
 撤销等HTTP/VM释放，不把取消记为密钥不可用。model_extension_business_test执行正式
-FFI密钥池与聊天并投影窗口和Usage；供应商、自动阈值、设备和Apple边界单列。
+FFI密钥池与聊天并投影窗口和Usage。provider_chat/threshold覆盖低计数避免字节误触发、
+高计数触发与总结后重算、独立密钥未触发不消耗、超限/取消/迟到配置和原文/用量/重开。
+供应商、设备和Apple边界单列。
 
 core/extensions/archive_tests覆盖根/嵌套JSON/HJSON选择、中文/Emoji/多行、默认字段、
 schema2分发元数据、重复键/递归/尾部、相对/大小写入口、失败不回退或覆盖旧包；

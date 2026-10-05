@@ -5,6 +5,38 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+任务状态：部分完成。按用户2026-10-05要求，在本批验证、构建和提交推送后停止；
+整体目标保留，恢复时从插件排序/分类及完整旧包能力继续。当前源码已经接入模型配置、
+密钥池、真实协议请求、会话/总结、本地CPU推理和扩展提供方；不能称全部功能或像素
+验收完成。原生GPU/媒体/工具模板/llama思考、OS后台下载、MNN总结质量仍有缺口；
+Gemini真实密钥、同设备像素/触摸/Profile与Apple仍verification_pending。未操作设备或发布。
+
+### TOOLPKG 自动总结提供方阈值（本机完整验证与双端构建通过）
+
+本批基线main/9ecc14d与远端一致、工作区干净。扩展输入窗口按calculateInputTokens
+决定自动总结比例，消息数量条件保持；低计数不再被字节估算提前触发，8 MiB和消息数
+硬上限保留。条件Prelude仍在同Run，触发先释放聊天配额；短事务复核冻结身份与running
+后才轮换总结凭据/写用量行。未触发不要求独立凭据、不消耗其密钥或记录总结请求。
+总结后的最终history重新计数，仍超限则保留原文并停止聊天；扩展总结输入也核对其上限。
+正式QuickJS/HTTP/SQLite13项通过（work/toolpkg-threshold-native-v8.log），包括新增4项
+窗口/单并发/独立轮换/取消/迟到身份/超限/原文/实际用量/重开；真实API条件跳过。
+首轮编译内部类型可见性和Arc移动错误、夹具JS闭合与固定认证/用量辅助断言已修，
+v1及v3-v6失败日志保留，没有削弱产品校验。完整verify-v1通过：foundation65、核心172/
+HTTP3/provider_chat13/原生6、387 Dart格式/analyze、应用627（16条件跳过）、platform9、
+独立FFI22（1条件跳过）、Windows引擎5，日志work/toolpkg-threshold-verify-v1.log。
+桥Check五输出一致（threshold-bridge-check-v1）；生成器内部2018格式化遇Windows映射
+文件警告，正式脚本2024格式化成功，最终输出hash一致。公共FFI/schema/依赖未变。
+Android ARM64 Debug108.2秒与普通Windows x64 Debug18.4秒串行通过（threshold-android-v1/
+windows-v1）。固定包artifacts/ui-preview/20261005-164038：APK155702421字节，SHA256
+57EC67B59B0BE17E8B1E789EBA5001A9E97BCCA2A37C49073D231892A5A90B74；Windows99文件
+170184002字节。100副本hash、APK身份/v2签名/ZIP16K/ELF、Windows x64/Flutter DLL pin与
+15份许可证两端/源一致审计通过（work/toolpkg-threshold-artifacts-20261005-164038）。
+13路径精确允许清单交付，最终ref见Git与固定manifest.sourceCommit。已有授权API脱敏
+报告复核DeepSeek Responses20/20、中转Responses32/32、扩展文字各2/2；本批未重复调用
+供应商，新阈值的正式QuickJS/HTTP证据不外推供应商总结质量或其他媒体能力。
+用户要求在适合节点停止并全部提交推送，本批完成后停止，不展开排序/分类等后续切片。
+整体部分完成，像素/触摸/Profile与Apple仍verification_pending。
+
 ### TOOLPKG 产品连接测试与输入计数（本机完整验证与双端构建通过）
 
 本批基线main/c4de653与远端一致、工作区干净。旧ApiKeyPoolAvailabilityTester使用
