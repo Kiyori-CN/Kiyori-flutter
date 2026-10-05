@@ -64,6 +64,7 @@ impl Runtime {
         })
     }
     pub(crate) fn bind_inference(&self, request: &mut ChatRequest) {
+        self.bind_extension(request);
         if let Some(local) = &mut request.local {
             local.adapter = self.inference.get().cloned();
             let state = self.store.clone();

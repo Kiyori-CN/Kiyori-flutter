@@ -1,5 +1,6 @@
 //! TOOLPKG身份/资源/持久注册归同一AppStore；生命周期变更先撤销新调用，再等待旧worker。
 mod archive;
+pub mod http;
 use crate::{
     files::{self, ResourceRef, error},
     runtime::{CoreError, Runtime},
@@ -90,6 +91,15 @@ struct Lease {
     id: u64,
     file: Option<File>,
 }
+pub(crate) struct Invocation {
+    pub request: ScriptRequest,
+    pub lease: Box<dyn Send>,
+}
+pub(crate) struct ProviderCall {
+    pub handler: ProviderHandler,
+    pub payload: Value,
+    pub limits: ScriptLimits,
+}
 impl Drop for Lease {
     fn drop(&mut self) {
         // 撤销等待被唤醒之前先释放OS共享锁，不能让同线程析构的尾部误报忙。
@@ -114,6 +124,36 @@ impl Drop for Suspended {
     }
 }
 impl Registry {
+    pub(crate) fn prepare(
+        &self,
+        store: &AppStore,
+        id: &str,
+        revision: u32,
+        call: ProviderCall,
+        token: CancellationToken,
+    ) -> Result<Invocation, CoreError> {
+        let (package_id, provider_id) = provider_parts(id)?;
+        let lease = self.lease(store, package_id, token)?;
+        let package = store.extension(package_id)?;
+        if !package.enabled
+            || package.revision != revision
+            || !package.providers.iter().any(|p| p.id == provider_id)
+        {
+            return Err(error("扩展已停用、变更或供应商不存在"));
+        }
+        Ok(Invocation {
+            request: ScriptRequest {
+                source: store.source(&package)?,
+                operation: ScriptOperation::Invoke {
+                    provider_id: provider_id.into(),
+                    handler: call.handler,
+                    payload: call.payload,
+                },
+                limits: call.limits,
+            },
+            lease: Box::new(lease),
+        })
+    }
     fn scope(&self, id: &str) -> Arc<Scope> {
         let mut scopes = self
             .scopes
@@ -183,6 +223,24 @@ impl Registry {
             file: Some(file),
         })
     }
+}
+pub(crate) fn provider_parts(id: &str) -> Result<(&str, &str), CoreError> {
+    let mut parts = id.split(':');
+    if parts.next() != Some("TOOLPKG") {
+        return Err(error("扩展供应商身份无效"));
+    }
+    let package = parts
+        .next()
+        .filter(|v| scripts::valid_id(v))
+        .ok_or_else(|| error("扩展供应商身份无效"))?;
+    let provider = parts
+        .next()
+        .filter(|v| scripts::valid_id(v))
+        .ok_or_else(|| error("扩展供应商身份无效"))?;
+    if parts.next().is_some() {
+        return Err(error("扩展供应商身份无效"));
+    }
+    Ok((package, provider))
 }
 fn lock(store: &AppStore, name: &str) -> Result<File, CoreError> {
     let path = store.directory.join(name);
@@ -335,47 +393,35 @@ impl Runtime {
         payload: Value,
         limits: ScriptLimits,
     ) -> Result<ScriptRun, CoreError> {
-        let mut parts = id.split(':');
-        if parts.next() != Some("TOOLPKG") {
-            return Err(error("扩展供应商身份无效"));
-        }
-        let package_id = parts
-            .next()
-            .filter(|v| scripts::valid_id(v))
-            .ok_or_else(|| error("扩展供应商身份无效"))?;
-        let provider_id = parts
-            .next()
-            .filter(|v| scripts::valid_id(v))
-            .ok_or_else(|| error("扩展供应商身份无效"))?;
-        if parts.next().is_some() {
-            return Err(error("扩展供应商身份无效"));
-        }
+        self.start_extension_with_http(id, revision, handler, payload, limits, None)
+            .await
+    }
+    /// HTTP能力由可信模型owner冻结配置后装配，原始FFI调用不会自动获网络权限。
+    pub async fn start_extension_with_http(
+        &self,
+        id: String,
+        revision: u32,
+        handler: ProviderHandler,
+        payload: Value,
+        limits: ScriptLimits,
+        http: Option<Arc<dyn scripts::ScriptHttpHost>>,
+    ) -> Result<ScriptRun, CoreError> {
         let store = self.persistent_store()?;
         let token = self.cancellation.child_token();
-        let lease = self.extensions.lease(&store, package_id, token.clone())?;
-        let package = store.extension(package_id)?;
-        if !package.enabled
-            || package.revision != revision
-            || !package.providers.iter().any(|p| p.id == provider_id)
-        {
-            return Err(error("扩展已停用、变更或供应商不存在"));
-        }
-        let source = store.source(&package)?;
-        self.start_script_owned(
-            ScriptRequest {
-                source,
-                operation: ScriptOperation::Invoke {
-                    provider_id: provider_id.into(),
-                    handler,
-                    payload,
-                },
+        let call = self.extensions.prepare(
+            &store,
+            &id,
+            revision,
+            ProviderCall {
+                handler,
+                payload,
                 limits,
             },
-            token,
-            Some(Box::new(lease)),
-        )
-        .await
-        .map_err(|e| error(&e.to_string()))
+            token.clone(),
+        )?;
+        self.start_script_owned(call.request, token, Some(call.lease), http)
+            .await
+            .map_err(|e| error(&e.to_string()))
     }
     pub async fn change_extension(
         &self,
@@ -544,6 +590,7 @@ impl ExtensionImport {
                     limits: ScriptLimits::default(),
                 },
                 self.cancellation.child_token(),
+                None,
                 None,
             )
             .await

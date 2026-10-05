@@ -3,6 +3,7 @@ import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_platform/kiyori_platform.dart';
 
 import 'model_credentials.dart';
+import 'api_provider_presentation.dart';
 
 /// Rust配置事实的投影；安全值只在显式编辑期间读取。
 class ModelsController extends ChangeNotifier {
@@ -12,6 +13,18 @@ class ModelsController extends ChangeNotifier {
   final Future<RuntimeClient> Function() connect;
   final Future<SecretStore> Function() openSecrets;
   ModelCatalog? catalog;
+  List<ExtensionProvider> extensionProviders = const [];
+  List<ApiProviderPresentation> get providers => [
+    ...builtInApiProviders,
+    for (final provider in extensionProviders)
+      ApiProviderPresentation(
+        provider.id,
+        provider.displayName,
+        'ToolPkg Provider',
+        ModelApiProtocol.native,
+        const [ProviderProtocolPresentation(ModelApiProtocol.native, '', '')],
+      ),
+  ];
   bool loading = false, _disposed = false;
   String? error;
   String? cleanupWarning;
@@ -77,8 +90,13 @@ class ModelsController extends ChangeNotifier {
         cleanupDiagnostic = busy ? 'cleanup_deferred_busy' : 'cleanup_failed';
         if (!busy) cleanupWarning = '安全凭据维护未完成';
       }
-      final value = await (await connect()).modelCatalog();
-      if (!_disposed && generation == _generation) catalog = value;
+      final runtime = await connect();
+      final value = await runtime.modelCatalog();
+      final providers = await runtime.extensionProviders();
+      if (!_disposed && generation == _generation) {
+        catalog = value;
+        extensionProviders = List.unmodifiable(providers);
+      }
     } catch (_) {
       if (!_disposed && generation == _generation) error = '模型配置读取失败，请重试';
     } finally {

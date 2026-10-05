@@ -112,6 +112,14 @@ packages/kiyori_bridge/test/extensions_runtime_test.dart执行真实QuickJS/FFI/
 合成包安装、四handler、流式中间/最终结果、撤销活动VM、重开、升级、卸载重装，以及
 无消费者/部分导入的Runtime关闭。合成包无网络，不能代替HTTP宿主或产品聊天验收。
 
+受控HTTP：core/extensions/http_tests验证限定URL/安全头/凭据引用、跨片段UTF8和
+secret回显、共享client、停滞体取消、重定向/超量拒绝。platform/scripts/tests/http
+执行真实QuickJS四handler和包撤销，未改旧示例通过显式只读源路径验收。
+provider_chat执行正式目录、流式/缓冲、system、多轮、自动/手动总结和SQLite重开，
+以及单并发活动/排队禁用、非法用量/缺失及伪造终态、捕获HTTP失败和网络超时。
+model_extension_business_test通过真实FFI验证旧抽屉选择、保存/重开与撤销保留配置。
+默认测试不调用真实供应商，真实端点结果和设备像素验收分别记录。
+
 首轮 Android arm64 真机、Windows x64；Android x64 模拟器在需要时添加。iOS 没有 Mac/iPhone，明确保留待验证，后续先模拟器再真机。旧应用和新应用并存需查安装包标识、Provider、数据目录、终端 home/socket/端口，再测试同时启动。
 
 ## CI 与发布

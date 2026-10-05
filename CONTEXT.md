@@ -28,7 +28,9 @@
 core/extensions复用AppStore/ResourceRef；schema19保存TOOLPKG包和安装恢复账本，
 目录键为TOOLPKG:package_id:provider_id并绑定revision。启停/升级/卸载先撤销新调用、
 取消等待旧worker释放包租约；卸载墓碑使重装不接受旧请求。JS入口每次验证hash。
-首版只支持schema1 JSON/单JS源，管理UI、网络宿主和正式聊天接线仍未接入，
+首版只支持schema1 JSON/单JS源；受控HTTP与正式ChatRun复用同client/Registry/Gate，
+JS只接凭据引用，限定GET目录/POST生成，取消等待VM/HTTP释放，终态核对全文和用量。
+动态provider来自同Runtime，撤销不替换配置引用；管理UI尚未接入。
 ZIP data descriptor/HJSON/schema2及其他旧宿主能力继续实施，详见ADR0012与status。
 
 core/scripts拥有脚本期限、4并发槽、8事件背压和取消树；platform/scripts持有单次

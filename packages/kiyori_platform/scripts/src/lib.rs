@@ -1,5 +1,7 @@
 //! QuickJS-NG平台端口，C++句柄仅生存在调用的blocking worker中。
-use kiyori_core::scripts::{ScriptAdapter, ScriptFailure, ScriptFailureKind, ScriptRequest};
+use kiyori_core::scripts::{
+    ScriptAdapter, ScriptFailure, ScriptFailureKind, ScriptHttpHost, ScriptRequest,
+};
 use serde_json::Value;
 
 pub struct NativeScripts;
@@ -12,6 +14,7 @@ mod ffi {
     };
     type Stop = extern "C" fn(*mut c_void) -> i32;
     type Emit = extern "C" fn(*mut c_void, *const u8, usize) -> i32;
+    type Http = extern "C" fn(*mut c_void, *const u8, usize, *mut c_void, Emit, Emit) -> i32;
     unsafe extern "C" {
         fn kiyori_script_execute(
             source: *const u8,
@@ -25,6 +28,7 @@ mod ffi {
             stop: Stop,
             emit: Emit,
             result: Emit,
+            http: Option<Http>,
         ) -> i32;
     }
     struct Call<'a> {
@@ -33,6 +37,8 @@ mod ffi {
         output: Option<Value>,
         panicked: bool,
         protocol_error: bool,
+        http: Option<&'a dyn ScriptHttpHost>,
+        http_failure: Option<ScriptFailureKind>,
     }
     extern "C" fn stop(opaque: *mut c_void) -> i32 {
         let call = unsafe { &mut *opaque.cast::<Call<'_>>() };
@@ -79,10 +85,54 @@ mod ffi {
             }
         }
     }
+    extern "C" fn http(
+        opaque: *mut c_void,
+        bytes: *const u8,
+        length: usize,
+        response: *mut c_void,
+        chunk: Emit,
+        result: Emit,
+    ) -> i32 {
+        // chunk会重入emit/stop回调；不能在此期间持有Call的可变或共享借用。
+        let (host, stopped) = {
+            let call = unsafe { &*opaque.cast::<Call<'_>>() };
+            (call.http, call.stop)
+        };
+        let Some(host) = host else {
+            return 0;
+        };
+        if bytes.is_null() || length > 2 * 1024 * 1024 {
+            return 0;
+        }
+        let bytes = unsafe { std::slice::from_raw_parts(bytes, length) };
+        match catch_unwind(AssertUnwindSafe(|| {
+            let request: Value =
+                serde_json::from_slice(bytes).map_err(|_| ScriptFailureKind::Protocol)?;
+            let value = host.request(request, stopped, &mut |text| {
+                chunk(response, text.as_ptr(), text.len()) != 0
+            })?;
+            let bytes = serde_json::to_vec(&value).map_err(|_| ScriptFailureKind::Protocol)?;
+            if bytes.len() > 8 * 1024 * 1024 || result(response, bytes.as_ptr(), bytes.len()) == 0 {
+                return Err(ScriptFailureKind::Protocol.into());
+            }
+            Ok::<_, ScriptFailure>(())
+        })) {
+            Ok(Ok(())) => 1,
+            Ok(Err(error)) => {
+                unsafe { &mut *opaque.cast::<Call<'_>>() }.http_failure = Some(error.kind);
+                0
+            }
+            Err(_) => {
+                unsafe { &mut *opaque.cast::<Call<'_>>() }.panicked = true;
+                0
+            }
+        }
+    }
     pub(super) fn execute(
         request: &ScriptRequest,
         stopped: &dyn Fn() -> bool,
         emit_bytes: &mut dyn FnMut(&[u8]) -> bool,
+        host: Option<&dyn ScriptHttpHost>,
     ) -> Result<Value, ScriptFailure> {
         let operation =
             serde_json::to_vec(&request.operation).map_err(|_| ScriptFailureKind::InvalidInput)?;
@@ -92,6 +142,8 @@ mod ffi {
             output: None,
             panicked: false,
             protocol_error: false,
+            http: host,
+            http_failure: None,
         };
         let status = unsafe {
             kiyori_script_execute(
@@ -106,6 +158,7 @@ mod ffi {
                 stop,
                 emit,
                 result,
+                host.map(|_| http as Http),
             )
         };
         if call.panicked {
@@ -113,6 +166,9 @@ mod ffi {
         }
         if call.protocol_error {
             return Err(ScriptFailureKind::Protocol.into());
+        }
+        if let Some(kind) = call.http_failure {
+            return Err(kind.into());
         }
         if status == 0 {
             return call.output.ok_or(ScriptFailureKind::Protocol.into());
@@ -138,11 +194,28 @@ impl ScriptAdapter for NativeScripts {
     ) -> Result<Value, ScriptFailure> {
         #[cfg(kiyori_native_scripts)]
         {
-            ffi::execute(request, stopped, emit)
+            ffi::execute(request, stopped, emit, None)
         }
         #[cfg(not(kiyori_native_scripts))]
         {
             let _ = (request, stopped, emit);
+            Err(ScriptFailureKind::Unsupported.into())
+        }
+    }
+    fn execute_with_http(
+        &self,
+        request: &ScriptRequest,
+        stopped: &dyn Fn() -> bool,
+        emit: &mut dyn FnMut(&[u8]) -> bool,
+        http: Option<&dyn ScriptHttpHost>,
+    ) -> Result<Value, ScriptFailure> {
+        #[cfg(kiyori_native_scripts)]
+        {
+            ffi::execute(request, stopped, emit, http)
+        }
+        #[cfg(not(kiyori_native_scripts))]
+        {
+            let _ = (request, stopped, emit, http);
             Err(ScriptFailureKind::Unsupported.into())
         }
     }

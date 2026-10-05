@@ -9,15 +9,20 @@ pub struct PoolKey {
     pub enabled: bool,
     pub availability: String,
 }
+pub(crate) struct Configuration {
+    pub draft: ModelConfigDraft,
+    pub extension: Option<extension::ExtensionInput>,
+}
 
 pub(crate) fn start_pool(
     client: Arc<Client>,
-    draft: ModelConfigDraft,
+    configuration: Configuration,
     keys: Vec<PoolKey>,
     headers: Vec<(String, String)>,
     concurrency: u32,
     cancellation: CancellationToken,
 ) -> Result<ChatRun, CoreError> {
+    let Configuration { draft, extension } = configuration;
     let invalid = || CoreError {
         code: ErrorCode::InvalidInput,
         message: "密钥池测试参数无效".into(),
@@ -57,6 +62,7 @@ pub(crate) fn start_pool(
     let finished = CancellationToken::new();
     let guard = finished.clone().drop_guard();
     let cancel = cancellation.clone();
+    let workers_cancel = cancellation.child_token();
     tokio::spawn(async move {
         let _guard = guard;
         let mut workers = JoinSet::new();
@@ -70,47 +76,47 @@ pub(crate) fn start_pool(
                     let draft = draft.clone();
                     let headers = headers.clone();
                     let client = client.clone();
+                    let extension = extension.clone();
+                    let key_cancel = workers_cancel.child_token();
                     workers.spawn(async move {
                         let id = key.id;
-                        let Ok(request) = probe::prepare(draft, key.key, headers, "chat") else {
+                        let Ok(mut request) = probe::prepare(draft, key.key, headers, "chat")
+                        else {
                             return Err(ChatFailure::new(
                                 ChatFailureKind::InvalidInput,
                                 "密钥池测试配置无效",
                             ));
                         };
+                        request.extension = extension;
                         // 单key探测复用同一execute；collector只保留终态，不累计事件。
-                        let (tx, mut rx) = mpsc::channel(8);
-                        let tx = super::EventSender {
-                            sender: tx,
-                            observation: None,
-                            cancellation: CancellationToken::new(),
-                            workers: Default::default(),
-                        };
-                        let send = async {
-                            let result = execute(&client, request, &tx).await;
-                            drop(tx);
-                            result
-                        };
-                        let collect = async {
-                            let mut available = false;
-                            while let Some(event) = rx.recv().await {
-                                if matches!(
-                                    event,
-                                    ChatEvent::Completed {
-                                        verified: Some(true),
-                                        ..
-                                    }
-                                ) {
-                                    available = true;
+                        let run = super::start(client, request, key_cancel);
+                        let mut available = false;
+                        let mut result = Ok(());
+                        while let Some(event) = run.next_event().await.map_err(|_| {
+                            ChatFailure::new(ChatFailureKind::Interrupted, "密钥池事件读取失败")
+                        })? {
+                            match event {
+                                ChatEvent::Completed {
+                                    verified: Some(true),
+                                    ..
+                                } => available = true,
+                                ChatEvent::Failed(error) => result = Err(error),
+                                ChatEvent::Cancelled => {
+                                    result = Err(ChatFailure::new(
+                                        ChatFailureKind::Interrupted,
+                                        "密钥池测试已停止",
+                                    ))
                                 }
+                                _ => {}
                             }
-                            available
-                        };
-                        let (result, available) = tokio::join!(send, collect);
+                        }
+                        run.cancel_and_wait().await;
                         if let Err(error) = &result
                             && matches!(
                                 error.kind,
-                                ChatFailureKind::InvalidInput | ChatFailureKind::Unsupported
+                                ChatFailureKind::InvalidInput
+                                    | ChatFailureKind::Unsupported
+                                    | ChatFailureKind::Interrupted
                             )
                         {
                             return Err(error.clone());
@@ -155,7 +161,7 @@ pub(crate) fn start_pool(
         };
         tokio::select! { biased; _ = cancel.cancelled() => {}, _ = work => {} }
         // 暂停完成前等待所有worker被中止，不能把取消伪装成不可用。
-        workers.abort_all();
+        workers_cancel.cancel();
         while workers.join_next().await.is_some() {}
     });
     Ok(ChatRun {

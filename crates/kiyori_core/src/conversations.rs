@@ -1172,6 +1172,10 @@ pub(crate) fn apply_thinking(
     request: &mut chat::ChatRequest,
     preferences: &crate::chat_preferences::Preferences,
 ) -> Result<(), CoreError> {
+    if let Some(extension) = &mut request.extension {
+        extension.thinking = preferences.thinking;
+        return Ok(());
+    }
     if let Some(local) = &mut request.local {
         local.thinking = preferences.thinking;
         return Ok(());

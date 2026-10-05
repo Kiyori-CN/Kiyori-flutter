@@ -153,6 +153,29 @@ pub trait ScriptAdapter: Send + Sync {
         stopped: &dyn Fn() -> bool,
         emit: &mut dyn FnMut(&[u8]) -> bool,
     ) -> Result<Value, ScriptFailure>;
+    fn execute_with_http(
+        &self,
+        request: &ScriptRequest,
+        stopped: &dyn Fn() -> bool,
+        emit: &mut dyn FnMut(&[u8]) -> bool,
+        http: Option<&dyn ScriptHttpHost>,
+    ) -> Result<Value, ScriptFailure> {
+        if http.is_some() {
+            return Err(ScriptFailureKind::Unsupported.into());
+        }
+        self.execute(request, stopped, emit)
+    }
+}
+
+/// 只由可信Rust装配；脚本传入的URL/头/正文由领域宿主逐项检查。
+/// 回调同步借用，chunk必须在所属VM线程消费，不得保存或跨线程移动JS句柄。
+pub trait ScriptHttpHost: Send + Sync {
+    fn request(
+        &self,
+        input: Value,
+        stopped: &dyn Fn() -> bool,
+        chunk: &mut dyn FnMut(&str) -> bool,
+    ) -> Result<Value, ScriptFailure>;
 }
 
 pub(crate) struct Registry {
@@ -234,6 +257,9 @@ impl Drop for ScriptRun {
     }
 }
 impl ScriptRun {
+    pub(crate) async fn wait_finished(&self) {
+        self.finished.cancelled().await;
+    }
     pub fn cancel(&self) {
         self.cancellation.cancel();
     }
@@ -292,7 +318,7 @@ impl Runtime {
             .map_err(|_| ScriptFailureKind::InvalidInput.into())
     }
     pub async fn start_script(&self, request: ScriptRequest) -> Result<ScriptRun, ScriptFailure> {
-        self.start_script_owned(request, self.cancellation.child_token(), None)
+        self.start_script_owned(request, self.cancellation.child_token(), None, None)
             .await
     }
     pub(crate) async fn start_script_owned(
@@ -300,15 +326,29 @@ impl Runtime {
         request: ScriptRequest,
         cancellation: CancellationToken,
         lease: Option<Box<dyn Send>>,
+        http: Option<Arc<dyn ScriptHttpHost>>,
     ) -> Result<ScriptRun, ScriptFailure> {
-        if self.cancellation.is_cancelled() {
+        self.scripts
+            .clone()
+            .start_owned(request, cancellation, lease, http)
+            .await
+    }
+}
+impl Registry {
+    pub(crate) async fn start_owned(
+        self: Arc<Self>,
+        request: ScriptRequest,
+        cancellation: CancellationToken,
+        lease: Option<Box<dyn Send>>,
+        http: Option<Arc<dyn ScriptHttpHost>>,
+    ) -> Result<ScriptRun, ScriptFailure> {
+        if cancellation.is_cancelled() {
             return Err(ScriptFailureKind::RuntimeClosed.into());
         }
         if !request.valid() {
             return Err(ScriptFailureKind::InvalidInput.into());
         }
         let adapter = self
-            .scripts
             .adapter
             .get()
             .cloned()
@@ -319,9 +359,9 @@ impl Runtime {
             biased;
             _ = cancellation.cancelled() => return Err(ScriptFailureKind::RuntimeClosed.into()),
             _ = tokio::time::sleep_until(deadline.into()) => return Err(ScriptFailureKind::Timeout.into()),
-            permit = self.scripts.slots.clone().acquire_owned() => permit.map_err(|_| ScriptFailureKind::Interrupted)?,
+            permit = self.slots.clone().acquire_owned() => permit.map_err(|_| ScriptFailureKind::Interrupted)?,
         };
-        let active = self.scripts.reserve(&self.cancellation)?;
+        let active = self.reserve(&cancellation)?;
         let (queue, receive) = mpsc::channel(8);
         let (finish, result) = oneshot::channel();
         let finished = CancellationToken::new();
@@ -365,7 +405,7 @@ impl Runtime {
                 if stopped() {
                     return Err(ScriptFailureKind::Cancelled.into());
                 }
-                adapter.execute(&request, &stopped, &mut emit)
+                adapter.execute_with_http(&request, &stopped, &mut emit, http.as_deref())
             }))
             .unwrap_or_else(|_| Err(ScriptFailureKind::Interrupted.into()));
             let outcome = if stopped_token.is_cancelled() {

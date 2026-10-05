@@ -38,6 +38,7 @@
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。
 - [TOOLPKG提供方运行时方案](design/toolpkg-provider-runtime-plan.md)：动态提供方旧源、执行器实证、权限与正式接入切片。
 - [ADR 0012 持久提供方包](decisions/0012-persistent-provider-packages.md)：包导入、稳定身份、撤销、恢复和兼容范围。
+- [ADR 0013 提供方 HTTP 与聊天](decisions/0013-controlled-provider-http.md)：共享网络、凭据引用、配额、取消和结果校验。
 - [浏览器与网络](design/browser-and-network.md)：会话、广告拦截、应用代理与系统代理边界。
 - [文件、下载与媒体](design/files-downloads-and-media.md)：资源引用、后台任务、音视频与终端。
 - [数据与权限](design/data-and-security.md)：存储、安全、权限、迁移、日志与依赖来源。

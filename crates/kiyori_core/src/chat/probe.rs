@@ -45,6 +45,7 @@ pub fn prepare(
     crate::models::validate(&mut draft)?;
     if draft.protocol == "native"
         && !matches!(draft.provider.as_str(), "GOOGLE" | "MNN" | "LLAMA_CPP")
+        && !draft.provider.starts_with("TOOLPKG:")
     {
         return Err(CoreError {
             code: ErrorCode::InvalidInput,
@@ -138,6 +139,10 @@ pub fn prepare(
         );
     }
     Ok(ChatRequest {
+        extension: draft
+            .provider
+            .starts_with("TOOLPKG:")
+            .then(|| extension::ExtensionInput::new(draft.clone())),
         local: matches!(draft.provider.as_str(), "MNN" | "LLAMA_CPP")
             .then(|| native::LocalInput::new(draft.options.clone())),
         prelude: None,

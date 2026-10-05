@@ -522,6 +522,7 @@ fn folders_flags_order_and_metadata_are_persistent_and_atomic() {
 #[test]
 fn thinking_contract_preserves_explicit_parameters_and_rejects_unknown_models() {
     let mut request = chat::ChatRequest {
+        extension: None,
         local: None,
         prelude: None,
         provider: String::new(),

@@ -55,7 +55,7 @@ Apple未编译；线程/内存限制不是OS安全沙箱，原生漏洞仍具有
    配置引用的包撤销时明确失败并保留配置，不静默回退内置provider。测试结果标明
    本次实际快照和handler；未知计数不伪造成真实token。
 
-## 下一切片：受控 HTTP 宿主（设计，尚未接入）
+## 受控 HTTP 宿主与正式聊天（已实现，验收见status）
 
 旧custom_ai_provider实际依赖OkHttp builder/request/execute以及chunk回调，不只依赖
 Promise。采用单次blocking VM中的窄宿主回调：Rust在同worker等待Runtime的共享client，
@@ -89,8 +89,9 @@ Android/Windows产品构建及包审计。Android设备运行和Apple编译独�
 没有宿主I/O时未决Promise明确失败。执行端口完整验证与双端构建已通过，实际批次见status。
 core/extensions现已实现schema19包持久化、受控ZIP导入、安装/升级/启停/卸载与代次撤销，
 公共FFI及Dart桥已接入；具体合同与兼容缺口见[ADR 0012](../decisions/0012-persistent-provider-packages.md)。
-包生命周期核心及真实QuickJS/FFI测试通过，整体验证与双端构建继续；受控网络、动态目录
-与产品管理/ChatRun接线仍未实现，不能把执行端口或包API等同全部产品功能。
+包生命周期核心及真实QuickJS/FFI、整体验证与双端构建已通过。受控网络、动态目录与
+正式ChatRun/总结接线已实现，当前验收见status；管理UI和完整旧包兼容仍待实现。
+精确网络、配额与结果合同见[ADR 0013](../decisions/0013-controlled-provider-http.md)。
 
 正式源码位于core/scripts与platform/scripts，内存1–128 MiB、栈64 KiB–1 MiB、
 期限10–600000ms、Promise job最多100000；并发4，事件8槽，每条1 MiB、总8 MiB。

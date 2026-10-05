@@ -1,4 +1,5 @@
 pub mod directory;
+pub mod extension;
 pub(crate) mod gemini;
 pub mod limits;
 mod media;
@@ -65,6 +66,7 @@ pub struct ChatMessage {
 
 // 凭据输入不实现Debug，错误也不附带请求、URL或供应商响应正文。
 pub struct ChatRequest {
+    pub extension: Option<extension::ExtensionInput>,
     pub local: Option<native::LocalInput>,
     pub prelude: Option<Box<Prelude>>,
     pub provider: String,
@@ -344,7 +346,7 @@ pub(crate) fn start_observed(
     }
 }
 
-fn endpoint(value: &str, protocol: &str) -> Result<Url, ChatFailure> {
+pub(crate) fn endpoint(value: &str, protocol: &str) -> Result<Url, ChatFailure> {
     let raw = value.trim();
     let exact = raw.ends_with('#');
     let raw = raw.strip_suffix('#').unwrap_or(raw);
@@ -481,10 +483,13 @@ async fn execute(
 }
 
 async fn execute_once(
-    client: &Client,
+    client: &Arc<Client>,
     input: &mut ChatRequest,
     sender: &EventSender,
 ) -> Result<String, ChatFailure> {
+    if input.extension.is_some() {
+        return extension::execute(client.clone(), input, sender).await;
+    }
     if input.local.is_some() {
         return native::execute(input, sender).await;
     }

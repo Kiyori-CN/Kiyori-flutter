@@ -1718,6 +1718,7 @@ impl RuntimeHandle {
         Ok(ChatHandle {
             inner: Arc::new(
                 self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    extension: None,
                     local: None,
                     prelude: None,
                     provider: String::new(),

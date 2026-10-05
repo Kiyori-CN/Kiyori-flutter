@@ -5,6 +5,40 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG HTTP 与正式聊天接线（本机、真实端点验收与双端构建通过）
+
+本批基线main/bfd92689，承接同任务受控HTTP未提交实现。模型owner复用同Runtime网络
+client与包/脚本Registry，限定GET目录与POST生成URL，明文认证由Rust注入；JS只收到
+凭据引用。拒绝额外主机、路径、重定向和认证伪造，响应凭据回显跨分片拦截；请求1 MiB、
+响应8 MiB、16次调用上限。OkHttp窄SDK与单VM线程同步回调已实现；HTTP失败不能被JS
+捕获后伪装成功，最终JSON解析在宿主返回后进行。四handler未改旧源码此前连续10次通过。
+
+正式ChatRun与模型目录、会话及总结接线已实现；冻结包revision，包租约先于配额等待，
+同模型Gate只获取一次，取消等待脚本/HTTP析构后释放配额。正文/用量严格校验，终态全文
+须与流片段一致，非流式缓冲全文后投影。模型页开始使用Runtime动态provider目录。
+workspace check-v1通过；最终Arc调整后的HTTP核心4项和native2项通过（core-v3/native-v7）。
+真实QuickJS/HTTP/SQLite正式链路5项通过（work/toolpkg-chat-native-v7.log）：流式/非流式、
+system、目录、多轮、自动/手动总结、重开、活动/排队禁用、非法用量/终态与网络失败、
+密钥池和XML续答。首轮夹具版本/路径唯一性/替代引用失败及事件重复包裹错误均已修，
+失败日志v1-v3保留；未改旧示例四handler最终1项通过（chat-legacy-v1）。
+真实FFI抽屉选择/保存/重开/撤销1项通过（chat-ui-v6）；之前UI等待跨fake zone停滞、
+懒列表未搜索失败日志保留，现采用有界逐帧等待和真实搜索。源码未降低保护或跳过断言。
+密钥池已复用ChatRun取消树并等待VM，不仅中止外层future；包撤销不标记密钥不可用。
+两授权供应商的扩展HTTP真实流式/非流式各2项通过，均校验正确答案、完整stop终态与用量；
+脱敏报告work/live-extension-DEEPSEEK-20261005-125128.json及
+work/live-extension-OPENAI_GENERIC-20261005-125223.json，不外推媒体或其它供应商。
+完整tools/verify.ps1 -WindowsIntegration通过（work/toolpkg-chat-verify-v1.log）：foundation65、
+Rust核心164/HTTP2/provider_chat5/原生6、fmt/Clippy、380 Dart格式/analyze、应用612
+（16条件跳过）、platform7、独立FFI22（1条件跳过）和Windows引擎5。原生旧源与真实API
+默认条件跳过的专项已分别显式验收，桥Check五文件一致。README同步正式扩展运行时语义。
+Android ARM64 Debug124.8秒、普通Windows x64 Debug21.2秒串行通过，日志
+work/toolpkg-chat-android-v1.log及windows-v1.log。固定包artifacts/ui-preview/20261005-131009：
+APK118074906字节，SHA256 C8913B4EFD0C8BC4577D9BBBA6293B502B703484A588C4F61D2846D9AC0188D3；
+Windows97文件169897046字节。98份副本hash、APK身份/v2签名/ZIP16K/ELF、x64/Flutter DLL
+pin与13许可证两端/源一致审计通过，work/toolpkg-chat-artifacts-20261005-131009。
+33路径精确允许清单审计后按原任务授权提交普通推送，最终ref见Git与manifest.sourceCommit。
+整体Goal active；包格式兼容、管理UI、原生缺口及设备/Apple验收继续推进。
+
 ### TOOLPKG 持久包生命周期（本机验收与双端构建通过）
 
 本批基线main/36261912，承接同任务未提交实现。core/extensions复用AppStore/ResourceRef，

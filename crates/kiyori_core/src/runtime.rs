@@ -103,8 +103,8 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
-    pub(crate) extensions: crate::extensions::Registry,
-    pub(crate) scripts: crate::scripts::Registry,
+    pub(crate) extensions: std::sync::Arc<crate::extensions::Registry>,
+    pub(crate) scripts: std::sync::Arc<crate::scripts::Registry>,
     pub(crate) inference:
         std::sync::OnceLock<std::sync::Arc<dyn crate::chat::native::InferenceAdapter>>,
     pub(crate) chat_observations: std::sync::Mutex<
@@ -132,7 +132,7 @@ impl Runtime {
         scripts: std::sync::Arc<dyn crate::scripts::ScriptAdapter>,
     ) -> Self {
         let mut runtime = Self::new_with_inference(inference);
-        runtime.scripts = crate::scripts::Registry::with_adapter(scripts);
+        runtime.scripts = std::sync::Arc::new(crate::scripts::Registry::with_adapter(scripts));
         runtime
     }
     /// 在句柄发布前装配推理端口，构造过程没有重复注册的失败分支。
@@ -307,9 +307,17 @@ impl Runtime {
             .chat_client
             .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))
             .clone()?;
+        let extension = if draft.provider.starts_with("TOOLPKG:") {
+            let mut request =
+                crate::chat::probe::prepare(draft.clone(), String::new(), headers.clone(), "chat")?;
+            self.bind_extension(&mut request);
+            request.extension
+        } else {
+            None
+        };
         crate::chat::pool::start_pool(
             client,
-            draft,
+            crate::chat::pool::Configuration { draft, extension },
             keys,
             headers,
             concurrency,
@@ -324,6 +332,9 @@ impl Runtime {
         headers: Vec<(String, String)>,
     ) -> Result<crate::chat::ChatRun, CoreError> {
         self.ensure_open()?;
+        if draft.provider.starts_with("TOOLPKG:") {
+            return self.start_extension_directory(draft, api_key, headers);
+        }
         if matches!(draft.provider.as_str(), "MNN" | "LLAMA_CPP") {
             let prefix = if draft.provider == "MNN" {
                 "mnn:"

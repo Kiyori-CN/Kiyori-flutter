@@ -103,7 +103,12 @@ impl AppStore {
         let (key, headers) = if matches!(config.draft.provider.as_str(), "MNN" | "LLAMA_CPP") {
             (String::new(), vec![])
         } else {
-            chat::directory::url(&config.draft).map_err(|error| invalid(&error.message))?;
+            if config.draft.provider.starts_with("TOOLPKG:") {
+                chat::endpoint(&config.draft.endpoint, &config.draft.protocol)
+                    .map_err(|error| invalid(&error.message))?;
+            } else {
+                chat::directory::url(&config.draft).map_err(|error| invalid(&error.message))?;
+            }
             select_credentials(&tx, id, payload)?
         };
         tx.commit().map_err(storage)?;

@@ -339,7 +339,9 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     final d = session.draft, o = d.options;
     protocol = ModelApiProtocol.values.byName(d.protocol);
     provider =
-        builtInApiProviders.where((p) => p.id == d.provider).firstOrNull ??
+        (session.owner.providers)
+            .where((p) => p.id == d.provider)
+            .firstOrNull ??
         ApiProviderPresentation(d.provider, d.provider, '', protocol, [
           ProviderProtocolPresentation(protocol, '', d.endpoint),
         ]);
@@ -486,6 +488,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
           final value = await showApiProviderDrawer(
             context,
             selectedId: provider.id,
+            providers: widget.session?.owner.providers ?? builtInApiProviders,
           );
           if (mounted && value != null) {
             selectProvider(value, value.defaultProtocol);

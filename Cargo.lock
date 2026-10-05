@@ -952,6 +952,7 @@ dependencies = [
  "kiyori_core",
  "serde_json",
  "tokio",
+ "zip",
 ]
 
 [[package]]

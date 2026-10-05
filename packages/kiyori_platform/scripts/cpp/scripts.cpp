@@ -9,11 +9,14 @@ struct Control {
   void *opaque;
   KiyoriScriptStop stop;
   KiyoriScriptEmit emit;
+  KiyoriScriptHttp http;
   bool output_failed = false;
+  bool http_failed = false;
+  bool http_active = false;
 };
 int interrupted(JSRuntime *, void *opaque) {
   auto &control = *static_cast<Control *>(opaque);
-  return control.output_failed || control.stop(control.opaque);
+  return control.output_failed || control.http_failed || control.stop(control.opaque);
 }
 JSValue emit(JSContext *context, JSValueConst, int argc, JSValueConst *argv) {
   auto &control = *static_cast<Control *>(JS_GetContextOpaque(context));
@@ -47,6 +50,54 @@ struct Value {
   Value &operator=(const Value &) = delete;
   bool failed() const { return JS_IsException(value); }
 };
+struct HttpResponse {
+  JSContext *context;
+  JSValueConst callback;
+  JSValue value = JS_UNDEFINED;
+  std::string bytes;
+  bool failed = false;
+  bool received = false;
+  ~HttpResponse() { JS_FreeValue(context,value); }
+};
+int http_chunk(void *opaque,const uint8_t *bytes,size_t length) {
+  auto &response=*static_cast<HttpResponse *>(opaque);
+  if (response.failed || !bytes || length>64*1024) return 0;
+  if (!JS_IsFunction(response.context,response.callback)) return 1;
+  Value text(response.context,JS_NewStringLen(response.context,reinterpret_cast<const char *>(bytes),length));
+  if(text.failed()) {response.failed=true;return 0;}
+  Value emitted(response.context,JS_Call(response.context,response.callback,JS_UNDEFINED,1,&text.value));
+  response.failed=emitted.failed();
+  return !response.failed;
+}
+int http_result(void *opaque,const uint8_t *bytes,size_t length) {
+  auto &response=*static_cast<HttpResponse *>(opaque);
+  if(response.failed || response.received || !bytes || length>8*1024*1024) return 0;
+  response.received=true;
+  // Rust的network/serde调用栈尚未退回时不进入QuickJS解析，避免把宿主栈算进JS栈限额。
+  try { response.bytes.assign(reinterpret_cast<const char *>(bytes),length); }
+  catch (...) { response.failed=true;return 0; }
+  return 1;
+}
+JSValue http_request(JSContext *context, JSValueConst, int argc, JSValueConst *argv) {
+  auto &control=*static_cast<Control *>(JS_GetContextOpaque(context));
+  if(argc!=2 || !control.http || control.http_failed || control.http_active || control.stop(control.opaque))
+    return JS_ThrowInternalError(context,"HTTP unavailable");
+  size_t length=0;
+  const char *bytes=JS_ToCStringLen(context,&length,argv[0]);
+  if(!bytes) return JS_EXCEPTION;
+  HttpResponse response{context,argv[1]};
+  control.http_active=true;
+  bool accepted=length<=2*1024*1024 && control.http(control.opaque,reinterpret_cast<const uint8_t *>(bytes),length,&response,http_chunk,http_result);
+  control.http_active=false;
+  JS_FreeCString(context,bytes);
+  if(!accepted || response.failed || !response.received) {
+    control.http_failed=true;
+    return JS_ThrowInternalError(context,"HTTP rejected");
+  }
+  response.value=JS_ParseJSON(context,response.bytes.data(),response.bytes.size(),"http-result");
+  if(JS_IsException(response.value)) {control.http_failed=true;return JS_EXCEPTION;}
+  return JS_DupValue(context,response.value);
+}
 // Intrinsics and null-prototype directory snapshots prevent package prototype
 // patches from changing registration identity. Ordinary handler results remain
 // package data.
@@ -63,6 +114,8 @@ constexpr char Bootstrap[] = R"JS(
   const idPattern = /^[A-Za-z0-9_.-]{1,128}$/;
   const nativeEmit = globalThis.__kiyoriEmit;
   delete globalThis.__kiyoriEmit;
+  const nativeHttp=globalThis.__kiyoriHttp;
+  delete globalThis.__kiyoriHttp;
   const entries = [];
   setPrototypeOf(entries,null);
   const required = ['listModels','sendMessage','testConnection','calculateInputTokens'];
@@ -92,6 +145,34 @@ constexpr char Bootstrap[] = R"JS(
     if (typeof text !== 'string') throw Error('Intermediate result is not JSON');
     nativeEmit(text);
   }});
+  const installHttp=()=>{
+    if(typeof nativeHttp!=='function' || globalThis.OkHttp!==undefined) return;
+    const client=timeout=>freeze({newRequest:()=>{
+      let url='',method='GET',headers={},body=null;
+      const builder=freeze({
+        url:value=>{url=value;return builder;},
+        method:value=>{method=value;return builder;},
+        headers:value=>{headers=value;return builder;},
+        body:(value,type)=>{body=type==='json'?stringify(value):String(value);return builder;},
+        build:()=>freeze({execute:async options=>{
+          const callback=options && options.onIntermediateResult;
+          const streaming=typeof callback==='function';
+          const response=nativeHttp(stringify({url,method,headers,body,stream:streaming,timeoutMs:timeout}),
+            streaming?text=>callback({type:'chunk',chunk:text}):undefined);
+          return freeze({statusCode:response.statusCode,ok:response.ok,content:response.content,
+            json:()=>parse(response.content || '{}'),isSuccessful:()=>response.ok});
+        }})
+      });
+      return builder;
+    }});
+    Object.defineProperty(globalThis,'OkHttp',{value:freeze({newBuilder:()=>{
+      let timeout=30000;
+      const builder=freeze({connectTimeout:value=>{timeout=value;return builder;},
+        readTimeout:value=>{timeout=value;return builder;},writeTimeout:value=>{timeout=value;return builder;},
+        build:()=>client(timeout)});
+      return builder;
+    }})});
+  };
   return freeze({
     start:()=>{
       if (typeof exports.registerToolPkg !== 'function') throw Error('Missing registerToolPkg');
@@ -114,6 +195,7 @@ constexpr char Bootstrap[] = R"JS(
       for (let i=0;i<entries.length;i++) if (entries[i].id===op.provider_id) provider=entries[i];
       for (let i=0;i<required.length;i++) if (required[i]===op.handler) supported=true;
       if (!provider || !supported) throw Error('Unknown provider or handler');
+      installHttp();
       return provider.handlers[op.handler]({eventPayload:op.payload});
     },
     serialize:value=>stringify(value)
@@ -165,6 +247,8 @@ int execute(const std::string &source, const std::string &operation,
   if (JS_SetPropertyStr(context.get(), global.value, "__kiyoriEmit",
                         JS_NewCFunction(context.get(), emit, "emit", 1)) < 0)
     return 2;
+  if(control.http && JS_SetPropertyStr(context.get(),global.value,"__kiyoriHttp",
+      JS_NewCFunction(context.get(),http_request,"http",2))<0) return 2;
   Value sdk(context.get(),
             JS_Eval(context.get(), Bootstrap, sizeof(Bootstrap) - 1,
                     "kiyori-sdk", JS_EVAL_TYPE_GLOBAL));
@@ -219,14 +303,15 @@ kiyori_script_execute(const uint8_t *source, size_t source_length,
                       const uint8_t *operation, size_t operation_length,
                       size_t memory, size_t stack, uint32_t max_jobs,
                       void *opaque, KiyoriScriptStop stop,
-                      KiyoriScriptEmit emit_callback, KiyoriScriptEmit result) {
+                      KiyoriScriptEmit emit_callback, KiyoriScriptEmit result,
+                      KiyoriScriptHttp http) {
   if (!source || !operation || !stop || !emit_callback || !result ||
       !source_length || source_length > 2 * 1024 * 1024 ||
       operation_length > 2 * 1024 * 1024 || memory < 1024 * 1024 ||
       memory > 128 * 1024 * 1024 || stack < 64 * 1024 || stack > 1024 * 1024 ||
       !max_jobs || max_jobs > 100000)
     return 6;
-  Control control{opaque, stop, emit_callback};
+  Control control{opaque, stop, emit_callback, http};
   try {
     int status = execute(
         std::string(reinterpret_cast<const char *>(source), source_length),
@@ -235,6 +320,7 @@ kiyori_script_execute(const uint8_t *source, size_t source_length,
         memory, stack, max_jobs, control, result);
     if (control.output_failed)
       return 3;
+    if(control.http_failed) return 2;
     return stop(opaque) ? 1 : status;
   } catch (...) {
     // C++ exception text and QuickJS exception values never cross the public

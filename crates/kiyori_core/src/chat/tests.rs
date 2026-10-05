@@ -566,6 +566,7 @@ use std::net::TcpListener;
 
 fn request(endpoint: String) -> ChatRequest {
     ChatRequest {
+        extension: None,
         local: None,
         prelude: None,
         provider: String::new(),
