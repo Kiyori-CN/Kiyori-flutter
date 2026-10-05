@@ -5,7 +5,7 @@
 
 ## 当前任务：对话历史左抽屉旧源还原
 
-任务状态：部分完成；本批实现、本机验证与双端检查包已完成，设备验收待验证。基线为
+任务状态：部分完成；首批已提交推送，续批实现、本机验证与双端检查包已完成，设备验收待验证。基线为
 2026-10-05 main/c8dc3274，起始工作区
 干净，与origin/main一致；旧源只读Kiyori-Android/6b03b03。用户已授权本批全部提交普通
 推送到main，未授权设备安装、供应商调用或发布。详细来源/参数与范围见
@@ -49,8 +49,30 @@ history-windows-v2）；首次完整构建167.1s/61.3s同样成功。固定包�
 固定manifest保存最终Git来源及实现提交，过程证据和二进制未入库。
 
 同设备像素/字体、真实触摸、TalkBack、系统SAF/文件选择器、Profile和Apple仍
-verification_pending。整体完全复刻仍需接入供应商/工具原始事件、旧封印/附件及旧包
-兼容并补原始事件全记录检索；随后在获授权设备进行并排视觉/手势/Profile验收。
+verification_pending。整体完全复刻仍需接入工具完整事件、旧封印/附件及旧包
+兼容；随后在获授权设备进行并排视觉/手势/Profile验收。旧AuditRaw限定已加载事件，
+全文检索由时间线承担，不将原始事件全记录检索列为旧行为缺口。
+
+续批从main/a420ce5继续：已实现独立标签查询/滚动、独立正文检索游标、
+搜索无匹配仍可加载更早页、紧凑raw行和时间线最新/未读入口。请求审计接既有EventSender，
+真实发送前原子保存语义体/attempt，HTTP状态/协议和单终态共用Run，扩展在最终计数与
+条件总结后记录，本地推理保留最终参数/history，自动/手动总结均有SUMMARY事实。
+认证/header值及常见无空格JSON凭据先遮蔽；失败阻外发，取消/超时等写入与worker释放。
+公共FFI/schema/依赖未变。终态先释放上游及save闭包会话锁再交给UI，修复总结结束后
+立即下一轮偶发“此会话正在生成，请先停止”；回归不靠额外cancel/wait规避竞态。
+最终verify-v5通过：foundation67/tooling4、Rust核心181/HTTP3/provider13/native6、398
+Dart格式/analyze、app636（17条件跳过）/platform11/FFI22（1条件跳过）/Windows5。
+最终capture-v4联合12项通过，v10五窗口60张，已审阅明暗raw展开、窄屏双倍字、设置与
+横屏导出。普通入口Android23.0s/Windows19.3s串行构建通过（continuation双端v2）。
+新固定包`artifacts/ui-preview/20261006-020350/`：APK137352338字节，SHA256
+`FA8CDB1986A347E74FB19142CEEDDAC413025B7F699D4E2D3F458C0DFA8D0970`；Windows99文件
+170969602字节。身份/v2签名/ZIP16K与ELF/53表情/15许可证/x64/DLL pin/100副本hash
+审计通过。16路径精确清单与凭据/产物/链接/嵌套Git/子模块审计通过；提交前fetch与
+ls-remote确认远端仍a420ce5，最终Git来源在交付manifest中固化。旧工具事件、Keystore加密/
+持久ECDSA封印、完整旧包与附件仍未接，不宣称完整审计复刻。无设备或供应商操作。
+SaveableStateProvider不保留普通remember的展开集，已按旧行为切标签释放；之前将
+查询、列表与展开一并称为saveable不准确。截图发现展开JSON的ellipsis会提前省略，
+改为完整换行并增加RenderParagraph断言。失败日志保留，未禁用检查或降低产品断言。
 
 ## 上一任务：模型与 API 全功能旧源复刻
 

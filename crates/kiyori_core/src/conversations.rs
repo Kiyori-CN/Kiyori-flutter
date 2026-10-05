@@ -1197,6 +1197,12 @@ impl Runtime {
             .map_err(|_| invalid("请求观测锁不可用"))?
             .insert(prepared.conversation.clone(), observation.clone());
         // 安全引用已解析成短期请求，不把lease延长到网络/流式阶段。
+        let audit = Arc::new(chat::audit::ProviderAudit::new(
+            store.clone(),
+            prepared.conversation.clone(),
+            run_id.clone(),
+            "CHAT",
+        ));
         drop(prepared);
         self.bind_inference(&mut request);
         let cancellation = self.cancellation.child_token();
@@ -1205,6 +1211,7 @@ impl Runtime {
             request,
             cancellation.child_token(),
             Some(observation),
+            Some(audit),
         );
         Ok(chat::persist(upstream, cancellation, move |event| {
             let _keep_lock = &run_guard;

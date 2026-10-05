@@ -1,3 +1,4 @@
+pub(crate) mod audit;
 pub mod directory;
 pub mod extension;
 pub(crate) mod gemini;
@@ -204,6 +205,7 @@ pub(crate) fn persist(
                 Ok(event) => event,
                 Err(_) => {
                     upstream.cancel_and_wait().await;
+                    drop(save);
                     // DB失效时不能声称已保存；仍保留running账本供下次锁恢复。
                     let failure = ChatEvent::Failed(ChatFailure::new(
                         ChatFailureKind::Interrupted,
@@ -217,15 +219,19 @@ pub(crate) fn persist(
                 event,
                 ChatEvent::Completed { .. } | ChatEvent::Failed(_) | ChatEvent::Cancelled
             );
+            if terminal {
+                // 终态交给UI前释放上游资源和save闭包中的会话锁，下一轮不能仍被判生成中。
+                upstream.cancel_and_wait().await;
+                drop(save);
+                tokio::select! { _ = worker_cancel.cancelled() => {}, _ = sender.send(event) => {} }
+                break;
+            }
             let delivered = tokio::select! {
                 biased;
                 _ = worker_cancel.cancelled(), if !terminal => false,
                 result = sender.send(event) => result.is_ok(),
                 _ = worker_cancel.cancelled(), if terminal => false,
             };
-            if terminal {
-                break;
-            }
             if !delivered {
                 upstream.cancel_and_wait().await;
                 let _ = save(ChatEvent::Cancelled);
@@ -275,11 +281,13 @@ pub(crate) fn start(
     input: ChatRequest,
     cancellation: CancellationToken,
 ) -> ChatRun {
-    start_observed(client, input, cancellation, None)
+    start_observed(client, input, cancellation, None, None)
 }
 
 // 在有界队列和SQLite写入前记录到达时间；UI/存储背压不能延长输出计时。
 pub(crate) struct EventSender {
+    audit: Option<Arc<audit::ProviderAudit>>,
+    audit_phase: &'static str,
     sender: mpsc::Sender<ChatEvent>,
     observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
     cancellation: CancellationToken,
@@ -312,10 +320,13 @@ pub(crate) fn start_observed(
     input: ChatRequest,
     cancellation: CancellationToken,
     observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
+    audit: Option<Arc<audit::ProviderAudit>>,
 ) -> ChatRun {
     let (sender, receiver) = mpsc::channel(8);
     let workers = Arc::new(std::sync::Mutex::new(Vec::new()));
     let sender = EventSender {
+        audit_phase: audit.as_ref().map_or("CHAT", |audit| audit.phase),
+        audit,
         sender,
         observation,
         cancellation: cancellation.clone(),
@@ -332,13 +343,26 @@ pub(crate) fn start_observed(
             result = execute(&client, input, &sender) => Some(result),
         };
         // future 被取消不等于 C++ 已停止。finished 和持久化锁都要等 RAII 析构结束。
-        let pending = std::mem::take(
-            &mut *workers
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        );
-        for worker in pending {
-            let _ = worker.await;
+        sender.wait_workers().await;
+        // 取消结束也记录真实尝试终态；必须在persist写Run终态、释放执行锁之前完成。
+        if let Some(audit) = sender.audit.clone() {
+            let terminal = result.as_ref().map(|result| {
+                result
+                    .as_ref()
+                    .map(|_| "stop".to_owned())
+                    .map_err(Clone::clone)
+            });
+            let cleanup =
+                tokio::task::spawn_blocking(move || audit.finish(terminal.as_ref())).await;
+            if !matches!(cleanup, Ok(Ok(()))) && !worker_cancel.is_cancelled() {
+                let _ = sender
+                    .send(ChatEvent::Failed(ChatFailure::new(
+                        ChatFailureKind::Interrupted,
+                        "请求审计终态保存失败",
+                    )))
+                    .await;
+                return;
+            }
         }
         if let Some(Err(error)) = result {
             let _ = sender.send(ChatEvent::Failed(error)).await;
@@ -430,6 +454,8 @@ async fn execute_prelude(
     }
     let (queue, mut receiver) = mpsc::channel(8);
     let summary_sender = EventSender {
+        audit: sender.audit.clone(),
+        audit_phase: "SUMMARY",
         sender: queue,
         observation: None,
         cancellation: sender.cancellation.clone(),
@@ -528,6 +554,16 @@ async fn execute_request(
 }
 
 async fn execute_once(
+    client: &Arc<Client>,
+    input: &mut ChatRequest,
+    sender: &EventSender,
+) -> Result<String, ChatFailure> {
+    let result = execute_once_inner(client, input, sender).await;
+    sender.audit_finish(&result).await?;
+    result
+}
+
+async fn execute_once_inner(
     client: &Arc<Client>,
     input: &mut ChatRequest,
     sender: &EventSender,
@@ -705,7 +741,9 @@ async fn execute_once(
         Some(gate) => Some(gate.acquire().await),
         None => None,
     };
+    let timeout_ms = input.timeout_ms;
     let operation = async {
+        sender.audit_begin(input, "HTTP", Some(&body)).await?;
         let _ = sender.send(ChatEvent::Started).await;
         let mut response = client
             .post(url)
@@ -723,6 +761,11 @@ async fn execute_once(
             .send()
             .await
             .map_err(transport)?;
+        let status = response.status().as_u16();
+        let version = format!("{:?}", response.version());
+        sender
+            .audit_write(move |audit| audit.response(status, version))
+            .await?;
         if !response.status().is_success() {
             let status = response.status().as_u16();
             return Err(ChatFailure {
@@ -848,7 +891,7 @@ async fn execute_once(
             "模型流在完成标记前中断",
         ))
     };
-    tokio::time::timeout(Duration::from_millis(input.timeout_ms.into()), operation)
+    tokio::time::timeout(Duration::from_millis(timeout_ms.into()), operation)
         .await
         .map_err(|_| ChatFailure::new(ChatFailureKind::Timeout, "模型请求超时；未自动重试"))?
 }

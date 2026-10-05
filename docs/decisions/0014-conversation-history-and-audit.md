@@ -22,7 +22,7 @@ schema20增加可空parent_id和conversation_audit_events，不改写旧消息�
 
 审计首次接触旧会话时追加BASIC_SNAPSHOT，明确这是当前消息快照，迁移前的修订和
 供应商原始事件未知。开始/终态、消息修改前后和用户备注由真实事务记录。基础记录不会
-宣称COMPLETE；尚未接入的供应商尝试、工具事件、旧封印和附件导入仍属于后续审计能力。
+宣称COMPLETE；工具事件、旧封印和附件导入仍属于后续审计能力。
 备注不进入模型消息，不改变对话revision或历史用量。正常事件不允许UPDATE；会话明确
 删除时事件随会话级联删除。修改消息保留原文，错误使整个消息和审计事务回滚。
 
@@ -33,6 +33,15 @@ conversationId、sequence、recordedAt、category、eventType、summary、payloa
 它不是旧Android审计包格式，不承诺旧包导入兼容。读取每页最多100条摘要，正文使用
 SQLite Unicode字符分页，每页8192字符；界面不截断源正文，关闭或离屏释放正文展示。
 时间线查询搜索全部记录正文，原始事件标签搜索已加载元数据，消息标签搜索当前消息。
+这与旧`AuditRaw.loadedOnly`一致；无匹配仍允许加载更早页。三标签保留独立查询、
+滚动，展开集按旧remember随标签释放；正文搜索不替换普通加载目录及游标。
+
+实际提供方请求通过既有EventSender共用同Run审计，发送前原子记录
+FINAL_PROVIDER_SEMANTIC_REQUEST与PROVIDER_ATTEMPT_STARTED，失败阻止外发。HTTP
+响应状态/协议与最终COMPLETED/FAILED/CANCELLED分别记录；取消/超时等待blocking
+写入和执行worker释放，再记录尝试及Run终态。扩展在最终计数/条件总结后记录，
+本地推理包含实际参数和history，自动/手动总结注明SUMMARY。认证值仅在短期输入中
+用于脱敏，审计正文不保存Key/认证header值；未改公共FFI、schema或依赖。
 
 Markdown导出按事件顺序保留已记录正文，并遮蔽常见凭据形式。遮蔽不保证去除任意个人
 信息或任意自定义秘密，分享前仍需要核对。ZIP含events.json、messages.json、seal.json、

@@ -78,6 +78,8 @@ impl Runtime {
         let guard = finished.clone().drop_guard();
         let (queue, receiver) = mpsc::channel(8);
         let sender = EventSender {
+            audit: None,
+            audit_phase: "DIRECTORY",
             sender: queue,
             observation: None,
             cancellation: cancellation.clone(),
@@ -314,7 +316,7 @@ pub(super) async fn execute(
         &binding,
         &input.provider,
         ProviderHandler::SendMessage,
-        payload,
+        payload.clone(),
         input.timeout_ms,
         &token,
     )?;
@@ -370,6 +372,9 @@ pub(super) async fn execute(
                 "扩展计算的输入超过上下文上限；原文保留，请调整上下文或总结",
             ));
         }
+        sender
+            .audit_begin(input, "EXTENSION", Some(&payload))
+            .await?;
         let run = binding
             .scripts
             .clone()

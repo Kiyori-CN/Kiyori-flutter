@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:ui' show SemanticsAction;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_details.dart';
@@ -15,6 +15,155 @@ import 'chat_business_test.dart' show ChatFixture, until;
 import 'support/memory_audit_exchange.dart';
 
 void main() {
+  testWidgets(
+    'detail tabs preserve queries loaded pages scroll and release expansion',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      late String id;
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+        id = f.chat.snapshot!.conversation.id;
+        for (var i = 0; i < 105; i++) {
+          await f.runtime.appendConversationNote(id, '正文关键词-$i');
+        }
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(
+              body: HistoryDetails(
+                owner: f.chat,
+                id: id,
+                exchange: MemoryAuditExchange(),
+              ),
+            ),
+          ),
+        );
+        await until(
+          tester,
+          () =>
+              find.textContaining('条事件').evaluate().isNotEmpty &&
+              find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.tap(find.text('原始事件'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.enterText(find.byType(TextField), '$id/1"');
+        await tester.pumpAndSettle();
+        expect(find.text('已加载的事件中没有匹配结果，可继续加载更早的事件。'), findsOneWidget);
+        expect(find.text('加载更早事件'), findsOneWidget);
+        await tester.tap(find.text('加载更早事件'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('加载更早事件'), findsNothing);
+        expect(find.text('HISTORY / BASIC_SNAPSHOT'), findsOneWidget);
+        await tester.tap(find.text('HISTORY / BASIC_SNAPSHOT'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('"eventId":'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.textContaining('"eventId":'))
+              .data!
+              .contains('\n'),
+          isTrue,
+        );
+        expect(
+          tester
+              .renderObject<RenderParagraph>(
+                find.descendant(
+                  of: find.textContaining('"eventId":'),
+                  matching: find.byType(RichText),
+                ),
+              )
+              .didExceedMaxLines,
+          isFalse,
+        );
+        await tester.tap(find.text('时间线'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          '',
+        );
+        await tester.enterText(find.byType(TextField), '正文关键词-0');
+        await tester.pump(const Duration(milliseconds: 450));
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('已添加审计注释'), findsOneWidget);
+        await tester.tap(find.text('原始事件'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          '$id/1"',
+        );
+        expect(find.textContaining('"eventId":'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.textContaining('"eventId":'))
+              .data!
+              .contains('\n'),
+          isFalse,
+        );
+        expect(find.text('加载更早事件'), findsNothing);
+        await tester.enterText(find.byType(TextField), '');
+        await tester.pumpAndSettle();
+        final list = tester.widget<ListView>(
+          find.byKey(const ValueKey('history-details-list-2')),
+        );
+        list.controller!.jumpTo(180);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('对话'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.tap(find.text('原始事件'));
+        await tester.pump();
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<ListView>(
+                find.byKey(const ValueKey('history-details-list-2')),
+              )
+              .controller!
+              .offset,
+          180,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
   testWidgets(
     'removed group releases rename and discard while history stays open',
     (tester) async {

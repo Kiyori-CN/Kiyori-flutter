@@ -176,6 +176,8 @@ impl Runtime {
             tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,role_name,role_id,kind) VALUES(?1,?2,'running',?3,?4,?5,?6,?7,?8,'summary')",
                 params![run_id,prepared.conversation,model.config.id,model.config.revision,model.name,now(),prepared.selection.role_name,prepared.selection.character]).map_err(storage)?;
             touch(&tx,&prepared.conversation)?;
+            crate::conversation_audit::initialize(&tx,&prepared.conversation)?;
+            crate::conversation_audit::append(&tx,&prepared.conversation,"EXECUTION","RUN_STARTED","开始生成摘要",serde_json::json!({"runId":run_id,"model":model.name,"kind":"summary"}))?;
             tx.commit().map_err(storage)?;
             Ok((request,run_id))
         })?;
@@ -196,7 +198,19 @@ impl Runtime {
         let cancellation = self.cancellation.child_token();
         let mut request = request;
         self.bind_inference(&mut request);
-        let upstream = chat::start(client, request, cancellation.child_token());
+        let audit = Arc::new(chat::audit::ProviderAudit::new(
+            store.clone(),
+            commit.conversation.clone(),
+            run_id.clone(),
+            "SUMMARY",
+        ));
+        let upstream = chat::start_observed(
+            client,
+            request,
+            cancellation.child_token(),
+            None,
+            Some(audit),
+        );
         Ok(chat::persist(upstream, cancellation, move |event| {
             let _lock = &run_guard;
             if let chat::ChatEvent::Text(text) = &event {

@@ -205,6 +205,23 @@ async fn manual_summary_obeys_user_and_assistant_boundaries_and_preserves_reopen
         let requests = worker.join().unwrap();
         assert!(requests[2].0.contains("Bearer summary-credential"));
         assert_eq!(requests[2].1["model"], "summary-fixture");
+        let audit = super::audit_tests::audit_payloads(&runtime, &id);
+        let request = audit
+            .iter()
+            .find(|(kind, data)| {
+                kind == "FINAL_PROVIDER_SEMANTIC_REQUEST" && data["phase"] == "SUMMARY"
+            })
+            .unwrap();
+        assert_eq!(request.1["requestBody"], requests[2].1);
+        assert!(!request.1.to_string().contains("summary-credential"));
+        let attempts: Vec<_> = audit
+            .iter()
+            .filter(|(kind, data)| {
+                kind == "PROVIDER_ATTEMPT_FINISHED" && data["phase"] == "SUMMARY"
+            })
+            .collect();
+        assert_eq!(attempts.len(), 1);
+        assert_eq!(attempts[0].1["terminalState"], "COMPLETED");
         let summary_messages = requests[2].1["messages"].as_array().unwrap();
         assert!(summary_messages.iter().any(|m| m["content"] == "第一答"));
         assert_eq!(

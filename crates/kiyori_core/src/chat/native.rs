@@ -174,6 +174,10 @@ pub(super) async fn execute(
         Some(gate) => Some(gate.acquire().await),
         None => None,
     };
+    let semantic = json!({"messages":messages,"parameters":parameters,"options":options});
+    sender
+        .audit_begin(input, "LOCAL_INFERENCE", Some(&semantic))
+        .await?;
     let deadline = Instant::now() + Duration::from_millis(input.timeout_ms.into());
     let cancellation = sender.cancellation.child_token();
     let guard = cancellation.clone().drop_guard();

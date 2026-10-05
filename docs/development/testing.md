@@ -32,6 +32,10 @@ conversations_audit_tests覆盖schema19迁移保留、Unicode正文分页、全�
 chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
 测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
 工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。
+请求审计回归使用真实loopback核对发送体、认证遮蔽、begin双记录事务回滚/无外发、
+HTTP失败与取消单终态和Run顺序；既有总结回归核对实际SUMMARY请求体与独立凭据
+不落审计。详情新增105备注夹具，验证raw无匹配可加载、正文全记录查询、标签查询/
+页数/滚动保留及展开释放；展开JSON渲染不省略。测试截图不证明Android字体/触摸一致。
 
 provider_chat验证密钥池只调用连接handler；发送前计数使用最终history并更新同会话窗口，
 与Usage分开。覆盖十进制旧别名/边界、单并发不自锁、无效/超预算阻止发送和计数/连接中

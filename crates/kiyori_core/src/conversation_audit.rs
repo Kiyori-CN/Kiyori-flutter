@@ -312,23 +312,157 @@ impl AppStore {
     }
 }
 /// 常见凭据遮蔽只用于分享诊断；签名包保留原文以验证链，不宣称加密。
-fn redact(text: &str) -> String {
-    let mut redact_next = false;
-    text.split_inclusive(char::is_whitespace)
-        .map(|word| {
-            let previous = redact_next;
-            let normalized = word.to_ascii_lowercase();
-            redact_next = normalized.contains("bearer")
-                || ["api_key\":", "apikey\":", "authorization\":", "password\":"]
-                    .iter()
-                    .any(|key| normalized.contains(key));
-            if previous || word.contains("sk-") || word.to_ascii_lowercase().contains("api_key=") {
-                "[REDACTED] ".to_owned()
-            } else {
-                word.to_owned()
+pub(crate) fn redact(text: &str) -> String {
+    // 使用字符边界扫描赋值/认证/URL；无空格JSON也必须遮蔽，不能误删下一段正文。
+    let lower = text.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
+    let mut ranges = Vec::new();
+    for (start, _) in lower.char_indices() {
+        if start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+            continue;
+        }
+        let tail = &lower[start..];
+        for key in [
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+            "set-cookie",
+            "password",
+            "passwd",
+            "api_key",
+            "api-key",
+            "apikey",
+            "access_token",
+            "access-token",
+            "accesstoken",
+            "refresh_token",
+            "refresh-token",
+            "refreshtoken",
+            "auth_token",
+            "auth-token",
+            "authtoken",
+            "client_secret",
+            "client-secret",
+            "clientsecret",
+            "private_key",
+            "private-key",
+            "privatekey",
+            "request_signature",
+            "request-signature",
+            "signature",
+            "token",
+        ] {
+            if !tail.starts_with(key) {
+                continue;
             }
-        })
-        .collect()
+            let mut offset = start + key.len();
+            if bytes
+                .get(offset)
+                .is_some_and(|c| matches!(c, b'\"' | b'\''))
+            {
+                offset += 1;
+            }
+            while bytes.get(offset).is_some_and(u8::is_ascii_whitespace) {
+                offset += 1;
+            }
+            if !bytes.get(offset).is_some_and(|c| matches!(c, b':' | b'=')) {
+                continue;
+            }
+            offset += 1;
+            while bytes.get(offset).is_some_and(u8::is_ascii_whitespace) {
+                offset += 1;
+            }
+            let quote = bytes
+                .get(offset)
+                .copied()
+                .filter(|c| matches!(c, b'\"' | b'\''));
+            if quote.is_some() {
+                offset += 1;
+            }
+            let mut end = offset;
+            let mut escaped = false;
+            for (index, ch) in text[offset..].char_indices() {
+                if let Some(quote) = quote {
+                    if !escaped && ch as u32 == u32::from(quote) {
+                        break;
+                    }
+                    escaped = !escaped && ch == '\\';
+                } else if ch.is_whitespace()
+                    || matches!(ch, ',' | ';' | '"' | '\'' | '}' | '&' | '#')
+                {
+                    break;
+                }
+                end = offset + index + ch.len_utf8();
+            }
+            if end > offset && !text[offset..end].starts_with("[REDACTED") {
+                ranges.push((offset, end));
+            }
+        }
+        for scheme in ["bearer", "basic"] {
+            if tail.starts_with(scheme)
+                && bytes
+                    .get(start + scheme.len())
+                    .is_some_and(u8::is_ascii_whitespace)
+            {
+                let offset = start + scheme.len();
+                let value = offset + text[offset..].len() - text[offset..].trim_start().len();
+                let end = text[value..]
+                    .char_indices()
+                    .find(|(_, c)| {
+                        c.is_whitespace() || matches!(c, ',' | ';' | '"' | '\'' | '}' | '&')
+                    })
+                    .map_or(text.len(), |(i, _)| value + i);
+                if end > value && !text[value..end].starts_with("[REDACTED") {
+                    ranges.push((value, end));
+                }
+            }
+        }
+        if tail.starts_with("http://") || tail.starts_with("https://") {
+            let value = start + if tail.starts_with("https://") { 8 } else { 7 };
+            if let Some(at) = text[value..].find('@') {
+                let auth = &text[value..value + at];
+                if auth.contains(':')
+                    && !auth.contains(['/', ' ', '\n', '\r', '\t'])
+                    && !auth.starts_with("[REDACTED")
+                {
+                    ranges.push((value, value + at));
+                }
+            }
+        }
+        if tail.starts_with("-----begin")
+            && let Some(label) = tail.find("private key-----")
+        {
+            let after = start + label + "private key-----".len();
+            if let Some(end_marker) = lower[after..].find("-----end")
+                && let Some(end_label) = lower[after + end_marker..].find("private key-----")
+            {
+                ranges.push((
+                    start,
+                    after + end_marker + end_label + "private key-----".len(),
+                ));
+            }
+        }
+        if tail.starts_with("sk-") {
+            let end = text[start..]
+                .char_indices()
+                .find(|(_, c)| c.is_whitespace() || matches!(c, ',' | '"' | '\'' | '}'))
+                .map_or(text.len(), |(i, _)| start + i);
+            ranges.push((start, end));
+        }
+    }
+    ranges.sort_unstable();
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+    for (start, end) in ranges {
+        if start < cursor {
+            continue;
+        }
+        output.push_str(&text[cursor..start]);
+        output.push_str("[REDACTED:credential]");
+        cursor = end;
+    }
+    output.push_str(&text[cursor..]);
+    output
 }
 impl Runtime {
     pub fn conversation_audit(

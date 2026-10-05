@@ -33,6 +33,10 @@ void main() {
       }
       await f.chat.change(f.chat.snapshot!.conversation, 'locked', 'true');
       await f.chat.setPreference('history_mode', 'character');
+      await f.runtime.appendConversationNote(
+        f.chat.snapshot!.conversation.id,
+        '原始事件与展开视觉样本：保留完整中文、Emoji 😀 和诊断字段。',
+      );
     });
     try {
       for (final scenario in [
@@ -146,6 +150,19 @@ void main() {
         );
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-details');
+        await tester.tap(find.text('原始事件'));
+        await tester.pumpAndSettle();
+        await captureUi(tester, boundary, output, '${scenario.$1}-raw');
+        await tester.tap(find.text('全部展开'));
+        await tester.pumpAndSettle();
+        await captureUi(
+          tester,
+          boundary,
+          output,
+          '${scenario.$1}-raw-expanded',
+        );
+        await tester.tap(find.text('时间线'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('备注'));
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-note');

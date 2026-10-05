@@ -58,12 +58,35 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   final children = ChatModalSession();
   final search = TextEditingController();
   final expanded = <String>{};
-  final events = <Map<String, dynamic>>[];
+  final tabQueries = List.filled(3, '');
+  final tabOffsets = List.filled(3, 0.0);
+  late final List<ScrollController> scrolls = List.generate(
+    3,
+    (index) => ScrollController(
+      onAttach: (position) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted ||
+              !position.hasContentDimensions ||
+              !scrolls[index].positions.contains(position)) {
+            return;
+          }
+          position.jumpTo(tabOffsets[index].clamp(0, position.maxScrollExtent));
+        });
+      },
+    ),
+  );
+  final loaded = _HistoryAuditPage();
+  final timelineSearch = _HistoryAuditPage();
+  ScrollController get scroll => scrolls[tab];
+  _HistoryAuditPage get page =>
+      tab == 0 && search.text.trim().isNotEmpty ? timelineSearch : loaded;
+  List<Map<String, dynamic>> get events => page.events;
   Map<String, dynamic>? audit;
   ConversationSnapshot? snapshot;
   int tab = 0, epoch = 0;
   int? revision;
   bool loading = false;
+  int lastSequence = 0, unread = 0;
   String? error;
   Timer? debounce;
   @override
@@ -96,36 +119,88 @@ class _HistoryDetailsState extends State<HistoryDetails> {
     children.dispose();
     debounce?.cancel();
     search.dispose();
+    for (final controller in scrolls) {
+      controller.dispose();
+    }
     widget.owner.removeListener(changed);
     super.dispose();
   }
 
   Future<void> load({bool older = false}) async {
     final generation = ++epoch;
+    final target = page;
+    final query = identical(target, timelineSearch) ? search.text.trim() : '';
+    // 搜索页与已加载目录使用独立游标；刷新保留用户已加载的更早页。
+    final first = !older && target.query == query && target.events.isNotEmpty
+        ? target.events.first['sequence'] as int
+        : null;
+    final before = older && target.events.isNotEmpty
+        ? target.events.first['sequence'] as int
+        : identical(target, timelineSearch)
+        ? target.cutoff ?? 0
+        : 0;
+    final atBottom =
+        !scrolls[0].hasClients || scrolls[0].position.extentAfter < 80;
     setState(() => loading = true);
     try {
       final client = await widget.owner.connect();
       final values = await Future.wait<Object>([
-        client.conversationAudit(
-          widget.id,
-          older && events.isNotEmpty ? events.first['sequence'] as int : 0,
-          tab == 0 ? search.text : '',
-        ),
+        client.conversationAudit(widget.id, before, query),
         client.conversation(widget.id),
       ]);
       if (!mounted || generation != epoch) return;
       final next = jsonDecode(values[0] as String) as Map<String, dynamic>;
+      final fetched = (next['events'] as List)
+          .cast<Map<String, dynamic>>()
+          .toList();
+      var hasOlder = next['hasOlder'] == true;
+      while (first != null &&
+          hasOlder &&
+          fetched.isNotEmpty &&
+          (fetched.first['sequence'] as int) > first) {
+        final previous = jsonDecode(
+          await client.conversationAudit(
+            widget.id,
+            fetched.first['sequence'] as int,
+            query,
+          ),
+        ) as Map<String, dynamic>;
+        if (!mounted || generation != epoch) return;
+        fetched.insertAll(
+          0,
+          (previous['events'] as List).cast<Map<String, dynamic>>(),
+        );
+        hasOlder = previous['hasOlder'] == true;
+      }
       setState(() {
         audit = next;
         snapshot = values[1] as ConversationSnapshot;
         revision = snapshot!.conversation.revision;
-        if (!older) events.clear();
-        events.insertAll(
-          0,
-          (next['events'] as List).cast<Map<String, dynamic>>(),
-        );
+        if (!older) target.events.clear();
+        target.events.insertAll(0, fetched);
+        target.query = query;
+        target.hasOlder = hasOlder;
+        target.revision = revision;
+        if (identical(target, timelineSearch)) {
+          target.cutoff ??= (next['eventCount'] as int) + 1;
+        }
         error = null;
         loading = false;
+        if (identical(target, loaded) && !older && target.events.isNotEmpty) {
+          final latest = target.events.last['sequence'] as int;
+          final added = target.events
+              .where((e) => (e['sequence'] as int) > lastSequence)
+              .length;
+          if (tab == 0 &&
+              search.text.trim().isEmpty &&
+              (lastSequence == 0 || added > 0 && atBottom)) {
+            unread = 0;
+            WidgetsBinding.instance.addPostFrameCallback((_) => jumpLatest());
+          } else if (lastSequence > 0 && added > 0) {
+            unread += added;
+          }
+          lastSequence = latest;
+        }
       });
     } catch (failure) {
       if (mounted && generation == epoch) {
@@ -137,13 +212,29 @@ class _HistoryDetailsState extends State<HistoryDetails> {
     }
   }
 
+  void jumpLatest() {
+    if (!mounted || tab != 0 || !scrolls[0].hasClients) return;
+    scrolls[0].jumpTo(scrolls[0].position.maxScrollExtent);
+    tabOffsets[0] = scrolls[0].offset;
+    if (unread != 0) setState(() => unread = 0);
+  }
+
   void queryChanged(String value) {
-    setState(expanded.clear);
+    tabQueries[tab] = value;
+    setState(() {});
     debounce?.cancel();
     if (tab == 0) {
       // 立即使旧请求失效，防止防抖等待期间回填上一个查询。
       epoch++;
-      debounce = Timer(const Duration(milliseconds: 400), () => load());
+      timelineSearch.events.clear();
+      timelineSearch.hasOlder = false;
+      timelineSearch.cutoff = null;
+      loading = value.trim().isNotEmpty;
+      if (value.trim().isNotEmpty) {
+        debounce = Timer(const Duration(milliseconds: 400), () => load());
+      } else {
+        unawaited(load());
+      }
     }
   }
 
@@ -177,11 +268,34 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   void toggle(String id) => setState(() {
     if (!expanded.remove(id)) expanded.add(id);
   });
+  void selectTab(int next) {
+    if (next == tab) return;
+    debounce?.cancel();
+    tabQueries[tab] = search.text;
+    if (scroll.hasClients) tabOffsets[tab] = scroll.offset;
+    setState(() {
+      tab = next;
+      // 旧SaveableStateProvider恢复查询和列表；remember展开集随标签离开释放。
+      expanded.clear();
+      search.text = tabQueries[next];
+      epoch++;
+      loading = false;
+    });
+    final item = widget.owner.catalog?.conversations
+        .where((c) => c.id == widget.id)
+        .firstOrNull;
+    if (audit == null ||
+        item?.revision != page.revision ||
+        identical(page, timelineSearch) && page.query != search.text.trim()) {
+      unawaited(load());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final messages = snapshot?.messages ?? <ConversationMessage>[];
-    final query = search.text.toLowerCase();
+    final query = search.text.trim().toLowerCase();
     final filteredMessages = messages
         .where(
           (m) => '${m.role} ${m.roleName} ${m.model} ${m.content}'
@@ -200,7 +314,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         ? filteredMessages.map((m) => m.id).toList()
         : filteredEvents.map((e) => e['eventId'] as String).toList();
     final allOpen = count > 0 && ids.every(expanded.contains);
-    final older = tab != 1 && audit?['hasOlder'] == true;
+    final older = tab != 1 && page.hasOlder;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -221,15 +335,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                         selected: tab == i,
                         button: true,
                         child: InkWell(
-                          onTap: () {
-                            debounce?.cancel();
-                            setState(() {
-                              tab = i;
-                              expanded.clear();
-                              search.clear();
-                            });
-                            unawaited(load());
-                          },
+                          onTap: () => selectTab(i),
                           child: Column(
                             children: [
                               Padding(
@@ -311,7 +417,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                       children: [
                         Expanded(
                           child: Text(
-                            '${tab == 2 ? '已加载事件：' : ''}匹配 $count / $total',
+                            '${tab == 2 || tab == 0 && search.text.trim().isEmpty ? '已加载事件：' : ''}匹配 $count / $total',
                             style: TextStyle(
                               fontSize: 11,
                               height: 16 / 11,
@@ -347,6 +453,22 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                 ),
               ),
               if (loading) const LinearProgressIndicator(minHeight: 2),
+              if (tab == 0 && search.text.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    error != null
+                        ? '搜索未完成，已找到的结果保留；请重试，不能将此状态视为没有匹配。'
+                        : '搜索全部已记录事件与文本附件；空格分隔多个关键词。结果为搜索开始时的历史，清空后可重新搜索。',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 16 / 12,
+                      color: error != null
+                          ? colors.error
+                          : colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               if (error != null)
                 Row(
                   children: [
@@ -363,62 +485,115 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                   ],
                 ),
               Expanded(
-                child: count == 0 && !loading
-                    ? Center(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    count == 0 && !loading && !older
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(28),
+                              child: Text(
+                                search.text.isNotEmpty
+                                    ? '当前搜索范围内没有匹配项'
+                                    : tab == 1
+                                    ? '当前对话还没有可显示的消息'
+                                    : '当前对话尚无审计事件',
+                                style: TextStyle(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            key: ValueKey('history-details-list-$tab'),
+                            controller: scroll,
+                            padding: const EdgeInsets.only(bottom: 18),
+                            itemCount:
+                                count + (older ? 1 : 0) + (count == 0 ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (count == 0 && index == 0) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text('已加载的事件中没有匹配结果，可继续加载更早的事件。'),
+                                );
+                              }
+                              if (older && index == (count == 0 ? 1 : 0)) {
+                                return TextButton(
+                                  onPressed: loading
+                                      ? null
+                                      : () => load(older: true),
+                                  child: Text(
+                                    loading
+                                        ? '正在加载更早事件'
+                                        : identical(page, timelineSearch)
+                                        ? '继续搜索'
+                                        : '加载更早事件',
+                                  ),
+                                );
+                              }
+                              final offset = index - (older ? 1 : 0);
+                              if (tab == 1) {
+                                final m = filteredMessages[offset];
+                                return _MessageCard(
+                                  message: m,
+                                  open: expanded.contains(m.id),
+                                  onTap: () => toggle(m.id),
+                                  onEdit: widget.owner.busy
+                                      ? null
+                                      : () => dialog(
+                                          _RevisionDialog(
+                                            owner: widget.owner,
+                                            item: snapshot!.conversation,
+                                            message: m,
+                                          ),
+                                        ),
+                                );
+                              }
+                              final e = filteredEvents[offset];
+                              return _EventCard(
+                                key: ValueKey(e['eventId']),
+                                event: e,
+                                raw: tab == 2,
+                                open: expanded.contains(e['eventId']),
+                                onTap: () => toggle(e['eventId'] as String),
+                                owner: widget.owner,
+                                id: widget.id,
+                              );
+                            },
+                          ),
+                    if (tab == 0 && search.text.trim().isEmpty && unread > 0)
+                      Align(
+                        alignment: Alignment.bottomCenter,
                         child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Text(
-                            search.text.isNotEmpty
-                                ? '当前搜索范围内没有匹配项'
-                                : tab == 1
-                                ? '当前对话还没有可显示的消息'
-                                : '当前对话尚无审计事件',
-                            style: TextStyle(color: colors.onSurfaceVariant),
+                          padding: const EdgeInsets.all(12),
+                          child: Material(
+                            color: colors.primary,
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              onTap: jumpLatest,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                child: Text(
+                                  '$unread 条新事件',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 20 / 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        itemCount: count + (older ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (older && index == 0) {
-                            return TextButton(
-                              onPressed: loading
-                                  ? null
-                                  : () => load(older: true),
-                              child: Text(loading ? '正在加载更早事件' : '加载更早事件'),
-                            );
-                          }
-                          final offset = index - (older ? 1 : 0);
-                          if (tab == 1) {
-                            final m = filteredMessages[offset];
-                            return _MessageCard(
-                              message: m,
-                              open: expanded.contains(m.id),
-                              onTap: () => toggle(m.id),
-                              onEdit: widget.owner.busy
-                                  ? null
-                                  : () => dialog(
-                                      _RevisionDialog(
-                                        owner: widget.owner,
-                                        item: snapshot!.conversation,
-                                        message: m,
-                                      ),
-                                    ),
-                            );
-                          }
-                          final e = filteredEvents[offset];
-                          return _EventCard(
-                            key: ValueKey(e['eventId']),
-                            event: e,
-                            raw: tab == 2,
-                            open: expanded.contains(e['eventId']),
-                            onTap: () => toggle(e['eventId'] as String),
-                            owner: widget.owner,
-                            id: widget.id,
-                          );
-                        },
                       ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -559,6 +734,13 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 }
 
+class _HistoryAuditPage {
+  final events = <Map<String, dynamic>>[];
+  String query = '';
+  bool hasOlder = false;
+  int? revision, cutoff;
+}
+
 class _DetailsCard extends StatelessWidget {
   const _DetailsCard({required this.child, required this.onTap});
   final Widget child;
@@ -683,66 +865,149 @@ class _EventCard extends StatelessWidget {
   final ChatController owner;
   final String id;
   @override
-  Widget build(BuildContext context) => _DetailsCard(
-    onTap: onTap,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${event['category']} / ${event['eventType']}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 16 / 12,
-                  color: Theme.of(context).colorScheme.primary,
+  Widget build(BuildContext context) => raw
+      ? _raw(context)
+      : _DetailsCard(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    '${event['sequence']}'.padLeft(5, '0'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 16 / 11,
+                      fontFamily: 'monospace',
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${event['category']} / ${event['eventType']}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _eventTime(event['recordedAt'] as int),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      height: 16 / 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  Icon(open ? Icons.expand_less : Icons.expand_more, size: 18),
+                ],
+              ),
+              const SizedBox(height: 7),
+              Text(
+                event['summary'] as String,
+                maxLines: open ? null : 2,
+                overflow: open ? TextOverflow.clip : TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, height: 20 / 14),
+              ),
+              if (open) ...[
+                const Divider(),
+                SelectionArea(
+                  child: Text(
+                    const JsonEncoder.withIndent('  ').convert(event),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                _AuditPayload(owner: owner, id: id, event: event),
+              ],
+            ],
+          ),
+        );
+
+  Widget _raw(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: open ? colors.surfaceContainerLow : colors.surface,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Text(
+                  '${event['sequence']}'.padLeft(5, ' '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontFamily: 'monospace',
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-            Text(
-              '${event['sequence']}'.padLeft(5, '0'),
-              style: const TextStyle(
-                fontSize: 11,
-                height: 16 / 11,
-                fontFamily: 'monospace',
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${event['category']} / ${event['eventType']}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w500,
+                        color: colors.primary,
+                      ),
+                    ),
+                    SelectionArea(
+                      child: Text(
+                        open
+                            ? const JsonEncoder.withIndent('  ').convert(event)
+                            : jsonEncode(event),
+                        maxLines: open ? null : 3,
+                        overflow: open
+                            ? TextOverflow.clip
+                            : TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontFamily: 'monospace',
+                          color: colors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(open ? Icons.expand_less : Icons.expand_more, size: 18),
-          ],
-        ),
-        const SizedBox(height: 7),
-        Text(
-          DateTime.fromMillisecondsSinceEpoch(event['recordedAt'] as int)
-              .toString(),
-          style: const TextStyle(fontSize: 11, height: 16 / 11),
-        ),
-        const SizedBox(height: 7),
-        Text(
-          raw ? jsonEncode(event) : event['summary'] as String,
-          maxLines: raw ? 3 : 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 14, height: 20 / 14),
-        ),
-        if (open) ...[
-          const Divider(),
-          SelectionArea(
-            child: Text(
-              const JsonEncoder.withIndent('  ').convert(event),
-              style: const TextStyle(
-                fontSize: 12,
-                height: 16 / 12,
-                fontFamily: 'monospace',
+              Icon(
+                open ? Icons.expand_less : Icons.expand_more,
+                size: 18,
+                color: colors.onSurfaceVariant,
               ),
-            ),
+            ],
           ),
-          if (!raw) _AuditPayload(owner: owner, id: id, event: event),
-        ],
-      ],
-    ),
-  );
+        ),
+      ),
+    );
+  }
+}
+
+String _eventTime(int timestamp) {
+  final time = DateTime.fromMillisecondsSinceEpoch(timestamp);
+  String pad(int value) => value.toString().padLeft(2, '0');
+  return '${pad(time.month)}-${pad(time.day)} ${pad(time.hour)}:${pad(time.minute)}:${pad(time.second)}';
 }
 
 class _PagedText extends StatefulWidget {

@@ -2,6 +2,229 @@ use super::*;
 use crate::conversation_audit;
 use base64::{Engine, engine::general_purpose::STANDARD};
 
+pub(super) fn audit_payloads(runtime: &Runtime, id: &str) -> Vec<(String, Value)> {
+    runtime.with_store(|store| {
+        let c = store.connection.lock().unwrap();
+        Ok(c.prepare("SELECT event_type,payload FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence")
+            .unwrap().query_map([id], |row| Ok((row.get::<_,String>(0)?,
+                serde_json::from_str::<Value>(&row.get::<_,String>(1)?).unwrap())))
+            .unwrap().collect::<Result<Vec<_>,_>>().unwrap())
+    }).unwrap()
+}
+
+#[tokio::test]
+async fn provider_audit_freezes_the_sent_body_and_redacts_credentials_before_storage() {
+    let dir = Directory::new();
+    let (endpoint, worker) = fixture(1, response("合成回复", "stop"));
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    configure(&runtime, endpoint);
+    let id = runtime.create_conversation().unwrap();
+    let prepared = runtime.prepare_conversation(id.clone()).unwrap();
+    let credentials = json!({"version":3,"apiKey":"local-fixture","headers":{"x-diagnostic":"diagnostic-secret"},"usePool":false,"keys":[],"rotation":"ROUND_ROBIN"}).to_string();
+    let run = runtime
+        .start_conversation(
+            prepared,
+            "记录JSON {\"password\":\"synthetic-password\"} local-fixture diagnostic-secret 😀"
+                .into(),
+            credentials,
+        )
+        .unwrap();
+    let terminal = loop {
+        let event = run.next_event().await.unwrap().unwrap();
+        if matches!(
+            event,
+            chat::ChatEvent::Completed { .. } | chat::ChatEvent::Failed(_)
+        ) {
+            break event;
+        }
+    };
+    assert!(matches!(terminal, chat::ChatEvent::Completed { .. }));
+    // 不用cancel_and_wait掩盖锁释放；收到产品终态即可开始下一轮准备。
+    drop(runtime.prepare_conversation(id.clone()).unwrap());
+    let sent = worker.join().unwrap().remove(0);
+    let events = audit_payloads(&runtime, &id);
+    let provider: Vec<_> = events
+        .iter()
+        .filter(|(kind, _)| {
+            kind.starts_with("PROVIDER_") || kind == "FINAL_PROVIDER_SEMANTIC_REQUEST"
+        })
+        .collect();
+    assert_eq!(
+        provider
+            .iter()
+            .map(|(kind, _)| kind.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "FINAL_PROVIDER_SEMANTIC_REQUEST",
+            "PROVIDER_ATTEMPT_STARTED",
+            "PROVIDER_RESPONSE_HEADERS",
+            "PROVIDER_ATTEMPT_FINISHED"
+        ]
+    );
+    let snapshot = &provider[0].1;
+    assert_eq!(snapshot["requestBody"]["seed"], sent["seed"]);
+    assert_eq!(snapshot["requestBody"]["model"], sent["model"]);
+    assert_eq!(
+        snapshot["requestBody"]["messages"]
+            .as_array()
+            .unwrap()
+            .len(),
+        sent["messages"].as_array().unwrap().len()
+    );
+    let encoded = snapshot.to_string();
+    assert!(!encoded.contains("local-fixture"));
+    assert!(!encoded.contains("diagnostic-secret"));
+    assert!(!encoded.contains("synthetic-password"));
+    assert!(encoded.contains("😀"));
+    assert_eq!(provider[2].1["responseStatusCode"], 200);
+    assert_eq!(provider[3].1["terminalState"], "COMPLETED");
+    assert_eq!(provider[3].1["retrySafety"], "NO_AUTOMATIC_RETRY");
+    assert_eq!(events.last().unwrap().0, "RUN_FINISHED");
+    runtime.export_conversation_audit(id, "zip".into()).unwrap();
+    runtime.close();
+}
+
+#[test]
+fn audit_redaction_preserves_unicode_and_covers_inline_credentials() {
+    let input = r#"正文😀 {"password":"synthetic-pass","content":"下一段"} api_key=test-key&suffix=保留 Bearer test-token Basic dXNlcjpwYXNz https://user:pass@example.test/path?signature=synthetic-signature&mode=保留"#;
+    let masked = conversation_audit::redact(input);
+    for secret in [
+        "synthetic-pass",
+        "test-key",
+        "test-token",
+        "dXNlcjpwYXNz",
+        "user:pass",
+        "synthetic-signature",
+    ] {
+        assert!(!masked.contains(secret), "{masked}");
+    }
+    for text in [
+        "正文😀",
+        "下一段",
+        "suffix=保留",
+        "mode=保留",
+        "example.test/path",
+    ] {
+        assert!(masked.contains(text), "{masked}");
+    }
+    assert_eq!(conversation_audit::redact(&masked), masked);
+    assert!(!conversation_audit::redact("before -----BEGIN RSA PRIVATE KEY-----\nprivate-fixture\n-----END RSA PRIVATE KEY----- after").contains("private-fixture"));
+}
+
+#[tokio::test]
+async fn provider_attempt_failure_and_cancel_have_one_terminal_before_run_end() {
+    for cancelled in [false, true] {
+        let dir = Directory::new();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+        configure(
+            &runtime,
+            format!("http://{}", listener.local_addr().unwrap()),
+        );
+        let (entered, received) = tokio::sync::oneshot::channel();
+        let worker = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            let mut bytes = Vec::new();
+            let mut buffer = [0; 4096];
+            loop {
+                let count = socket.read(&mut buffer).unwrap();
+                assert!(count > 0);
+                bytes.extend_from_slice(&buffer[..count]);
+                if let Some(end) = bytes.windows(4).position(|b| b == b"\r\n\r\n") {
+                    let headers = String::from_utf8_lossy(&bytes[..end]).to_ascii_lowercase();
+                    let len: usize = headers
+                        .lines()
+                        .find_map(|l| l.strip_prefix("content-length: "))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    if bytes.len() >= end + 4 + len {
+                        break;
+                    }
+                }
+            }
+            let _ = entered.send(());
+            if cancelled {
+                std::thread::sleep(Duration::from_millis(80));
+            } else {
+                socket.write_all(b"HTTP/1.1 503 Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+            }
+        });
+        let id = runtime.create_conversation().unwrap();
+        let run = runtime
+            .start_conversation(
+                runtime.prepare_conversation(id.clone()).unwrap(),
+                "合成测试".into(),
+                payload(),
+            )
+            .unwrap();
+        received.await.unwrap();
+        if cancelled {
+            run.cancel_and_wait().await;
+        }
+        let events = drain(&run).await;
+        assert!(if cancelled {
+            matches!(events.last(), Some(chat::ChatEvent::Cancelled))
+        } else {
+            matches!(events.last(),Some(chat::ChatEvent::Failed(e)) if e.http_status==Some(503))
+        });
+        worker.join().unwrap();
+        let events = audit_payloads(&runtime, &id);
+        let finishes: Vec<_> = events
+            .iter()
+            .filter(|(kind, _)| kind == "PROVIDER_ATTEMPT_FINISHED")
+            .collect();
+        assert_eq!(finishes.len(), 1);
+        assert_eq!(
+            finishes[0].1["terminalState"],
+            if cancelled { "CANCELLED" } else { "FAILED" }
+        );
+        assert_eq!(events.last().unwrap().0, "RUN_FINISHED");
+        runtime.close();
+    }
+}
+
+#[tokio::test]
+async fn rejected_attempt_audit_rolls_back_semantic_request_and_prevents_http() {
+    let dir = Directory::new();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    configure(
+        &runtime,
+        format!("http://{}", listener.local_addr().unwrap()),
+    );
+    let id = runtime.create_conversation().unwrap();
+    runtime.with_store(|s| {
+        s.connection.lock().unwrap().execute_batch("CREATE TRIGGER reject_attempt BEFORE INSERT ON conversation_audit_events WHEN NEW.event_type='PROVIDER_ATTEMPT_STARTED' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        Ok(())
+    }).unwrap();
+    let run = runtime
+        .start_conversation(
+            runtime.prepare_conversation(id.clone()).unwrap(),
+            "合成测试".into(),
+            payload(),
+        )
+        .unwrap();
+    assert!(matches!(
+        drain(&run).await.last(),
+        Some(chat::ChatEvent::Failed(_))
+    ));
+    assert_eq!(
+        listener.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    assert!(
+        !audit_payloads(&runtime, &id)
+            .iter()
+            .any(|(kind, _)| kind == "FINAL_PROVIDER_SEMANTIC_REQUEST")
+    );
+    runtime.close();
+}
+
 #[test]
 fn audit_notes_search_unicode_paging_signature_and_reopen_are_real() {
     let dir = Directory::new();
