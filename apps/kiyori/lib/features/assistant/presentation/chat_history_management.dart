@@ -158,12 +158,12 @@ Future<void> _showHistoryManagement(
             .where((c) => c.id == item.id)
             .firstOrNull;
         final all = owner.catalog?.conversations ?? <Conversation>[];
-        final scoped = owner.preferences?.historyMode != 'folder';
+        final mode = owner.preferences?.historyMode ?? 'folder';
         bool same(Conversation c) =>
             current != null &&
             c.folder == current.folder &&
             c.pinned == current.pinned &&
-            (!scoped || c.characterId == current.characterId);
+            historySameSortBinding(mode, c.characterId, current.characterId);
         final visibleIds = visible?.map((c) => c.id).toSet();
         final bucket = all
             .where(

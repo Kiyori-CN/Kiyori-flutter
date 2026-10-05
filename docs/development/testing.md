@@ -38,6 +38,10 @@ conversations_audit_tests覆盖schema19迁移保留、Unicode正文分页、全�
 备注重开、链篡改拒绝与ZIP签名/文件哈希。chat_history_states/parity从真实FFI/SQLite
 验证滑动96dp/禁方向阻力、草稿确认、实体与分组移除释放所属路由、设置单一语义、
 备注/导出、向下拖排及快滚首尾；chat_precision_capture补真实宿主横屏安全区边界。
+current默认与未绑定同桶覆盖列表/菜单/拖排/分组冻结，character精确桶和其它角色/
+群聊隔离、锁定/成员冲突回滚、自动默认复用未绑定历史。UI回归覆盖分支与普通行
+等高、父标题/AccountTree、展开/当前/置顶/锁定/生成语义、Oklab阈值/反向中间帧、
+触发后回位背景、PointerCancel不执行动作及动画停止后无持续帧请求。
 chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
 测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
 工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。

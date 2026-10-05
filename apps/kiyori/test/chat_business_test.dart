@@ -564,7 +564,9 @@ void main() {
       );
       await until(tester, () => find.text('对话历史').evaluate().isNotEmpty);
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('会话操作'));
+      await tester.tap(
+        find.byTooltip('管理对话 ${f.chat.snapshot!.conversation.title}'),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('编辑标题'));
       await tester.pumpAndSettle();

@@ -290,63 +290,74 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       binding: row.binding,
       onRoute: widget.onRoute,
     );
+    Widget semanticButton(Widget child, {bool manageable = false}) => Semantics(
+      label: '${row.label}, ${expanded ? '已展开' : '已收起'}',
+      button: true,
+      enabled: !widget.searching,
+      excludeSemantics: true,
+      onTap: widget.searching ? null : toggle,
+      onLongPress: manageable && !widget.searching ? manage : null,
+      child: child,
+    );
     if (character) {
       final group = widget.owner.prompts?.groups
           .where((g) => g.id == row.binding)
           .firstOrNull;
       return Padding(
         padding: const EdgeInsets.only(top: 12, bottom: 4),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: widget.searching ? null : toggle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                if (group == null)
-                  ChatCharacterAvatar(
-                    characterId: row.binding,
-                    size: 24,
-                    background: colors.primaryContainer,
-                    foreground: colors.onPrimaryContainer,
-                  )
-                else
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      shape: BoxShape.circle,
+        child: semanticButton(
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: widget.searching ? null : toggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  if (group == null)
+                    ChatCharacterAvatar(
+                      characterId: row.binding,
+                      size: 24,
+                      background: colors.primaryContainer,
+                      foreground: colors.onPrimaryContainer,
+                    )
+                  else
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.groups,
+                        size: 15,
+                        color: colors.onPrimaryContainer,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.groups,
-                      size: 15,
-                      color: colors.onPrimaryContainer,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      row.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 20 / 14,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
                     ),
                   ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    row.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      fontWeight: FontWeight.w600,
-                      color: colors.primary,
-                    ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: colors.onSurfaceVariant,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  expanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 20,
-                  color: colors.onSurfaceVariant,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -364,48 +375,51 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
               child: Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      onTap: widget.searching ? null : toggle,
-                      onLongPress: row.folder == null || widget.searching
-                          ? null
-                          : manage,
-                      borderRadius: BorderRadius.circular(12),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 48),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.folder_outlined,
-                                size: 18,
-                                color: historyTone(context, IconTone.folder),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  row.label,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 20 / 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                    child: semanticButton(
+                      InkWell(
+                        onTap: widget.searching ? null : toggle,
+                        onLongPress: row.folder == null || widget.searching
+                            ? null
+                            : manage,
+                        borderRadius: BorderRadius.circular(12),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.folder_outlined,
+                                  size: 18,
+                                  color: historyTone(context, IconTone.folder),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                expanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                size: 18,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    row.label,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 20 / 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  expanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  size: 18,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                      manageable: row.folder != null,
                     ),
                   ),
                   if (row.folder != null)
@@ -448,6 +462,17 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
     final meta = selected
         ? colors.onSecondaryContainer.withValues(alpha: .78)
         : colors.onSurfaceVariant;
+    final streaming = widget.owner.executions[item.id]?.active == true;
+    final relativeTime = historyTime(item.updatedAt);
+    final rowDescription = [
+      item.title,
+      relativeTime,
+      item.folder.isEmpty ? '未分组' : item.folder,
+      if (selected) '当前对话',
+      if (item.pinned) '已置顶',
+      if (item.locked) '已锁定',
+      if (streaming) '正在生成',
+    ].join(', ');
     void manage() => showHistoryManagement(
       context,
       widget.owner,
@@ -455,6 +480,13 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       onRoute: widget.onRoute,
       visible: widget.items,
     );
+    Future<void> select() async {
+      final route = ModalRoute.of(context);
+      if (await widget.owner.select(item.id) && route?.isActive == true) {
+        route!.navigator?.removeRoute(route);
+      }
+    }
+
     Widget button(Widget icon, String tip, VoidCallback tap) => IconButton(
       tooltip: tip,
       onPressed: enabled ? tap : null,
@@ -507,90 +539,93 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                             size: 16,
                             color: meta.withValues(alpha: .6),
                           ),
-                          '移动对话',
+                          '拖动项目 ${item.title}',
                           manage,
                         ),
                       ),
                       Expanded(
-                        child: InkWell(
+                        child: Semantics(
+                          label: rowDescription,
+                          selected: selected,
+                          button: true,
+                          enabled: enabled,
+                          excludeSemantics: true,
+                          onTap: enabled ? select : null,
                           onLongPress: enabled ? manage : null,
-                          onTap: enabled
-                              ? () async {
-                                  final r = ModalRoute.of(context);
-                                  if (await widget.owner.select(item.id) &&
-                                      r?.isActive == true) {
-                                    r!.navigator?.removeRoute(r);
-                                  }
-                                }
-                              : null,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: 48),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 8,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          item.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            height: 20 / 14,
-                                            fontWeight: selected
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                            color: foreground,
-                                          ),
-                                        ),
-                                      ),
-                                      if (widget
-                                              .owner
-                                              .executions[item.id]
-                                              ?.active ==
-                                          true) ...[
-                                        const SizedBox(width: 4),
-                                        const SizedBox.square(
-                                          dimension: 11,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 1.5,
-                                          ),
-                                        ),
-                                      ],
-                                      if (item.pinned) ...[
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          Icons.push_pin,
-                                          size: 13,
-                                          color: meta,
-                                        ),
-                                      ],
-                                      if (item.locked) ...[
-                                        const SizedBox(width: 4),
-                                        Icon(Icons.lock, size: 13, color: meta),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  if (item.parentId != null)
+                          child: InkWell(
+                            onLongPress: enabled ? manage : null,
+                            onTap: enabled ? select : null,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 48),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                                     Row(
                                       children: [
-                                        Icon(
-                                          Icons.subdirectory_arrow_right,
-                                          size: 11,
-                                          color: meta,
+                                        Flexible(
+                                          child: Text(
+                                            item.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              height: 20 / 14,
+                                              fontWeight: selected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.normal,
+                                              color: foreground,
+                                            ),
+                                          ),
                                         ),
-                                        const SizedBox(width: 3),
+                                        if (streaming) ...[
+                                          const SizedBox(width: 4),
+                                          const SizedBox.square(
+                                            dimension: 11,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                            ),
+                                          ),
+                                        ],
+                                        if (item.pinned) ...[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.push_pin,
+                                            size: 13,
+                                            color: meta,
+                                          ),
+                                        ],
+                                        if (item.locked) ...[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.lock,
+                                            size: 13,
+                                            color: meta,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        if (item.parentTitle != null) ...[
+                                          Icon(
+                                            Icons.account_tree,
+                                            size: 11,
+                                            color: meta,
+                                          ),
+                                          const SizedBox(width: 4),
+                                        ],
                                         Expanded(
                                           child: Text(
-                                            item.parentTitle ?? '',
+                                            item.parentTitle == null
+                                                ? relativeTime
+                                                : '$relativeTime · ${item.parentTitle}',
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
@@ -602,17 +637,8 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                                         ),
                                       ],
                                     ),
-                                  Text(
-                                    historyTime(item.updatedAt),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      height: 16 / 11,
-                                      color: meta,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -620,7 +646,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                       ),
                       button(
                         Icon(Icons.more_vert, size: 18, color: meta),
-                        '会话操作',
+                        '管理对话 ${item.title}',
                         manage,
                       ),
                     ],

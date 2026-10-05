@@ -33,8 +33,8 @@ pub(crate) fn move_item(tx: &Connection, id: &str, value: &str) -> Result<(), Co
             r.get(0)
         })
         .map_err(storage)?;
-    let scoped = crate::chat_preferences::read(tx)?.value.history_mode != "folder";
-    let mut ids=tx.prepare("SELECT id FROM conversations WHERE id<>?1 AND folder=?2 AND pinned=?3 AND (?4=0 OR character_id=?5) ORDER BY sort_order DESC,updated_at DESC,id").map_err(storage)?.query_map(params![id,op.folder,pinned,scoped,op.character],|r|r.get::<_,String>(0)).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+    let (scoped, include_unbound) = ordering_scope(tx, &op.character)?;
+    let mut ids=tx.prepare("SELECT id FROM conversations WHERE id<>?1 AND folder=?2 AND pinned=?3 AND (?4=0 OR character_id=?5 OR (?6 AND character_id IN ('','default_character'))) ORDER BY sort_order DESC,updated_at DESC,id").map_err(storage)?.query_map(params![id,op.folder,pinned,scoped,op.character,include_unbound],|r|r.get::<_,String>(0)).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
     let position = if let Some(anchor) = &op.anchor {
         let revision: u32 = tx
             .query_row(
@@ -70,6 +70,15 @@ pub(crate) fn move_item(tx: &Connection, id: &str, value: &str) -> Result<(), Co
         .map_err(storage)?;
     }
     Ok(())
+}
+
+/// 当前默认角色包含未绑定历史；按角色分组仍保持两个独立排序桶。
+pub(crate) fn ordering_scope(tx: &Connection, binding: &str) -> Result<(bool, bool), CoreError> {
+    let mode = crate::chat_preferences::read(tx)?.value.history_mode;
+    Ok((
+        mode != "folder",
+        mode == "current" && (binding.is_empty() || binding == crate::prompts::DEFAULT_CHARACTER),
+    ))
 }
 
 pub(crate) fn validate_binding(tx: &Connection, id: &str) -> Result<(), CoreError> {
@@ -210,6 +219,9 @@ pub(crate) struct GroupOperation {
     pub next_name: String,
     /// None为全部角色，Some("")为未绑定；不能以空值混淆这两个作用域。
     pub binding: Option<String>,
+    /// 弹层打开时冻结；仅默认角色允许包含未绑定，旧请求默认精确作用域。
+    #[serde(default)]
+    pub include_unbound: bool,
     #[serde(default)]
     pub members: BTreeMap<String, u32>,
 }
@@ -220,6 +232,9 @@ pub(crate) fn apply_group(
     value: &str,
 ) -> Result<Vec<std::fs::File>, CoreError> {
     let op: GroupOperation = serde_json::from_str(value).map_err(|_| invalid("分组操作无效"))?;
+    if op.include_unbound && op.binding.as_deref() != Some(crate::prompts::DEFAULT_CHARACTER) {
+        return Err(invalid("仅默认角色可以包含未绑定对话"));
+    }
     if op.name.trim().is_empty()
         || op.name.len() > 512
         || !matches!(
@@ -232,7 +247,7 @@ pub(crate) fn apply_group(
     if op.action == "create" {
         let binding = op.binding.as_deref().unwrap_or("");
         validate_binding(tx, binding)?;
-        if tx.query_row("SELECT EXISTS(SELECT 1 FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2))",params![op.name.trim(),op.binding],|r|r.get::<_,bool>(0)).map_err(storage)? { return Err(invalid("此作用域已有同名分组")); }
+        if tx.query_row("SELECT EXISTS(SELECT 1 FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2 OR (?3 AND character_id='')))",params![op.name.trim(),op.binding,op.include_unbound],|r|r.get::<_,bool>(0)).map_err(storage)? { return Err(invalid("此作用域已有同名分组")); }
         tx.execute(
             "INSERT OR IGNORE INTO conversation_folders(name) VALUES(?1)",
             [op.name.trim()],
@@ -241,7 +256,7 @@ pub(crate) fn apply_group(
         create(tx, binding, op.name.trim())?;
         return Ok(Vec::new());
     }
-    let members: BTreeMap<String,u32> = tx.prepare("SELECT id,revision FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2)").map_err(storage)?.query_map(params![op.name,op.binding],|r|Ok((r.get(0)?,r.get(1)?))).map_err(storage)?.collect::<Result<_,_>>().map_err(storage)?;
+    let members: BTreeMap<String,u32> = tx.prepare("SELECT id,revision FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2 OR (?3 AND character_id=''))").map_err(storage)?.query_map(params![op.name,op.binding,op.include_unbound],|r|Ok((r.get(0)?,r.get(1)?))).map_err(storage)?.collect::<Result<_,_>>().map_err(storage)?;
     if members != op.members {
         return Err(invalid("分组内容已变化，请重新打开后操作"));
     }
@@ -257,7 +272,7 @@ pub(crate) fn apply_group(
         if next == op.name {
             return Ok(Vec::new());
         }
-        if tx.query_row("SELECT EXISTS(SELECT 1 FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2))",params![next,op.binding],|r|r.get::<_,bool>(0)).map_err(storage)? { return Err(invalid("此作用域已有同名分组")); }
+        if tx.query_row("SELECT EXISTS(SELECT 1 FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2 OR (?3 AND character_id='')))",params![next,op.binding,op.include_unbound],|r|r.get::<_,bool>(0)).map_err(storage)? { return Err(invalid("此作用域已有同名分组")); }
         tx.execute(
             "INSERT OR IGNORE INTO conversation_folders(name) VALUES(?1)",
             [next],

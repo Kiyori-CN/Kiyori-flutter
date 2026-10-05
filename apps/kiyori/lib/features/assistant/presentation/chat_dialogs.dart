@@ -10,6 +10,8 @@ import 'chat_model_popup.dart';
 import 'chat_modal_session.dart';
 import 'chat_characters.dart';
 import 'chat_history_management.dart';
+import 'chat_history_groups.dart'
+    show historyIncludesUnbound, historyMatchesBinding;
 import 'chat_history_list.dart';
 import 'chat_history_widgets.dart';
 import 'chat_panel_route.dart';
@@ -545,9 +547,17 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
     for (final item in widget.owner.catalog?.conversations ?? <Conversation>[])
       if ((matches == null || matches!.contains(item.id)) &&
           (widget.owner.preferences?.historyMode != 'current' ||
-              item.characterId ==
-                  (widget.owner.prompts?.activeGroup ??
-                      widget.owner.character?.id)))
+              historyMatchesBinding(
+                item.characterId,
+                widget.owner.prompts?.activeGroup ??
+                    widget.owner.character?.id ??
+                    '',
+                historyIncludesUnbound(
+                  widget.owner,
+                  widget.owner.prompts?.activeGroup ??
+                      widget.owner.character?.id,
+                ),
+              )))
         item,
   ];
 

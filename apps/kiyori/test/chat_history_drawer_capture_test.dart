@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_management.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_details.dart';
+import 'package:kiyori/features/assistant/presentation/chat_history_swipe.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_business_test.dart' show ChatFixture, until;
@@ -22,6 +23,14 @@ void main() {
     await tester.runAsync(() async {
       await f.open();
       await f.chat.send('对话历史视觉验证');
+      await f.chat.change(f.chat.snapshot!.conversation, 'rename', '分支来源对话');
+      await f.chat.changeMessage(
+        f.chat.snapshot!.conversation,
+        f.chat.snapshot!.messages.last,
+        'branch',
+        '',
+      );
+      await f.chat.change(f.chat.snapshot!.conversation, 'pinned', 'true');
       await f.chat.setPreference(
         'history_group',
         '{"action":"create","name":"学习资料","binding":"default_character"}',
@@ -79,11 +88,49 @@ void main() {
         );
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-history');
+        if (scenario.$1.startsWith('phone-')) {
+          for (final direction in [1.0, -1.0]) {
+            final pointer = await tester.startGesture(
+              tester.getCenter(find.byType(HistorySwipe).first),
+            );
+            await pointer.moveBy(Offset(20 * direction, 0));
+            await tester.pump();
+            await pointer.moveBy(Offset(140 * direction, 0));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 90));
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '${scenario.$1}-swipe-${direction > 0 ? 'edit' : 'delete'}',
+            );
+            await pointer.cancel();
+            await tester.pumpAndSettle();
+            expect(find.text('确认删除聊天'), findsNothing);
+            expect(find.text('编辑标题'), findsNothing);
+          }
+        }
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
         showHistorySettings(host, f.chat);
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-settings');
+        if (scenario.$1 == 'narrow-large' || scenario.$1 == 'landscape') {
+          await tester.scrollUntilVisible(
+            find.text('自动切换聊天'),
+            100,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('自动切换聊天').hitTestable(), findsOneWidget);
+          expect(find.text('完成').hitTestable(), findsOneWidget);
+          await captureUi(
+            tester,
+            boundary,
+            output,
+            '${scenario.$1}-settings-scrolled',
+          );
+        }
         await tester.tap(find.text('完成'));
         await tester.pumpAndSettle();
         showHistoryManagement(host, f.chat, f.chat.snapshot!.conversation);
@@ -121,6 +168,22 @@ void main() {
           output,
           '${scenario.$1}-group-delete',
         );
+        if (scenario.$1 == 'narrow-large' || scenario.$1 == 'landscape') {
+          await tester.scrollUntilVisible(
+            find.text('删除分组和所有对话'),
+            100,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('删除分组和所有对话').hitTestable(), findsOneWidget);
+          expect(find.text('取消').hitTestable(), findsOneWidget);
+          await captureUi(
+            tester,
+            boundary,
+            output,
+            '${scenario.$1}-group-delete-scrolled',
+          );
+        }
         await tester.tap(find.text('取消'));
         await tester.pumpAndSettle();
         await tester.pumpWidget(

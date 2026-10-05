@@ -539,21 +539,7 @@ impl AppStore {
         )
         .map_err(storage)?;
         if crate::chat_preferences::read(&tx)?.value.auto_chat {
-            use rusqlite::OptionalExtension;
-            let recent: Option<String> = tx.query_row("SELECT id FROM conversations WHERE character_id=?1 ORDER BY updated_at DESC,id DESC LIMIT 1", [id], |r| r.get(0)).optional().map_err(storage)?;
-            let selected = match recent {
-                Some(recent) => recent,
-                None => {
-                    let created = identity(&tx)?;
-                    tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision) VALUES(?1,'新对话',?2,?3,?3,1)", params![created,id,now()]).map_err(storage)?;
-                    created
-                }
-            };
-            tx.execute(
-                "UPDATE conversation_state SET active_id=?1 WHERE id=1",
-                [selected],
-            )
-            .map_err(storage)?;
+            history::select_latest(&tx, id)?;
         }
         tx.commit().map_err(storage)
     }
@@ -692,8 +678,8 @@ impl AppStore {
                     )
                     .map_err(storage)?;
                 // 排序范围必须与历史投影一致；角色模式不能改动其它角色的序号或revision。
-                let scoped = crate::chat_preferences::read(&tx)?.value.history_mode != "folder";
-                let mut ids=tx.prepare("SELECT id FROM conversations WHERE folder=?1 AND pinned=?2 AND (?3=0 OR character_id=?4) ORDER BY sort_order DESC,updated_at DESC,id").map_err(storage)?.query_map(params![folder,pinned,scoped,character],|r|r.get::<_,String>(0)).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+                let (scoped, include_unbound) = history::ordering_scope(&tx, &character)?;
+                let mut ids=tx.prepare("SELECT id FROM conversations WHERE folder=?1 AND pinned=?2 AND (?3=0 OR character_id=?4 OR (?5 AND character_id IN ('','default_character'))) ORDER BY sort_order DESC,updated_at DESC,id").map_err(storage)?.query_map(params![folder,pinned,scoped,character,include_unbound],|r|r.get::<_,String>(0)).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
                 let position = ids
                     .iter()
                     .position(|entry| entry == id)

@@ -16,6 +16,131 @@ import 'support/memory_audit_exchange.dart';
 
 void main() {
   testWidgets(
+    'current default shares unbound list sorting and frozen group scope',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final semantics = tester.ensureSemantics();
+      final f = ChatFixture();
+      late String unbound, bound;
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.setPreference('create_folder', '共同分组');
+        await f.chat.create();
+        unbound = f.chat.snapshot!.conversation.id;
+        await f.chat.change(
+          f.chat.snapshot!.conversation,
+          'metadata',
+          jsonEncode({'title': '遗留未绑定', 'folder': '共同分组', 'character': ''}),
+        );
+        await f.chat.create();
+        bound = f.chat.snapshot!.conversation.id;
+        await f.chat.change(
+          f.chat.snapshot!.conversation,
+          'metadata',
+          jsonEncode({'title': '默认卡对话', 'folder': '共同分组'}),
+        );
+        await f.chat.setPreference('history_mode', 'current');
+      });
+      try {
+        late BuildContext host;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Builder(
+              builder: (context) {
+                host = context;
+                return const Scaffold();
+              },
+            ),
+          ),
+        );
+        showChatHistory(host, f.chat);
+        await tester.pumpAndSettle();
+        expect(find.text('遗留未绑定'), findsOneWidget);
+        expect(find.text('默认卡对话'), findsOneWidget);
+        expect(find.bySemanticsLabel('共同分组, 已展开'), findsOneWidget);
+        await tester.tap(find.bySemanticsLabel('共同分组, 已展开'));
+        await tester.pumpAndSettle();
+        expect(find.bySemanticsLabel('共同分组, 已收起'), findsOneWidget);
+        expect(find.text('遗留未绑定'), findsNothing);
+        await tester.tap(find.bySemanticsLabel('共同分组, 已收起'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('管理对话 默认卡对话'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('置底'));
+        await until(tester, () => !f.chat.changing);
+        await tester.pumpAndSettle();
+        expect(f.chat.error, isNull);
+        expect(f.chat.catalog!.conversations.map((c) => c.id), [
+          unbound,
+          bound,
+        ]);
+        await tester.tap(find.byTooltip('关闭'));
+        await tester.pumpAndSettle();
+        showHistoryFolderEditor(
+          host,
+          f.chat,
+          initial: '共同分组',
+          binding: 'default_character',
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).last, '已改名');
+        await tester.runAsync(() async {
+          await f.chat.setPreference('history_mode', 'character');
+        });
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('保存'));
+        await until(tester, () => !f.chat.savingPreference);
+        await tester.pumpAndSettle();
+        expect(find.text('重命名分组'), findsNothing);
+        expect(
+          f.chat.catalog!.conversations.every((c) => c.folder == '已改名'),
+          isTrue,
+        );
+        expect(find.bySemanticsLabel('未绑定, 已展开'), findsOneWidget);
+        await tester.runAsync(() async {
+          await f.chat.setPreference('history_mode', 'current');
+        });
+        await tester.pumpAndSettle();
+        showHistoryFolderEditor(
+          host,
+          f.chat,
+          initial: '已改名',
+          binding: 'default_character',
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).last, '冲突不能保存');
+        await tester.runAsync(() async {
+          await f.chat.create();
+          await f.chat.change(f.chat.snapshot!.conversation, 'folder', '已改名');
+        });
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('保存'));
+        await until(tester, () => !f.chat.savingPreference);
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byType(HistoryAlert),
+            matching: find.textContaining('分组内容已变化'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.widgetWithText(TextField, '冲突不能保存'), findsOneWidget);
+        expect(
+          f.chat.catalog!.conversations.every((c) => c.folder == '已改名'),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+        semantics.dispose();
+      }
+    },
+  );
+  testWidgets(
     'legacy barrier taps dismiss idle confirmations and protect editor drafts',
     (tester) async {
       final f = ChatFixture();
@@ -516,6 +641,233 @@ void main() {
       '2025-12-31',
     );
   });
+  testWidgets(
+    'branch history keeps one metadata line and announces exact row states',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.send('真实分支来源');
+        expect(
+          await f.chat.change(f.chat.snapshot!.conversation, 'rename', '来源对话'),
+          isTrue,
+        );
+        expect(
+          await f.chat.changeMessage(
+            f.chat.snapshot!.conversation,
+            f.chat.snapshot!.messages.last,
+            'branch',
+            '',
+          ),
+          isTrue,
+        );
+        expect(
+          await f.chat.change(f.chat.snapshot!.conversation, 'pinned', 'true'),
+          isTrue,
+        );
+        expect(
+          await f.chat.change(f.chat.snapshot!.conversation, 'locked', 'true'),
+          isTrue,
+        );
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ChatHistoryList(
+                owner: f.chat,
+                items: f.chat.catalog!.conversations,
+                searching: false,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final branch = f.chat.snapshot!.conversation;
+        final parent = f.chat.catalog!.conversations.singleWhere(
+          (item) => item.id == branch.parentId,
+        );
+        expect(branch.parentTitle, '来源对话');
+        expect(find.byIcon(Icons.account_tree), findsOneWidget);
+        expect(find.text('刚刚 · 来源对话'), findsOneWidget);
+        expect(
+          tester.getSize(find.byKey(ValueKey('swipe-${branch.id}'))).height,
+          tester.getSize(find.byKey(ValueKey('swipe-${parent.id}'))).height,
+        );
+        final label = '${branch.title}, 刚刚, 未分组, 当前对话, 已置顶, 已锁定';
+        expect(
+          tester.getSemantics(find.bySemanticsLabel(label)),
+          matchesSemantics(
+            label: label,
+            isButton: true,
+            isSelected: true,
+            hasSelectedState: true,
+            hasEnabledState: true,
+            isEnabled: true,
+            hasTapAction: true,
+            hasLongPressAction: true,
+          ),
+        );
+        expect(find.byTooltip('拖动项目 ${branch.title}'), findsOneWidget);
+        await tester.tap(find.byTooltip('管理对话 ${branch.title}'));
+        await tester.pumpAndSettle();
+        expect(find.text('管理对话'), findsOneWidget);
+        expect(find.text('解锁对话'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+        semantics.dispose();
+      }
+    },
+  );
+  testWidgets(
+    'triggered swipe keeps action color during reset and cancel never triggers',
+    (tester) async {
+      var edits = 0, deletes = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                child: HistorySwipe(
+                  edit: () => edits++,
+                  delete: () => deletes++,
+                  child: const SizedBox(
+                    height: 52,
+                    child: ColoredBox(color: Colors.white, child: Text('row')),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final scheme = Theme.of(tester.element(find.byType(HistorySwipe)))
+          .colorScheme;
+      Future<void> gesture(double direction, {bool cancel = false}) async {
+        final pointer = await tester.startGesture(
+          tester.getCenter(find.text('row')),
+        );
+        await pointer.moveBy(Offset(20 * direction, 0));
+        await tester.pump();
+        await pointer.moveBy(Offset(140 * direction, 0));
+        await tester.pump();
+        if (cancel) {
+          await pointer.cancel();
+        } else {
+          await pointer.up();
+        }
+        await tester.pump();
+      }
+
+      for (final direction in [1.0, -1.0]) {
+        await gesture(direction);
+        await tester.pump(const Duration(milliseconds: 200));
+        final translated = tester.widget<Transform>(
+          find
+              .descendant(
+                of: find.byType(HistorySwipe),
+                matching: find.byType(Transform),
+              )
+              .first,
+        );
+        expect(translated.transform.storage[12].abs(), lessThan(96));
+        expect(translated.transform.storage[12].abs(), greaterThan(0));
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is ColoredBox &&
+                w.color == (direction > 0 ? scheme.primary : scheme.error),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == const Color(0xFF444444),
+          ),
+          findsNothing,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(edits, 1);
+      expect(deletes, 1);
+      await gesture(1, cancel: true);
+      await tester.pumpAndSettle();
+      expect(edits, 1);
+      expect(deletes, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'swipe colors animate across thresholds and reverse continuously',
+    (tester) async {
+      var actions = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: KiyoriTheme.light(),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                child: HistorySwipe(
+                  edit: () => actions++,
+                  delete: () => actions++,
+                  child: const SizedBox(
+                    height: 52,
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: Text('color row'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final scheme = Theme.of(tester.element(find.byType(HistorySwipe)))
+          .colorScheme;
+      Color background() => tester
+          .widget<ColoredBox>(
+            find
+                .descendant(
+                  of: find.byType(HistorySwipe),
+                  matching: find.byType(ColoredBox),
+                )
+                .first,
+          )
+          .color;
+      final pointer = await tester.startGesture(
+        tester.getCenter(find.text('color row')),
+      );
+      await pointer.moveBy(const Offset(20, 0));
+      await tester.pump();
+      await pointer.moveBy(const Offset(140, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(background(), isNot(scheme.primary));
+      expect(background(), isNot(const Color(0xFF444444)));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(background(), scheme.primary);
+      await pointer.moveBy(const Offset(-300, 0));
+      await tester.pump();
+      expect(background(), isNot(scheme.error));
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(background(), isNot(scheme.primary));
+      expect(background(), isNot(scheme.error));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(background(), scheme.error);
+      await pointer.cancel();
+      await tester.pumpAndSettle();
+      expect(actions, 0);
+      expect(background(), Colors.transparent);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'swipe uses fixed 96 threshold and disabled direction resistance',
     (tester) async {

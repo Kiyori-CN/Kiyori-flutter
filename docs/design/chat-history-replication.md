@@ -49,6 +49,22 @@ Rust Runtime/SQLite继续唯一持久owner，Dart只管理草稿与几何。错�
 历史抽屉；错误保留草稿，处理中拒绝重复提交。设置即时保存、单一单选/开关语义、
 紧凑卡片与固定完成操作均已实施。源码色表/尺寸逐项核对，尚无同设备像素差分证据。
 
+续批按旧AIChatScreen和ChatGroupTarget核对默认角色作用域：current同时显示默认
+绑定与未绑定，character分别显示；列表、菜单、拖排和Rust排序桶一致。分组的
+include_unbound请求值在打开时冻结，仅默认角色允许true，旧请求默认false；编辑器
+initState读取成员版本，不能用直到保存才求值的late初始化掩盖并发变化。自动选择默认
+角色沿既有select_latest包含未绑定，不再产生无必要的新会话。
+
+分支时间与父标题采用旧同一行和AccountTree图标；角色/分组读屏标签带已展开/已收起，
+会话带当前/置顶/锁定/生成状态，管理和拖动说明包含标题。滑动取消只回位；已触发
+动作背景保留到400ms回位结束。背景越阈值和反向采用旧animateColorAsState的Oklab
+临界阻尼弹簧（stiffness1500、dampingRatio1、位移阈值0.01），不改变600ms涟漪。
+参数经本机Compose1.11.4 AAR/javap核对，色空间与连续速度算法参照
+[AndroidX颜色转换](https://github.com/androidx/androidx/blob/androidx-main/compose/animation/animation/src/commonMain/kotlin/androidx/compose/animation/ColorVectorConverter.kt)及
+[弹簧实现](https://github.com/androidx/androidx/blob/androidx-main/compose/animation/animation-core/src/commonMain/kotlin/androidx/compose/animation/core/SpringSimulation.kt)。
+动画回归检查阈值中间帧、反向连续、回位背景、PointerCancel及结束后无持续请求帧；
+五窗口捕获额外包含手机明暗的左右滑动背景，实际设备帧/像素仍待授权验收。
+
 详情页已有时间线/对话/原始事件、搜索、展开、消息编辑与修订、追加备注、Markdown
 及签名ZIP导出。真实基础记录由schema20保存，正文分页保留原文。旧版工具完整事件、
 附件尚未接入；原始事件搜索仅覆盖已加载元数据。当前运行时未提供的完整工具执行

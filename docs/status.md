@@ -13,6 +13,41 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
+### 最新增量：分支行、滑动状态与默认角色作用域
+
+从main/df9eb81干净基线继续。已修分支父标题多占一行、图标错误，恢复AccountTree与
+时间·父标题同一行；角色/分组展开、会话当前/置顶/锁定/生成及标题管理/拖动读屏说明
+与旧源一致。滑动PointerCancel仅回位，已触发背景持续到400ms回位完成；越阈值/
+反向颜色采用旧Compose1.11.4的Oklab临界弹簧1500/1/0.01，600ms涟漪保持。
+
+current默认角色包含未绑定历史，列表、菜单与拖排/核心排序桶贯通；character模式
+仍独立精确分桶，其它角色/群聊隔离。分组include_unbound仅默认角色可显式开启，
+旧请求默认false；弹层打开时冻结绑定/标志及成员revision。修复late成员快照直到
+保存才读取而漏掉并发变化，以及自动切回默认角色遗漏未绑定历史导致额外创建。
+无schema、公开Rust/FFI类型、桥生成或依赖变动；合同同步CONTEXT、ADR0014和复刻方案。
+
+core定向45项（history-row-core-v2）、UI/业务联合30项（row-ui-v5）通过；最终捕获
+联合19项（row-capture-v2）通过，五窗口68PNG在work/history-drawer-capture-v17。
+审阅明暗分支/双向滑动、设置、菜单、删除/编辑、横屏及320双倍字180键盘；滚动后
+自动聊天/整组删除和固定完成/取消实际命中可达。早期64PNG于v16保留。
+初轮群聊夹具调用未实现自动创建入口、错误文本定位同时命中底层横幅、语义handle
+释放时点错误均已修正；对应core-v1/ui-v3/v4失败日志保留，没有降低产品断言。
+
+最终产品源码完整tools/verify.ps1 -WindowsIntegration通过（work/history-row-verify-v1.log）：
+foundation69/tooling4、Rust core187/HTTP3/provider13/native6/native-audit1、398 Dart格式、
+Clippy/analyze、app643（17条件跳过）/platform11/独立FFI22（1条件跳过）/Windows引擎5。
+Rust三项真实API/旧源条件跳过不代表供应商验收。完整verify后只追加捕获滚动可达断言，
+最后捕获联合复跑通过，产品源码未再变化。双端普通Debug串行构建135.3s/19.7s通过
+（history-row-android-v1/windows-v1），已恢复普通产品入口。
+
+固定artifacts/ui-preview/20261006-052401：APK137663637字节，SHA256
+360079059E00F10DF827F60096171EBEA5F2FC46D582F981A31E5F19C3E2E354；Windows101文件171534651字节。
+102副本hash、APK身份/v2/ZIP16K/ELF、53表情、17两端许可证、Windows x64/DLL pin通过
+（work/history-row-delivery-v1.log）。前序043450固定包保留。16路径精确源码/测试/文档
+允许清单审计后普通推送main；最终ref与产物sourceCommit以Git及固定manifest为准。
+设备像素/字体/触摸/TalkBack/Profile、SAF/Keystore、旧进程归档兼容及完整工具/附件
+业务事实仍待验证或实施，任务整体保持部分完成。
+
 ### 已实施行为
 
 - 删除当前聊天与选择替代处于同一SQLite事务；同绑定最新会话优先，无候选则新建并

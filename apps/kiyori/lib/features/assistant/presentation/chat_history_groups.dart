@@ -13,18 +13,50 @@ String historyBinding(ChatController owner) =>
     ? ''
     : owner.prompts?.activeGroup ?? owner.character?.id ?? '';
 
+bool historyIncludesUnbound(ChatController owner, String? binding) =>
+    owner.preferences?.historyMode == 'current' &&
+    binding == 'default_character';
+
+bool historyMatchesBinding(
+  String character,
+  String? binding,
+  bool includeUnbound,
+) =>
+    binding == null ||
+    character == binding ||
+    (includeUnbound && character.isEmpty);
+
+bool historySameSortBinding(String mode, String first, String second) =>
+    mode == 'folder' ||
+    first == second ||
+    (mode == 'current' &&
+        (first.isEmpty || first == 'default_character') &&
+        (second.isEmpty || second == 'default_character'));
+
 Map<String, int> historyMembers(
   ChatController owner,
   String folder,
-  String? binding,
-) => {
+  String? binding, {
+  bool includeUnbound = false,
+}) => {
   for (final c in owner.catalog?.conversations ?? <Conversation>[])
-    if (c.folder == folder && (binding == null || c.characterId == binding))
+    if (c.folder == folder &&
+        historyMatchesBinding(c.characterId, binding, includeUnbound))
       c.id: c.revision,
 };
 
-bool _groupAlive(ChatController owner, String name, String? binding) =>
-    historyMembers(owner, name, binding).isNotEmpty ||
+bool _groupAlive(
+  ChatController owner,
+  String name,
+  String? binding,
+  bool includeUnbound,
+) =>
+    historyMembers(
+      owner,
+      name,
+      binding,
+      includeUnbound: includeUnbound,
+    ).isNotEmpty ||
     (owner.preferences?.folders.contains(name) == true &&
         owner.catalog?.conversations.any((c) => c.folder == name) != true);
 
@@ -33,32 +65,41 @@ Future<void> showHistoryFolderEditor(
   ChatController owner, {
   String? initial,
   String? binding,
+  bool? includeUnbound,
   ValueChanged<ModalRoute<dynamic>>? onRoute,
-}) => initial == null
-    ? _showHistoryFolderEditor(
-        context,
-        owner,
-        binding: binding,
-        onRoute: onRoute,
-      )
-    : withHistoryEntity(
-        owner,
-        () => _groupAlive(owner, initial, binding),
-        (register) => _showHistoryFolderEditor(
+}) {
+  final targetBinding = initial == null ? historyBinding(owner) : binding;
+  final include =
+      includeUnbound ?? historyIncludesUnbound(owner, targetBinding);
+  return initial == null
+      ? _showHistoryFolderEditor(
           context,
           owner,
-          initial: initial,
-          binding: binding,
-          onRoute: register,
-        ),
-        onRoute,
-      );
+          binding: targetBinding,
+          includeUnbound: include,
+          onRoute: onRoute,
+        )
+      : withHistoryEntity(
+          owner,
+          () => _groupAlive(owner, initial, binding, include),
+          (register) => _showHistoryFolderEditor(
+            context,
+            owner,
+            initial: initial,
+            binding: binding,
+            includeUnbound: include,
+            onRoute: register,
+          ),
+          onRoute,
+        );
+}
 
 Future<void> _showHistoryFolderEditor(
   BuildContext context,
   ChatController owner, {
   String? initial,
   String? binding,
+  required bool includeUnbound,
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) => showDialog<void>(
   context: context,
@@ -69,6 +110,7 @@ Future<void> _showHistoryFolderEditor(
       owner: owner,
       initial: initial,
       binding: binding,
+      includeUnbound: includeUnbound,
       onRoute: onRoute,
     );
   },
@@ -79,25 +121,31 @@ Future<void> showHistoryFolderManagement(
   ChatController owner,
   String folder, {
   String? binding,
+  bool? includeUnbound,
   ValueChanged<ModalRoute<dynamic>>? onRoute,
-}) => withHistoryEntity(
-  owner,
-  () => _groupAlive(owner, folder, binding),
-  (register) => _showHistoryFolderManagement(
-    context,
+}) {
+  final include = includeUnbound ?? historyIncludesUnbound(owner, binding);
+  return withHistoryEntity(
     owner,
-    folder,
-    binding: binding,
-    onRoute: register,
-  ),
-  onRoute,
-);
+    () => _groupAlive(owner, folder, binding, include),
+    (register) => _showHistoryFolderManagement(
+      context,
+      owner,
+      folder,
+      binding: binding,
+      includeUnbound: include,
+      onRoute: register,
+    ),
+    onRoute,
+  );
+}
 
 Future<void> _showHistoryFolderManagement(
   BuildContext context,
   ChatController owner,
   String folder, {
   String? binding,
+  required bool includeUnbound,
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) async {
   final action = await showKiyoriModalDrawer<String>(
@@ -152,10 +200,16 @@ Future<void> _showHistoryFolderManagement(
       owner,
       initial: folder,
       binding: binding,
+      includeUnbound: includeUnbound,
       onRoute: onRoute,
     );
   } else {
-    final members = historyMembers(owner, folder, binding);
+    final members = historyMembers(
+      owner,
+      folder,
+      binding,
+      includeUnbound: includeUnbound,
+    );
     await showKiyoriModalDrawer<void>(
       context,
       onRoute: onRoute,
@@ -164,6 +218,7 @@ Future<void> _showHistoryFolderManagement(
         owner: owner,
         folder: folder,
         binding: binding,
+        includeUnbound: includeUnbound,
         members: members,
         dismiss: () => dismiss(),
       ),
@@ -176,12 +231,14 @@ class _GroupDelete extends StatefulWidget {
     required this.owner,
     required this.folder,
     required this.binding,
+    required this.includeUnbound,
     required this.members,
     required this.dismiss,
   });
   final ChatController owner;
   final String folder;
   final String? binding;
+  final bool includeUnbound;
   final Map<String, int> members;
   final VoidCallback dismiss;
   @override
@@ -203,6 +260,7 @@ class _GroupDeleteState extends State<_GroupDelete> {
         'action': action,
         'name': widget.folder,
         'binding': widget.binding,
+        'include_unbound': widget.includeUnbound,
         'members': widget.members,
       }),
     );
@@ -324,10 +382,12 @@ class _FolderEditor extends StatefulWidget {
     required this.owner,
     this.initial,
     this.binding,
+    required this.includeUnbound,
     this.onRoute,
   });
   final ChatController owner;
   final String? initial, binding;
+  final bool includeUnbound;
   final ValueChanged<ModalRoute<dynamic>>? onRoute;
   @override
   State<_FolderEditor> createState() => _FolderEditorState();
@@ -335,14 +395,23 @@ class _FolderEditor extends StatefulWidget {
 
 class _FolderEditorState extends State<_FolderEditor> {
   late final name = TextEditingController(text: widget.initial ?? '');
-  late final members = widget.initial == null
-      ? <String, int>{}
-      : historyMembers(widget.owner, widget.initial!, widget.binding);
-  late final binding = widget.initial == null
-      ? historyBinding(widget.owner)
-      : widget.binding;
+  late final Map<String, int> members;
   bool saving = false, closing = false;
   String? error;
+  @override
+  void initState() {
+    super.initState();
+    // 必须在打开时取快照；late字段直到保存才求值会漏掉并发成员变化。
+    members = widget.initial == null
+        ? <String, int>{}
+        : historyMembers(
+            widget.owner,
+            widget.initial!,
+            widget.binding,
+            includeUnbound: widget.includeUnbound,
+          );
+  }
+
   @override
   void dispose() {
     name.dispose();
@@ -379,7 +448,8 @@ class _FolderEditorState extends State<_FolderEditor> {
         'action': widget.initial == null ? 'create' : 'rename',
         'name': widget.initial ?? name.text.trim(),
         'next_name': name.text.trim(),
-        'binding': binding,
+        'binding': widget.binding,
+        'include_unbound': widget.includeUnbound,
         'members': members,
       }),
     );

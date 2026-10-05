@@ -927,6 +927,286 @@ async fn reply_and_branch_keep_complete_content_and_independent_history() {
 }
 
 #[test]
+fn current_default_orders_unbound_and_preserves_character_and_group_buckets() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let default = crate::prompts::DEFAULT_CHARACTER.to_string();
+    let bound = runtime.create_conversation().unwrap();
+    let unbound = runtime.create_conversation().unwrap();
+    runtime
+        .change_conversation(
+            unbound.clone(),
+            1,
+            "metadata".into(),
+            json!({"title":"遗留未绑定","folder":"","character":""}).to_string(),
+        )
+        .unwrap();
+    let mut draft = runtime.prompt_catalog().unwrap().characters[0]
+        .draft
+        .clone();
+    draft.name = "其它角色".into();
+    let other = runtime.save_character(None, None, draft).unwrap();
+    runtime.select_chat_character(other.clone()).unwrap();
+    let other_id = runtime.create_conversation().unwrap();
+    let group = runtime
+        .save_prompt_group(
+            None,
+            None,
+            crate::prompts::GroupDraft {
+                name: "群聊".into(),
+                description: String::new(),
+                members: vec![other],
+            },
+        )
+        .unwrap();
+    runtime
+        .select_chat_character(crate::prompts::DEFAULT_CHARACTER.into())
+        .unwrap();
+    let group_id = runtime.create_conversation().unwrap();
+    runtime
+        .change_conversation(
+            group_id.clone(),
+            1,
+            "metadata".into(),
+            json!({"title":"群聊历史","folder":"","character":group}).to_string(),
+        )
+        .unwrap();
+    let other_before = runtime.conversation(other_id.clone()).unwrap();
+    let group_before = runtime.conversation(group_id.clone()).unwrap();
+    runtime.select_chat_character(default).unwrap();
+    let p = runtime.chat_preferences().unwrap();
+    runtime
+        .change_chat_preference(p.revision, "history_mode".into(), "current".into())
+        .unwrap();
+    let revision = runtime
+        .conversation(bound.clone())
+        .unwrap()
+        .conversation
+        .revision;
+    runtime
+        .change_conversation(bound.clone(), revision, "before".into(), unbound.clone())
+        .unwrap();
+    let revision = runtime
+        .conversation(unbound.clone())
+        .unwrap()
+        .conversation
+        .revision;
+    runtime.change_conversation(unbound.clone(), revision, "move".into(), json!({
+        "folder":"", "character":"", "anchor":bound,
+        "anchor_revision":runtime.conversation(bound.clone()).unwrap().conversation.revision,
+        "before":true,
+    }).to_string()).unwrap();
+    let ids: Vec<_> = runtime
+        .conversation_catalog()
+        .unwrap()
+        .conversations
+        .into_iter()
+        .filter(|c| {
+            c.character_id.is_empty() || c.character_id == crate::prompts::DEFAULT_CHARACTER
+        })
+        .map(|c| c.id)
+        .collect();
+    assert_eq!(ids, vec![unbound.clone(), bound.clone()]);
+    assert_eq!(
+        runtime
+            .conversation(unbound.clone())
+            .unwrap()
+            .conversation
+            .character_id,
+        ""
+    );
+    assert_eq!(
+        runtime.conversation(other_id.clone()).unwrap(),
+        other_before
+    );
+    assert_eq!(runtime.conversation(group_id).unwrap(), group_before);
+    let revision = runtime
+        .conversation(bound.clone())
+        .unwrap()
+        .conversation
+        .revision;
+    assert!(
+        runtime
+            .change_conversation(bound.clone(), revision, "after".into(), other_id)
+            .is_err()
+    );
+    let p = runtime.chat_preferences().unwrap();
+    runtime
+        .change_chat_preference(p.revision, "history_mode".into(), "character".into())
+        .unwrap();
+    assert!(
+        runtime
+            .change_conversation(bound.clone(), revision, "after".into(), unbound.clone())
+            .is_err()
+    );
+    let untouched = runtime.conversation(unbound.clone()).unwrap();
+    runtime
+        .change_conversation(bound, revision, "bottom".into(), String::new())
+        .unwrap();
+    assert_eq!(runtime.conversation(unbound).unwrap(), untouched);
+    runtime.close();
+}
+
+#[test]
+fn default_group_scope_is_frozen_and_unbound_locks_and_conflicts_are_atomic() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let default = crate::prompts::DEFAULT_CHARACTER;
+    let mut p = runtime.chat_preferences().unwrap();
+    let mut ids = Vec::new();
+    for binding in [default, ""] {
+        p = runtime
+            .change_chat_preference(
+                p.revision,
+                "history_group".into(),
+                json!({"action":"create","name":"共同分组","binding":binding}).to_string(),
+            )
+            .unwrap();
+        ids.push(runtime.conversation_catalog().unwrap().active_id.unwrap());
+    }
+    let mut draft = runtime.prompt_catalog().unwrap().characters[0]
+        .draft
+        .clone();
+    draft.name = "隔离角色".into();
+    let other = runtime.save_character(None, None, draft).unwrap();
+    p = runtime
+        .change_chat_preference(
+            p.revision,
+            "history_group".into(),
+            json!({"action":"create","name":"共同分组","binding":other}).to_string(),
+        )
+        .unwrap();
+    let other_id = runtime.conversation_catalog().unwrap().active_id.unwrap();
+    let other_before = runtime.conversation(other_id.clone()).unwrap();
+    let members = || {
+        ids.iter()
+            .map(|id| {
+                let c = runtime.conversation(id.clone()).unwrap().conversation;
+                (c.id, c.revision)
+            })
+            .collect::<std::collections::BTreeMap<_, _>>()
+    };
+    let operation = |action: &str, name: &str, next: &str| {
+        json!({
+            "action":action,"name":name,"next_name":next,"binding":default,
+            "include_unbound":true,"members":members(),
+        })
+        .to_string()
+    };
+    let stale = operation("rename", "共同分组", "新分组");
+    runtime
+        .change_conversation(ids[1].clone(), 1, "locked".into(), "true".into())
+        .unwrap();
+    assert!(
+        runtime
+            .change_chat_preference(p.revision, "history_group".into(), stale)
+            .is_err()
+    );
+    assert!(
+        runtime
+            .change_chat_preference(
+                p.revision,
+                "history_group".into(),
+                operation("delete", "共同分组", "")
+            )
+            .is_err()
+    );
+    assert_eq!(
+        runtime
+            .conversation(ids[0].clone())
+            .unwrap()
+            .conversation
+            .folder,
+        "共同分组"
+    );
+    assert_eq!(
+        runtime.conversation(other_id.clone()).unwrap(),
+        other_before
+    );
+    assert!(runtime.change_chat_preference(p.revision,"history_group".into(),
+        json!({"action":"delete","name":"共同分组","binding":null,"include_unbound":true,"members":members()}).to_string()).is_err());
+    runtime
+        .change_conversation(ids[1].clone(), 2, "locked".into(), "false".into())
+        .unwrap();
+    // 模式变化不改变已冻结作用域；请求自身决定成员，不能重新读取模式扩大范围。
+    p = runtime
+        .change_chat_preference(p.revision, "history_mode".into(), "character".into())
+        .unwrap();
+    p = runtime
+        .change_chat_preference(
+            p.revision,
+            "history_group".into(),
+            operation("rename", "共同分组", "新分组"),
+        )
+        .unwrap();
+    for id in &ids {
+        assert_eq!(
+            runtime
+                .conversation(id.clone())
+                .unwrap()
+                .conversation
+                .folder,
+            "新分组"
+        );
+    }
+    assert_eq!(
+        runtime.conversation(other_id.clone()).unwrap(),
+        other_before
+    );
+    // 旧请求没有include_unbound时仍只修改精确绑定。
+    let bound = runtime.conversation(ids[0].clone()).unwrap().conversation;
+    p = runtime.change_chat_preference(p.revision,"history_group".into(),
+        json!({"action":"dissolve","name":"新分组","binding":default,"members":{bound.id:bound.revision}}).to_string()).unwrap();
+    assert_eq!(
+        runtime
+            .conversation(ids[1].clone())
+            .unwrap()
+            .conversation
+            .folder,
+        "新分组"
+    );
+    let unbound = runtime.conversation(ids[1].clone()).unwrap().conversation;
+    runtime.change_chat_preference(p.revision,"history_group".into(),
+        json!({"action":"dissolve","name":"新分组","binding":default,"include_unbound":true,"members":{unbound.id:unbound.revision}}).to_string()).unwrap();
+    assert_eq!(
+        runtime
+            .conversation(ids[1].clone())
+            .unwrap()
+            .conversation
+            .folder,
+        ""
+    );
+    assert_eq!(runtime.conversation(other_id).unwrap(), other_before);
+    runtime.close();
+}
+
+#[test]
+fn automatic_default_selection_reuses_unbound_history_without_creating_a_duplicate() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let id = runtime.create_conversation().unwrap();
+    runtime
+        .change_conversation(
+            id.clone(),
+            1,
+            "metadata".into(),
+            json!({"title":"默认遗留","folder":"","character":""}).to_string(),
+        )
+        .unwrap();
+    let p = runtime.chat_preferences().unwrap();
+    runtime
+        .change_chat_preference(p.revision, "auto_chat".into(), "true".into())
+        .unwrap();
+    runtime
+        .select_chat_character(crate::prompts::DEFAULT_CHARACTER.into())
+        .unwrap();
+    let catalog = runtime.conversation_catalog().unwrap();
+    assert_eq!(catalog.active_id, Some(id));
+    assert_eq!(catalog.conversations.len(), 1);
+    runtime.close();
+}
+
+#[test]
 fn reorder_is_scoped_to_visible_character_and_folder_rename_is_atomic() {
     let dir = Directory::new();
     let runtime = Runtime::with_data_dir(&dir.0).unwrap();
