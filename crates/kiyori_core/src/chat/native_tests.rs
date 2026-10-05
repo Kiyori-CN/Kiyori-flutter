@@ -7,12 +7,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "kiyori-inference-{}",
+            "kiyori-inference-{}-{}-{}",
+            std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
         ));
         std::fs::create_dir_all(&path).unwrap();
         Self(path)
@@ -86,6 +89,153 @@ fn request() -> ChatRequest {
 struct FixtureAdapter {
     ended: Arc<AtomicBool>,
     mode: u8,
+}
+
+struct SummaryAdapter {
+    calls: std::sync::Mutex<Vec<Vec<ChatMessage>>>,
+}
+impl InferenceAdapter for SummaryAdapter {
+    fn generate(
+        &self,
+        input: &InferenceRequest,
+        _: &dyn Fn() -> bool,
+        emit: &mut dyn FnMut(&[u8]) -> bool,
+    ) -> Result<InferenceResult, ChatFailure> {
+        let mut calls = self.calls.lock().unwrap();
+        let output = match calls.len() {
+            0 => {
+                assert_eq!(input.messages.last().unwrap().content, "2+3");
+                "5"
+            }
+            1 => {
+                assert!(input.messages.iter().any(|m| m.content == "2+3"));
+                assert!(
+                    input
+                        .messages
+                        .iter()
+                        .any(|m| m.role == "assistant" && m.content == "5")
+                );
+                assert!(!input.messages.iter().any(|m| m.content == "3+4"));
+                "摘要：2+3等于5"
+            }
+            2 => {
+                assert_eq!(input.messages.last().unwrap().content, "3+4");
+                assert!(
+                    input
+                        .messages
+                        .iter()
+                        .any(|m| m.role == "user" && m.content == "摘要：2+3等于5")
+                );
+                assert!(
+                    !input
+                        .messages
+                        .iter()
+                        .any(|m| m.role == "assistant" && m.content == "5")
+                );
+                "7"
+            }
+            3 => {
+                assert!(input.messages.iter().any(|m| m.content == "3+4"));
+                assert!(
+                    input
+                        .messages
+                        .iter()
+                        .any(|m| m.role == "assistant" && m.content == "7")
+                );
+                "手动摘要：5和7"
+            }
+            _ => panic!("unexpected native request"),
+        };
+        calls.push(input.messages.clone());
+        assert!(emit(output.as_bytes()));
+        Ok(InferenceResult {
+            input_tokens: 10,
+            output_tokens: 2,
+            reason: "stop".into(),
+        })
+    }
+}
+
+#[tokio::test]
+async fn native_summary_projection_preserves_latest_user_and_manual_checkpoint_reopen() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    fixture(&runtime, json!({}));
+    let adapter = Arc::new(SummaryAdapter {
+        calls: Default::default(),
+    });
+    runtime.set_inference_adapter(adapter.clone()).unwrap();
+    let mut base = runtime.model_catalog().unwrap().configs.remove(0);
+    base.draft.provider = "MNN".into();
+    base.draft.protocol = "native".into();
+    base.draft.endpoint.clear();
+    base.draft.models = vec!["tiny".into()];
+    base.draft.options.summary_enabled = true;
+    base.draft.options.summary_by_count = true;
+    base.draft.options.summary_count = 1;
+    base.draft.options.concurrent_limit = 1;
+    runtime
+        .save_model_config(
+            base.id.clone(),
+            base.revision,
+            base.draft,
+            None,
+            Some("tiny".into()),
+        )
+        .unwrap();
+    for function in ["chat", "summary"] {
+        runtime
+            .select_function_model(function.into(), base.id.clone(), "tiny".into())
+            .unwrap();
+    }
+    let id = runtime.create_conversation().unwrap();
+    let payload = r#"{"version":3,"apiKey":"","headers":{},"usePool":false,"keys":[],"rotation":"ROUND_ROBIN"}"#;
+    for text in ["2+3", "3+4"] {
+        let run = runtime
+            .start_conversation_with_summary(
+                runtime.prepare_conversation(id.clone()).unwrap(),
+                text.into(),
+                payload.into(),
+                Some(payload.into()),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        let mut complete = false;
+        while let Some(event) = run.next_event().await.unwrap() {
+            assert!(!matches!(event, ChatEvent::Failed(_)), "{event:?}");
+            complete |= matches!(event, ChatEvent::Completed { .. });
+        }
+        assert!(complete);
+    }
+    let before = runtime.conversation(id.clone()).unwrap();
+    assert_eq!(before.messages.len(), 4);
+    assert_eq!(before.messages.last().unwrap().content, "7");
+    assert_eq!(before.summary.as_ref().unwrap().content, "摘要：2+3等于5");
+    let prepared = runtime
+        .prepare_summary(
+            id.clone(),
+            before.messages.last().unwrap().id.clone(),
+            before.conversation.revision,
+        )
+        .unwrap();
+    let run = runtime.start_summary(prepared, payload.into()).unwrap();
+    let mut complete = false;
+    while let Some(event) = run.next_event().await.unwrap() {
+        assert!(!matches!(event, ChatEvent::Failed(_)), "{event:?}");
+        complete |= matches!(event, ChatEvent::Completed { .. });
+    }
+    assert!(complete);
+    assert_eq!(adapter.calls.lock().unwrap().len(), 4);
+    runtime.close();
+    let reopened = Runtime::with_data_dir(&dir.0).unwrap();
+    let history = reopened.conversation(id).unwrap();
+    assert_eq!(history.messages.len(), 5);
+    assert_eq!(history.messages.last().unwrap().role, "summary");
+    assert_eq!(history.messages.last().unwrap().content, "手动摘要：5和7");
+    assert_eq!(history.messages[..4], before.messages);
+    reopened.close();
 }
 impl InferenceAdapter for FixtureAdapter {
     fn generate(

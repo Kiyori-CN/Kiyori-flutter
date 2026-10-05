@@ -5,9 +5,29 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### 后续能力核验与 TOOLPKG spike（实施中）
+
+原生CPU/GGUF批次538972ce6203972bc041428b73b4eb16aab81768已普通推送main并核对远端，
+该批结束时工作区干净。当前继续原生自动/手动总结及扩展缺口。MNN首轮2048token摘要
+达到length，核心明确保留原文并阻止后续聊天；独立总结配置4096上限/采样后完整摘要
+成功，但新问题得到旧答案或错误算式；native_summary_projection回归已证明最新输入
+保留、同配置单并发释放与手动检查点重开，原生专项现8项通过（core-special-v7）。
+真实GGUF自动摘要、手动检查点、四次独立用量、全文与重开1项14秒通过
+（work/native-model-summary-gguf-v2.log）。MNN完整生命周期和重开用量均运行至通过，
+最终算术正确性断言失败，错误回答为1+2=3，摘要也存在虚构设定，不能称此模型的
+总结质量验收通过；失败日志work/native-model-summary-mnn-v1至v5.log保留。
+
+TOOLPKG候选QuickJS-NG v0.17.0仅在忽略work中编译，未接正式依赖。Windows MSVC
+12项中断/内存/栈/Promise/默认无宿主权限与旧示例注册/计数/网络拒绝共16项通过；Android ARM64 API24实际编译、
+ELF16K通过，设备运行/Apple未验证。方案、来源、hash与切片见
+[TOOLPKG运行时方案](design/toolpkg-provider-runtime-plan.md)。包安装/启停/卸载、动态目录、
+四handler、统一网络权限和产品接线仍待实现。设备操作范围已异步询问，尚未执行。
+本轮仅新增验收测试与方案：全Rust147项、Clippy、Dart analyze与foundation62通过；
+默认真实模型测试按设计跳过，GGUF显式验收通过，MNN质量断言保持失败并如实记录。
+
 ### 原生 CPU 推理与 GGUF 导入（本机验收通过，设备待验证）
 
-当前已交付基线为main/a002770d3a5c192ebfacf7799c99ec2a78900aff；恢复时工作区干净。
+本批开始基线为main/a002770d3a5c192ebfacf7799c99ec2a78900aff；恢复时工作区干净。
 本批core/chat/native建立平台推理端口、Transfer同锁资源租约、UTF-8分片、有界队列、
 超时与取消等待；FFI装配packages/kiyori_platform/native的静态MNN/llama adapter。
 固定旧源码revision的官方archive经SHA256，不提交上游源码或预编译库；

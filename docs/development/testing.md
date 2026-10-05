@@ -32,6 +32,10 @@ gguf_import_live_test.dart显式KIYORI_GGUF_TEST_FILE选择已核对的公开Qwe
 真实有界文件读取与源文件不变。native专项验证UTF-8/大正文完整分片/超限失败/取消等待析构。
 gguf_import_dialog_test.dart覆盖取消选择/在途读取释放与提交期间禁取消；core导入回归还
 覆盖rename后事务前恢复、completed资源缺失补回和篡改拒绝。默认verify不读取用户模型。
+native_model_summary_live_test.dart显式KIYORI_NATIVE_TEST_DATA/PROVIDER/MODEL时执行完整模型
+两轮聊天→独立自动总结→手动检查点→原文/用量重开；同时保留新问题回答的正确性断言。
+core/native_summary_projection回归核对总结后最新用户输入、同配置单并发释放和手动插入，
+以区分请求投影错误与模型摘要/回答质量。公开小模型通过不泛化为所有本地模型能力。
 
 local_models_business_test.dart以合成目录投影、真实Rust/FFI/SQLite下载6字节文件，验证
 暂停/Range续传/校验/重开/确认删除/刷新失败；transfer_runtime_test.dart覆盖无人消费和
