@@ -29,6 +29,7 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &rusqlite::Connection) {
+    crate::extensions::remove_schema_for_fixture(connection);
     connection.execute_batch("DROP TABLE transfer_files;DROP TABLE transfers;DROP TABLE resources;DROP TABLE local_model_market;").unwrap();
 }
 

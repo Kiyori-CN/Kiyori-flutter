@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<DiaryDocument> parseDiary({required String content}) =>
     RustLib.instance.api.crateApiParseDiary(content: content);
@@ -43,6 +43,22 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
   Future<ChatHandle> startSummary({required String payload});
 
   Future<String?> summarySecretReference();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExtensionImportHandle>>
+abstract class ExtensionImportHandle implements RustOpaqueInterface {
+  Future<BigInt> append({required List<int> bytes});
+
+  Future<void> close();
+
+  Future<ExtensionPackage> finish();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExtensionRunHandle>>
+abstract class ExtensionRunHandle implements RustOpaqueInterface {
+  Future<void> cancel();
+
+  Future<ExtensionEvent?> nextEvent();
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelImportHandle>>
@@ -86,6 +102,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required bool archived,
   });
 
+  Future<ExtensionImportHandle> beginExtensionImport();
+
   Future<ModelImportHandle> beginModelImport({required String name});
 
   Future<ModelSecretsHandle> beginModelSecrets();
@@ -101,6 +119,12 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required int revision,
     required String action,
     required String value,
+  });
+
+  Future<int> changeExtension({
+    required String id,
+    required int revision,
+    bool? enabled,
   });
 
   Future<void> changeMessage({
@@ -200,6 +224,10 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String id,
     required int revision,
   });
+
+  Future<List<ExtensionPackage>> extensionPackages();
+
+  Future<List<ExtensionProvider>> extensionProviders();
 
   Future<void> forgetRetiredModelSecret({required String reference});
 
@@ -346,6 +374,14 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
   Future<TaskHandle> startDiagnostic({
     required int steps,
     required int intervalMs,
+  });
+
+  Future<ExtensionRunHandle> startExtension({
+    required String id,
+    required int revision,
+    required ExtensionHandler functionHandler,
+    required String payload,
+    required int timeoutMs,
   });
 
   Future<ChatHandle> startModelDirectory({
@@ -1194,6 +1230,129 @@ class DiarySummary {
 }
 
 enum ErrorCode { invalidInput, runtimeClosed, concurrentRead, storage }
+
+class ExtensionEvent {
+  final ExtensionPhase phase;
+  final String? json;
+  final String? error;
+
+  const ExtensionEvent({required this.phase, this.json, this.error});
+
+  @override
+  int get hashCode => phase.hashCode ^ json.hashCode ^ error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionEvent &&
+          runtimeType == other.runtimeType &&
+          phase == other.phase &&
+          json == other.json &&
+          error == other.error;
+}
+
+enum ExtensionHandler {
+  listModels,
+  sendMessage,
+  testConnection,
+  calculateInputTokens,
+}
+
+class ExtensionPackage {
+  final String id;
+  final int revision;
+  final String version;
+  final String name;
+  final String description;
+  final bool enabled;
+  final String resourceId;
+  final String archiveHash;
+  final String sourceHash;
+  final int cleanupPending;
+
+  const ExtensionPackage({
+    required this.id,
+    required this.revision,
+    required this.version,
+    required this.name,
+    required this.description,
+    required this.enabled,
+    required this.resourceId,
+    required this.archiveHash,
+    required this.sourceHash,
+    required this.cleanupPending,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      revision.hashCode ^
+      version.hashCode ^
+      name.hashCode ^
+      description.hashCode ^
+      enabled.hashCode ^
+      resourceId.hashCode ^
+      archiveHash.hashCode ^
+      sourceHash.hashCode ^
+      cleanupPending.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionPackage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          revision == other.revision &&
+          version == other.version &&
+          name == other.name &&
+          description == other.description &&
+          enabled == other.enabled &&
+          resourceId == other.resourceId &&
+          archiveHash == other.archiveHash &&
+          sourceHash == other.sourceHash &&
+          cleanupPending == other.cleanupPending;
+}
+
+enum ExtensionPhase { intermediate, completed, failed }
+
+class ExtensionProvider {
+  final String id;
+  final String packageId;
+  final String providerId;
+  final int revision;
+  final String displayName;
+  final String description;
+
+  const ExtensionProvider({
+    required this.id,
+    required this.packageId,
+    required this.providerId,
+    required this.revision,
+    required this.displayName,
+    required this.description,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      packageId.hashCode ^
+      providerId.hashCode ^
+      revision.hashCode ^
+      displayName.hashCode ^
+      description.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionProvider &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          packageId == other.packageId &&
+          providerId == other.providerId &&
+          revision == other.revision &&
+          displayName == other.displayName &&
+          description == other.description;
+}
 
 class FunctionModel {
   final String function;

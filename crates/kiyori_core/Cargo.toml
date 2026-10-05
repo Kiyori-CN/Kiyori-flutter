@@ -16,3 +16,4 @@ rustls.workspace = true
 webpki-root-certs.workspace = true
 base64.workspace = true
 ring.workspace = true
+zip.workspace = true

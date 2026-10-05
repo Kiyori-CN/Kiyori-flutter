@@ -5,6 +5,17 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<List<api.ExtensionPackage>> extensionPackages();
+  Future<List<api.ExtensionProvider>> extensionProviders();
+  Future<ExtensionImportRun> beginExtensionImport();
+  Future<int> changeExtension(String id, int revision, {bool? enabled});
+  Future<ExtensionRun> startExtension(
+    String id,
+    int revision,
+    api.ExtensionHandler handler,
+    String payload, {
+    int timeoutMs = 30000,
+  });
   Future<ModelImportRun> beginModelImport(String name);
   Future<String> createTransfer(api.TransferSpec spec);
   Future<List<api.LocalModel>> localModels();
@@ -252,6 +263,88 @@ abstract interface class ModelImportRun {
   Future<void> close();
 }
 
+abstract interface class ExtensionImportRun {
+  Future<BigInt> append(List<int> bytes);
+  Future<api.ExtensionPackage> finish();
+  Future<void> close();
+}
+
+abstract interface class ExtensionRun {
+  Future<api.ExtensionEvent?> nextEvent();
+  Future<void> cancel();
+}
+
+final class _NativeExtensionImport implements ExtensionImportRun {
+  _NativeExtensionImport(this.handle, this.owner);
+  final api.ExtensionImportHandle handle;
+  final NativeRuntimeClient owner;
+  Future<void>? closing;
+  Future<api.ExtensionPackage>? finishing;
+  @override
+  Future<BigInt> append(List<int> bytes) {
+    owner._ensureOpen();
+    if (closing != null || finishing != null) throw StateError('扩展导入已结束');
+    return handle.append(bytes: bytes);
+  }
+
+  @override
+  Future<api.ExtensionPackage> finish() {
+    owner._ensureOpen();
+    if (closing != null) throw StateError('扩展导入已结束');
+    return finishing ??= handle.finish();
+  }
+
+  @override
+  Future<void> close() => closing ??= _close();
+  Future<void> _close() async {
+    try {
+      await handle.close();
+      try {
+        await finishing;
+      } catch (_) {
+        /* 安装失败由finish调用方处理；关闭仍须释放句柄。 */
+      }
+    } finally {
+      handle.dispose();
+      owner._extensionImports.remove(this);
+    }
+  }
+}
+
+final class _NativeExtensionRun implements ExtensionRun {
+  _NativeExtensionRun(this.handle, this.owner);
+  final api.ExtensionRunHandle handle;
+  final NativeRuntimeClient owner;
+  Future<void>? cancelling;
+  Future<api.ExtensionEvent?>? pending;
+  bool disposed = false;
+  @override
+  Future<api.ExtensionEvent?> nextEvent() async {
+    if (disposed || cancelling != null) return null;
+    if (pending != null) throw StateError('扩展只允许一个事件读取者');
+    final event = pending = handle.nextEvent();
+    try {
+      return await event;
+    } finally {
+      pending = null;
+    }
+  }
+
+  @override
+  Future<void> cancel() => cancelling ??= _cancel();
+  Future<void> _cancel() async {
+    if (disposed) return;
+    try {
+      await handle.cancel();
+      await pending;
+    } finally {
+      disposed = true;
+      handle.dispose();
+      owner._extensionRuns.remove(this);
+    }
+  }
+}
+
 final class _NativeModelImport implements ModelImportRun {
   _NativeModelImport(this.handle, this.owner);
   final api.ModelImportHandle handle;
@@ -347,6 +440,70 @@ final class _NativeModelSecretsWrite implements ModelSecretsWrite {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  final _extensionImports = <_NativeExtensionImport>{};
+  final _extensionRuns = <_NativeExtensionRun>{};
+  @override
+  Future<List<api.ExtensionPackage>> extensionPackages() {
+    _ensureOpen();
+    return _handle.extensionPackages();
+  }
+
+  @override
+  Future<List<api.ExtensionProvider>> extensionProviders() {
+    _ensureOpen();
+    return _handle.extensionProviders();
+  }
+
+  @override
+  Future<int> changeExtension(String id, int revision, {bool? enabled}) {
+    _ensureOpen();
+    return _handle.changeExtension(
+      id: id,
+      revision: revision,
+      enabled: enabled,
+    );
+  }
+
+  @override
+  Future<ExtensionImportRun> beginExtensionImport() async {
+    _ensureOpen();
+    final handle = await _handle.beginExtensionImport();
+    if (_closing != null) {
+      await handle.close();
+      handle.dispose();
+      throw StateError('Runtime closed');
+    }
+    final run = _NativeExtensionImport(handle, this);
+    _extensionImports.add(run);
+    return run;
+  }
+
+  @override
+  Future<ExtensionRun> startExtension(
+    String id,
+    int revision,
+    api.ExtensionHandler handler,
+    String payload, {
+    int timeoutMs = 30000,
+  }) async {
+    _ensureOpen();
+    final handle = await _handle.startExtension(
+      id: id,
+      revision: revision,
+      functionHandler: handler,
+      payload: payload,
+      timeoutMs: timeoutMs,
+    );
+    if (_closing != null) {
+      await handle.cancel();
+      handle.dispose();
+      throw StateError('Runtime closed');
+    }
+    final run = _NativeExtensionRun(handle, this);
+    _extensionRuns.add(run);
+    return run;
+  }
+
   final _imports = <_NativeModelImport>{};
   final _preparations = <_NativePreparedConversation>{};
   @override
@@ -930,6 +1087,8 @@ final class NativeRuntimeClient implements RuntimeClient {
 
   Future<void> _close() async {
     await _handle.close();
+    await Future.wait(_extensionImports.toList().map((item) => item.close()));
+    await Future.wait(_extensionRuns.toList().map((item) => item.cancel()));
     await Future.wait(_imports.toList().map((item) => item.close()));
     await Future.wait(_preparations.toList().map((item) => item.close()));
     await Future.wait(_chatRuns.toList().map((run) => run.stop()));

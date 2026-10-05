@@ -1391,6 +1391,64 @@ pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, B
 }
 
 impl RuntimeHandle {
+    pub fn extension_packages(&self) -> Result<Vec<ExtensionPackage>, BridgeError> {
+        Ok(self
+            .inner
+            .extension_packages()?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+    pub fn extension_providers(&self) -> Result<Vec<ExtensionProvider>, BridgeError> {
+        Ok(self
+            .inner
+            .extension_providers()?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+    pub fn begin_extension_import(&self) -> Result<ExtensionImportHandle, BridgeError> {
+        Ok(ExtensionImportHandle {
+            inner: self.inner.begin_extension_import()?,
+        })
+    }
+    pub async fn change_extension(
+        &self,
+        id: String,
+        revision: u32,
+        enabled: Option<bool>,
+    ) -> Result<u32, BridgeError> {
+        Ok(self.inner.change_extension(id, revision, enabled).await?)
+    }
+    pub async fn start_extension(
+        &self,
+        id: String,
+        revision: u32,
+        function_handler: ExtensionHandler,
+        payload: String,
+        timeout_ms: u32,
+    ) -> Result<ExtensionRunHandle, BridgeError> {
+        if payload.len() > 1024 * 1024 {
+            return Err(BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "扩展输入超过1 MiB".into(),
+            });
+        }
+        let payload = serde_json::from_str(&payload).map_err(|_| BridgeError {
+            code: ErrorCode::InvalidInput,
+            message: "扩展输入不是有效JSON".into(),
+        })?;
+        let limits = kiyori_core::scripts::ScriptLimits {
+            timeout_ms,
+            ..Default::default()
+        };
+        Ok(ExtensionRunHandle {
+            inner: self
+                .inner
+                .start_extension(id, revision, function_handler.into(), payload, limits)
+                .await?,
+        })
+    }
     pub fn begin_model_import(&self, name: String) -> Result<ModelImportHandle, BridgeError> {
         Ok(ModelImportHandle {
             inner: self.inner.begin_model_import(name)?,
@@ -2031,6 +2089,129 @@ impl RuntimeHandle {
 /// 不暴露宿主路径，最多1 MiB字节/调用；句柄释放时回收未完成暂存。
 pub struct ModelImportHandle {
     inner: kiyori_core::model_import::ModelImport,
+}
+
+pub struct ExtensionPackage {
+    pub id: String,
+    pub revision: u32,
+    pub version: String,
+    pub name: String,
+    pub description: String,
+    pub enabled: bool,
+    pub resource_id: String,
+    pub archive_hash: String,
+    pub source_hash: String,
+    pub cleanup_pending: u32,
+}
+impl From<kiyori_core::extensions::ExtensionPackage> for ExtensionPackage {
+    fn from(v: kiyori_core::extensions::ExtensionPackage) -> Self {
+        Self {
+            id: v.id,
+            revision: v.revision,
+            version: v.version,
+            name: v.name,
+            description: v.description,
+            enabled: v.enabled,
+            resource_id: v.resource.id,
+            archive_hash: v.archive_hash,
+            source_hash: v.source_hash,
+            cleanup_pending: v.cleanup_pending,
+        }
+    }
+}
+pub struct ExtensionProvider {
+    pub id: String,
+    pub package_id: String,
+    pub provider_id: String,
+    pub revision: u32,
+    pub display_name: String,
+    pub description: String,
+}
+impl From<kiyori_core::extensions::ExtensionProvider> for ExtensionProvider {
+    fn from(v: kiyori_core::extensions::ExtensionProvider) -> Self {
+        Self {
+            id: v.id,
+            package_id: v.package_id,
+            provider_id: v.provider_id,
+            revision: v.revision,
+            display_name: v.display_name,
+            description: v.description,
+        }
+    }
+}
+pub enum ExtensionHandler {
+    ListModels,
+    SendMessage,
+    TestConnection,
+    CalculateInputTokens,
+}
+impl From<ExtensionHandler> for kiyori_core::scripts::ProviderHandler {
+    fn from(v: ExtensionHandler) -> Self {
+        match v {
+            ExtensionHandler::ListModels => Self::ListModels,
+            ExtensionHandler::SendMessage => Self::SendMessage,
+            ExtensionHandler::TestConnection => Self::TestConnection,
+            ExtensionHandler::CalculateInputTokens => Self::CalculateInputTokens,
+        }
+    }
+}
+pub enum ExtensionPhase {
+    Intermediate,
+    Completed,
+    Failed,
+}
+pub struct ExtensionEvent {
+    pub phase: ExtensionPhase,
+    pub json: Option<String>,
+    pub error: Option<String>,
+}
+pub struct ExtensionImportHandle {
+    inner: Arc<kiyori_core::extensions::ExtensionImport>,
+}
+impl ExtensionImportHandle {
+    pub fn append(&self, bytes: Vec<u8>) -> Result<u64, BridgeError> {
+        Ok(self.inner.append(bytes)?)
+    }
+    pub async fn finish(&self) -> Result<ExtensionPackage, BridgeError> {
+        Ok(self.inner.finish().await?.into())
+    }
+    pub async fn close(&self) -> Result<(), BridgeError> {
+        Ok(self.inner.close().await?)
+    }
+}
+pub struct ExtensionRunHandle {
+    inner: kiyori_core::scripts::ScriptRun,
+}
+impl ExtensionRunHandle {
+    pub async fn next_event(&self) -> Result<Option<ExtensionEvent>, BridgeError> {
+        let event = self.inner.next_event().await.map_err(|e| BridgeError {
+            code: ErrorCode::Storage,
+            message: e.to_string(),
+        })?;
+        Ok(event.map(|event| match event {
+            kiyori_core::scripts::ScriptEvent::Intermediate(v) => ExtensionEvent {
+                phase: ExtensionPhase::Intermediate,
+                json: Some(v.to_string()),
+                error: None,
+            },
+            kiyori_core::scripts::ScriptEvent::Completed(v) => ExtensionEvent {
+                phase: ExtensionPhase::Completed,
+                json: Some(v.to_string()),
+                error: None,
+            },
+            kiyori_core::scripts::ScriptEvent::Failed(e) => ExtensionEvent {
+                phase: ExtensionPhase::Failed,
+                json: None,
+                error: Some(e.to_string()),
+            },
+        }))
+    }
+    pub async fn cancel(&self) -> Result<(), BridgeError> {
+        self.inner.cancel_and_wait().await.map_err(|e| BridgeError {
+            code: ErrorCode::Storage,
+            message: e.to_string(),
+        })
+    }
 }
 impl ModelImportHandle {
     pub fn append(&self, bytes: Vec<u8>) -> Result<u64, BridgeError> {

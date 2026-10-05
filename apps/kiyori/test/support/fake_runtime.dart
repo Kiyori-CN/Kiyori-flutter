@@ -25,6 +25,24 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<List<ExtensionPackage>> extensionPackages() async => [];
+  @override
+  Future<List<ExtensionProvider>> extensionProviders() async => [];
+  @override
+  Future<ExtensionImportRun> beginExtensionImport() =>
+      throw UnimplementedError();
+  @override
+  Future<int> changeExtension(String id, int revision, {bool? enabled}) =>
+      throw UnimplementedError();
+  @override
+  Future<ExtensionRun> startExtension(
+    String id,
+    int revision,
+    ExtensionHandler handler,
+    String payload, {
+    int timeoutMs = 30000,
+  }) => throw UnimplementedError();
+  @override
   Future<ModelImportRun> beginModelImport(String name) =>
       throw UnimplementedError();
   @override

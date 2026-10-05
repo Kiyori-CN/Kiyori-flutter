@@ -25,6 +25,12 @@
 
 ## 不变量
 
+core/extensions复用AppStore/ResourceRef；schema19保存TOOLPKG包和安装恢复账本，
+目录键为TOOLPKG:package_id:provider_id并绑定revision。启停/升级/卸载先撤销新调用、
+取消等待旧worker释放包租约；卸载墓碑使重装不接受旧请求。JS入口每次验证hash。
+首版只支持schema1 JSON/单JS源，管理UI、网络宿主和正式聊天接线仍未接入，
+ZIP data descriptor/HJSON/schema2及其他旧宿主能力继续实施，详见ADR0012与status。
+
 core/scripts拥有脚本期限、4并发槽、8事件背压和取消树；platform/scripts持有单次
 QuickJS-NG runtime/context，FFI装配，核心不依赖具体引擎。CommonJS注册及调用分别
 返回有界JSON，异常不回显源码/输入，超时/取消终态等待实例析构。默认无文件、网络、

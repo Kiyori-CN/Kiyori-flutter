@@ -37,6 +37,7 @@
 - [角色卡与提示词](design/character-prompts.md)：旧源码深度、角色/群组成员草稿、目录身份、嵌套弹层与业务接入边界。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。
 - [TOOLPKG提供方运行时方案](design/toolpkg-provider-runtime-plan.md)：动态提供方旧源、执行器实证、权限与正式接入切片。
+- [ADR 0012 持久提供方包](decisions/0012-persistent-provider-packages.md)：包导入、稳定身份、撤销、恢复和兼容范围。
 - [浏览器与网络](design/browser-and-network.md)：会话、广告拦截、应用代理与系统代理边界。
 - [文件、下载与媒体](design/files-downloads-and-media.md)：资源引用、后台任务、音视频与终端。
 - [数据与权限](design/data-and-security.md)：存储、安全、权限、迁移、日志与依赖来源。

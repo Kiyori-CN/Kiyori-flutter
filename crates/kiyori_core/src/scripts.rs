@@ -292,6 +292,15 @@ impl Runtime {
             .map_err(|_| ScriptFailureKind::InvalidInput.into())
     }
     pub async fn start_script(&self, request: ScriptRequest) -> Result<ScriptRun, ScriptFailure> {
+        self.start_script_owned(request, self.cancellation.child_token(), None)
+            .await
+    }
+    pub(crate) async fn start_script_owned(
+        &self,
+        request: ScriptRequest,
+        cancellation: CancellationToken,
+        lease: Option<Box<dyn Send>>,
+    ) -> Result<ScriptRun, ScriptFailure> {
         if self.cancellation.is_cancelled() {
             return Err(ScriptFailureKind::RuntimeClosed.into());
         }
@@ -305,7 +314,6 @@ impl Runtime {
             .cloned()
             .ok_or(ScriptFailureKind::Unsupported)?;
         let deadline = Instant::now() + Duration::from_millis(request.limits.timeout_ms.into());
-        let cancellation = self.cancellation.child_token();
         let drop_guard = cancellation.clone().drop_guard();
         let permit = tokio::select! {
             biased;
@@ -376,6 +384,7 @@ impl Runtime {
                 })
             };
             // adapter已返回才释放并发与活跃标记，随后发布终态。
+            drop(lease);
             drop(permit);
             drop(active);
             drop(queue);

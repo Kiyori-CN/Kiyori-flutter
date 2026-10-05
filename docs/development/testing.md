@@ -105,6 +105,13 @@ UI 关注响应式布局、键盘/鼠标/触摸、大字体、可访问性和生
 
 ## 设备矩阵
 
+TOOLPKG包管理：core/extensions回归覆盖真实ZIP路径/CRC/大小写别名/入口篡改、安装升级
+启停卸载与墓碑代次、重开、pending恢复、取消等待及跨Runtime锁，以及安装Future丢弃/
+关闭等待注册worker、schema18迁移保留与结构冲突回滚；
+packages/kiyori_bridge/test/extensions_runtime_test.dart执行真实QuickJS/FFI/SQLite的
+合成包安装、四handler、流式中间/最终结果、撤销活动VM、重开、升级、卸载重装，以及
+无消费者/部分导入的Runtime关闭。合成包无网络，不能代替HTTP宿主或产品聊天验收。
+
 首轮 Android arm64 真机、Windows x64；Android x64 模拟器在需要时添加。iOS 没有 Mac/iPhone，明确保留待验证，后续先模拟器再真机。旧应用和新应用并存需查安装包标识、Provider、数据目录、终端 home/socket/端口，再测试同时启动。
 
 ## CI 与发布

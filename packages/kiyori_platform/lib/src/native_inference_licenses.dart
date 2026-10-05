@@ -17,6 +17,11 @@ void registerNativeInferenceLicenses() {
       'RapidJSON': ['RapidJSON'],
       'nlohmann-json': ['nlohmann/json'],
       'QuickJS-NG': ['QuickJS-NG'],
+      'zip': ['zip 8.6.0'],
+      'flate2': ['flate2'],
+      'zlib-rs': ['zlib-rs'],
+      'indexmap': ['indexmap'],
+      'typed-path': ['typed-path'],
     };
     for (final entry in entries.entries) {
       final text = await rootBundle.loadString(

@@ -401,7 +401,9 @@ async fn timeout_waits_for_worker_and_invalid_utf8_fails() {
             }))
             .unwrap();
         let mut input = request();
-        input.timeout_ms = 100;
+        // 仅超时场景使用短期限；UTF-8场景必须给worker正常执行预算，不能在并行负载下
+        // 让调度超时抢先遮蔽原本要验证的Protocol终态。
+        input.timeout_ms = if mode == 1 { 100 } else { 10_000 };
         let run = runtime.start_chat(input).unwrap();
         let mut failed = false;
         while let Some(event) = run.next_event().await.unwrap() {

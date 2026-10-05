@@ -55,6 +55,24 @@ Apple未编译；线程/内存限制不是OS安全沙箱，原生漏洞仍具有
    配置引用的包撤销时明确失败并保留配置，不静默回退内置provider。测试结果标明
    本次实际快照和handler；未知计数不伪造成真实token。
 
+## 下一切片：受控 HTTP 宿主（设计，尚未接入）
+
+旧custom_ai_provider实际依赖OkHttp builder/request/execute以及chunk回调，不只依赖
+Promise。采用单次blocking VM中的窄宿主回调：Rust在同worker等待Runtime的共享client，
+流片段只在所属VM线程调用JS函数，不跨线程移动JSValue。网络等待同时检查调用取消与
+期限；取消返回后必须等待HTTP future、JS对象和包租约释放，不能遗留后台请求。
+
+注册阶段和无宿主调用仍不安装OkHttp。正式模型调用先从当前启用包和revision冻结目录，
+构造旧eventPayload/config/chatHistory语义；脚本只接收认证占位引用，明文密钥和安全请求头
+由Rust持有并在发往配置端点时注入。SDK仅兼容旧示例实际使用的builder方法，不暴露Java
+对象、任意client或文件句柄。HTTP失败只发布稳定原因，不回传原始异常、响应头或私密正文。
+
+配置端点限定同源及已批准操作路径，禁止脚本新增主机、账号、认证参数或重定向；方法、
+请求/响应大小、调用次数和总期限有界。RPM/并发沿用配置owner，避免在一个请求上重复
+获取同一并发许可导致自锁。脚本结果仍经模型领域核对目录、正文、usage与唯一完整终态。
+验收包含旧示例真实loopback目录/流式正文/连接/计数、恶意主机/认证/重定向拒绝、取消、
+超量和包撤销，以及动态抽屉、配置保存/重开和正式会话持久化；供应商实测另用授权合成输入。
+
 ## 验收与回滚
 
 先运行端口的无权限、恶意输入、超时/取消、Promise、背压和析构测试，再测安装路径
@@ -68,8 +86,11 @@ Android/Windows产品构建及包审计。Android设备运行和Apple编译独�
 
 正式端口已通过核心5项生命周期/身份与Windows原生6项行为回归，旧示例在正式端口
 注册/计数及网络拒绝1项通过。正式四handler调用支持同步和可自行结算的Promise，
-没有宿主I/O时未决Promise明确失败。完整验证与双端构建继续；包持久化、网络权限
-及产品接线尚未实现。
+没有宿主I/O时未决Promise明确失败。执行端口完整验证与双端构建已通过，实际批次见status。
+core/extensions现已实现schema19包持久化、受控ZIP导入、安装/升级/启停/卸载与代次撤销，
+公共FFI及Dart桥已接入；具体合同与兼容缺口见[ADR 0012](../decisions/0012-persistent-provider-packages.md)。
+包生命周期核心及真实QuickJS/FFI测试通过，整体验证与双端构建继续；受控网络、动态目录
+与产品管理/ChatRun接线仍未实现，不能把执行端口或包API等同全部产品功能。
 
 正式源码位于core/scripts与platform/scripts，内存1–128 MiB、栈64 KiB–1 MiB、
 期限10–600000ms、Promise job最多100000；并发4，事件8槽，每条1 MiB、总8 MiB。

@@ -6,6 +6,7 @@ pub mod context;
 pub mod conversations;
 pub mod diary;
 pub mod downloads;
+pub mod extensions;
 pub mod files;
 pub mod graph;
 pub mod knowledge;

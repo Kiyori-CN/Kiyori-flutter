@@ -1,5 +1,9 @@
 # 模块目录与验收边界
 
+`core/extensions`拥有持久TOOLPKG包、受控导入、恢复账本、目录身份与撤销；
+FFI公开包/目录/导入/四handler端口，Dart外观管理句柄与关闭。schema19复用同SQLite
+和ResourceRef，执行仍归core/scripts；管理UI、HTTP与ChatRun产品接线尚未完成。
+
 `core/scripts`实现执行预算、取消/关闭等待与有界结果；`packages/kiyori_platform/scripts`
 实现QuickJS-NG独立实例，由FFI装配。注册与四handler为真实JS调用；包目录、网络宿主
 与产品提供商接线另按TOOLPKG方案实施，不将端口验收称为完整扩展功能。

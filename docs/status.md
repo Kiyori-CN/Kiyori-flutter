@@ -5,6 +5,40 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG 持久包生命周期（本机验收与双端构建通过）
+
+本批基线main/36261912，承接同任务未提交实现。core/extensions复用AppStore/ResourceRef，
+schema19持久包、注册目录与恢复账本；受控分片导入、ZIP/manifest/入口摘要验证、升级、
+启停、卸载墓碑和revision检查已接FFI与稳定Dart桥。包变更撤销本Runtime在途/排队调用，
+等待worker和共享锁释放；其他Runtime仍使用时明确忙。升级保留启用状态，重装拒绝旧代次。
+只回收owner两份文件，未知资源保留且cleanup_pending可观察。取消安装等待校验/注册结束。
+
+core/extensions八项及全核心160项通过（work/toolpkg-lifecycle-core-v7.log），包括真实ZIP
+路径/CRC/Deflate/大小写别名/篡改/链接/bomb、四handler、重开、撤销、跨Runtime锁、维护
+失败/恢复、安装Future丢弃与关闭、schema18迁移保留及结构冲突回滚。此前完整verify失败
+日志v1保留：13项旧schema夹具留下19版表、UTF8场景复用100ms预算，均定向修正；迁移
+后的版本断言同步19。正式迁移未放宽，超时和Protocol断言保留。真实QuickJS/FFI/SQLite
+合成包两项通过（ffi-tests-v2），桥Check五文件一致（bridge-check-v3）。
+第二轮完整验证的下载UI夹具固定100ms后暂停时首段尚未确认（0而非3字节），日志v2保留；
+首次改为等待3字节确认的定向v3失败；源码实际每1 MiB落盘。夹具首段现达到1 MiB真实
+检查点，再按transferred确认后暂停，严格验证对应Range和完整SHA256，产品策略保持。
+定向v4通过；最终完整tools/verify.ps1 -WindowsIntegration通过（verify-v3）：foundation64、
+Rust核心160/原生6（旧源1条件跳过）、fmt/Clippy、379 Dart格式/analyze、应用611
+（16条件跳过）、platform7、独立FFI22（1条件跳过）、Windows引擎5全部通过。
+新增五份许可证经已锁定registry源逐份核对，除行尾规范化外正文一致；Android ARM64 Debug
+126.2秒、普通Windows x64 Debug21.5秒串行通过，日志android-v1/windows-v1。
+固定包artifacts/ui-preview/20261005-115112：APK118076236字节，SHA256
+FD8E59D6FD61B67BC77F67F619B9FAA49D589CDE048242BC9E9BEC920EAA3A77；Windows97文件
+169621342字节。98份副本hash、APK身份/v2签名/ZIP16K/ELF、x64/Flutter DLL pin与13份
+许可证两端/源一致审计通过，work/toolpkg-lifecycle-artifacts-20261005-115112。
+39路径精确清单已审计，按原任务授权提交普通推送，最终ref见Git与manifest.sourceCommit。
+
+固定zip8.6.0及五份相关许可证已随平台资源注册。首个包合同仅schema1 manifest.json和
+单JS入口；HJSON/schema2/data descriptor/依赖/环境/子包/资源模板兼容尚未实现，不能称
+完整旧包兼容。产品安装管理UI、受控HTTP、动态provider及正式ChatRun接线仍缺；原生
+GPU/媒体/工具模板/llama思考、OS后台下载、Gemini实测、像素/触摸/Profile与Apple边界
+继续按原任务推进。整体Goal active；未执行设备操作或发布，Apple独立待验证。
+
 ### Responses 思考内容修复（本机与真实端点验收通过）
 
 本批main/10648e5开始时干净，旧源6b03b03重新核对只读干净。DeepSeek官方合同中的

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -52,6 +51,7 @@ void main() {
       late HttpServer server;
       final gate = Completer<void>();
       final requests = <String?>[];
+      const partSize = 1024 * 1024;
       await tester.runAsync(() async {
         directory = await Directory.systemTemp.createTemp(
           'kiyori-local-transfer-ui-',
@@ -64,8 +64,8 @@ void main() {
           request.response.bufferOutput = false;
           request.response.headers.set('etag', '"same"');
           if (requests.length == 1) {
-            request.response.contentLength = 6;
-            request.response.add(utf8.encode('abc'));
+            request.response.contentLength = partSize * 2;
+            request.response.add(List<int>.filled(partSize, 97));
             await request.response.flush();
             await gate.future;
             try {
@@ -76,9 +76,12 @@ void main() {
           } else {
             expect(request.headers.value('if-range'), '"same"');
             request.response.statusCode = 206;
-            request.response.headers.set('content-range', 'bytes 3-5/6');
-            request.response.contentLength = 3;
-            request.response.add(utf8.encode('def'));
+            request.response.headers.set(
+              'content-range',
+              'bytes $partSize-${partSize * 2 - 1}/${partSize * 2}',
+            );
+            request.response.contentLength = partSize;
+            request.response.add(List<int>.filled(partSize, 98));
             await request.response.close();
           }
         });
@@ -90,8 +93,8 @@ void main() {
           TransferFile(
             path: 'model.bin',
             url: 'http://127.0.0.1:${server.port}/file',
-            size: BigInt.from(6),
-            sha256: 'bef57ec7f53a6d40beb640a780a639c83bc29ac8a9816f1fc6c5c6dcd93c4721',
+            size: BigInt.from(partSize * 2),
+            sha256: 'b8f0684e02a2902e2bba1fc2bcf37ee37efd818ed6943fa77faa7580da0a1bfc',
           ),
         ],
       );
@@ -124,18 +127,27 @@ void main() {
               requests.length == 1 &&
               find.byTooltip('暂停下载').evaluate().isNotEmpty,
         );
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 100)),
-        );
+        // 服务端flush只证明写出；Rust每1 MiB落盘一次。夹具首段达到真实检查点，
+        // 以正式进度同步再暂停，避免固定延迟在并行负载下抢先中断首段读取。
+        await tester.runAsync(() async {
+          final elapsed = Stopwatch()..start();
+          while ((await runtime.transfers()).single.transferred !=
+              BigInt.from(partSize)) {
+            if (elapsed.elapsed > const Duration(seconds: 10)) {
+              throw StateError('首段传输未确认');
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+        });
         await tester.tap(find.byTooltip('暂停下载'));
         await waitFor(() => find.text('继续下载').evaluate().isNotEmpty);
         final paused = await tester.runAsync(() => runtime.transfers());
-        expect(paused!.single.transferred, BigInt.from(3));
+        expect(paused!.single.transferred, BigInt.from(partSize));
         expect(paused.single.phase, 'paused');
         gate.complete();
         await tester.tap(find.text('继续下载'));
         await waitFor(() => find.text('下载完成').evaluate().isNotEmpty);
-        expect(requests, [null, 'bytes=3-']);
+        expect(requests, [null, 'bytes=$partSize-']);
         // 页面收到completed快照时，事件流的关闭与dispose仍在后续回调中。
         // 让真实FFI与widget虚拟事件循环均结算后，再关闭并重开整个runtime。
         await tester.runAsync(

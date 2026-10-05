@@ -103,6 +103,7 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
+    pub(crate) extensions: crate::extensions::Registry,
     pub(crate) scripts: crate::scripts::Registry,
     pub(crate) inference:
         std::sync::OnceLock<std::sync::Arc<dyn crate::chat::native::InferenceAdapter>>,
@@ -145,6 +146,7 @@ impl Runtime {
 
     pub fn new() -> Self {
         Self {
+            extensions: Default::default(),
             scripts: Default::default(),
             inference: Default::default(),
             chat_observations: Default::default(),
@@ -157,6 +159,7 @@ impl Runtime {
 
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
+            extensions: Default::default(),
             scripts: Default::default(),
             inference: Default::default(),
             chat_observations: Default::default(),

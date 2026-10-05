@@ -496,6 +496,7 @@ async fn schema17_migration_keeps_original_runs_and_bulk_deletion_invalidates_ea
     let before = runtime.conversation(id.clone()).unwrap();
     let store = runtime.persistent_store().unwrap();
     // 真实17版本没有手动摘要；先移除测试新增消息/Run，再构造旧列集合。
+    crate::extensions::remove_schema_for_fixture(&store.connection.lock().unwrap());
     store.connection.lock().unwrap().execute_batch("DELETE FROM conversation_messages WHERE role='summary'; DELETE FROM conversation_runs WHERE kind='summary'; ALTER TABLE conversation_runs DROP COLUMN kind; PRAGMA user_version=17;").unwrap();
     runtime.close();
     drop(store);
@@ -850,7 +851,7 @@ fn summary_count_ratio_budget_and_schema14_migration_preserve_history() {
     assert_eq!(
         conn.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
             .unwrap(),
-        18
+        19
     );
     assert!(summary::cached(&conn, &id).unwrap().is_none());
     drop(conn);
