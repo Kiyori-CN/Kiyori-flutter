@@ -10,6 +10,8 @@ use std::io::{Cursor, Write};
 
 #[path = "conversation_audit_archive.rs"]
 pub(crate) mod archive;
+#[path = "conversation_audit_search.rs"]
+mod search;
 
 pub(crate) const SCHEMA: &str = "
 ALTER TABLE conversations ADD COLUMN parent_id TEXT REFERENCES conversations(id) ON DELETE SET NULL;
@@ -205,25 +207,64 @@ impl AppStore {
         }
         initialize(&tx, id)?;
         let (total,bytes,head):(i64,i64,String)=tx.query_row("SELECT count(*),coalesce(sum(payload_bytes),0),coalesce((SELECT event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence DESC LIMIT 1),'') FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(db)?;
-        let terms: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
-        let filter=terms.iter().enumerate().map(|(i,_)|format!(" AND instr(lower(event_id||' '||category||' '||event_type||' '||summary||' '||kiyori_audit_unprotect(payload)),?{})>0",i+3)).collect::<String>();
+        let searching = !query.trim().is_empty();
+        let matcher = search::Query::new(query);
         let sql = format!(
-            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,payload_characters,payload_bytes,run_id,terminal_state FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2){filter} ORDER BY sequence DESC LIMIT 101"
+            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,payload_characters,payload_bytes,run_id,terminal_state,{} FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2) ORDER BY sequence DESC LIMIT {}",
+            if searching {
+                "kiyori_audit_unprotect(payload)"
+            } else {
+                "NULL"
+            },
+            if searching { 100 } else { 101 },
         );
-        let mut args: Vec<rusqlite::types::Value> = vec![id.to_owned().into(), before.into()];
-        args.extend(terms.into_iter().map(Into::into));
-        // 元数据投影来自已保存payload；一次查询读取分页，不另为每条事件读取正文。
-        let mut events=tx.prepare(&sql).map_err(db)?.query_map(rusqlite::params_from_iter(args),|r| {
-            let category = r.get::<_,String>(3)?;
-            let actor = if matches!(category.as_str(), "USER" | "MESSAGE") { "USER" } else { "SYSTEM" };
-            Ok(json!({"sequence":r.get::<_,i64>(0)?,"eventId":r.get::<_,String>(1)?,"recordedAt":r.get::<_,i64>(2)?,"category":category,"eventType":r.get::<_,String>(4)?,"summary":r.get::<_,String>(5)?,"previousEventSha256":r.get::<_,String>(6)?,"eventSha256":r.get::<_,String>(7)?,"characters":r.get::<_,i64>(8)?,"bytes":r.get::<_,i64>(9)?,"localExecutionId":r.get::<_,Option<String>>(10)?,"terminalState":r.get::<_,Option<String>>(11)?,"actor":actor}))
-        }).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
-        let more = events.len() > 100;
+        let mut statement = tx.prepare(&sql).map_err(db)?;
+        let mut rows = statement.query(params![id, before]).map_err(db)?;
+        let mut events = Vec::new();
+        let mut scanned = 0;
+        let mut cursor = None;
+        // 搜索每批扫描100条未过滤事件；逐行释放解密正文，稀疏命中也能推进游标。
+        while let Some(r) = rows.next().map_err(db)? {
+            let category = r.get::<_, String>(3).map_err(db)?;
+            let actor = if matches!(category.as_str(), "USER" | "MESSAGE") {
+                "USER"
+            } else {
+                "SYSTEM"
+            };
+            let sequence = r.get::<_, i64>(0).map_err(db)?;
+            let mut event = json!({"sequence":sequence,"eventId":r.get::<_,String>(1).map_err(db)?,"recordedAt":r.get::<_,i64>(2).map_err(db)?,"category":category,"eventType":r.get::<_,String>(4).map_err(db)?,"summary":r.get::<_,String>(5).map_err(db)?,"previousEventSha256":r.get::<_,String>(6).map_err(db)?,"eventSha256":r.get::<_,String>(7).map_err(db)?,"characters":r.get::<_,i64>(8).map_err(db)?,"bytes":r.get::<_,i64>(9).map_err(db)?,"localExecutionId":r.get::<_,Option<String>>(10).map_err(db)?,"terminalState":r.get::<_,Option<String>>(11).map_err(db)?,"actor":actor});
+            scanned += 1;
+            cursor = (sequence > 1).then_some(sequence);
+            if searching {
+                let payload = r.get::<_, String>(12).map_err(db)?;
+                if let Some(excerpt) = matcher.excerpt(&event, &payload) {
+                    event["searchExcerpt"] = excerpt.into();
+                    events.push(event);
+                }
+            } else {
+                events.push(event);
+            }
+        }
+        drop(rows);
+        drop(statement);
+        let more = if searching {
+            cursor.is_some()
+        } else {
+            events.len() > 100
+        };
         events.truncate(100);
+        if !searching {
+            scanned = events.len();
+            cursor = if more {
+                events.last().and_then(|e| e["sequence"].as_i64())
+            } else {
+                None
+            };
+        }
         events.reverse();
         let runtime:Option<String>=tx.query_row("SELECT model FROM conversation_runs WHERE conversation_id=?1 ORDER BY created_at DESC LIMIT 1",[id],|r|r.get(0)).optional().map_err(db)?;
         let running=tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE conversation_id=?1 AND state='running')",[id],|r|r.get::<_,bool>(0)).map_err(db)?;
-        let result=json!({"events":events,"hasOlder":more,"eventCount":total,"payloadBytes":bytes,"chainHead":head,"runtime":runtime,"status":if running {"IN_PROGRESS"} else {"BASIC"}}).to_string();
+        let result=json!({"events":events,"hasOlder":more,"scannedCount":scanned,"nextBeforeSequence":cursor,"eventCount":total,"payloadBytes":bytes,"chainHead":head,"runtime":runtime,"status":if running {"IN_PROGRESS"} else {"BASIC"}}).to_string();
         tx.commit().map_err(db)?;
         Ok(result)
     }

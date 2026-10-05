@@ -588,7 +588,7 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
     final text = query.text.trim();
     // Kotlin ignoreCase先比较大写，再比较其小写；单纯lowercase遗漏ς/σ和ı/I。
     // Dart使用不扩展长度的Unicode单字符映射，ß不会被当成两个S。
-    final folded = text.toUpperCase().toLowerCase();
+    final folded = historySearchFold(text);
     setState(() {
       searching = text.length >= 2;
       failed = false;
@@ -597,8 +597,8 @@ class _HistorySearchScopeState extends State<_HistorySearchScope> {
           : {
               for (final item
                   in widget.owner.catalog?.conversations ?? <Conversation>[])
-                if (item.title.toUpperCase().toLowerCase().contains(folded) ||
-                    item.folder.toUpperCase().toLowerCase().contains(folded))
+                if (historySearchFold(item.title).contains(folded) ||
+                    historySearchFold(item.folder).contains(folded))
                   item.id,
             };
     });

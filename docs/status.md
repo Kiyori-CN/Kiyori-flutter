@@ -13,7 +13,35 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：详情正文加载、重试与选择
+### 最新增量：详情全文搜索旧合同
+
+从main/cd62921干净基线继续。旧searchEventPage每批扫描100条未过滤事件；此前SQL先
+筛选命中再分页，缺少扫描计数/游标/摘录，Unicode与元数据匹配亦有差异。原态before
+回归先复现scannedCount缺失；改为逐行释放解密正文、单字符大小写的跨字段字面AND，
+返回scannedCount/nextBeforeSequence/searchExcerpt，schema、公开FFI与原链不变。
+详情恢复350ms防抖、每次新增至少100命中或到尾的自动续扫、原游标重试、失败保留
+命中、说明右侧20dp/2dp加载与继续/重试、accent四行可选择摘录。切词/标签拒绝迟到，
+完成批次返回不多扫，错误只留搜索页；对话查询逐字段且空时间不作为null文本命中。
+核心core-v2八项通过；历史联合UI-v5共38项通过。UI-v4两项超时来自既有测试等待已移除
+的线性进度，已按旧圆形加载更新等待且保留正文/分页/标签断言。UI-v1公共SDK版本不符、
+v2局部函数声明顺序编译失败均保留；实际验证固定使用tools/activate.ps1。
+捕获capture-v2八项通过，91PNG位于work/history-drawer-capture-v26，明暗搜索与设置/
+菜单实图已审阅。capture-v1新增摘录单击断言因测试client未转发正文读取失败，补齐真实
+转发后通过，未降产品断言。完整verify-v1通过Rust等阶段后在analyze报告六处if花括号
+规范问题，已修，最终完整tools/verify.ps1 -WindowsIntegration通过
+（work/history-audit-search-verify-v2.log）：foundation69/tooling4、Rust core189/HTTP3/
+provider13/native6/native-audit1、403 Dart格式、Clippy/analyze、app656（17条件跳过）/
+platform13/独立FFI22（1条件跳过）/Windows引擎5。Rust三项条件忽略不代表供应商或旧源
+环境验收。普通Android/Windows Debug串行137.8s/18.0s通过（audit-search双端v1）。
+最终固定artifacts/ui-preview/20261006-075837：APK137703573字节，SHA256
+66605D0DC4F01013CBB60C123757FC6DE6ABA579F4AA640D3578DAA46F85C879；Windows101文件171627603字节。
+102副本hash、APK身份/v2/ZIP16K/ELF、53表情、17两端许可证及Windows x64/DLL pin
+审计通过（work/history-audit-search-delivery-v1.log）。本增量14路径精确清单通过审计，
+授权普通推送main；最终sourceCommit与远端一致性以Git和固定manifest为准。
+整体目标仍部分完成：同设备像素/触摸/Profile与Android Keystore/SAF、旧进程包兼容、
+Apple未验收；M2完整工具和多payload附件未实施，范围选择仍待用户答复。
+
+### 前序增量：详情正文加载、重试与选择
 
 从main/a4cdfe9干净基线继续核对旧ConversationDetailsScreen。恢复事件头8dp间距、
 展开分隔线两侧7dp与正文组8dp；摘要支持长按选择复制，单击仍展开。正文加载中只

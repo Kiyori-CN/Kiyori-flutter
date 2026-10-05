@@ -127,6 +127,10 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   Future<void> load({bool older = false}) async {
+    if (identical(page, timelineSearch)) {
+      await loadSearch();
+      return;
+    }
     final generation = ++epoch;
     final target = page;
     final query = identical(target, timelineSearch) ? search.text.trim() : '';
@@ -136,8 +140,6 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         : null;
     final before = older && target.events.isNotEmpty
         ? target.events.first['sequence'] as int
-        : identical(target, timelineSearch)
-        ? target.cutoff ?? 0
         : 0;
     final atBottom =
         !scrolls[0].hasClients || scrolls[0].position.extentAfter < 80;
@@ -181,9 +183,6 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         target.query = query;
         target.hasOlder = hasOlder;
         target.revision = revision;
-        if (identical(target, timelineSearch)) {
-          target.cutoff ??= (next['eventCount'] as int) + 1;
-        }
         error = null;
         loading = false;
         if (identical(target, loaded) && !older && target.events.isNotEmpty) {
@@ -212,6 +211,73 @@ class _HistoryDetailsState extends State<HistoryDetails> {
     }
   }
 
+  Future<void> loadSearch({bool delayed = true}) async {
+    final generation = ++epoch;
+    final query = search.text.trim();
+    final target = timelineSearch;
+    final initialCount = target.events.length;
+    target.needsResume = false;
+    setState(() {
+      loading = true;
+      target.searchError = false;
+    });
+    try {
+      if (delayed) {
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      }
+      if (!mounted || generation != epoch) return;
+      final client = await widget.owner.connect();
+      if (!mounted || generation != epoch) return;
+      final conversation = await client.conversation(widget.id);
+      if (!mounted || generation != epoch) return;
+      setState(() {
+        snapshot = conversation;
+        revision = conversation.conversation.revision;
+      });
+      while (!target.initialized || target.hasOlder) {
+        final next = jsonDecode(
+          await client.conversationAudit(widget.id, target.cursor ?? 0, query),
+        ) as Map<String, dynamic>;
+        if (!mounted || generation != epoch) return;
+        final cursor = next['nextBeforeSequence'] as int?;
+        if (cursor != null &&
+            target.cursor != null &&
+            cursor >= target.cursor!) {
+          throw StateError('审计搜索游标未推进');
+        }
+        // 每批发布已找到的事实；下一批失败保留结果和游标，切词/标签拒绝迟到回填。
+        setState(() {
+          final merged = {
+            for (final e in target.events) e['eventId']: e,
+            for (final e
+                in (next['events'] as List).cast<Map<String, dynamic>>())
+              e['eventId']: e,
+          };
+          target.events
+            ..clear()
+            ..addAll(merged.values);
+          target.events.sort(
+            (a, b) => (a['sequence'] as int).compareTo(b['sequence'] as int),
+          );
+          target.scanned += next['scannedCount'] as int;
+          target.cursor = cursor;
+          target.hasOlder = cursor != null;
+          target.initialized = true;
+          target.query = query;
+          target.revision = revision;
+          audit = next;
+        });
+        if (target.events.length - initialCount >= 100) break;
+      }
+    } catch (_) {
+      if (mounted && generation == epoch) {
+        setState(() => target.searchError = true);
+      }
+    } finally {
+      if (mounted && generation == epoch) setState(() => loading = false);
+    }
+  }
+
   void jumpLatest() {
     if (!mounted || tab != 0 || !scrolls[0].hasClients) return;
     scrolls[0].jumpTo(scrolls[0].position.maxScrollExtent);
@@ -228,10 +294,17 @@ class _HistoryDetailsState extends State<HistoryDetails> {
       epoch++;
       timelineSearch.events.clear();
       timelineSearch.hasOlder = false;
-      timelineSearch.cutoff = null;
+      timelineSearch.cursor = null;
+      timelineSearch.scanned = 0;
+      timelineSearch.initialized = false;
+      timelineSearch.query = '';
+      timelineSearch.searchError = false;
       loading = value.trim().isNotEmpty;
       if (value.trim().isNotEmpty) {
-        debounce = Timer(const Duration(milliseconds: 400), () => load());
+        debounce = Timer(
+          const Duration(milliseconds: 350),
+          () => loadSearch(delayed: false),
+        );
       } else {
         unawaited(load());
       }
@@ -273,6 +346,9 @@ class _HistoryDetailsState extends State<HistoryDetails> {
     if (next == tab) return;
     debounce?.cancel();
     tabQueries[tab] = search.text;
+    if (identical(page, timelineSearch) && loading) {
+      timelineSearch.needsResume = true;
+    }
     if (scroll.hasClients) tabOffsets[tab] = scroll.offset;
     setState(() {
       tab = next;
@@ -287,7 +363,10 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         .firstOrNull;
     if (audit == null ||
         item?.revision != page.revision ||
-        identical(page, timelineSearch) && page.query != search.text.trim()) {
+        identical(page, timelineSearch) &&
+            (!page.initialized ||
+                page.needsResume ||
+                page.query != search.text.trim())) {
       unawaited(load());
     }
   }
@@ -303,27 +382,36 @@ class _HistoryDetailsState extends State<HistoryDetails> {
           (message) => message.role == 'user' || message.role == 'assistant',
         )
         .toList();
-    final query = search.text.trim().toLowerCase();
+    final query = historySearchFold(search.text.trim());
     final filteredMessages = messages
         .where(
-          (m) =>
-              '${m.role == 'assistant' ? 'ai' : m.role} ${m.roleName} ${m.model} ${m.content} ${m.sentAt}'
-                  .toLowerCase()
-                  .contains(query),
+          (m) => [
+            m.role == 'assistant' ? 'ai' : m.role,
+            m.roleName ?? '',
+            m.model,
+            m.content,
+            m.sentAt?.toString() ?? '',
+          ].any((field) => historySearchFold(field).contains(query)),
         )
         .toList();
     final filteredEvents = tab == 2
         ? events
-              .where((e) => jsonEncode(e).toLowerCase().contains(query))
+              .where((e) => historySearchFold(jsonEncode(e)).contains(query))
               .toList()
         : events;
     final count = tab == 1 ? filteredMessages.length : filteredEvents.length;
-    final total = tab == 1 ? messages.length : events.length;
+    final searching = identical(page, timelineSearch);
+    final searchError = searching && timelineSearch.searchError;
+    final total = tab == 1
+        ? messages.length
+        : searching
+        ? timelineSearch.scanned
+        : events.length;
     final ids = tab == 1
         ? filteredMessages.map((m) => m.id).toList()
         : filteredEvents.map((e) => e['eventId'] as String).toList();
     final allOpen = count > 0 && ids.every(expanded.contains);
-    final older = tab != 1 && page.hasOlder;
+    final older = tab != 1 && !searching && page.hasOlder;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -472,24 +560,43 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                   ],
                 ),
               ),
-              if (loading) const LinearProgressIndicator(minHeight: 2),
+              if (loading && !searching)
+                const LinearProgressIndicator(minHeight: 2),
               if (tab == 0 && search.text.trim().isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    error != null
-                        ? '搜索未完成，已找到的结果保留；请重试，不能将此状态视为没有匹配。'
-                        : '搜索全部已记录事件与文本附件；空格分隔多个关键词。结果为搜索开始时的历史，清空后可重新搜索。',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 16 / 12,
-                      color: error != null
-                          ? colors.error
-                          : colors.onSurfaceVariant,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          searchError ? '搜索未完成，已找到的结果保留；请重试，不能将此状态视为没有匹配。' : '搜索全部已记录事件与文本附件；空格分隔多个关键词。结果为搜索开始时的历史，清空后可重新搜索。',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 16 / 12,
+                            color: searchError
+                                ? colors.error
+                                : colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      if (loading)
+                        const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else if (timelineSearch.hasOlder || searchError)
+                        TextButton(
+                          onPressed: loadSearch,
+                          child: Text(searchError ? '重新加载详情' : '继续搜索'),
+                        ),
+                    ],
                   ),
                 ),
-              if (error != null)
+              if (error != null && !searching)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -511,12 +618,16 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    count == 0 && !loading && !older
+                    count == 0 && (searching || !loading && !older)
                         ? Center(
                             child: Padding(
                               padding: const EdgeInsets.all(28),
                               child: Text(
-                                search.text.isNotEmpty
+                                searching && loading
+                                    ? '正在搜索历史记录…'
+                                    : searchError
+                                    ? '搜索未完成，已找到的结果保留；请重试，不能将此状态视为没有匹配。'
+                                    : search.text.isNotEmpty
                                     ? '当前搜索范围内没有匹配项'
                                     : tab == 1
                                     ? '当前对话还没有可显示的消息'
@@ -783,7 +894,11 @@ class _HistoryAuditPage {
   final events = <Map<String, dynamic>>[];
   String query = '';
   bool hasOlder = false;
-  int? revision, cutoff;
+  bool initialized = false;
+  bool searchError = false;
+  bool needsResume = false;
+  int scanned = 0;
+  int? revision, cursor;
 }
 
 class _DetailsCard extends StatelessWidget {
@@ -991,6 +1106,25 @@ class _EventCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (event['searchExcerpt'] != null) ...[
+                const SizedBox(height: 7),
+                SelectionArea(
+                  child: GestureDetector(
+                    onTap: onTap,
+                    excludeFromSemantics: true,
+                    child: Text(
+                      event['searchExcerpt'] as String,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 16 / 12,
+                        color: PrimaryColors.of(context).accent,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (event['terminalState'] != null) ...[
                 const SizedBox(height: 7),
                 Text(
@@ -1156,11 +1290,11 @@ class _PagedTextState extends State<_PagedText> {
   }
 
   void locateMatch() {
-    final text = widget.text.toLowerCase();
+    final text = historySearchFold(widget.text);
     final matches = widget.query
         .split(RegExp(r'\s+'))
         .where((q) => q.isNotEmpty)
-        .map((q) => text.indexOf(q.toLowerCase()))
+        .map((q) => text.indexOf(historySearchFold(q)))
         .where((index) => index >= 0);
     page = matches.isEmpty
         ? 0

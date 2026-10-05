@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
+/// 对齐旧Kotlin单字符忽略大小写；Dart映射保留UTF-16定位且不会把ß扩为SS。
+String historySearchFold(String text) => text.toUpperCase().toLowerCase();
+
 Color historyTone(BuildContext context, IconTone tone) {
   final dark = Theme.of(context).brightness == Brightness.dark;
   final (light, night) = switch (tone) {

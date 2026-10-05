@@ -683,7 +683,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 450));
         await until(
           tester,
-          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
         );
         await tester.pumpAndSettle();
         await tester.tap(find.text('已添加审计注释'));
@@ -849,7 +849,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 450));
         await until(
           tester,
-          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+          () => find.byType(CircularProgressIndicator).evaluate().isEmpty,
         );
         await tester.pumpAndSettle();
         expect(find.text('已添加审计注释'), findsOneWidget);

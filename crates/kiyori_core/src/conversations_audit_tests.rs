@@ -226,6 +226,64 @@ async fn rejected_attempt_audit_rolls_back_semantic_request_and_prevents_http() 
 }
 
 #[test]
+fn audit_search_scans_bounded_pages_and_matches_metadata_unicode_without_rewriting() {
+    let dir = Directory::new();
+    let r = Runtime::with_data_dir(&dir.0).unwrap();
+    let id = r.create_conversation().unwrap();
+    r.conversation_audit(id.clone(), 0, String::new()).unwrap();
+    r.append_conversation_note(
+        id.clone(),
+        format!("{}Café ΟΣ ı ß %_{}", "甲".repeat(80), "乙".repeat(300)),
+    )
+    .unwrap();
+    for i in 0..100 {
+        r.append_conversation_note(id.clone(), format!("irrelevant-{i}"))
+            .unwrap();
+    }
+    let read = |before, query: &str| -> Value {
+        serde_json::from_str(
+            &r.conversation_audit(id.clone(), before, query.into())
+                .unwrap(),
+        )
+        .unwrap()
+    };
+    let head = read(0, "")["chainHead"].clone();
+    let first = read(0, "CAFÉ ος I");
+    assert!(first["events"].as_array().unwrap().is_empty());
+    assert_eq!(first["scannedCount"], 100);
+    assert_eq!(first["nextBeforeSequence"], 3);
+    let found = read(3, "CAFÉ ος I");
+    assert_eq!(found["scannedCount"], 2);
+    assert_eq!(found["nextBeforeSequence"], Value::Null);
+    assert_eq!(found["events"].as_array().unwrap().len(), 1);
+    let e = &found["events"][0];
+    assert_eq!(e["sequence"], 2);
+    assert!(e["searchExcerpt"].as_str().unwrap().contains("Café"));
+    assert!(e["searchExcerpt"].as_str().unwrap().starts_with('…'));
+    assert!(e["searchExcerpt"].as_str().unwrap().ends_with('…'));
+    // 基础快照的messages字段会命中SS，但不能把注释中的ß扩为SS。
+    assert!(
+        !read(3, "SS")["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|event| event["sequence"] == 2)
+    );
+    assert_eq!(read(3, "ß %_")["events"].as_array().unwrap().len(), 1);
+    for field in ["eventId", "eventSha256", "previousEventSha256", "actor"] {
+        assert!(
+            !read(3, e[field].as_str().unwrap())["events"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "field {field}"
+        );
+    }
+    assert_eq!(read(0, "")["chainHead"], head);
+    r.close();
+}
+
+#[test]
 fn audit_notes_search_unicode_paging_signature_and_reopen_are_real() {
     let dir = Directory::new();
     let runtime = Runtime::with_data_dir(&dir.0).unwrap();
@@ -274,9 +332,20 @@ fn audit_notes_search_unicode_paging_signature_and_reopen_are_real() {
     )
     .unwrap();
     assert_eq!(older["events"].as_array().unwrap().len(), 3);
-    let found: Value = serde_json::from_str(
+    let search_page: Value = serde_json::from_str(
         &runtime
             .conversation_audit(id.clone(), 0, "全文 尾部".into())
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(search_page["events"].as_array().unwrap().is_empty());
+    let found: Value = serde_json::from_str(
+        &runtime
+            .conversation_audit(
+                id.clone(),
+                search_page["nextBeforeSequence"].as_i64().unwrap(),
+                "全文 尾部".into(),
+            )
             .unwrap(),
     )
     .unwrap();

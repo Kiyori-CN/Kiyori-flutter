@@ -49,6 +49,12 @@ SQLite Unicode字符分页，每页8192字符；界面不截断源正文，关�
 这与旧`AuditRaw.loadedOnly`一致；无匹配仍允许加载更早页。三标签保留独立查询、
 滚动，展开集按旧remember随标签释放；正文搜索不替换普通加载目录及游标。
 
+2026-10-06全文检索补充：桥JSON新增scannedCount、nextBeforeSequence及命中
+searchExcerpt，不改公开函数签名/schema。每批扫描100条未过滤事件、逐行释放正文，
+多词AND匹配已记录字段及全文；没有新增明文索引。UI按旧350ms去抖、续扫至新增至少
+100命中或到尾，后续由用户继续；失败保留命中与扫描游标，generation拒绝迟到结果。
+大小写保持单字符语义，摘录为旧UTF-16窗口。普通空查询仍返回最近100条并独立加载。
+
 实际提供方请求通过既有EventSender共用同Run审计，发送前原子记录
 FINAL_PROVIDER_SEMANTIC_REQUEST与PROVIDER_ATTEMPT_STARTED，失败阻止外发。HTTP
 响应状态/协议与最终COMPLETED/FAILED/CANCELLED分别记录；取消/超时等待blocking
