@@ -93,6 +93,26 @@ Dart格式/analyze、app638（17条件跳过）/platform11/FFI22（1条件跳过
 sourceCommit在manifest中固化。最后几何补丁括号错误已修，失败v2日志保留，未降低断言。
 整体目标保持部分完成，继续旧包/平台持久封印及剩余导出选项几何；设备验收仍待验证。
 
+详情批次已提交普通推送为6674271e92db22cfb3cf8dfff460e315fb63da21，远端相等、0/0且
+clean；024610 manifest核对100文件并固化来源。下一安全增量从该clean基线实施：
+platform/audit实现Keystore/JNI与Windows DPAPI/AES-GCM/P256，FFI显式装配到同AppStore；
+schema21保存大小/Run投影、安全公钥和持久封印，旧明文迁移失败回滚。导出选项14圆角
+与页面背景已修，3间距原本正确。native-v2真实Windows用例与core-native-v3的core181/
+native1通过；Clippy-v2无警告。Android-v1发现jni0.22名称/签名类型需JNIString/jni_sig，
+修正后v2普通构建196.6s成功；签名核验修补发生于构建中，v2仅诊断，最终构建须重跑。
+新增真实schema20失败回滚、缺失密钥/安全公钥绑定和损坏封印拒绝已通过；最终
+verify-v1完整通过：foundation68/tooling4、core181/HTTP3/provider13/native6/native-audit1、
+398 Dart格式/analyze、app638（17跳过）/platform11/FFI22（1跳过）/Windows5。
+桥Check五输出一致。最终history-crypto-ui-v1联合14项通过，capture-v14五窗口60PNG，
+已审阅明暗导出、设置、备注、横屏导出和窄屏双倍字备注。普通入口Android141.5s/
+Windows20.5s串行成功；固定包`artifacts/ui-preview/20261006-033641/`，APK137437049字节，
+SHA256`4A24086FBB53E3655FDA1A5FCDB0A6DDB2BE50AE6D92FB528F41BFFB69E83057`，Windows
+101文件171082075字节。102副本hash、身份/v2/ZIP16K/ELF、53表情、17两端许可证与x64/
+DLL pin通过，APK确认JNI bind符号及AuditCrypto类。34路径精确清单审计后按授权提交推送，
+最终Git来源固化到manifest。当前独立四文件ZIP还不是旧完整包，整体保持部分完成。
+本次旧源复查确认左抽屉/详情没有导入入口，旧包导入归备份模块，不扩大本任务入口；
+详情可达的签名包导出与Markdown预算/去重/假名化继续，未实现工具owner不伪造事件。
+
 ## 上一任务：模型与 API 全功能旧源复刻
 
 任务状态：部分完成。按用户2026-10-05要求，在本批验证、构建和提交推送后停止；

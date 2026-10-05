@@ -3,12 +3,7 @@ use crate::{
     runtime::{CoreError, ErrorCode, Runtime},
     storage::AppStore,
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
-use ring::{
-    digest::{SHA256, digest},
-    rand::SystemRandom,
-    signature::{Ed25519KeyPair, KeyPair},
-};
+use ring::digest::{SHA256, digest};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::{Value, json};
 use std::io::{Cursor, Write};
@@ -24,10 +19,22 @@ CREATE TABLE conversation_audit_events(
 CREATE TRIGGER conversation_audit_no_update BEFORE UPDATE ON conversation_audit_events
  BEGIN SELECT RAISE(ABORT,'Audit events are append only'); END;
 PRAGMA user_version=20;";
+pub(crate) const SECURE_SCHEMA: &str = "
+ALTER TABLE conversation_audit_events ADD COLUMN payload_characters INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE conversation_audit_events ADD COLUMN payload_bytes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE conversation_audit_events ADD COLUMN run_id TEXT;
+ALTER TABLE conversation_audit_events ADD COLUMN terminal_state TEXT;
+DROP TRIGGER conversation_audit_no_update;
+UPDATE conversation_audit_events SET payload_characters=length(payload),payload_bytes=length(CAST(payload AS BLOB)),run_id=json_extract(payload,'$.runId'),terminal_state=coalesce(json_extract(payload,'$.terminalState'),CASE json_extract(payload,'$.state') WHEN 'completed' THEN 'COMPLETED' WHEN 'failed' THEN 'FAILED' WHEN 'cancelled' THEN 'CANCELLED' END);
+CREATE TRIGGER conversation_audit_no_update BEFORE UPDATE ON conversation_audit_events BEGIN SELECT RAISE(ABORT,'Audit events are append only'); END;
+CREATE TABLE conversation_audit_seals(conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,sequence INTEGER NOT NULL,seal TEXT NOT NULL,signature TEXT NOT NULL,PRIMARY KEY(conversation_id,sequence));
+CREATE TRIGGER conversation_audit_seal_no_update BEFORE UPDATE ON conversation_audit_seals BEGIN SELECT RAISE(ABORT,'Audit seals are append only'); END;
+CREATE TABLE conversation_audit_security(id INTEGER PRIMARY KEY CHECK(id=1),public_key TEXT NOT NULL);
+PRAGMA user_version=21;";
 const MAX_EXPORT: usize = 64 * 1024 * 1024;
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(c: &Connection) {
-    c.execute_batch("DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
+    c.execute_batch("DROP TABLE IF EXISTS conversation_audit_security; DROP TABLE IF EXISTS conversation_audit_seals; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
     let has_parent = c
         .prepare("PRAGMA table_info(conversations)")
         .unwrap()
@@ -53,6 +60,14 @@ fn time() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as i64
+}
+fn events_count(c: &Connection, id: &str) -> Result<i64, CoreError> {
+    c.query_row(
+        "SELECT count(*) FROM conversation_audit_events WHERE conversation_id=?1",
+        [id],
+        |r| r.get(0),
+    )
+    .map_err(db)
 }
 pub(crate) fn hash(bytes: &[u8]) -> String {
     digest(&SHA256, bytes)
@@ -80,6 +95,20 @@ pub(crate) fn append(
     let (seq,previous)=tx.query_row("SELECT sequence,event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence DESC LIMIT 1",[id],|r|Ok((r.get::<_,i64>(0)?,r.get::<_,String>(1)?))).optional().map_err(db)?.unwrap_or((0,String::new()));
     let seq = seq + 1;
     let at = time();
+    let run = payload
+        .get("runId")
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    let terminal = payload
+        .get("terminalState")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .or_else(|| match payload.get("state").and_then(Value::as_str) {
+            Some("completed") => Some("COMPLETED".into()),
+            Some("failed") => Some("FAILED".into()),
+            Some("cancelled") => Some("CANCELLED".into()),
+            _ => None,
+        });
     let payload = payload.to_string();
     let event = hash(
         encoded([
@@ -96,9 +125,9 @@ pub(crate) fn append(
     );
     let event_id = format!("{id}/{seq}");
     tx.execute(
-        "INSERT INTO conversation_audit_events VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+        "INSERT INTO conversation_audit_events(conversation_id,sequence,event_id,recorded_at,category,event_type,summary,payload,previous_hash,event_hash,payload_characters,payload_bytes,run_id,terminal_state) VALUES(?1,?2,?3,?4,?5,?6,?7,kiyori_audit_protect(?8),?9,?10,?11,?12,?13,?14)",
         params![
-            id, seq, event_id, at, category, kind, summary, payload, previous, event
+            id, seq, event_id, at, category, kind, summary, payload, previous, event,payload.chars().count() as i64,payload.len() as i64,run,terminal
         ],
     )
     .map_err(db)?;
@@ -172,11 +201,11 @@ impl AppStore {
             return Err(error("对话已不存在"));
         }
         initialize(&tx, id)?;
-        let (total,bytes,head):(i64,i64,String)=tx.query_row("SELECT count(*),coalesce(sum(length(CAST(payload AS BLOB))),0),coalesce((SELECT event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence DESC LIMIT 1),'') FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(db)?;
+        let (total,bytes,head):(i64,i64,String)=tx.query_row("SELECT count(*),coalesce(sum(payload_bytes),0),coalesce((SELECT event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence DESC LIMIT 1),'') FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(db)?;
         let terms: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
-        let filter=terms.iter().enumerate().map(|(i,_)|format!(" AND instr(lower(event_id||' '||category||' '||event_type||' '||summary||' '||payload),?{})>0",i+3)).collect::<String>();
+        let filter=terms.iter().enumerate().map(|(i,_)|format!(" AND instr(lower(event_id||' '||category||' '||event_type||' '||summary||' '||kiyori_audit_unprotect(payload)),?{})>0",i+3)).collect::<String>();
         let sql = format!(
-            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,length(payload),length(CAST(payload AS BLOB)),json_extract(payload,'$.runId'),coalesce(json_extract(payload,'$.terminalState'),CASE json_extract(payload,'$.state') WHEN 'completed' THEN 'COMPLETED' WHEN 'failed' THEN 'FAILED' WHEN 'cancelled' THEN 'CANCELLED' END) FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2){filter} ORDER BY sequence DESC LIMIT 101"
+            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,payload_characters,payload_bytes,run_id,terminal_state FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2){filter} ORDER BY sequence DESC LIMIT 101"
         );
         let mut args: Vec<rusqlite::types::Value> = vec![id.to_owned().into(), before.into()];
         args.extend(terms.into_iter().map(Into::into));
@@ -205,7 +234,7 @@ impl AppStore {
             .connection
             .lock()
             .map_err(|_| error("审计存储锁不可用"))?;
-        c.query_row("SELECT substr(payload,?3,8192) FROM conversation_audit_events WHERE conversation_id=?1 AND sequence=?2",params![id,sequence,i64::from(page)*8192+1],|r|r.get(0)).map_err(db)
+        c.query_row("SELECT substr(kiyori_audit_unprotect(payload),?3,8192) FROM conversation_audit_events WHERE conversation_id=?1 AND sequence=?2",params![id,sequence,i64::from(page)*8192+1],|r|r.get(0)).map_err(db)
     }
     pub fn append_conversation_note(&self, id: &str, note: &str) -> Result<(), CoreError> {
         if note.trim().is_empty() || note.len() > 65536 {
@@ -241,13 +270,13 @@ impl AppStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(db)?;
         initialize(&tx, id)?;
-        let size:i64=tx.query_row("SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|r.get(0)).map_err(db)?;
+        let size:i64=tx.query_row("SELECT coalesce(sum(payload_bytes),0) FROM conversation_audit_events WHERE conversation_id=?1",[id],|r|r.get(0)).map_err(db)?;
         if size > (MAX_EXPORT / 2) as i64 {
             return Err(error("审计导出超过64 MiB边界；原始记录未截断"));
         }
         let mut events = Vec::new();
         let mut previous = String::new();
-        let rows=tx.prepare("SELECT sequence,recorded_at,category,event_type,summary,payload,previous_hash,event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence").map_err(db)?.query_map([id],|r|Ok((r.get::<_,i64>(0)?,r.get::<_,i64>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,String>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?,r.get::<_,String>(7)?))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
+        let rows=tx.prepare("SELECT sequence,recorded_at,category,event_type,summary,kiyori_audit_unprotect(payload),previous_hash,event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence").map_err(db)?.query_map([id],|r|Ok((r.get::<_,i64>(0)?,r.get::<_,i64>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,String>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?,r.get::<_,String>(7)?))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
         let mut markdown = String::from(
             "# Kiyori 对话诊断\n\n记录范围：基础事件和消息修订。迁移前历史、未接入的工具事件未知。\n\n",
         );
@@ -284,12 +313,29 @@ impl AppStore {
             let messages = serde_json::to_vec(&messages(&tx, id, None)?)
                 .map_err(|_| error("无法编码消息包"))?;
             let seal=json!({"format":"kiyori-audit-v1","conversationId":id,"chainHead":previous,"coverage":"BASIC","eventsSha256":hash(&events),"messagesSha256":hash(&messages)}).to_string();
-            // 自包含签名证明封印完整性，不宣称设备/作者身份；私钥仅随本次导出存活。
-            let key = Ed25519KeyPair::generate_pkcs8(&SystemRandom::new())
-                .map_err(|_| error("签名密钥不可用"))?;
-            let signer =
-                Ed25519KeyPair::from_pkcs8(key.as_ref()).map_err(|_| error("签名密钥不可用"))?;
-            let signature=json!({"algorithm":"Ed25519","publicKey":STANDARD.encode(signer.public_key().as_ref()),"signature":STANDARD.encode(signer.sign(seal.as_bytes()).as_ref())}).to_string();
+            let sequence = events_count(&tx, id)?;
+            let saved: Option<(String,String)> = tx.query_row("SELECT seal,signature FROM conversation_audit_seals WHERE conversation_id=?1 AND sequence=?2",params![id,sequence],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(db)?;
+            let signature = match saved {
+                Some((old, signature)) if old == seal => signature,
+                Some(_) => return Err(error("已有封印与当前投影不一致，导出已停止")),
+                None => {
+                    let signature =
+                        serde_json::to_string(&self.audit_crypto.sign(seal.as_bytes())?)
+                            .map_err(|_| error("无法编码封印"))?;
+                    tx.execute(
+                        "INSERT INTO conversation_audit_seals VALUES(?1,?2,?3,?4)",
+                        params![id, sequence, seal, signature],
+                    )
+                    .map_err(db)?;
+                    signature
+                }
+            };
+            let stored_signature: crate::audit_crypto::AuditSignature =
+                serde_json::from_str(&signature).map_err(|_| error("封印签名损坏"))?;
+            if self.audit_crypto.persistent() && stored_signature.algorithm != "SHA256withECDSA" {
+                return Err(error("封印签名算法与当前安全端口不一致"));
+            }
+            crate::audit_crypto::verify(seal.as_bytes(), &stored_signature)?;
             let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
             for (name, bytes) in [
                 ("events.json", events.as_slice()),

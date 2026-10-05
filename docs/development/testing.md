@@ -23,6 +23,11 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 
 ## 高价值测试
 
+platform/audit用Windows真实DPAPI/AES-GCM/P256验证nonce随机、重开同身份、密文
+篡改与缺失/损坏密钥拒绝、schema20迁移失败回滚/触发器恢复、正文搜索分页/链头
+保留及持久签名复用/损坏拒绝。产品FFI固定装配native，Rust参考夹具只保留纯核心
+测试合同；Android还需Keystore实机，JNI符号和普通编译不证明实际设备密钥可用。
+
 历史目录：core/conversations验证删空后同事务创建/选择替代、同绑定最新回退、单删继承
 分组/整组不继承、同名作用域隔离、锁定/成员版本冲突原子拒绝、排序与自动角色/聊天。
 conversations_audit_tests覆盖schema19迁移保留、Unicode正文分页、全记录搜索、真实修订/

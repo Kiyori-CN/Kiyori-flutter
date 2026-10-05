@@ -76,6 +76,12 @@ HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HT
 旧元数据布局，已记录Run/终态由同一次SQLite分页查询投影，未知Provider身份不补造。
 空闲弹窗允许遮罩关闭，写入中由PopScope拒绝退出与重复提交。
 
+安全增量按[ADR0015](../decisions/0015-audit-native-protection.md)把产品审计payload保护
+及持久P-256签名接到同AppStore；schema21元数据不需要逐行解密正文。导出选项按旧
+14圆角/页面背景/3间距，现有3间距已正确，修正剩余背景与圆角。当前包仍独立四文件
+格式，旧payload refs/修订投影/附件/链头封印与旧包导入继续接入，不将安全端口等同于
+完整旧归档。Android真实Keystore与Apple仍待验证。
+
 回归入口为`chat_history_states_test.dart`和`chat_history_parity_test.dart`，使用真实
 FFI/SQLite。`chat_history_drawer_capture_test.dart`覆盖390明/暗、320双倍字/180键盘、
 844横屏和1280桌面的历史、设置、菜单、删除、编辑、分组、详情、备注及导出。

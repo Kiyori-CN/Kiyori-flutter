@@ -12,7 +12,11 @@ serde_json.workspace = true
 kiyori_core = { path = "../kiyori_core" }
 kiyori_inference = { path = "../../packages/kiyori_platform/native" }
 kiyori_scripts = { path = "../../packages/kiyori_platform/scripts" }
+kiyori_audit_crypto = { path = "../../packages/kiyori_platform/audit" }
 flutter_rust_bridge.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "=0.22.4"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

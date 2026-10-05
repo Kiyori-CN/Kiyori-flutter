@@ -1,19 +1,29 @@
 use crate::runtime::{CoreError, ErrorCode};
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 20;
+const SCHEMA_VERSION: i32 = 21;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
     pub(crate) directory: PathBuf,
+    pub(crate) audit_crypto: std::sync::Arc<dyn crate::audit_crypto::AuditCrypto>,
 }
 
 impl AppStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, CoreError> {
+        Self::open_with_audit(
+            path,
+            std::sync::Arc::new(crate::audit_crypto::ReferenceAuditCrypto),
+        )
+    }
+    pub fn open_with_audit(
+        path: impl AsRef<Path>,
+        crypto: std::sync::Arc<dyn crate::audit_crypto::AuditCrypto>,
+    ) -> Result<Self, CoreError> {
         let path = path.as_ref();
         if !path.is_absolute() {
             return Err(error("The application support path must be absolute."));
@@ -29,6 +39,10 @@ impl AppStore {
         connection
             .busy_timeout(std::time::Duration::from_secs(3))
             .map_err(|e| error(&format!("Cannot set storage timeout: {e}")))?;
+        crate::audit_crypto::register(&connection, crypto.clone())?;
+        connection
+            .pragma_update(None, "secure_delete", "ON")
+            .map_err(|_| error("Cannot configure audit migration cleanup."))?;
         let transaction = connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(|e| error(&format!("Cannot start schema transaction: {e}")))?;
@@ -280,6 +294,59 @@ impl AppStore {
                 .execute_batch(crate::conversation_audit::SCHEMA)
                 .map_err(|_| error("Cannot migrate conversation audit storage."))?;
         }
+        if version < 21 {
+            transaction
+                .execute_batch(crate::conversation_audit::SECURE_SCHEMA)
+                .map_err(|_| error("Cannot migrate audit protection metadata."))?;
+        }
+        if crypto.persistent() {
+            let proof = crypto.sign(b"kiyori-audit-key-check-v1")?;
+            if proof.algorithm != "SHA256withECDSA" {
+                return Err(crate::audit_crypto::failure());
+            }
+            crate::audit_crypto::verify(b"kiyori-audit-key-check-v1", &proof)?;
+            let key = proof.public_key;
+            let saved: Option<String> = transaction
+                .query_row(
+                    "SELECT public_key FROM conversation_audit_security WHERE id=1",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(|_| crate::audit_crypto::failure())?;
+            if saved.as_ref().is_some_and(|old| old != &key) {
+                return Err(crate::audit_crypto::failure());
+            }
+            // 先验证已有密文可解，避免AES句柄变更后仍继续追加不能重读的事件。
+            let _:Option<String>=transaction.query_row("SELECT kiyori_audit_unprotect(payload) FROM conversation_audit_events WHERE substr(payload,1,?1)=?2 LIMIT 1",rusqlite::params![crate::audit_crypto::ENCRYPTED_PREFIX.len() as i64,crate::audit_crypto::ENCRYPTED_PREFIX],|r|r.get(0)).optional().map_err(|_|crate::audit_crypto::failure())?;
+            if saved.is_none() {
+                transaction
+                    .execute(
+                        "INSERT INTO conversation_audit_security VALUES(1,?1)",
+                        [key],
+                    )
+                    .map_err(|_| crate::audit_crypto::failure())?;
+            }
+            // 首次升级只改存储封套，链仍验证原始明文字节；任何加密失败回滚整批。
+            transaction
+                .execute_batch("DROP TRIGGER conversation_audit_no_update;")
+                .map_err(|_| error("Cannot prepare audit protection migration."))?;
+            transaction.execute("UPDATE conversation_audit_events SET payload=kiyori_audit_protect(payload) WHERE substr(payload,1,?1)<>?2", rusqlite::params![crate::audit_crypto::ENCRYPTED_PREFIX.len() as i64,crate::audit_crypto::ENCRYPTED_PREFIX])
+                .map_err(|_| crate::audit_crypto::failure())?;
+            transaction.execute_batch("CREATE TRIGGER conversation_audit_no_update BEFORE UPDATE ON conversation_audit_events BEGIN SELECT RAISE(ABORT,'Audit events are append only'); END;")
+                .map_err(|_| error("Cannot restore audit immutability."))?;
+        } else {
+            let protected: bool = transaction
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM conversation_audit_security)",
+                    [],
+                    |r| r.get(0),
+                )
+                .map_err(|_| crate::audit_crypto::failure())?;
+            if protected {
+                return Err(crate::audit_crypto::failure());
+            }
+        }
         transaction
             .commit()
             .map_err(|e| error(&format!("Cannot commit schema: {e}")))?;
@@ -287,6 +354,7 @@ impl AppStore {
             connection: Mutex::new(connection),
             directory: std::fs::canonicalize(path)
                 .map_err(|_| error("Cannot resolve application data directory."))?,
+            audit_crypto: crypto,
         })
     }
 }

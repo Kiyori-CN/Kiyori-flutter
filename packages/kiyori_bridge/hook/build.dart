@@ -19,6 +19,7 @@ void main(List<String> args) async {
       '../kiyori_platform/native/cpp/inference.cpp',
       '../kiyori_platform/native/cpp/inference.h',
       '../kiyori_platform/scripts/Cargo.toml',
+      '../kiyori_platform/audit/Cargo.toml',
       '../kiyori_platform/scripts/build.rs',
       '../kiyori_platform/scripts/cpp/CMakeLists.txt',
       '../kiyori_platform/scripts/cpp/scripts.cpp',

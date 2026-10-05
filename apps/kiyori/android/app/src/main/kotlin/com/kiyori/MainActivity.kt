@@ -9,6 +9,7 @@ class MainActivity : FlutterActivity() {
     private var modelFile: ModelFile? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        AuditCrypto.initialize()
         textExchange = TextExchange(this, flutterEngine.dartExecutor.binaryMessenger)
         modelFile = ModelFile(this, flutterEngine.dartExecutor.binaryMessenger)
     }

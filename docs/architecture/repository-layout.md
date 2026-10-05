@@ -111,6 +111,8 @@ Rust 小模块可从一个 `mod.rs` 开始，再自然拆成 `model.rs`、`servi
   core不反向依赖adapter。源archive和编译缓存不进入发布树。
 - `kiyori_platform/scripts` 的Rust/C++受限执行器同样依赖core/scripts窄端口，
   仅静态链接qjs；源码archive与target/native-scripts缓存不提交。
+- `kiyori_platform/audit` 独立平台安全adapter依赖core审计窄端口，FFI装配；
+  Android JNI/Keystore与Windows DPAPI句柄不进入core，平台密钥文件不进发布树。
 - `kiyori_platform` 暴露原生接口；应用装配器将其绑定到核心平台端口，禁止平台包反向导入应用。
 - `extensions` → 公开 `sdk`；不能直接链接内部数据库或 FFI 私有符号。
 - 单元测试跟随所属语言包；跨边界共享夹具才放根 `tests/`。

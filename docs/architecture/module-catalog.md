@@ -1,5 +1,9 @@
 # 模块目录与验收边界
 
+`core/audit_crypto`定义正文保护/签名窄端口，`platform/audit`拥有Keystore/JNI或
+DPAPI/AES/P256句柄，FFI显式装配到同AppStore。schema21的安全公钥、元数据和
+持久封印仍归SQLite；参考Rust测试运行时不是产品回退路径。见ADR0015。
+
 `core/extensions`拥有持久TOOLPKG包、受控导入、恢复账本、目录身份与撤销；
 FFI公开包/目录/导入/四handler端口，Dart外观管理句柄与关闭。schema19复用同SQLite
 和ResourceRef，执行仍归core/scripts；feature/extensions/presentation投影AI抽屉包管理，

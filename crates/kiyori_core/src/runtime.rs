@@ -157,6 +157,7 @@ impl Runtime {
         }
     }
 
+    /// 不装配平台的Rust参考运行时，只用于合成夹具/核心示例；产品使用with_data_dir_and_audit。
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
             extensions: Default::default(),
@@ -170,6 +171,18 @@ impl Runtime {
             chat_client: std::sync::OnceLock::new(),
             model_limits: Default::default(),
         })
+    }
+
+    /// 产品宿主显式装配安全端口；平台错误直接返回，不能降级到参考运行时的明文存储。
+    pub fn with_data_dir_and_audit(
+        path: impl AsRef<std::path::Path>,
+        crypto: std::sync::Arc<dyn crate::audit_crypto::AuditCrypto>,
+    ) -> Result<Self, CoreError> {
+        let mut runtime = Self::new();
+        runtime.store = std::sync::Arc::new(std::sync::Mutex::new(Some(std::sync::Arc::new(
+            AppStore::open_with_audit(path, crypto)?,
+        ))));
+        Ok(runtime)
     }
 
     pub(crate) fn with_store<T>(

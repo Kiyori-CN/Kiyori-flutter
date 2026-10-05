@@ -914,6 +914,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kiyori_audit_crypto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "jni",
+ "kiyori_core",
+ "ring",
+ "rusqlite",
+ "serde_json",
+ "windows-sys 0.61.2",
+ "zip",
+]
+
+[[package]]
 name = "kiyori_core"
 version = "0.1.0"
 dependencies = [
@@ -937,6 +951,8 @@ name = "kiyori_ffi"
 version = "0.1.0"
 dependencies = [
  "flutter_rust_bridge",
+ "jni",
+ "kiyori_audit_crypto",
  "kiyori_core",
  "kiyori_inference",
  "kiyori_scripts",

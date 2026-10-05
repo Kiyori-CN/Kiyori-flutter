@@ -253,6 +253,10 @@ schema20增加父引用与基础审计链。迁移前修订/供应商原始事�
 完整审计。备注只追加审计，消息编辑保留原文与修订。详情页摘要100条、正文8192字符
 分页；超限导出失败并保留原文。签名ZIP使用kiyori-audit-v1自包含封印，不兼容旧Android
 审计包或证明作者身份；详细契约见[ADR 0014](docs/decisions/0014-conversation-history-and-audit.md)。
+schema21由同AppStore保存大小/Run元数据和持久封印，native端口保护审计payload；
+Android Keystore与Windows DPAPI密钥失败不回退明文，公钥和已有密文在重开时核对。
+产品签名使用P-256，参考Rust测试构造器不用于产品安全存储且拒绝打开已保护库。
+正文保护不等于会话原文或全库加密；旧包兼容仍待接入，见[ADR0015](docs/decisions/0015-audit-native-protection.md)。
 
 主题设置五面板只持有展示草稿；聊天样式编辑器与预览共享同一面板状态。切换标签保留
 草稿，切换聊天风格不丢字体/图片参数；不写全局主题或角色配置。

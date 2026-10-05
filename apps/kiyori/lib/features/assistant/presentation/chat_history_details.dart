@@ -1630,9 +1630,13 @@ class _ExportDialogState extends State<_ExportDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '选择保存位置。包含导出时已落盘的全部记录，不受搜索和分页影响；正在生成的内容可能尚未记录。',
-            style: TextStyle(fontSize: 12, height: 16 / 12),
+            style: TextStyle(
+              fontSize: 12,
+              height: 16 / 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 8),
           _option(
@@ -1667,11 +1671,11 @@ class _ExportDialogState extends State<_ExportDialog> {
     ),
   );
   Widget _option(String title, String description, String format) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerLow,
-    borderRadius: BorderRadius.circular(16),
+    color: PrimaryColors.of(context).background,
+    borderRadius: BorderRadius.circular(14),
     child: InkWell(
       onTap: busy ? null : () => save(format),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

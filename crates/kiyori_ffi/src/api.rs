@@ -1381,7 +1381,9 @@ pub fn create_runtime() -> RuntimeHandle {
 }
 
 pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, BridgeError> {
-    let runtime = runtime::Runtime::with_data_dir(data_dir).map_err(BridgeError::from)?;
+    let crypto = kiyori_audit_crypto::open(std::path::Path::new(&data_dir))?;
+    let runtime =
+        runtime::Runtime::with_data_dir_and_audit(data_dir, crypto).map_err(BridgeError::from)?;
     runtime.set_inference_adapter(Arc::new(kiyori_inference::NativeInference))?;
     runtime
         .set_script_adapter(Arc::new(kiyori_scripts::NativeScripts))
