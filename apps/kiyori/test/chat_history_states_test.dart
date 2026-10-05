@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_details.dart';
@@ -15,6 +16,425 @@ import 'chat_business_test.dart' show ChatFixture, until;
 import 'support/memory_audit_exchange.dart';
 
 void main() {
+  testWidgets(
+    'pointer drag gives start and move feedback and cancel restores order',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final feedback = <Object?>[];
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          feedback.add(call.arguments);
+        }
+        return null;
+      });
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('kiyori/haptics'),
+        (call) async {
+          feedback.add(call.method);
+          return true;
+        },
+      );
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+        messenger.setMockMethodCallHandler(
+          const MethodChannel('kiyori/haptics'),
+          null,
+        );
+      });
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        for (var i = 0; i < 4; i++) {
+          await f.chat.create();
+          await f.chat.change(f.chat.snapshot!.conversation, 'rename', '拖排 $i');
+        }
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AnimatedBuilder(
+                animation: f.chat,
+                builder: (_, _) => ChatHistoryList(
+                  owner: f.chat,
+                  items: f.chat.catalog!.conversations,
+                  searching: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final original = await tester.runAsync(f.runtime.conversationCatalog);
+        final handle = find.byTooltip('拖动项目 拖排 3');
+        final pointer = await tester.startGesture(tester.getCenter(handle));
+        await pointer.moveBy(const Offset(0, 22));
+        await tester.pump();
+        expect(feedback, contains(null));
+        final proxySwipe = tester.widget<HistorySwipe>(
+          find.byType(HistorySwipe).last,
+        );
+        expect(proxySwipe.edit, isNull);
+        expect(proxySwipe.delete, isNull);
+        await pointer.moveBy(const Offset(0, 108));
+        await tester.pumpAndSettle();
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        expect(feedback, contains('textHandleMove'));
+        final beforeSideways = tester.getTopLeft(
+          find.byKey(const Key('history-drag-proxy')),
+        );
+        await pointer.moveBy(const Offset(30, 0));
+        await tester.pump();
+        expect(
+          tester.getTopLeft(find.byKey(const Key('history-drag-proxy'))).dx,
+          beforeSideways.dx + 30,
+        );
+        await pointer.moveBy(const Offset(-30, 0));
+        await tester.pump();
+        final during = await tester.runAsync(f.runtime.conversationCatalog);
+        expect(during!.conversations, original!.conversations);
+        final proxyPosition = tester.getTopLeft(
+          find.byKey(const Key('history-drag-proxy')),
+        );
+        final second = await tester.startGesture(
+          tester.getCenter(handle.first),
+          pointer: 2,
+        );
+        await second.moveBy(const Offset(0, -120));
+        await tester.pump();
+        expect(
+          tester.getTopLeft(find.byKey(const Key('history-drag-proxy'))),
+          proxyPosition,
+        );
+        await second.cancel();
+        await tester.pump();
+        expect(find.byKey(const Key('history-drag-proxy')), findsOneWidget);
+        await pointer.cancel();
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('拖动项目 拖排 3'), findsOneWidget);
+        final cancelled = await tester.runAsync(f.runtime.conversationCatalog);
+        expect(cancelled!.conversations, original.conversations);
+        // 取消后新拖动仍可真实保存，不能残留拖动或忙状态。
+        final next = await tester.startGesture(tester.getCenter(handle));
+        await next.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await next.moveBy(const Offset(0, 108));
+        await tester.pumpAndSettle();
+        await next.up();
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(find.byKey(const Key('history-drag-proxy')), findsOneWidget);
+        await until(tester, () => !f.chat.changing);
+        await tester.pumpAndSettle();
+        final saved = await tester.runAsync(f.runtime.conversationCatalog);
+        expect(saved!.conversations[2].title, '拖排 3');
+        expect(
+          saved.conversations[2].revision,
+          original.conversations.first.revision + 1,
+        );
+        expect(f.chat.error, isNull);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'dragging into collapsed character or empty folder persists resolved scope',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      late String movingId;
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+        movingId = f.chat.snapshot!.conversation.id;
+        await f.chat.change(f.chat.snapshot!.conversation, 'rename', '移动作用域');
+        await f.chat.create();
+        expect(
+          await f.chat.change(
+            f.chat.snapshot!.conversation,
+            'metadata',
+            jsonEncode({'title': '未绑定目标', 'folder': '', 'character': ''}),
+          ),
+          isTrue,
+        );
+        await f.chat.setPreference('history_mode', 'character');
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AnimatedBuilder(
+                animation: f.chat,
+                builder: (_, _) => ChatHistoryList(
+                  owner: f.chat,
+                  items: f.chat.catalog!.conversations,
+                  searching: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('未绑定'));
+        await tester.pumpAndSettle();
+        expect(find.text('未绑定目标'), findsNothing);
+        final pointer = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 移动作用域')),
+        );
+        await pointer.moveBy(const Offset(0, -22));
+        await tester.pump();
+        final proxy = tester.getRect(
+          find.byKey(const Key('history-drag-proxy')),
+        );
+        await pointer.moveBy(
+          // 向上移到后一角色头的槽位，落在已收起的未绑定头之后。
+          Offset(0, tester.getCenter(find.text('Kiyori')).dy - proxy.center.dy),
+        );
+        await tester.pumpAndSettle();
+        await pointer.up();
+        await until(tester, () => !f.chat.changing);
+        await tester.pumpAndSettle();
+        final moved = f.chat.catalog!.conversations.firstWhere(
+          (c) => c.id == movingId,
+        );
+        expect(f.chat.error, isNull);
+        expect(moved.characterId, '');
+        expect(moved.folder, '');
+        expect(f.chat.error, isNull);
+        await tester.runAsync(() async {
+          await f.chat.setPreference('history_mode', 'folder');
+          await f.chat.setPreference('create_folder', '空落点');
+        });
+        await tester.pumpAndSettle();
+        final folder = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 移动作用域')),
+        );
+        await folder.moveBy(const Offset(0, 22));
+        await tester.pump();
+        final folderProxy = tester.getRect(
+          find.byKey(const Key('history-drag-proxy')),
+        );
+        await folder.moveBy(
+          Offset(
+            0,
+            tester.getCenter(find.text('空落点')).dy - folderProxy.center.dy,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await folder.up();
+        await until(tester, () => !f.chat.changing);
+        await tester.pumpAndSettle();
+        expect(
+          f.chat.catalog!.conversations
+              .firstWhere((c) => c.id == movingId)
+              .folder,
+          '空落点',
+        );
+        expect(f.chat.error, isNull);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'drag edge scroll and search or directory changes revoke draft without writing',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 500);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        for (var i = 0; i < 20; i++) {
+          await f.chat.create();
+          await f.chat.change(f.chat.snapshot!.conversation, 'rename', '滚动 $i');
+        }
+      });
+      var searching = false;
+      late StateSetter refresh;
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (_, setState) {
+                  refresh = setState;
+                  return AnimatedBuilder(
+                    animation: f.chat,
+                    builder: (_, _) => ChatHistoryList(
+                      owner: f.chat,
+                      items: f.chat.catalog!.conversations,
+                      searching: searching,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final original = await tester.runAsync(f.runtime.conversationCatalog);
+        final list = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        final pointer = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 滚动 19')),
+        );
+        await pointer.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await pointer.moveTo(
+          Offset(
+            tester.getCenter(find.byKey(const Key('history-drag-proxy'))).dx,
+            475,
+          ),
+        );
+        for (var i = 0; i < 40; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(list.position.pixels, greaterThan(100));
+        expect(find.byKey(const Key('history-drag-proxy')), findsOneWidget);
+        final during = await tester.runAsync(f.runtime.conversationCatalog);
+        expect(during!.conversations, original!.conversations);
+        await pointer.cancel();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('history-drag-proxy')), findsNothing);
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        expect(
+          (await tester.runAsync(f.runtime.conversationCatalog))!.conversations,
+          original.conversations,
+        );
+        list.position.jumpTo(0);
+        await tester.pumpAndSettle();
+        final pending = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 滚动 19')),
+        );
+        await pending.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await pending.moveBy(const Offset(0, 108));
+        await tester.pumpAndSettle();
+        refresh(() => searching = true);
+        await tester.pumpAndSettle();
+        await pending.up();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('history-drag-proxy')), findsNothing);
+        expect(
+          (await tester.runAsync(f.runtime.conversationCatalog))!.conversations,
+          original.conversations,
+        );
+        refresh(() => searching = false);
+        await tester.pumpAndSettle();
+        final external = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 滚动 19')),
+        );
+        await external.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await external.moveBy(const Offset(0, 108));
+        await tester.pumpAndSettle();
+        await tester.runAsync(
+          () => f.chat.change(
+            f.chat.catalog!.conversations.last,
+            'rename',
+            '外部变更',
+          ),
+        );
+        final afterExternal = await tester.runAsync(
+          f.runtime.conversationCatalog,
+        );
+        await tester.pumpAndSettle();
+        await external.up();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('history-drag-proxy')), findsNothing);
+        expect(f.chat.catalog!.conversations, afterExternal!.conversations);
+        expect(tester.takeException(), isNull);
+        final disposing = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 滚动 19')),
+        );
+        await disposing.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await tester.pumpWidget(const SizedBox());
+        await disposing.cancel();
+        await tester.pumpAndSettle();
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'pointer drag rejects pinned position before drop without move feedback',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        for (var i = 0; i < 3; i++) {
+          await f.chat.create();
+          await f.chat.change(
+            f.chat.snapshot!.conversation,
+            'rename',
+            '置顶约束 $i',
+          );
+        }
+        await f.chat.change(f.chat.snapshot!.conversation, 'pinned', 'true');
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AnimatedBuilder(
+                animation: f.chat,
+                builder: (_, _) => ChatHistoryList(
+                  owner: f.chat,
+                  items: f.chat.catalog!.conversations,
+                  searching: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final normalBefore = tester.getTopLeft(find.text('置顶约束 1')).dy;
+        final pointer = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 置顶约束 2')),
+        );
+        await pointer.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await pointer.moveBy(const Offset(0, 72));
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.text('置顶约束 1')).dy, normalBefore);
+        await pointer.up();
+        await tester.pumpAndSettle();
+        final saved = await tester.runAsync(f.runtime.conversationCatalog);
+        expect(saved!.conversations.first.title, '置顶约束 2');
+        expect(
+          saved.conversations.first.revision,
+          f.chat.catalog!.conversations.first.revision,
+        );
+        expect(f.chat.changing, isFalse);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
   testWidgets(
     'current default shares unbound list sorting and frozen group scope',
     (tester) async {
@@ -599,11 +1019,15 @@ void main() {
         await tester.pumpAndSettle();
         final moving = f.chat.catalog!.conversations.first.id,
             anchor = f.chat.catalog!.conversations[2].id;
-        final list = tester.widget<ReorderableListView>(
-          find.byType(ReorderableListView),
+        // 真正从手柄拖到第三项，松手后检查业务结果，而非直接调用列表回调。
+        final pointer = await tester.startGesture(
+          tester.getCenter(find.byTooltip('拖动项目 会话 24')),
         );
-        // 调用真实列表最终索引契约，检查数据库结果，避免复制本地排序算法作为断言。
-        list.onReorderItem!(1, 3);
+        await pointer.moveBy(const Offset(0, 22));
+        await tester.pump();
+        await pointer.moveBy(const Offset(0, 108));
+        await tester.pumpAndSettle();
+        await pointer.up();
         await until(tester, () => !f.chat.changing);
         expect(f.chat.error, isNull);
         expect(f.chat.catalog!.conversations[2].id, moving);

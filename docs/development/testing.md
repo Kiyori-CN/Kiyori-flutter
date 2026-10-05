@@ -46,6 +46,11 @@ current默认与未绑定同桶覆盖列表/菜单/拖排/分组冻结，charact
 防抖、改名后重新查询、清空拒绝迟到结果；核心核对单Emoji的UTF-16正文门槛、BMP单字
 不查正文、SQLite ASCII大小写与百分号/下划线字面语义。真实loopback只用合成正文。
 大小写回归包含É、希腊词尾sigma、土耳其I及ß不扩展SS；五窗口捕获追加正文筛选结果。
+拖排回归使用真实指针，覆盖开始/有效让位触觉、非法置顶落点过程不让位、二维跟手、
+取消/搜索/外部目录/宿主释放不写库，第二指不接管首指，48dp边缘滚动和空/折叠桶保存。
+松手只增加一次移动revision，返回/取消完成后无持续帧。haptics_test验证Android原生
+requested/declined/unsupported/unavailable、无CLOCK_TICK回退与iOS标准调用；mock与
+Android编译不能证明设备触觉。捕获追加明暗代理、上边缘视口裁剪与取消恢复图。
 chat_history_drawer_capture以五窗口捕获明暗/320双倍字键盘/横屏/桌面；audit_exchange
 测试Windows真实二进制I/O、取消不覆盖、忙守卫和移动channel脱敏。旧版完整供应商/
 工具事件、旧审计包兼容、系统SAF、设备像素/触摸/Profile与Apple需独立验收。

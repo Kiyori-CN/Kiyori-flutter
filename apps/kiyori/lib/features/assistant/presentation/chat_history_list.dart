@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
+import 'package:kiyori_platform/kiyori_platform.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
@@ -10,6 +15,8 @@ import 'chat_character_avatar.dart';
 import 'chat_history_management.dart';
 import 'chat_history_swipe.dart';
 import 'chat_history_widgets.dart';
+
+part 'chat_history_drag.dart';
 
 typedef _Row = ({
   String key,
@@ -152,18 +159,12 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       ),
     ),
   );
-  Future<void> reorder(int oldIndex, int newIndex) async {
-    if (widget.searching ||
-        widget.owner.changing ||
-        oldIndex < 0 ||
-        oldIndex >= rows.length) {
-      return;
-    }
-    final original = rows[oldIndex].item;
-    if (original == null) return;
-    final proposed = List<_Row>.from(rows);
-    final moving = proposed.removeAt(oldIndex);
-    proposed.insert(newIndex, moving);
+  ({String folder, String binding, List<Conversation> candidates})? resolveMove(
+    List<_Row> proposed,
+    Conversation original,
+  ) {
+    final newIndex = proposed.indexWhere((r) => r.item?.id == original.id);
+    if (newIndex < 0 || proposed.first.item != null) return null;
     String? folder, binding;
     bool foundHeader = false;
     for (var i = 0; i <= newIndex; i++) {
@@ -174,11 +175,14 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
           binding = row.binding;
           foundHeader = true;
         } else {
-          foundHeader = false;
+          // 旧投影允许角色头之后、分组头之前落为该角色的未分组会话。
+          folder = '';
+          binding = row.binding;
+          foundHeader = true;
         }
       }
     }
-    if (!foundHeader) return;
+    if (!foundHeader) return null;
     final mode = widget.owner.preferences?.historyMode ?? 'folder';
     final targetBinding = mode == 'character'
         ? binding ?? ''
@@ -189,6 +193,9 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       if (row.item == null) {
         if (row.key.startsWith('["folder"')) {
           currentFolder = row.folder ?? '';
+          currentBinding = row.binding ?? '';
+        } else {
+          currentFolder = '';
           currentBinding = row.binding ?? '';
         }
       } else if (currentFolder == folder &&
@@ -201,17 +208,47 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       if (!item.pinned) {
         seenNormal = true;
       } else if (seenNormal) {
-        return;
+        return null;
       }
     }
-    final bucket = candidates
+    return (folder: folder!, binding: targetBinding, candidates: candidates);
+  }
+
+  Future<void> commitDrag(Conversation original, List<_Row> proposed) async {
+    if (widget.searching || widget.owner.changing) return;
+    final target = resolveMove(proposed, original);
+    if (target == null) return;
+    final bucket = target.candidates
         .where((c) => c.pinned == original.pinned)
         .toList();
     final index = bucket.indexWhere((c) => c.id == original.id);
-    final next = index >= 0 && index + 1 < bucket.length
+    var next = index >= 0 && index + 1 < bucket.length
         ? bucket[index + 1]
         : null;
-    final previous = index > 0 ? bucket[index - 1] : null;
+    var previous = index > 0 ? bucket[index - 1] : null;
+    if (next == null && previous == null) {
+      // 折叠桶没有可见锚点，旧仓储保留源项的全目录相对位置后改变归属。
+      // 用完整快照中最近的同桶邻项表达该位置；不能把“隐藏”误作“空桶”。
+      final complete =
+          widget.owner.catalog?.conversations ?? const <Conversation>[];
+      final sourceIndex = complete.indexWhere((c) => c.id == original.id);
+      final mode = widget.owner.preferences?.historyMode ?? 'folder';
+      bool sameBucket(Conversation c) =>
+          c.id != original.id &&
+          c.folder == target.folder &&
+          c.pinned == original.pinned &&
+          (mode == 'folder' ||
+              c.characterId == target.binding ||
+              mode == 'current' &&
+                  (target.binding.isEmpty ||
+                      target.binding == 'default_character') &&
+                  (c.characterId.isEmpty ||
+                      c.characterId == 'default_character'));
+      if (sourceIndex >= 0) {
+        next = complete.skip(sourceIndex + 1).where(sameBucket).firstOrNull;
+        previous = complete.take(sourceIndex).where(sameBucket).lastOrNull;
+      }
+    }
     final anchor = next ?? previous;
     setState(() {
       committing = true;
@@ -223,8 +260,8 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       original,
       'move',
       jsonEncode({
-        'folder': folder,
-        'character': targetBinding,
+        'folder': target.folder,
+        'character': target.binding,
         'anchor': anchor?.id,
         'anchor_revision': anchor?.revision,
         'before': next != null,
@@ -241,24 +278,20 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
   @override
   Widget build(BuildContext context) => Stack(
     children: [
-      ReorderableListView.builder(
-        scrollController: scroll,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        buildDefaultDragHandles: false,
-        itemCount: rows.length,
-        onReorderItem: reorder,
-        proxyDecorator: (child, index, animation) => Material(
-          elevation: 6,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          child: child,
-        ),
-        itemBuilder: (context, index) {
-          final row = rows[index];
+      _HistoryDragList(
+        controller: scroll,
+        rows: List.of(rows),
+        enabled: !widget.searching && !widget.owner.changing,
+        canMove: (proposed, original) =>
+            resolveMove(proposed, original) != null,
+        onDrop: commitDrag,
+        builder: (row, handle, dragging) {
           return Padding(
             key: ValueKey(row.key),
             padding: const EdgeInsets.only(bottom: 2),
-            child: row.item == null ? header(row) : entry(row, index),
+            child: row.item == null
+                ? header(row)
+                : entry(row, handle, dragging),
           );
         },
       ),
@@ -451,7 +484,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
     );
   }
 
-  Widget entry(_Row row, int index) {
+  Widget entry(_Row row, Widget Function(Widget)? handle, bool dragging) {
     final item = row.item!;
     final colors = Theme.of(context).colorScheme;
     final selected = widget.owner.snapshot?.conversation.id == item.id;
@@ -503,7 +536,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
         Expanded(
           child: HistorySwipe(
             key: ValueKey('swipe-${item.id}'),
-            edit: enabled
+            edit: enabled && !dragging
                 ? () => showHistoryMetadata(
                     context,
                     widget.owner,
@@ -511,7 +544,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                     onRoute: widget.onRoute,
                   )
                 : null,
-            delete: enabled && !item.locked
+            delete: enabled && !dragging && !item.locked
                 ? () => showHistoryDelete(
                     context,
                     widget.owner,
@@ -520,7 +553,10 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                   )
                 : null,
             child: Material(
-              color: selected
+              elevation: dragging ? 6 : 0,
+              color: dragging
+                  ? colors.surfaceContainerHighest
+                  : selected
                   ? colors.secondaryContainer
                   : colors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
@@ -530,10 +566,8 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Row(
                     children: [
-                      ReorderableDragStartListener(
-                        index: index,
-                        enabled: enabled && !widget.searching,
-                        child: button(
+                      (handle ?? (child) => child)(
+                        button(
                           Icon(
                             Icons.drag_handle,
                             size: 16,

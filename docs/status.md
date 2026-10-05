@@ -13,7 +13,42 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：搜索刷新、大小写与UTF-16边界
+### 最新增量：拖排过程、取消与触觉
+
+从main/c26949a干净基线继续，旧源6b03b03保持只读干净。手柄采用二维Press拖动，
+本地中点让位前拒绝非法首项/置顶落点；跨角色头、空/折叠桶解析分组与绑定，隐藏桶
+从完整目录取邻项锚点而不误报空桶。松手一次事务，真实回流与busy不截断700返回弹簧。
+代理沿旧surfaceContainerHighest/elevation6并关闭横滑动作，邻项1500弹簧；48dp边界
+滚动沿旧速率和源项可见上限，中部停留与结束没有持续空闲帧。开始LongPress/有效让位
+TextHandleMove；Android channel调用原生TEXT_HANDLE_MOVE(9)，API<27不支持、不用
+CLOCK_TICK替代，不强制系统触觉设置。iOS只验证标准调用合同，Apple未编译。
+
+旧库Cancel也进入onDragStopped并可能提交，本批将取消、搜索/外部目录变化与宿主释放
+定为撤销不写库，第二指不接管首指，作为误操作修复。已修首帧late基线导致折叠/刷新失败、
+离屏keepAlive坐标NaN进入弹簧、手柄语义多出滚动动作和折叠桶锚点缺失。产品仍复用
+唯一Rust/SQLite owner，无schema、公开Rust/FFI、桥生成或依赖变化。
+
+UI/聊天联合36项通过（work/history-drag-ui-v13.log）；触觉adapter2项通过
+（history-haptics-v1）。五窗口捕获联合25项通过、79PNG于work/history-drawer-capture-v23，
+新增明暗拖动/取消及上边缘裁剪图；设置、菜单、编辑、分组删除、横屏/双倍字键盘与
+代理实图已审阅。代理借根Overlay但裁剪在列表内容视口，不能画到搜索与标题区域。
+原态16通过2失败，以及本轮UI-v1/v2/v3/v5/v6/v9-v12与捕获v1失败日志保留；既有断言
+未降低。完整verify-v1仅新增触觉测试cast/null断言lint失败，已修；verify-v2通过后补齐
+视口裁剪，最终tools/verify.ps1 -WindowsIntegration通过（work/history-drag-verify-v3.log）：
+foundation69/tooling4、Rust core188/HTTP3/provider13/native6/native-audit1、401 Dart格式、
+Clippy/analyze、app649（17条件跳过）/platform13/独立FFI22（1条件跳过）/Windows引擎5。
+Rust三项条件忽略不表示真实供应商或旧源环境验收。完整verify后只更新正式文档。
+普通Android/Windows Debug串行35.5s/19.7s通过（history-drag双端v1），Windows恢复产品入口。
+固定artifacts/ui-preview/20261006-065750：APK137698807字节，SHA256
+36413FA1560C96F5728550D3709E42E8CF585C2588FAB0321AE0AD3942C68896；Windows101文件171611643字节。
+102副本hash、APK身份/v2/ZIP16K/ELF、53表情、17两端许可证与Windows x64/DLL pin通过
+（work/history-drag-delivery-v1.log）；前序包保留。13路径精确源码/测试/正式文档清单
+审计后普通推送main，最终ref与sourceCommit以Git及固定manifest为准。
+
+完整工具/附件事实及设备像素/字体/触摸/TalkBack/Profile、SAF/Keystore、旧进程归档
+兼容仍待后续业务或对应环境验收，整体任务继续部分完成，不能称像素级/全部功能通过。
+
+### 前序增量：搜索刷新、大小写与UTF-16边界
 
 从main/9a08ed5干净基线继续。确认并修复异步结果覆盖Unicode标题/分组命中、无关
 owner通知反复重置400ms防抖、标题/分组lowercase遗漏词尾sigma和土耳其I，以及SQL
@@ -37,9 +72,9 @@ Rust三项条件忽略不表示真实供应商或旧源环境验收。完整veri
 pin审计通过（work/history-search-delivery-v1.log）；前序固定包保留。交付使用10路径
 精确源码/测试/正式文档允许清单普通推送main，最终ref与sourceCommit见Git及manifest。
 
-源码对照另确认拖排开始/让位触觉、拖动期非法落点拒绝与代理横滑动作仍未完整对齐，
-详见复刻方案。完整工具/附件事实及同设备像素/字体/触摸/TalkBack/Profile仍未闭环；
-整体目标继续部分完成，不能称全部功能或像素级复刻通过。
+本批结束时确认的拖排开始/让位触觉、非法落点过程与代理横滑缺口，已由上述续批补齐。
+完整工具/附件事实及同设备像素/字体/触摸/TalkBack/Profile仍未闭环；整体目标继续部分
+完成，不能称全部功能或像素级复刻通过。
 
 ### 前序增量：分支行、滑动状态与默认角色作用域
 

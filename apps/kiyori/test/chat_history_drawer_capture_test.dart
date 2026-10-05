@@ -5,6 +5,7 @@ import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_management.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_details.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_swipe.dart';
+import 'package:kiyori/features/assistant/presentation/chat_history_list.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_business_test.dart' show ChatFixture, until;
@@ -102,16 +103,61 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('分支来源对话'),
           80,
-          scrollable: find.descendant(
-            of: find.byType(ReorderableListView),
-            matching: find.byType(Scrollable),
-          ),
+          scrollable: find
+              .descendant(
+                of: find.byType(ChatHistoryList),
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
         await tester.pumpAndSettle();
         expect(find.text('分支来源对话').hitTestable(), findsOneWidget);
         await captureUi(tester, boundary, output, '${scenario.$1}-search');
         await tester.tap(find.byTooltip('清空搜索'));
         await tester.pumpAndSettle();
+        if (scenario.$1.startsWith('phone-')) {
+          final handle = find.byTooltip('拖动项目 新对话').first;
+          final pointer = await tester.startGesture(tester.getCenter(handle));
+          await pointer.moveBy(const Offset(0, 22));
+          await tester.pump();
+          await pointer.moveBy(const Offset(0, 75));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('history-drag-proxy')), findsOneWidget);
+          await captureUi(tester, boundary, output, '${scenario.$1}-drag');
+          await pointer.moveBy(const Offset(0, -300));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          final clipped = tester.getRect(
+            find.byKey(const Key('history-drag-viewport')),
+          );
+          expect(
+            clipped.top,
+            greaterThan(
+              tester
+                  .getRect(find.byKey(const Key('chat-history-search')))
+                  .bottom,
+            ),
+          );
+          expect(
+            tester.getRect(find.byKey(const Key('history-drag-proxy'))).top,
+            lessThan(clipped.top),
+          );
+          await captureUi(
+            tester,
+            boundary,
+            output,
+            '${scenario.$1}-drag-top-clipped',
+          );
+          await pointer.cancel();
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('history-drag-proxy')), findsNothing);
+          await captureUi(
+            tester,
+            boundary,
+            output,
+            '${scenario.$1}-drag-cancelled',
+          );
+        }
         if (scenario.$1.startsWith('phone-')) {
           for (final direction in [1.0, -1.0]) {
             final pointer = await tester.startGesture(
