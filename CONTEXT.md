@@ -25,6 +25,11 @@
 
 ## 不变量
 
+core/scripts拥有脚本期限、4并发槽、8事件背压和取消树；platform/scripts持有单次
+QuickJS-NG runtime/context，FFI装配，核心不依赖具体引擎。CommonJS注册及调用分别
+返回有界JSON，异常不回显源码/输入，超时/取消终态等待实例析构。默认无文件、网络、
+进程或模块访问；执行限制不是OS安全沙箱。包安装与网络授权接线状态以status为准。
+
 UI 以旧 Kiyori Android 为保真基线；跨平台重构调整代码与目录，不改变已经确定的产品设计。首页为负一屏 / 首页 / AI 对话三页横向布局，首页底栏仅五个图标，无文字标签。未接入动作不创建业务副作用，具体尺寸与状态见 [UI 复刻契约](docs/design/ui-parity.md)。
 
 `HomeShell` 唯一持有一级目的地与浏览器返回来源。四个一级页面属于 Dart UI 投影，

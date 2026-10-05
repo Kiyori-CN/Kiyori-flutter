@@ -16,6 +16,7 @@ void registerNativeInferenceLicenses() {
       'flatbuffers': ['FlatBuffers'],
       'RapidJSON': ['RapidJSON'],
       'nlohmann-json': ['nlohmann/json'],
+      'QuickJS-NG': ['QuickJS-NG'],
     };
     for (final entry in entries.entries) {
       final text = await rootBundle.loadString(

@@ -18,6 +18,11 @@ void main(List<String> args) async {
       '../kiyori_platform/native/cpp/CMakeLists.txt',
       '../kiyori_platform/native/cpp/inference.cpp',
       '../kiyori_platform/native/cpp/inference.h',
+      '../kiyori_platform/scripts/Cargo.toml',
+      '../kiyori_platform/scripts/build.rs',
+      '../kiyori_platform/scripts/cpp/CMakeLists.txt',
+      '../kiyori_platform/scripts/cpp/scripts.cpp',
+      '../kiyori_platform/scripts/cpp/scripts.h',
     ]) {
       final dependency = input.packageRoot.resolve(relative);
       if (!File.fromUri(dependency).existsSync()) {

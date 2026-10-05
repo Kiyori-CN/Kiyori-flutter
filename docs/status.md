@@ -5,6 +5,33 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG 正式执行端口（实施中）
+
+本批基线main/a1014f8，开始时工作区干净。core/scripts现建立类型化执行错误、
+四handler调用、4并发槽、8事件背压、单事件1 MiB/总输出8 MiB、队列等待计入期限、
+取消和Runtime关闭等待worker释放；平台scripts建立每调用独立QuickJS-NG runtime/context
+及CommonJS注册SDK，由FFI装配，核心不反向依赖平台。固定v0.17.0官方archive/hash，
+只静态链接qjs，不安装std/os模块或文件/网络/进程接口，MIT全文随产品资源注册。
+核心5项生命周期/身份测试通过（work/toolpkg-core-v3.log），包括事件读取期间独立停止等待。
+正式Windows MSVC静态adapter6项行为测试通过（work/toolpkg-native-v3.log），旧示例原文件
+在正式端口注册/计数与三个网络handler明确拒绝1项通过（work/toolpkg-legacy-formal-v1.log）。
+首轮BigInt错误分类已修，深层JSON解析按Protocol失败；原型篡改不能伪造注册快照。
+完整verify -WindowsIntegration通过（work/toolpkg-verify-v1.log）：Rust核心152、原生6
+（旧文件1项默认跳过）、fmt/Clippy、378 Dart格式/analyze、应用611（16条件跳过）、
+platform7、独立FFI20（1条件跳过）和Windows引擎5。foundation新增ADR后63文件通过，
+桥-Check五文件一致。Android ARM64 Debug110.3秒与普通Windows x64 Debug19.6秒串行通过，
+正式QuickJS C++ adapter已编入两端；设备与Apple未验证。包持久化、安装/启停/卸载、受控HTTP、
+动态provider目录与聊天接线仍未完成，整体Goal保持active。未执行设备操作。
+固定包artifacts/ui-preview/20261005-101449：APK118043927字节，SHA256
+BACA756A8215597B0E070A76E22EA1ADBCBAE1FCCC68C6DC240EB09C50063446；Windows92文件
+168732723字节。93副本SHA256、APK身份/v2签名、ZIP16K/ELF、x64/Flutter DLL pin与
+八份原生许可证两端/源内容一致审计通过。25路径精确清单预审计通过，按原任务授权
+提交普通推送，最终ref见Git与manifest.sourceCommit；日志、包和archive保持忽略。
+复核此前真实API的原始JSON发现旧状态误报：DeepSeek思考矩阵54项实际51项通过，
+3项Responses流式chat（thinkingLevel1/2/3）被当前输出类型契约拒绝；该缺口仍待定位，
+不重新调用API或修改历史日志来制造通过。中转该文件32项全部通过，其中30项为思考
+聊天/system/tool矩阵，另2项为目录核验。证据仍为下文对应脱敏JSON。
+
 ### 后续能力核验与 TOOLPKG spike（实施中）
 
 原生CPU/GGUF批次538972ce6203972bc041428b73b4eb16aab81768已普通推送main并核对远端，
@@ -108,7 +135,8 @@ Responses音频返回400；两端Responses video和Messages音频/video为本地
 work/live-DEEPSEEK.json及work/live-ROUTED.json，日志仅脱敏结果；套件成功只代表执行完矩阵。
 DeepSeek正式配置控件→DPAPI→重开→ChatPage两轮→SQLite→重开通过（live-ui-DEEPSEEK-20261005-020704.log）；
 中转正式UI同样通过（work/live-ui-ROUTED-20261005-021015.log）。DeepSeek思考开启的
-三档有效程度×三协议×流式/非流式聊天/system/tool共54项通过（work/live-DEEPSEEK-20261005-022434.json）；
+三档有效程度×三协议×流式/非流式聊天/system/tool共54项中51项通过；3项Responses流式chat
+被输出类型契约拒绝（work/live-DEEPSEEK-20261005-022434.json），待解决。
 Sol6.1五档Responses×流式/非流式聊天/system/tool共30项通过（work/live-ROUTED-20261005-022716.json）。
 最终捕获19项通过、20张PNG在work/model-api-review-final，已审阅手机明暗、320双倍字、
 横屏双倍字与结果卡；矮屏底部操作滚动可达。首轮收尾verify与供应商测试同时使用原生DLL

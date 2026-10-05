@@ -1,5 +1,9 @@
 # 模块目录与验收边界
 
+`core/scripts`实现执行预算、取消/关闭等待与有界结果；`packages/kiyori_platform/scripts`
+实现QuickJS-NG独立实例，由FFI装配。注册与四handler为真实JS调用；包目录、网络宿主
+与产品提供商接线另按TOOLPKG方案实施，不将端口验收称为完整扩展功能。
+
 `core/files`首个ResourceRef用例管理应用私有模型资源；`core/downloads`保存并执行同库
 Transfer，`core/local_models`编译公共市场/仓库清单。Dart的PersistentLocalModelsPage
 投影这些事实及生命周期，不拥有下载HTTP或文件数据库。schema16/17、Range及校验见ADR0009。
@@ -129,7 +133,7 @@ speech/presentation 已有语音配置选择/名称弹窗与 STT 三引擎表单
 | --- | --- | --- | --- |
 | AI：`core/assistant`、`feature/assistant` | 会话、消息、Run、provider 配置 | 输入消息/附件引用；调用 tools、tasks、storage、network；输出有序事件 | 流式中断、工具拒绝、结果未知、恢复均有准确状态 |
 | 工具系统：`core/tools`、`feature/toolbox` | 描述、schema、调用记录；工具箱只是展示入口 | permissions + 具体领域服务；输入参数，输出类型化结果/资源引用 | 同一工具的手动/AI 调用行为一致，调用者不可伪造 |
-| Script：`core/extensions/scripts` | 执行上下文、预算、宿主 API 会话 | 工具系统与受限执行器；源码/输入 → 有界输出 | 超时、中止、内存/输出限额、无授权网络/文件访问被拒 |
+| Script：`core/scripts` | 执行上下文、预算、宿主 API 会话 | 工具系统与受限执行器；源码/输入 → 有界输出 | 超时、中止、内存/输出限额、无授权网络/文件访问被拒 |
 | Plugin：`core/extensions/plugins`、`feature/extensions` | 包 manifest、安装版本、授权、启停状态 | 校验与原子安装；公开 SDK；不直连 DB | 损坏包、路径穿越、版本冲突、撤权和升级回滚 |
 | Skill：`core/extensions/skills` | manifest/索引、内容、按需上下文加载 | 标准 SKILL.md；可选脚本经 scripts 执行 | 格式解析、引用边界、内容不会提升权限 |
 | MCP：`core/extensions/mcp` | 连接、会话协商、工具/资源映射、凭据引用 | Streamable HTTP；可用平台的 stdio；统一调用策略 | 重连/取消/协议版本协商、工具变更和恶意返回处理 |

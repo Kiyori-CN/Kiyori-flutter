@@ -1367,7 +1367,10 @@ pub struct TaskHandle {
 }
 
 pub fn create_runtime() -> RuntimeHandle {
-    let runtime = runtime::Runtime::new_with_inference(Arc::new(kiyori_inference::NativeInference));
+    let runtime = runtime::Runtime::new_with_adapters(
+        Arc::new(kiyori_inference::NativeInference),
+        Arc::new(kiyori_scripts::NativeScripts),
+    );
     RuntimeHandle {
         inner: Arc::new(runtime),
     }
@@ -1376,6 +1379,12 @@ pub fn create_runtime() -> RuntimeHandle {
 pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, BridgeError> {
     let runtime = runtime::Runtime::with_data_dir(data_dir).map_err(BridgeError::from)?;
     runtime.set_inference_adapter(Arc::new(kiyori_inference::NativeInference))?;
+    runtime
+        .set_script_adapter(Arc::new(kiyori_scripts::NativeScripts))
+        .map_err(|_| BridgeError {
+            code: ErrorCode::InvalidInput,
+            message: "Script adapter assembly failed".into(),
+        })?;
     Ok(RuntimeHandle {
         inner: Arc::new(runtime),
     })

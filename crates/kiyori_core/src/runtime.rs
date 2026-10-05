@@ -103,6 +103,7 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
+    pub(crate) scripts: crate::scripts::Registry,
     pub(crate) inference:
         std::sync::OnceLock<std::sync::Arc<dyn crate::chat::native::InferenceAdapter>>,
     pub(crate) chat_observations: std::sync::Mutex<
@@ -124,6 +125,15 @@ impl Default for Runtime {
 }
 
 impl Runtime {
+    /// 产品装配在句柄发布前完成，不在新Runtime上制造重复注册的失败分支。
+    pub fn new_with_adapters(
+        inference: std::sync::Arc<dyn crate::chat::native::InferenceAdapter>,
+        scripts: std::sync::Arc<dyn crate::scripts::ScriptAdapter>,
+    ) -> Self {
+        let mut runtime = Self::new_with_inference(inference);
+        runtime.scripts = crate::scripts::Registry::with_adapter(scripts);
+        runtime
+    }
     /// 在句柄发布前装配推理端口，构造过程没有重复注册的失败分支。
     pub fn new_with_inference(
         adapter: std::sync::Arc<dyn crate::chat::native::InferenceAdapter>,
@@ -135,6 +145,7 @@ impl Runtime {
 
     pub fn new() -> Self {
         Self {
+            scripts: Default::default(),
             inference: Default::default(),
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
@@ -146,6 +157,7 @@ impl Runtime {
 
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
+            scripts: Default::default(),
             inference: Default::default(),
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
@@ -252,6 +264,8 @@ impl Runtime {
 
     pub fn close(&self) {
         self.cancellation.cancel();
+        // JS中断由blocking worker检查；等待其RAII析构，不能仅断开事件订阅。
+        self.scripts.wait_idle();
         // 关闭等待当前短事务提交；后续操作在持锁后检查关闭状态，不能迟到写入。
         if let Ok(mut store) = self.store.lock() {
             store.take();

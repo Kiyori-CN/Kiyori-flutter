@@ -15,6 +15,7 @@
 - [ADR 0008：会话摘要投影](decisions/0008-conversation-summary-projection.md)：独立总结模型、自动缓存与手动检查点、完整原文、取消与计量。
 - [ADR 0009：托管模型传输](decisions/0009-managed-model-transfers.md)：ResourceRef、单执行者、断点校验和原子交付。
 - [ADR 0010：本地模型推理](decisions/0010-native-model-inference.md)：平台句柄、资源租约、静态构建与停止等待。
+- [ADR 0011：受控脚本执行器](decisions/0011-controlled-script-executor.md)：CommonJS/Promise真实调用、限额、取消析构和静态构建。
 
 ## 架构
 

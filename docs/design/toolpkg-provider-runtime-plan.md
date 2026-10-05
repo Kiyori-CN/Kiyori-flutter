@@ -20,7 +20,8 @@ ToolPkgAiProviderRegistration、ToolPkgJsAiProviderService与examples/custom_ai_
 文档的Windows路径为MinGW交叉编译；本项目Windows产品使用MSVC，需要真实编译。
 当前候选QuickJS-NG v0.17.0/tag commit 6d46d07d04041b40f4f49eaa7fdebe44c314c699，
 官方archive SHA256 559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9，MIT。
-此为隔离spike候选，不是已加入产品的依赖或稳定SDK。
+spike后开始正式静态adapter接入，固定同一archive；产品验收状态见status，SDK兼容范围
+不等于旧Android全部宿主桥。
 
 仅链接qjs，QJS_BUILD_LIBC=OFF；不装std/os/文件/网络/进程或模块加载器。Windows MSVC
 Release实际编译且12项运行通过：中文JSON、宿主全局缺失、模块导入拒绝、循环超时、
@@ -65,4 +66,19 @@ Apple未编译；线程/内存限制不是OS安全沙箱，原生漏洞仍具有
 Android/Windows产品构建及包审计。Android设备运行和Apple编译独立记录。回滚采用
 一致数据备份与前一schema二进制，不直接改user_version或清空用户包/配置。
 
-当前完成信号仅为执行器spike；上述正式宿主、包持久化、网络权限及产品接线尚未实现。
+正式端口已通过核心5项生命周期/身份与Windows原生6项行为回归，旧示例在正式端口
+注册/计数及网络拒绝1项通过。正式四handler调用支持同步和可自行结算的Promise，
+没有宿主I/O时未决Promise明确失败。完整验证与双端构建继续；包持久化、网络权限
+及产品接线尚未实现。
+
+正式源码位于core/scripts与platform/scripts，内存1–128 MiB、栈64 KiB–1 MiB、
+期限10–600000ms、Promise job最多100000；并发4，事件8槽，每条1 MiB、总8 MiB。
+等待并发槽也消耗期限，取消等待独立finished且不抢事件读取者；Runtime.close等待
+所有已登记worker。默认32 MiB/512 KiB/30000ms。注册目录最多32项，稳定id只含
+ASCII字母数字与_.-；元数据需严格JSON字段和唯一身份。SDK捕获内建函数并用无原型
+注册快照，拒绝调用期间重新注册；普通handler返回仍按不可信数据验证。
+无任意bytecode入口，模块loader明确拒绝；C++与JS错误正文不穿越公共边界。
+
+构建缓存target/native-scripts按target独占OS锁，KIYORI_SCRIPT_ARCHIVE只接受固定
+SHA256内容，KIYORI_SCRIPT_BUILD_DIR可重定位缓存。Flutter hook显式登记CMake/adapter
+输入，MIT全文进入平台资源和LicenseRegistry。Apple未编译时返回Unsupported。

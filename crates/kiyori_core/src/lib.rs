@@ -16,5 +16,6 @@ pub mod model_import;
 pub mod models;
 pub mod prompts;
 pub mod runtime;
+pub mod scripts;
 mod storage;
 pub mod workflows;
