@@ -96,8 +96,13 @@ Messages按提供方采用x-api-key或Bearer，Gemini默认models根派生实际
 本地模型目录由core/local_models读取，同HTTP client与SQLite保存最后成功目录。
 core/downloads唯一持有前台Transfer，core/files持有应用私有ResourceRef；冻结revision/
 大小/SHA256，OS锁单执行者，Range/实体/全文件校验后原子交付。页面离开暂停其前台任务，
-重开对账不自动重发；尚无OS后台移交。MNN/llama.cpp推理和扩展提供方尚无实际adapter；
-明确失败，不以下载或配置保存冒充推理。见[ADR 0009](docs/decisions/0009-managed-model-transfers.md)。
+重开对账不自动重发；尚无OS后台移交。见[ADR 0009](docs/decisions/0009-managed-model-transfers.md)。
+MNN/llama.cpp CPU文字推理由platform/native adapter拥有每请求C++句柄，core仍拥有ChatRun/
+SQLite/总结与配置队列。资源来自completed Transfer，同OS锁覆盖加载至析构；取消等待worker
+资源释放后终态。GGUF选择器只借用单次文件句柄，1 MiB分片进入Rust暂存、SHA256/头部检查、
+原子交付同Transfer，不接受绝对路径；完整模型格式在引擎加载时校验。未完成导入清理后需重新选择。
+GPU、媒体、原生工具模板、llama思考及扩展提供方未接入时明确失败。MNN固定引擎不支持的
+seed/负惩罚/repetition<1明确拒绝。见[ADR 0010](docs/decisions/0010-native-model-inference.md)。
 8事件队列背压、单事件1 MiB；Chat需finish与DONE，Responses需completed/incomplete终态及快照一致性。
 Responses使用input、store=false/background=false，max_tokens映射输出限制；思考不混入正文。
 请求取消等待worker释放，

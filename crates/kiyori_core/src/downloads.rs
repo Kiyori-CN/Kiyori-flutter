@@ -126,7 +126,13 @@ fn validate(spec: &TransferSpec) -> Result<(), CoreError> {
         {
             return Err(error("下载文件路径、大小或SHA256无效"));
         }
-        source_url(&f.url)?;
+        if f.url == crate::model_import::IMPORT_SOURCE {
+            if spec.files.len() != 1 || spec.owner != format!("llama:{}", f.path) {
+                return Err(error("导入资源清单身份无效"));
+            }
+        } else {
+            source_url(&f.url)?;
+        }
         total = total
             .checked_add(f.size)
             .ok_or_else(|| error("下载大小溢出"))?;
@@ -158,7 +164,7 @@ fn restart_error(message: &str) -> CoreError {
     }
 }
 impl AppStore {
-    fn transfer_lock(&self, id: &str) -> Result<File, CoreError> {
+    pub(crate) fn transfer_lock(&self, id: &str) -> Result<File, CoreError> {
         if !files::valid_id(id) {
             return Err(error("下载标识无效"));
         }
@@ -332,6 +338,13 @@ impl Runtime {
         let store = self.persistent_store()?;
         let guard = store.transfer_lock(&id)?;
         let (spec, snapshot) = store.transfer(&id)?;
+        if spec
+            .files
+            .iter()
+            .any(|f| f.url == crate::model_import::IMPORT_SOURCE)
+        {
+            return Err(error("本地导入资源不能网络续传，请重新选择同一文件"));
+        }
         if snapshot.phase == "completed" {
             return Err(error("该模型已下载完成"));
         }

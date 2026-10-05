@@ -5,6 +5,7 @@ import 'generated/frb_generated.dart';
 
 /// Presentation-facing contract; the native runtime remains the state owner.
 abstract interface class RuntimeClient {
+  Future<ModelImportRun> beginModelImport(String name);
   Future<String> createTransfer(api.TransferSpec spec);
   Future<List<api.LocalModel>> localModels();
   Future<List<api.LocalModel>> refreshLocalModels();
@@ -245,6 +246,44 @@ abstract interface class TransferRun {
   Future<void> stop({bool cancel = false});
 }
 
+abstract interface class ModelImportRun {
+  Future<BigInt> append(List<int> bytes);
+  Future<String> finish();
+  Future<void> close();
+}
+
+final class _NativeModelImport implements ModelImportRun {
+  _NativeModelImport(this.handle, this.owner);
+  final api.ModelImportHandle handle;
+  final NativeRuntimeClient owner;
+  bool closed = false;
+  @override
+  Future<BigInt> append(List<int> bytes) {
+    owner._ensureOpen();
+    if (closed) throw StateError('模型导入已结束');
+    return handle.append(bytes: bytes);
+  }
+
+  @override
+  Future<String> finish() {
+    owner._ensureOpen();
+    if (closed) throw StateError('模型导入已结束');
+    return handle.finish();
+  }
+
+  @override
+  Future<void> close() async {
+    if (closed) return;
+    closed = true;
+    try {
+      await handle.close();
+    } finally {
+      handle.dispose();
+      owner._imports.remove(this);
+    }
+  }
+}
+
 final class _NativePreparedConversation implements PreparedConversation {
   _NativePreparedConversation(this.handle, this.owner);
   final api.ConversationPreparation handle;
@@ -308,6 +347,7 @@ final class _NativeModelSecretsWrite implements ModelSecretsWrite {
 }
 
 final class NativeRuntimeClient implements RuntimeClient {
+  final _imports = <_NativeModelImport>{};
   final _preparations = <_NativePreparedConversation>{};
   @override
   Future<List<String>> searchConversations(String query) {
@@ -890,6 +930,7 @@ final class NativeRuntimeClient implements RuntimeClient {
 
   Future<void> _close() async {
     await _handle.close();
+    await Future.wait(_imports.toList().map((item) => item.close()));
     await Future.wait(_preparations.toList().map((item) => item.close()));
     await Future.wait(_chatRuns.toList().map((run) => run.stop()));
     await Future.wait(_transfers.toList().map((run) => run.stop()));
@@ -902,6 +943,20 @@ final class NativeRuntimeClient implements RuntimeClient {
     _ensureOpen();
     final handle = await _handle.startChat(request: request);
     return _trackChat(handle);
+  }
+
+  @override
+  Future<ModelImportRun> beginModelImport(String name) async {
+    _ensureOpen();
+    final handle = await _handle.beginModelImport(name: name);
+    if (_closing != null) {
+      await handle.close();
+      handle.dispose();
+      throw StateError('Runtime closed');
+    }
+    final run = _NativeModelImport(handle, this);
+    _imports.add(run);
+    return run;
   }
 
   @override

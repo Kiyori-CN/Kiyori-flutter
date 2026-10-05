@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:kiyori_platform/kiyori_platform.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'api_provider_drawers.dart';
@@ -12,6 +13,7 @@ import 'model_edit_session.dart';
 import 'model_credentials.dart';
 import 'model_options_editing.dart';
 import 'upstream_model_drawer.dart';
+import 'gguf_import_dialog.dart';
 
 import 'package:kiyori_bridge/kiyori_bridge.dart' show ModelNamesUndo;
 
@@ -19,9 +21,11 @@ class ModelApiConnection extends StatefulWidget {
   const ModelApiConnection({
     this.onOpenLocalModels = emptyAction,
     this.session,
+    this.modelFilePicker,
     super.key,
   });
   final ModelEditSession? session;
+  final ModelFilePicker? modelFilePicker;
   final VoidCallback onOpenLocalModels;
   @override
   State<ModelApiConnection> createState() => _ModelApiConnectionState();
@@ -56,6 +60,43 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
   final _undos = <ModelNamesUndo>[];
   bool _changingNames = false, _active = true;
   int _namesVersion = 0;
+  bool _importing = false;
+
+  Future<void> importGguf() async {
+    final session = widget.session;
+    if (session == null || _importing || !_active) return;
+    _importing = true;
+    try {
+      if (!await session.flush() || !mounted || !_active) return;
+      final name = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => GgufImportDialog(
+          connect: session.owner.connect,
+          picker: widget.modelFilePicker ?? createModelFilePicker(),
+        ),
+      );
+      // 模态退出先让宿主恢复TickerMode；不能把自身弹窗的临时停帧当成页面已离开。
+      for (var frame = 0; frame < 30 && mounted; frame++) {
+        await WidgetsBinding.instance.endOfFrame;
+        if (_active) break;
+      }
+      if (!mounted ||
+          !_active ||
+          !identical(widget.session, session) ||
+          name == null ||
+          session.draft.provider != 'LLAMA_CPP') {
+        return;
+      }
+      if (models.contains(name)) {
+        message('模型已导入，可以从本地模型目录选择');
+      } else {
+        await changeNames([...models, name], success: '模型已导入，可以从本地模型目录选择');
+      }
+    } finally {
+      _importing = false;
+    }
+  }
 
   void namesRecovered() {
     final session = widget.session;
@@ -178,6 +219,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
     List<String> desired, {
     bool clear = false,
     bool upstream = false,
+    String? success,
   }) async {
     final session = widget.session;
     if (_changingNames || !_active) return;
@@ -252,7 +294,7 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
       _undos.add(undo);
       final notification = ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(clear ? '已清空模型列表' : '模型已删除'),
+          content: Text(success ?? (clear ? '已清空模型列表' : '模型已删除')),
           action: SnackBarAction(
             label: '撤销',
             onPressed: () async {
@@ -501,8 +543,16 @@ class _ModelApiConnectionState extends State<ModelApiConnection> {
         ),
       ] else if (provider.id == 'LLAMA_CPP') ...[
         const ModelSettingsBanner('本地运行模型理解能力较差，建议关闭记忆链接、开启禁用工具进行对话'),
-        const ModelSettingsBanner(
-          'llama.cpp 模型需要自行下载（.gguf）。请将模型文件放入以下文件夹，然后在“模型名称”中填写文件名：\n\n默认模型目录：/storage/emulated/0/Download/Kiyori-Android/models/llama',
+        Semantics(
+          button: true,
+          label: '导入 GGUF 模型',
+          child: InkWell(
+            onTap: importGguf,
+            borderRadius: BorderRadius.circular(8),
+            child: const ModelSettingsBanner(
+              'llama.cpp 模型需要自行下载（.gguf）。点击此处选择模型文件，导入后在“模型名称”中选择文件名：\n\n默认模型目录：应用私有模型资源',
+            ),
+          ),
         ),
         ModelSettingsField(
           '线程数',

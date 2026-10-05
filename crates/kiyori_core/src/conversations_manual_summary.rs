@@ -194,6 +194,8 @@ impl Runtime {
             output: String::new(),
         };
         let cancellation = self.cancellation.child_token();
+        let mut request = request;
+        self.bind_inference(&mut request);
         let upstream = chat::start(client, request, cancellation.child_token());
         Ok(chat::persist(upstream, cancellation, move |event| {
             let _lock = &run_guard;

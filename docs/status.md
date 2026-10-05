@@ -5,6 +5,49 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### 原生 CPU 推理与 GGUF 导入（本机验收通过，设备待验证）
+
+当前已交付基线为main/a002770d3a5c192ebfacf7799c99ec2a78900aff；恢复时工作区干净。
+本批core/chat/native建立平台推理端口、Transfer同锁资源租约、UTF-8分片、有界队列、
+超时与取消等待；FFI装配packages/kiyori_platform/native的静态MNN/llama adapter。
+固定旧源码revision的官方archive经SHA256，不提交上游源码或预编译库；
+GPU、媒体、原生工具模板及llama思考尚未接入，选择时明确拒绝。
+正式Runtime的Qwen3.5-0.8B-MNN生成5、取消、再次生成5通过（product-mnn-v2）；
+真实FFI配置/会话/用量/停止/重开及本地目录1项通过（work/native-model-ffi-live-v4.log）。
+Release FFI正式编译通过（ffi-build-v3），默认Flutter hook独立静态构建也通过。
+公开Qwen2.5-0.5B-Instruct Q4_0 GGUF固定revision9217f5d，428730208字节，SHA256
+7671c0c304e6ce5a7fc577bcb12aba01e2c155cc2efd29b2213c95b18edaf6ed与官方响应一致。
+产品直连下载失败；本机网络取得后经loopback供同Transfer校验交付，正式Runtime三轮
+生成/取消/再生成通过（work/native-model-product-gguf-v2.log），不称直连下载通过。
+Omni类型修复后MNN真实推理通过；纯文本保持mrope，媒体标签/模板隐式路径明确拒绝。
+关闭MNN内部HTTP，配置附属文件只能引用已校验清单，模板context验证后内存合入，
+请求thinking不被load时覆盖。Dart hook的Windows工具发现及NDK定位问题已修；
+Android OBJECT库POST_BUILD通过上游命令行选项解决；完整verify-final-v2通过：
+foundation61、Rust146/fmt/Clippy、376 Dart格式/analyze、应用609（15条件跳过）、
+platform7、独立FFI20（1条件跳过）与Windows引擎5。日志work/native-model-verify-final-v2.log。
+原生安全/生命周期/UTF-8和大回复专项7项通过（core-special-v6）。MNN设置线程保存、
+真实ChatPage富文本/用量/重开1项6秒通过（work/native-model-ui-live-final.log）。
+GGUF说明卡接Windows COM和Android SAF选择器；1 MiB分片进入Rust暂存、hash与头部
+校验，原子交付同Transfer，完整格式由llama加载校验，不接收UI绝对路径/URI。
+相同名称/hash可重选，冲突拒绝覆盖；rename后事务前中断及completed资源缺失/篡改均对账。
+导入取消和提交期间生命周期2项通过（import-dialog-final），核心对账2项通过
+（import-core-final-v3）；真实428730208字节GGUF由说明卡→Windows文件I/O→FFI→目录→
+ChatPage回答5→停止→SQLite重开1项49秒通过（work/native-model-gguf-ui-live-v5.log）。
+并行夹具时间戳目录碰撞曾导致锁失败，加入进程内唯一序号后保留完整断言通过；
+首轮构建、UI和测试失败日志保留。非流式完整正文按UTF-8分事件，每事件≤1 MiB，
+总输出超过8 MiB明确失败。MNN无seed接口/负惩罚/repetition<1明确拒绝。
+最后修复后的Android ARM64 Debug125.8秒和普通Windows x64 Debug100.9秒串行通过，
+新增ModelFile Kotlin SAF adapter已实际编译；桥-Check五文件一致。规范许可证行尾空白后
+再次串行构建Android25.4秒/Windows21.5秒，许可证正文与版权声明保留。
+最终固定包artifacts/ui-preview/20261005-085819：APK118050030字节、SHA256
+56F3E7D0C3B6D7D63C41F4118E48258AAF510B49DCDE8C9DECDD32C99A84F475；
+Windows91文件167693731字节。92份副本SHA256、APK身份/v2签名、ZIP16K/ELF、
+x64/Flutter DLL pin及七份原生依赖许可证两端内容一致审计通过。
+67路径精确允许清单检查凭据/私密产物/大文件/链接/子模块/嵌套Git通过；
+日志、完整模型和固定包保持忽略，按本任务授权提交普通推送，最终ref见Git与manifest。
+Android SAF provider取消、同设备像素/键盘/触摸/Profile和Apple仍待验证。
+契约见[ADR 0010](decisions/0010-native-model-inference.md)。
+
 用户要求深度核对旧源、全部 UI/功能、修复缺陷、完成构建并全部提交推送。
 基线 main/dcc5fbb5f5050e4a659510be652275694a74f82f，开始时工作区干净；旧源
 main/6b03b03aa082803bb279db5e78773583e2d91154 只读。任务契约、行为矩阵、分期依赖、
@@ -50,7 +93,7 @@ Sol6.1五档Responses×流式/非流式聊天/system/tool共30项通过（work/l
 最终捕获19项通过、20张PNG在work/model-api-review-final，已审阅手机明暗、320双倍字、
 横屏双倍字与结果卡；矮屏底部操作滚动可达。首轮收尾verify与供应商测试同时使用原生DLL
 出现文件占用，相关进程退出后串行重验；保留失败日志，未降断言。
-MNN/llama推理/共享下载资源与扩展提供方仍有实际缺口，
+本地CPU文字推理与前台共享下载资源已接入；GPU/媒体/工具模板、OS后台下载和扩展提供方仍有实际缺口，
 实施依赖与完成信号已写入方案，不能把配置保存或网络测试称作全功能。
 同设备并排像素、键盘/触摸/Profile与Apple为verification_pending；当前授权不含设备操作。
 

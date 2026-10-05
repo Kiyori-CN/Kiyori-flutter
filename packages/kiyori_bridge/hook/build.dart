@@ -13,6 +13,11 @@ void main(List<String> args) async {
       '../../crates/kiyori_core/Cargo.toml',
       '../../crates/kiyori_ffi/Cargo.toml',
       '../../crates/kiyori_ffi/rust-toolchain.toml',
+      '../kiyori_platform/native/Cargo.toml',
+      '../kiyori_platform/native/build.rs',
+      '../kiyori_platform/native/cpp/CMakeLists.txt',
+      '../kiyori_platform/native/cpp/inference.cpp',
+      '../kiyori_platform/native/cpp/inference.h',
     ]) {
       final dependency = input.packageRoot.resolve(relative);
       if (!File.fromUri(dependency).existsSync()) {

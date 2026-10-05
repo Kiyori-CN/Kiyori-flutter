@@ -1046,7 +1046,7 @@ impl Runtime {
             .get_or_init(|| chat::client().map(Arc::new))
             .clone()?;
         let run_guard = store.run_lock(&prepared.conversation)?;
-        let (request,run_id,context_limit)=prepared.lease.with_store(&store,|| {
+        let (mut request,run_id,context_limit)=prepared.lease.with_store(&store,|| {
             let mut connection=store.connection.lock().map_err(|_|invalid("聊天存储锁不可用"))?;
             let tx=connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
             let selected=selection(&tx,&prepared.conversation,prepared.target.as_deref())?;
@@ -1153,6 +1153,7 @@ impl Runtime {
             .insert(prepared.conversation.clone(), observation.clone());
         // 安全引用已解析成短期请求，不把lease延长到网络/流式阶段。
         drop(prepared);
+        self.bind_inference(&mut request);
         let cancellation = self.cancellation.child_token();
         let upstream = chat::start_observed(
             client,
@@ -1171,6 +1172,10 @@ pub(crate) fn apply_thinking(
     request: &mut chat::ChatRequest,
     preferences: &crate::chat_preferences::Preferences,
 ) -> Result<(), CoreError> {
+    if let Some(local) = &mut request.local {
+        local.thinking = preferences.thinking;
+        return Ok(());
+    }
     let mut parameters: serde_json::Value =
         serde_json::from_str(&request.parameters).map_err(|_| invalid("模型参数无效"))?;
     let object = parameters

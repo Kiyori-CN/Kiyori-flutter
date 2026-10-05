@@ -45,7 +45,7 @@ pub(crate) fn valid_relative(path: &str) -> bool {
                 && matches!(stem.as_bytes()[3], b'1'..=b'9'))
     })
 }
-fn plain(path: &Path) -> Result<(), CoreError> {
+pub(crate) fn plain(path: &Path) -> Result<(), CoreError> {
     match std::fs::symlink_metadata(path) {
         Ok(meta) => {
             #[cfg(windows)]

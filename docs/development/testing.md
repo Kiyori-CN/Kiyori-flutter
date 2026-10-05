@@ -4,6 +4,7 @@
 
 M1 已有真实工程。文档执行 `tools/check-foundation.ps1`；实现执行 `tools/verify.ps1`，需要 Windows 引擎实测时加 `-WindowsIntegration`。构建执行 `tools/build.ps1 -Platform android/windows`（二选一）。Gradle 入口在 `apps/kiyori/android`，不要使用旧工程根路径。
 根目录analyze排除Git忽略的work/artifacts临时研究与产物，仍覆盖全部产品Dart源码。
+target中的固定C++源码及构建缓存同样排除，不将上游历史Dart夹具作为产品代码分析。
 
 build/verify 先核对实际工具版本。`build.ps1 -Mode debug/profile/release` 显式选择模式，默认
 Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入口与证据边界见
@@ -21,6 +22,16 @@ Debug；性能测试用 Profile，Release 不配置 Debug 签名。帧性能入�
 | iOS | Mac 上 `flutter build ios --no-codesign`、模拟器/真机运行 | Apple 编译与对应运行层；签名发布另验 |
 
 ## 高价值测试
+
+native_model_ui_live_test.dart默认跳过，显式KIYORI_NATIVE_TEST_DATA指向独立已下载MNN验收库
+后走真实设置/保存/ChatPage/富文本/用量/重开；native_inference_live_test.dart补停止与目录。
+gguf_import_live_test.dart显式KIYORI_GGUF_TEST_FILE选择已核对的公开Qwen2.5-0.5B Q4_0完整文件，
+使用临时库从说明卡→Windows有界文件I/O→Rust导入→目录→真实聊天/停止/重开，不重复下载。
+这两个入口不安装设备；Android SAF选择器与provider释放仍需设备验收。core/model_import
+覆盖hash/原子交付/重复冲突/大小/坏头/锁/取消/中断清理；platform/model_file_test覆盖Windows
+真实有界文件读取与源文件不变。native专项验证UTF-8/大正文完整分片/超限失败/取消等待析构。
+gguf_import_dialog_test.dart覆盖取消选择/在途读取释放与提交期间禁取消；core导入回归还
+覆盖rename后事务前恢复、completed资源缺失补回和篡改拒绝。默认verify不读取用户模型。
 
 local_models_business_test.dart以合成目录投影、真实Rust/FFI/SQLite下载6字节文件，验证
 暂停/Range续传/校验/重开/确认删除/刷新失败；transfer_runtime_test.dart覆盖无人消费和

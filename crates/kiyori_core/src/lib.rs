@@ -12,6 +12,7 @@ pub mod knowledge;
 pub mod local_models;
 pub mod memory_search;
 pub mod model_execution;
+pub mod model_import;
 pub mod models;
 pub mod prompts;
 pub mod runtime;

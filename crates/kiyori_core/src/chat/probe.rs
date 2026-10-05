@@ -43,7 +43,9 @@ pub fn prepare(
     kind: &str,
 ) -> Result<ChatRequest, CoreError> {
     crate::models::validate(&mut draft)?;
-    if draft.protocol == "native" && draft.provider != "GOOGLE" {
+    if draft.protocol == "native"
+        && !matches!(draft.provider.as_str(), "GOOGLE" | "MNN" | "LLAMA_CPP")
+    {
         return Err(CoreError {
             code: ErrorCode::InvalidInput,
             message: "本地或扩展提供方的原生适配尚未接入".into(),
@@ -136,6 +138,8 @@ pub fn prepare(
         );
     }
     Ok(ChatRequest {
+        local: matches!(draft.provider.as_str(), "MNN" | "LLAMA_CPP")
+            .then(|| native::LocalInput::new(draft.options.clone())),
         prelude: None,
         provider: draft.provider,
         continuation_credentials: None,

@@ -911,6 +911,16 @@ version = "0.1.0"
 dependencies = [
  "flutter_rust_bridge",
  "kiyori_core",
+ "kiyori_inference",
+]
+
+[[package]]
+name = "kiyori_inference"
+version = "0.1.0"
+dependencies = [
+ "kiyori_core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

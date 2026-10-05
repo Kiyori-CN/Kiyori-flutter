@@ -1367,18 +1367,26 @@ pub struct TaskHandle {
 }
 
 pub fn create_runtime() -> RuntimeHandle {
+    let runtime = runtime::Runtime::new_with_inference(Arc::new(kiyori_inference::NativeInference));
     RuntimeHandle {
-        inner: Arc::new(runtime::Runtime::new()),
+        inner: Arc::new(runtime),
     }
 }
 
 pub fn create_runtime_with_data_dir(data_dir: String) -> Result<RuntimeHandle, BridgeError> {
+    let runtime = runtime::Runtime::with_data_dir(data_dir).map_err(BridgeError::from)?;
+    runtime.set_inference_adapter(Arc::new(kiyori_inference::NativeInference))?;
     Ok(RuntimeHandle {
-        inner: Arc::new(runtime::Runtime::with_data_dir(data_dir).map_err(BridgeError::from)?),
+        inner: Arc::new(runtime),
     })
 }
 
 impl RuntimeHandle {
+    pub fn begin_model_import(&self, name: String) -> Result<ModelImportHandle, BridgeError> {
+        Ok(ModelImportHandle {
+            inner: self.inner.begin_model_import(name)?,
+        })
+    }
     pub fn create_transfer(&self, spec: TransferSpec) -> Result<String, BridgeError> {
         Ok(self.inner.create_transfer(spec.into())?)
     }
@@ -1643,6 +1651,7 @@ impl RuntimeHandle {
         Ok(ChatHandle {
             inner: Arc::new(
                 self.inner.start_chat(kiyori_core::chat::ChatRequest {
+                    local: None,
                     prelude: None,
                     provider: String::new(),
                     continuation_credentials: None,
@@ -2005,6 +2014,22 @@ impl RuntimeHandle {
         })
     }
 
+    pub fn close(&self) {
+        self.inner.close();
+    }
+}
+
+/// 不暴露宿主路径，最多1 MiB字节/调用；句柄释放时回收未完成暂存。
+pub struct ModelImportHandle {
+    inner: kiyori_core::model_import::ModelImport,
+}
+impl ModelImportHandle {
+    pub fn append(&self, bytes: Vec<u8>) -> Result<u64, BridgeError> {
+        Ok(self.inner.append(bytes)?)
+    }
+    pub fn finish(&self) -> Result<String, BridgeError> {
+        Ok(self.inner.finish()?)
+    }
     pub fn close(&self) {
         self.inner.close();
     }

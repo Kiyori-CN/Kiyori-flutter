@@ -45,6 +45,15 @@ abstract class ConversationPreparation implements RustOpaqueInterface {
   Future<String?> summarySecretReference();
 }
 
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelImportHandle>>
+abstract class ModelImportHandle implements RustOpaqueInterface {
+  Future<BigInt> append({required List<int> bytes});
+
+  Future<void> close();
+
+  Future<String> finish();
+}
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ModelNamesEdit>>
 abstract class ModelNamesEdit implements RustOpaqueInterface {
   Future<void> close();
@@ -76,6 +85,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String id,
     required bool archived,
   });
+
+  Future<ModelImportHandle> beginModelImport({required String name});
 
   Future<ModelSecretsHandle> beginModelSecrets();
 

@@ -25,7 +25,7 @@ DeepSeek / deepseek-flash 与指定中转 / gpt-6.1-sol 两个端点的真实合
 | 请求头六预设 | `ModelConfigScreen.kt` | 已有安全 payload 持久化；核对新增条目输入触发保存、键去空白、重复键及请求使用 |
 | 队列与密钥池 | `ui/features/settings/sections/AdvancedSettingsSection.kt`、`ApiKeyProvider` | 已接配置级 RPM/并发门控，保存限制唤醒既有等待者；工具续答逐次轮换，目录共用持久游标 |
 | 综合模型测试 | `ModelConfigConnectionTester.kt` | 已接聊天/system、原生与XML工具两步随机结果续答、启用媒体和当前流式/思考偏好；供应商分项结果见 status |
-| 协议与原生能力 | 各旧 `llmprovider`、`:mnn`、`:llama` | 四种网络协议接同一请求核心；本地推理/下载、扩展 provider 仍是实际缺口，不能称全功能 |
+| 协议与原生能力 | 各旧 `llmprovider`、`:mnn`、`:llama` | 四种网络协议接同一请求核心；MNN/llama CPU文字、前台下载和GGUF导入已接入；GPU/媒体/工具模板、OS后台下载和扩展 provider 仍缺失，不能称全功能 |
 
 ## 实施顺序与架构选择
 
@@ -77,7 +77,7 @@ DeepSeek / deepseek-flash 与指定中转 / gpt-6.1-sol 两个端点的真实合
 | --- | --- | --- | --- |
 | 1 | 总结执行：`core/conversations_summary` 与 `core/conversations_manual_summary` 协调 `summary` 功能绑定与安全凭据租约 | 自动缓存及手动可见检查点，独立预算、同Run取消、失败保留全文、迟到身份保护和用量；重新生成保留问题及尾部，检查点变更传播失效 | 自动链路两端12条真实UI、手动边界/编辑删除/取消切换/重开及双端构建分别记录status；设备/Apple仍待验证 |
 | 2 | 共享资源/传输：首个 `core/files` ResourceRef 与 `core/downloads` Transfer 用例 | 应用私有模型资源和用户授权引用区分；持久任务只有一个执行者，Range/ETag/大小校验与原子交付；Dart 无临时下载器 | 本地模型页真实刷新/开始/暂停/续传/取消/删除，重启对账、断流/空间不足/实体变化通过 |
-| 3 | MNN / llama.cpp 原生 adapter，`kiyori_platform` 拥有句柄与线程/GPU生命周期 | 旧源 CMake 分别 pin MNN ea44a3e、llama.cpp 885c5bb；不能复制旧 JNI/预编译库伪装跨平台实现；新增依赖先审许可证与正式构建 | Android/Windows 能加载对应资源，设置参数真实传入，流式/取消/卸载与错误测试；Apple 实际编译独立验收 |
+| 3 | MNN / llama.cpp 原生 adapter，`kiyori_platform` 拥有句柄与线程/GPU生命周期 | CPU文字与GGUF用户导入已接入，固定MNN ea44a3e、llama.cpp 885c5bb官方archive/hash；资源同锁、每请求RAII、取消等待析构 | Windows正式设置/FFI/会话加载两类完整模型、流式/停止/重开有实证；GPU/媒体/工具模板、llama思考与原生总结实测继续接入，Android设备/Apple独立验收 |
 | 4 | TOOLPKG 模型提供方，统一扩展目录/manifest/执行与授权 | 旧 ModelApiProviderPresentation 的 TOOLPKG 是动态目录；现有内置提供方列表不能替代它；执行器不得获得任意文件/网络权限 | 安装/启停/卸载目录更新、配置身份与撤权、协议/模型列表/请求、超时取消/恶意结果有真实宿主测试 |
 | 5 | 同设备 UI 与性能验收 | 本机字体 PNG 只能证明布局，两个供应商不能证明 Gemini 或本地能力；保持旧尺寸、层级、资源与返回语义 | 用户指定并授权设备后，旧新同机截图差异、键盘/触摸/Profile及可访问性有记录 |
 

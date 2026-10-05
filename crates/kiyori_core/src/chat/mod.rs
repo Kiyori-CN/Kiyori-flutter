@@ -3,6 +3,7 @@ pub(crate) mod gemini;
 pub mod limits;
 mod media;
 pub(crate) mod messages;
+pub mod native;
 pub mod observation;
 pub mod pool;
 pub mod probe;
@@ -64,6 +65,7 @@ pub struct ChatMessage {
 
 // 凭据输入不实现Debug，错误也不附带请求、URL或供应商响应正文。
 pub struct ChatRequest {
+    pub local: Option<native::LocalInput>,
     pub prelude: Option<Box<Prelude>>,
     pub provider: String,
     pub continuation_credentials: Option<CredentialSource>,
@@ -270,6 +272,8 @@ pub(crate) fn start(
 pub(crate) struct EventSender {
     sender: mpsc::Sender<ChatEvent>,
     observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
+    cancellation: CancellationToken,
+    workers: Arc<std::sync::Mutex<Vec<tokio::task::JoinHandle<()>>>>,
 }
 impl EventSender {
     fn observe(&self, event: &ChatEvent) {
@@ -282,7 +286,14 @@ impl EventSender {
     }
     async fn send(&self, event: ChatEvent) -> Result<(), mpsc::error::SendError<ChatEvent>> {
         self.observe(&event);
-        self.sender.send(event).await
+        tokio::select! {
+            biased;
+            _ = self.cancellation.cancelled() => Err(mpsc::error::SendError(event)),
+            permit = self.sender.reserve() => match permit {
+                Ok(permit) => { permit.send(event); Ok(()) },
+                Err(_) => Err(mpsc::error::SendError(event)),
+            }
+        }
     }
 }
 
@@ -293,22 +304,35 @@ pub(crate) fn start_observed(
     observation: Option<Arc<std::sync::Mutex<observation::Tracker>>>,
 ) -> ChatRun {
     let (sender, receiver) = mpsc::channel(8);
+    let workers = Arc::new(std::sync::Mutex::new(Vec::new()));
     let sender = EventSender {
         sender,
         observation,
+        cancellation: cancellation.clone(),
+        workers: workers.clone(),
     };
     let worker_cancel = cancellation.clone();
     let finished = CancellationToken::new();
     let guard = finished.clone().drop_guard();
     tokio::spawn(async move {
         let _guard = guard;
-        let work = async {
-            let result = execute(&client, input, &sender).await;
-            if let Err(error) = result {
-                let _ = sender.send(ChatEvent::Failed(error)).await;
-            }
+        let result = tokio::select! {
+            biased;
+            _ = worker_cancel.cancelled() => { sender.observe(&ChatEvent::Cancelled); None },
+            result = execute(&client, input, &sender) => Some(result),
         };
-        tokio::select! { biased; _ = worker_cancel.cancelled() => { sender.observe(&ChatEvent::Cancelled); }, _ = work => {} }
+        // future 被取消不等于 C++ 已停止。finished 和持久化锁都要等 RAII 析构结束。
+        let pending = std::mem::take(
+            &mut *workers
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        );
+        for worker in pending {
+            let _ = worker.await;
+        }
+        if let Some(Err(error)) = result {
+            let _ = sender.send(ChatEvent::Failed(error)).await;
+        }
     });
     ChatRun {
         cancellation,
@@ -372,6 +396,8 @@ async fn execute(
         let summary_sender = EventSender {
             sender: queue,
             observation: None,
+            cancellation: sender.cancellation.clone(),
+            workers: sender.workers.clone(),
         };
         // 同一worker内并行收集有界事件与执行；取消丢弃两个future，结束前无孤儿请求。
         let generate = async {
@@ -418,6 +444,7 @@ async fn execute(
     }
     let timeout = input.timeout_ms;
     let probing = input.probe.is_some();
+    let local = input.local.is_some();
     let operation = async {
         let mut reason = execute_once(client, &mut input, sender).await?;
         if let Some(probe) = &mut input.probe
@@ -442,7 +469,7 @@ async fn execute(
         let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
         Ok(())
     };
-    if probing {
+    if probing && !local {
         tokio::time::timeout(Duration::from_millis(timeout.into()), operation)
             .await
             .map_err(|_| {
@@ -458,6 +485,9 @@ async fn execute_once(
     input: &mut ChatRequest,
     sender: &EventSender,
 ) -> Result<String, ChatFailure> {
+    if input.local.is_some() {
+        return native::execute(input, sender).await;
+    }
     if !matches!(
         input.protocol.as_str(),
         "chat" | "responses" | "messages" | "native"

@@ -1,6 +1,7 @@
 include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
+    - 'target/**'
     - '**/frb_generated*.dart'
     - 'work/**'
     - 'artifacts/**'

@@ -100,8 +100,12 @@ impl AppStore {
         if config.revision != revision {
             return Err(invalid("模型配置已变化，请重新载入后获取目录"));
         }
-        chat::directory::url(&config.draft).map_err(|error| invalid(&error.message))?;
-        let (key, headers) = select_credentials(&tx, id, payload)?;
+        let (key, headers) = if matches!(config.draft.provider.as_str(), "MNN" | "LLAMA_CPP") {
+            (String::new(), vec![])
+        } else {
+            chat::directory::url(&config.draft).map_err(|error| invalid(&error.message))?;
+            select_credentials(&tx, id, payload)?
+        };
         tx.commit().map_err(storage)?;
         Ok((config.draft, key, headers))
     }

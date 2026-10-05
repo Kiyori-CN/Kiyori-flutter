@@ -25,6 +25,9 @@ class FakeRun implements DiagnosticRun {
 
 class FakeClient implements RuntimeClient {
   @override
+  Future<ModelImportRun> beginModelImport(String name) =>
+      throw UnimplementedError();
+  @override
   Future<String> createTransfer(TransferSpec spec) =>
       throw UnimplementedError();
   @override

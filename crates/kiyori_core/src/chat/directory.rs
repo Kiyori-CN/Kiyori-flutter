@@ -69,6 +69,25 @@ pub(crate) fn start(
     }
 }
 
+pub(crate) fn local(models: Vec<ModelEntry>, cancellation: CancellationToken) -> ChatRun {
+    let (sender, receiver) = mpsc::channel(8);
+    let finished = CancellationToken::new();
+    let guard = finished.clone().drop_guard();
+    let cancel = cancellation.clone();
+    tokio::spawn(async move {
+        let _guard = guard;
+        tokio::select! {biased;_=cancel.cancelled()=>{},_=async {let _=sender.send(ChatEvent::Started).await;if sender.send(ChatEvent::Models(models)).await.is_ok(){let _=sender.send(ChatEvent::Completed{reason:"models".into(),verified:None}).await;}}=>{}}
+    });
+    ChatRun {
+        cancellation,
+        finished,
+        state: Mutex::new(RunState {
+            receiver,
+            terminal: false,
+        }),
+    }
+}
+
 fn invalid(message: &str) -> ChatFailure {
     ChatFailure::new(ChatFailureKind::InvalidInput, message)
 }

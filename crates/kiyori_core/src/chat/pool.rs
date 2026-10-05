@@ -83,6 +83,8 @@ pub(crate) fn start_pool(
                         let tx = super::EventSender {
                             sender: tx,
                             observation: None,
+                            cancellation: CancellationToken::new(),
+                            workers: Default::default(),
                         };
                         let send = async {
                             let result = execute(&client, request, &tx).await;

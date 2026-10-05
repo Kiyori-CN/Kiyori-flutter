@@ -103,6 +103,8 @@ impl DiagnosticTask {
 }
 
 pub struct Runtime {
+    pub(crate) inference:
+        std::sync::OnceLock<std::sync::Arc<dyn crate::chat::native::InferenceAdapter>>,
     pub(crate) chat_observations: std::sync::Mutex<
         std::collections::HashMap<
             String,
@@ -122,8 +124,18 @@ impl Default for Runtime {
 }
 
 impl Runtime {
+    /// 在句柄发布前装配推理端口，构造过程没有重复注册的失败分支。
+    pub fn new_with_inference(
+        adapter: std::sync::Arc<dyn crate::chat::native::InferenceAdapter>,
+    ) -> Self {
+        let mut runtime = Self::new();
+        runtime.inference = std::sync::OnceLock::from(adapter);
+        runtime
+    }
+
     pub fn new() -> Self {
         Self {
+            inference: Default::default(),
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
             store: std::sync::Arc::new(std::sync::Mutex::new(None)),
@@ -134,6 +146,7 @@ impl Runtime {
 
     pub fn with_data_dir(path: impl AsRef<std::path::Path>) -> Result<Self, CoreError> {
         Ok(Self {
+            inference: Default::default(),
             chat_observations: Default::default(),
             cancellation: CancellationToken::new(),
             store: std::sync::Arc::new(std::sync::Mutex::new(Some(std::sync::Arc::new(
@@ -250,9 +263,10 @@ impl Runtime {
 
     pub fn start_chat(
         &self,
-        request: crate::chat::ChatRequest,
+        mut request: crate::chat::ChatRequest,
     ) -> Result<crate::chat::ChatRun, CoreError> {
         self.ensure_open()?;
+        self.bind_inference(&mut request);
         let client = self
             .chat_client
             .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))
@@ -293,6 +307,29 @@ impl Runtime {
         headers: Vec<(String, String)>,
     ) -> Result<crate::chat::ChatRun, CoreError> {
         self.ensure_open()?;
+        if matches!(draft.provider.as_str(), "MNN" | "LLAMA_CPP") {
+            let prefix = if draft.provider == "MNN" {
+                "mnn:"
+            } else {
+                "llama:"
+            };
+            let models = self
+                .transfers()?
+                .into_iter()
+                .filter(|t| t.phase == "completed" && t.owner.starts_with(prefix))
+                .map(|t| {
+                    let name = t.owner[prefix.len()..].to_owned();
+                    crate::chat::directory::ModelEntry {
+                        id: name.clone(),
+                        name,
+                    }
+                })
+                .collect();
+            return Ok(crate::chat::directory::local(
+                models,
+                self.cancellation.child_token(),
+            ));
+        }
         let client = self
             .chat_client
             .get_or_init(|| crate::chat::client().map(std::sync::Arc::new))

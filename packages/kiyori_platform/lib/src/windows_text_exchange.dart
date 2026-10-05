@@ -12,7 +12,7 @@ import 'text_exchange_contract.dart';
 class WindowsTextExchange implements TextExchange {
   WindowsTextExchange({
     Future<String?> Function(bool save, String name)? select,
-  }) : _select = select ?? _selectNative;
+  }) : _select = select ?? ((save, name) => selectWindowsFile(save, name));
   final Future<String?> Function(bool save, String name) _select;
   static bool _busy = false;
   Future<T> _run<T>(Future<T> Function() action) async {
@@ -78,7 +78,13 @@ class WindowsTextExchange implements TextExchange {
       });
 }
 
-Future<String?> _selectNative(bool save, String name) {
+Future<String?> selectWindowsFile(
+  bool save,
+  String name, {
+  String label = '文本文件',
+  String pattern = '*.txt',
+  String extension = 'txt',
+}) {
   // 只将本应用窗口作为owner，不能把其它前台应用错误地设为模态父窗口。
   final owner = using((arena) {
     final hwnd = GetForegroundWindow();
@@ -102,10 +108,10 @@ Future<String?> _selectNative(bool save, String name) {
               (save ? FOS_OVERWRITEPROMPT : FOS_FILEMUSTEXIST),
         );
         final filter = arena<COMDLG_FILTERSPEC>();
-        filter.ref.pszName = arena.pwstr('文本文件');
-        filter.ref.pszSpec = arena.pwstr('*.txt');
+        filter.ref.pszName = arena.pwstr(label);
+        filter.ref.pszSpec = arena.pwstr(pattern);
         dialog.setFileTypes(1, filter);
-        dialog.setDefaultExtension(arena.pcwstr('txt'));
+        dialog.setDefaultExtension(arena.pcwstr(extension));
         if (save) dialog.setFileName(arena.pcwstr(name));
         try {
           dialog.show(owner == 0 ? null : HWND(Pointer.fromAddress(owner)));
