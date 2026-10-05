@@ -16,6 +16,147 @@ import 'support/memory_audit_exchange.dart';
 
 void main() {
   testWidgets(
+    'legacy text pages preserve UTF16 boundary and locate payload search',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final f = ChatFixture();
+      final first = List.filled(11999, '甲').join();
+      final tail = '😀${List.filled(8000, '乙').join()}末页检索';
+      final content = '$first$tail';
+      late String id;
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.send('分页来源');
+        id = f.chat.snapshot!.conversation.id;
+        final source = f.chat.snapshot!;
+        await f.runtime.changeMessage(
+          id,
+          source.conversation.revision,
+          source.messages.first.id,
+          'edit',
+          content,
+        );
+        await f.runtime.appendConversationNote(id, content);
+        await f.chat.load();
+      });
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(
+              body: HistoryDetails(
+                owner: f.chat,
+                id: id,
+                exchange: MemoryAuditExchange(),
+              ),
+            ),
+          ),
+        );
+        await until(
+          tester,
+          () =>
+              find.textContaining('条事件').evaluate().isNotEmpty &&
+              find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.tap(find.text('对话'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('用户'));
+        await tester.pumpAndSettle();
+        expect(find.text(first), findsOneWidget);
+        expect(find.textContaining('第 1 / 2 页'), findsOneWidget);
+        await tester.ensureVisible(find.text('下一页'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('下一页'));
+        await tester.pumpAndSettle();
+        expect(find.text(tail), findsOneWidget);
+        final page = tester.widget<Text>(find.text(tail)).data!;
+        expect('$first$page', content);
+        await tester.tap(find.text('时间线'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), '末页检索');
+        await tester.pump(const Duration(milliseconds: 450));
+        await until(
+          tester,
+          () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('已添加审计注释'));
+        await until(
+          tester,
+          () => find.textContaining('第 2 / 2 页').evaluate().isNotEmpty,
+        );
+        expect(
+          find.textContaining('末页检索').evaluate().where((e) => e.widget is Text),
+          isNotEmpty,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+  testWidgets(
+    'detail edit can clear content while keeping the message and audit',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.send('保留修订原文');
+      });
+      final source = f.chat.snapshot!;
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(
+              body: HistoryDetails(
+                owner: f.chat,
+                id: source.conversation.id,
+                exchange: MemoryAuditExchange(),
+              ),
+            ),
+          ),
+        );
+        await until(
+          tester,
+          () =>
+              find.textContaining('条事件').evaluate().isNotEmpty &&
+              find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        await tester.tap(find.text('对话'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('用户'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('编辑消息'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).last, '');
+        await tester.pump();
+        await tester.tap(find.text('保存修订'));
+        await until(tester, () => find.text('编辑消息').evaluate().isEmpty);
+        await tester.runAsync(() async {
+          final next = await f.runtime.conversation(source.conversation.id);
+          expect(next.messages.length, source.messages.length);
+          expect(next.messages.first.id, source.messages.first.id);
+          expect(next.messages.first.content, '');
+          final exported = utf8.decode(
+            await f.runtime.exportConversationAudit(
+              source.conversation.id,
+              'markdown',
+            ),
+          );
+          expect(exported, contains('保留修订原文'));
+        });
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+  testWidgets(
     'detail tabs preserve queries loaded pages scroll and release expansion',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);

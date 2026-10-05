@@ -176,11 +176,16 @@ impl AppStore {
         let terms: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
         let filter=terms.iter().enumerate().map(|(i,_)|format!(" AND instr(lower(event_id||' '||category||' '||event_type||' '||summary||' '||payload),?{})>0",i+3)).collect::<String>();
         let sql = format!(
-            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,length(payload),length(CAST(payload AS BLOB)) FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2){filter} ORDER BY sequence DESC LIMIT 101"
+            "SELECT sequence,event_id,recorded_at,category,event_type,summary,previous_hash,event_hash,length(payload),length(CAST(payload AS BLOB)),json_extract(payload,'$.runId'),coalesce(json_extract(payload,'$.terminalState'),CASE json_extract(payload,'$.state') WHEN 'completed' THEN 'COMPLETED' WHEN 'failed' THEN 'FAILED' WHEN 'cancelled' THEN 'CANCELLED' END) FROM conversation_audit_events WHERE conversation_id=?1 AND (?2=0 OR sequence<?2){filter} ORDER BY sequence DESC LIMIT 101"
         );
         let mut args: Vec<rusqlite::types::Value> = vec![id.to_owned().into(), before.into()];
         args.extend(terms.into_iter().map(Into::into));
-        let mut events=tx.prepare(&sql).map_err(db)?.query_map(rusqlite::params_from_iter(args),|r|Ok(json!({"sequence":r.get::<_,i64>(0)?,"eventId":r.get::<_,String>(1)?,"recordedAt":r.get::<_,i64>(2)?,"category":r.get::<_,String>(3)?,"eventType":r.get::<_,String>(4)?,"summary":r.get::<_,String>(5)?,"previousEventSha256":r.get::<_,String>(6)?,"eventSha256":r.get::<_,String>(7)?,"characters":r.get::<_,i64>(8)?,"bytes":r.get::<_,i64>(9)?}))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
+        // 元数据投影来自已保存payload；一次查询读取分页，不另为每条事件读取正文。
+        let mut events=tx.prepare(&sql).map_err(db)?.query_map(rusqlite::params_from_iter(args),|r| {
+            let category = r.get::<_,String>(3)?;
+            let actor = if matches!(category.as_str(), "USER" | "MESSAGE") { "USER" } else { "SYSTEM" };
+            Ok(json!({"sequence":r.get::<_,i64>(0)?,"eventId":r.get::<_,String>(1)?,"recordedAt":r.get::<_,i64>(2)?,"category":category,"eventType":r.get::<_,String>(4)?,"summary":r.get::<_,String>(5)?,"previousEventSha256":r.get::<_,String>(6)?,"eventSha256":r.get::<_,String>(7)?,"characters":r.get::<_,i64>(8)?,"bytes":r.get::<_,i64>(9)?,"localExecutionId":r.get::<_,Option<String>>(10)?,"terminalState":r.get::<_,Option<String>>(11)?,"actor":actor}))
+        }).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
         let more = events.len() > 100;
         events.truncate(100);
         events.reverse();

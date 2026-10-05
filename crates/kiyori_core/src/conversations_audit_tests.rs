@@ -364,6 +364,26 @@ fn audit_message_revisions_do_not_change_usage_and_migration_preserves_messages(
     assert!(markdown.contains("原始消息"));
     assert!(markdown.contains("修改消息"));
     assert_eq!(r.conversation_statistics(id.clone()).unwrap().requests, 0);
+    let revision = r.conversation(id.clone()).unwrap().conversation.revision;
+    r.change_message(
+        id.clone(),
+        revision,
+        "note".into(),
+        "edit".into(),
+        String::new(),
+    )
+    .unwrap();
+    let cleared = r.conversation(id.clone()).unwrap();
+    assert_eq!(cleared.messages.len(), 1);
+    assert_eq!(cleared.messages[0].content, "");
+    assert_eq!(r.conversation_statistics(id.clone()).unwrap().requests, 0);
+    let cleared_export = String::from_utf8(
+        r.export_conversation_audit(id.clone(), "markdown".into())
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(cleared_export.contains("原始消息"));
+    assert!(cleared_export.contains("修改消息"));
     r.with_store(|s| {
         let c = s.connection.lock().unwrap();
         conversation_audit::remove_schema_for_fixture(&c);
@@ -375,7 +395,7 @@ fn audit_message_revisions_do_not_change_usage_and_migration_preserves_messages(
     let upgraded = Runtime::with_data_dir(&dir.0).unwrap();
     assert_eq!(
         upgraded.conversation(id.clone()).unwrap().messages[0].content,
-        "修改消息"
+        ""
     );
     assert_eq!(
         serde_json::from_str::<Value>(&upgraded.conversation_audit(id, 0, String::new()).unwrap())

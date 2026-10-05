@@ -32,6 +32,8 @@ schema20增加可空parent_id和conversation_audit_events，不改写旧消息�
 conversationId、sequence、recordedAt、category、eventType、summary、payload、previousHash。
 它不是旧Android审计包格式，不承诺旧包导入兼容。读取每页最多100条摘要，正文使用
 SQLite Unicode字符分页，每页8192字符；界面不截断源正文，关闭或离屏释放正文展示。
+展示页遵循旧12000个UTF-16单元，传输分片与展示页分开；相邻页在代理对边界同时左移。
+搜索展开正文定位首个命中页。用户/AI空正文可作为修订保存，不等于删除消息或用量。
 时间线查询搜索全部记录正文，原始事件标签搜索已加载元数据，消息标签搜索当前消息。
 这与旧`AuditRaw.loadedOnly`一致；无匹配仍允许加载更早页。三标签保留独立查询、
 滚动，展开集按旧remember随标签释放；正文搜索不替换普通加载目录及游标。

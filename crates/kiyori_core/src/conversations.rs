@@ -885,8 +885,9 @@ impl AppStore {
                 .map_err(storage)?;
             }
             "edit" => {
-                if text.trim().is_empty() || text.len() > 8 * 1024 * 1024 {
-                    return Err(invalid("消息为空或超过8 MiB限制"));
+                // 旧审计修订允许清空正文；空内容是修订，不是删除消息或历史用量。
+                if text.len() > 8 * 1024 * 1024 {
+                    return Err(invalid("消息超过8 MiB限制"));
                 }
                 tx.execute(
                     "UPDATE conversation_messages SET content=?2 WHERE id=?1",

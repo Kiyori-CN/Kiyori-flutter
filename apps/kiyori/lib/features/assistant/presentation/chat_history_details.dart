@@ -255,11 +255,12 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   Future<void> dialog(Widget child) async {
     await showDialog<void>(
       context: context,
-      barrierDismissible: false,
+      // ModalBarrier使用maybePop；各弹窗PopScope在保存中拒绝，空闲沿旧遮罩退出。
+      barrierDismissible: true,
       builder: (context) {
         children.registration(children.epoch)(ModalRoute.of(context)!);
         widget.onRoute?.call(ModalRoute.of(context)!);
-        return child;
+        return SettingsTheme(child: child);
       },
     );
     if (mounted) await load();
@@ -292,15 +293,23 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SettingsTheme(child: Builder(builder: buildDetails));
+
+  Widget buildDetails(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final messages = snapshot?.messages ?? <ConversationMessage>[];
+    final messages = (snapshot?.messages ?? <ConversationMessage>[])
+        .where(
+          (message) => message.role == 'user' || message.role == 'assistant',
+        )
+        .toList();
     final query = search.text.trim().toLowerCase();
     final filteredMessages = messages
         .where(
-          (m) => '${m.role} ${m.roleName} ${m.model} ${m.content}'
-              .toLowerCase()
-              .contains(query),
+          (m) =>
+              '${m.role == 'assistant' ? 'ai' : m.role} ${m.roleName} ${m.model} ${m.content} ${m.sentAt}'
+                  .toLowerCase()
+                  .contains(query),
         )
         .toList();
     final filteredEvents = tab == 2
@@ -321,52 +330,63 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         if (!didPop) back();
       },
       child: Material(
-        color: colors.surface,
+        color: PrimaryColors.of(context).background,
         child: SafeArea(
           child: Column(
             children: [
               _header(context, messages.length),
               const Divider(height: 1),
-              Row(
-                children: [
-                  for (var i = 0; i < 3; i++)
-                    Expanded(
-                      child: Semantics(
-                        selected: tab == i,
-                        button: true,
-                        child: InkWell(
-                          onTap: () => selectTab(i),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 12,
-                                  bottom: 10,
-                                ),
-                                child: Text(
-                                  ['时间线', '对话', '原始事件'][i],
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 20 / 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: tab == i
-                                        ? colors.primary
-                                        : colors.onSurfaceVariant,
+              Material(
+                color: colors.surface,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Expanded(
+                        child: Semantics(
+                          selected: tab == i,
+                          button: true,
+                          child: InkWell(
+                            onTap: () => selectTab(i),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 48),
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 12,
+                                      bottom: 10,
+                                    ),
+                                    child: Text(
+                                      ['时间线', '对话', '原始事件'][i],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 20 / 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: tab == i
+                                            ? colors.primary
+                                            : colors.onSurfaceVariant,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  Container(
+                                    height: 3,
+                                    decoration: BoxDecoration(
+                                      color: tab == i
+                                          ? colors.primary
+                                          : Colors.transparent,
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(3),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Container(
-                                height: 3,
-                                color: tab == i
-                                    ? colors.primary
-                                    : Colors.transparent,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
               const Divider(height: 1),
               Padding(
@@ -470,19 +490,22 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                   ),
                 ),
               if (error != null)
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        error!,
-                        style: TextStyle(color: colors.error),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          error!,
+                          style: TextStyle(color: colors.error),
+                        ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => load(),
-                      child: const Text('重新加载'),
-                    ),
-                  ],
+                      TextButton(
+                        onPressed: () => load(),
+                        child: const Text('重新加载'),
+                      ),
+                    ],
+                  ),
                 ),
               Expanded(
                 child: Stack(
@@ -558,6 +581,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                                 onTap: () => toggle(e['eventId'] as String),
                                 owner: widget.owner,
                                 id: widget.id,
+                                query: tab == 0 ? search.text.trim() : '',
                               );
                             },
                           ),
@@ -576,16 +600,27 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
-                                  vertical: 10,
+                                  vertical: 8,
                                 ),
-                                child: Text(
-                                  '$unread 条新事件',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 20 / 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: colors.onPrimary,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.keyboard_arrow_down,
+                                      size: 18,
+                                      color: colors.onPrimary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '$unread 条新事件',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 20 / 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: colors.onPrimary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -614,11 +649,11 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       '对话详情',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -628,11 +663,16 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                       '可读、可搜索的执行诊断',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, height: 16 / 12),
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 16 / 12,
+                        color: c.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 4),
               TextButton(
                 onPressed: loading
                     ? null
@@ -652,18 +692,23 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                   ],
                 ),
               ),
+              const SizedBox(width: 4),
               TextButton(
                 onPressed: loading
                     ? null
                     : () => dialog(
                         _NoteDialog(owner: widget.owner, id: widget.id),
                       ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.note_add_outlined, size: 18),
-                    SizedBox(width: 4),
-                    Text('备注'),
+                    Icon(
+                      Icons.note_add,
+                      size: 18,
+                      color: PrimaryColors.of(context).muted,
+                    ),
+                    const SizedBox(width: 4),
+                    const Text('备注'),
                   ],
                 ),
               ),
@@ -679,7 +724,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                 ),
                 decoration: BoxDecoration(
                   color: tone.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -704,7 +749,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${audit?['eventCount'] ?? 0} 条事件 · $messageCount 条消息 · ${audit?['payloadBytes'] ?? 0} B',
+                  '${audit?['eventCount'] ?? 0} 条事件 · $messageCount 条消息 · ${_payloadSize(audit?['payloadBytes'] as int? ?? 0)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -747,13 +792,13 @@ class _DetailsCard extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
     child: Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: child,
@@ -798,10 +843,11 @@ class _MessageCard extends StatelessWidget {
                   ),
                   Text(
                     '消息 timestamp=${message.sentAt ?? '未知'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       height: 16 / 11,
                       fontFamily: 'monospace',
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -811,9 +857,16 @@ class _MessageCard extends StatelessWidget {
               IconButton(
                 tooltip: '编辑消息',
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
+                icon: Icon(
+                  Icons.edit_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-            Icon(open ? Icons.expand_less : Icons.expand_more, size: 18),
+            Icon(
+              open ? Icons.expand_less : Icons.expand_more,
+              size: 18,
+              color: PrimaryColors.of(context).muted,
+            ),
           ],
         ),
         const SizedBox(height: 7),
@@ -836,12 +889,20 @@ class _MessageCard extends StatelessWidget {
           const Divider(),
           Text(
             'timestamp=${message.sentAt ?? '未知'} · 历史实际 Token in=${message.inputTokens ?? '未知'}, out=${message.outputTokens ?? '未知'}',
-            style: const TextStyle(fontSize: 11, height: 16 / 11),
+            style: TextStyle(
+              fontSize: 11,
+              height: 16 / 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (message.model.isNotEmpty)
             Text(
               message.model,
-              style: const TextStyle(fontSize: 11, height: 16 / 11),
+              style: TextStyle(
+                fontSize: 11,
+                height: 16 / 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
         ],
       ],
@@ -857,6 +918,7 @@ class _EventCard extends StatelessWidget {
     required this.owner,
     required this.id,
     required this.raw,
+    this.query = '',
     super.key,
   });
   final Map<String, dynamic> event;
@@ -864,6 +926,7 @@ class _EventCard extends StatelessWidget {
   final VoidCallback onTap;
   final ChatController owner;
   final String id;
+  final String query;
   @override
   Widget build(BuildContext context) => raw
       ? _raw(context)
@@ -899,13 +962,17 @@ class _EventCard extends StatelessWidget {
                   ),
                   Text(
                     _eventTime(event['recordedAt'] as int),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       height: 16 / 11,
-                      fontFamily: 'monospace',
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  Icon(open ? Icons.expand_less : Icons.expand_more, size: 18),
+                  Icon(
+                    open ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: PrimaryColors.of(context).muted,
+                  ),
                 ],
               ),
               const SizedBox(height: 7),
@@ -915,19 +982,40 @@ class _EventCard extends StatelessWidget {
                 overflow: open ? TextOverflow.clip : TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 14, height: 20 / 14),
               ),
+              if (event['terminalState'] != null) ...[
+                const SizedBox(height: 7),
+                Text(
+                  event['terminalState'] as String,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 16 / 11,
+                    color: event['terminalState'] == 'COMPLETED'
+                        ? historyTone(context, IconTone.success)
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
               if (open) ...[
                 const Divider(),
                 SelectionArea(
                   child: Text(
-                    const JsonEncoder.withIndent('  ').convert(event),
-                    style: const TextStyle(
+                    'eventId=${event['eventId']}\n'
+                    'actor=${event['actor'] ?? '—'}\n'
+                    'localExecutionId=${event['localExecutionId'] ?? '—'}\n'
+                    'providerCallId=${event['providerCallId'] ?? '—'}\n'
+                    'parentEventId=${event['parentEventId'] ?? '—'}\n'
+                    'occurredAt=${DateTime.fromMillisecondsSinceEpoch(event['recordedAt'] as int, isUtc: true).toIso8601String()}\n'
+                    'eventSha256=${event['eventSha256']}\n'
+                    'previousEventSha256=${event['previousEventSha256']}',
+                    style: TextStyle(
                       fontSize: 12,
                       height: 16 / 12,
                       fontFamily: 'monospace',
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-                _AuditPayload(owner: owner, id: id, event: event),
+                _AuditPayload(owner: owner, id: id, event: event, query: query),
               ],
             ],
           ),
@@ -935,68 +1023,74 @@ class _EventCard extends StatelessWidget {
 
   Widget _raw(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: open ? colors.surfaceContainerLow : colors.surface,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Text(
-                  '${event['sequence']}'.padLeft(5, ' '),
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 16 / 12,
-                    fontFamily: 'monospace',
-                    color: colors.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: open
+            ? colors.surfaceContainerLow
+            : PrimaryColors.of(context).background,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Text(
+                    '${event['sequence']}'.padLeft(5, ' '),
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontFamily: 'monospace',
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${event['category']} / ${event['eventType']}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 16 / 12,
-                        fontWeight: FontWeight.w500,
-                        color: colors.primary,
-                      ),
-                    ),
-                    SelectionArea(
-                      child: Text(
-                        open
-                            ? const JsonEncoder.withIndent('  ').convert(event)
-                            : jsonEncode(event),
-                        maxLines: open ? null : 3,
-                        overflow: open
-                            ? TextOverflow.clip
-                            : TextOverflow.ellipsis,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${event['category']} / ${event['eventType']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           height: 16 / 12,
-                          fontFamily: 'monospace',
-                          color: colors.onSurface,
+                          fontWeight: FontWeight.w500,
+                          color: colors.primary,
                         ),
                       ),
-                    ),
-                  ],
+                      SelectionArea(
+                        child: Text(
+                          open
+                              ? const JsonEncoder.withIndent('  ')
+                                    .convert(event)
+                              : jsonEncode(event),
+                          maxLines: open ? null : 3,
+                          overflow: open
+                              ? TextOverflow.clip
+                              : TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontFamily: 'monospace',
+                            color: colors.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                open ? Icons.expand_less : Icons.expand_more,
-                size: 18,
-                color: colors.onSurfaceVariant,
-              ),
-            ],
+                Icon(
+                  open ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: PrimaryColors.of(context).muted,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1010,9 +1104,26 @@ String _eventTime(int timestamp) {
   return '${pad(time.month)}-${pad(time.day)} ${pad(time.hour)}:${pad(time.minute)}:${pad(time.second)}';
 }
 
+String _payloadSize(int bytes) {
+  const units = ['B', 'kB', 'MB', 'GB'];
+  var value = bytes.toDouble();
+  var unit = 0;
+  while (value > 900 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  final digits = unit == 0 || value >= 100
+      ? 0
+      : value >= 10
+      ? 1
+      : 2;
+  return '${value.toStringAsFixed(digits)} ${units[unit]}';
+}
+
 class _PagedText extends StatefulWidget {
-  const _PagedText({required this.text});
+  const _PagedText({required this.text, this.query = ''});
   final String text;
+  final String query;
   @override
   State<_PagedText> createState() => _PagedTextState();
 }
@@ -1020,21 +1131,64 @@ class _PagedText extends StatefulWidget {
 class _PagedTextState extends State<_PagedText> {
   int page = 0;
   @override
+  void initState() {
+    super.initState();
+    locateMatch();
+  }
+
+  @override
+  void didUpdateWidget(_PagedText old) {
+    super.didUpdateWidget(old);
+    if (old.text.length != widget.text.length || old.query != widget.query) {
+      locateMatch();
+    }
+  }
+
+  void locateMatch() {
+    final text = widget.text.toLowerCase();
+    final matches = widget.query
+        .split(RegExp(r'\s+'))
+        .where((q) => q.isNotEmpty)
+        .map((q) => text.indexOf(q.toLowerCase()))
+        .where((index) => index >= 0);
+    page = matches.isEmpty
+        ? 0
+        : matches.reduce((a, b) => a < b ? a : b) ~/ 12000;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 按Unicode scalar分段，防止8192边界切断emoji代理对；全文不截断。
-    final runes = widget.text.runes.toList();
-    final total = (runes.length / 8192).ceil().clamp(1, 1 << 30);
+    // 旧页按12000个UTF-16单元计算；相邻页同时左移代理对边界，无丢字/重复。
+    final text = widget.text;
+    final total = (text.length / 12000).ceil().clamp(1, 1 << 30);
     page = page.clamp(0, total - 1);
+    int boundary(int offset) {
+      var at = offset.clamp(0, text.length);
+      if (at > 0 &&
+          at < text.length &&
+          text.codeUnitAt(at) >= 0xdc00 &&
+          text.codeUnitAt(at) <= 0xdfff &&
+          text.codeUnitAt(at - 1) >= 0xd800 &&
+          text.codeUnitAt(at - 1) <= 0xdbff) {
+        at--;
+      }
+      return at;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SelectionArea(
           child: Text(
-            String.fromCharCodes(runes.skip(page * 8192).take(8192)),
-            style: const TextStyle(
-              fontSize: 14,
-              height: 20 / 14,
+            text.substring(
+              boundary(page * 12000),
+              boundary((page + 1) * 12000),
+            ),
+            style: TextStyle(
+              fontSize: 12,
+              height: 16 / 12,
               fontFamily: 'monospace',
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -1042,7 +1196,7 @@ class _PagedTextState extends State<_PagedText> {
           _PageButtons(
             page: page,
             total: total,
-            length: runes.length,
+            length: text.length,
             previous: () => setState(() => page--),
             next: () => setState(() => page++),
           ),
@@ -1069,7 +1223,7 @@ class _PageButtons extends StatelessWidget {
         style: const TextStyle(fontSize: 11, height: 16 / 11),
       ),
       Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           TextButton(
             onPressed: page > 0 ? previous : null,
@@ -1090,16 +1244,18 @@ class _AuditPayload extends StatefulWidget {
     required this.owner,
     required this.id,
     required this.event,
+    required this.query,
   });
   final ChatController owner;
   final String id;
   final Map<String, dynamic> event;
+  final String query;
   @override
   State<_AuditPayload> createState() => _AuditPayloadState();
 }
 
 class _AuditPayloadState extends State<_AuditPayload> {
-  int page = 0, epoch = 0;
+  int epoch = 0;
   String? text, error;
   @override
   void initState() {
@@ -1120,9 +1276,25 @@ class _AuditPayloadState extends State<_AuditPayload> {
       error = null;
     });
     try {
-      final value = await (await widget.owner.connect())
-          .conversationAuditPayload(widget.id, eventSequence, page);
-      if (mounted && generation == epoch) setState(() => text = value);
+      final client = await widget.owner.connect();
+      final buffer = StringBuffer();
+      // 传输沿用8192个SQLite字符的有界分片；展示按旧12000个UTF-16单元分页。
+      // 读取与缓存随可见展开行存活，收起/离屏后不继续请求和回填。
+      final chunks = ((widget.event['characters'] as int) / 8192).ceil().clamp(
+        1,
+        1 << 30,
+      );
+      for (var chunk = 0; chunk < chunks; chunk++) {
+        if (!mounted || generation != epoch) return;
+        final value = await client.conversationAuditPayload(
+          widget.id,
+          eventSequence,
+          chunk,
+        );
+        if (!mounted || generation != epoch) return;
+        buffer.write(value);
+      }
+      setState(() => text = buffer.toString());
     } catch (_) {
       if (mounted && generation == epoch) {
         setState(() => error = '读取 payload 失败，可再次展开重试');
@@ -1133,45 +1305,27 @@ class _AuditPayloadState extends State<_AuditPayload> {
   int get eventSequence => widget.event['sequence'] as int;
   @override
   Widget build(BuildContext context) {
-    final length = widget.event['characters'] as int;
-    final total = (length / 8192).ceil().clamp(1, 1 << 30);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 7),
         Text(
           '[0] 正文（application/json，字节：${widget.event['bytes']}）',
-          style: const TextStyle(fontSize: 11, height: 16 / 11),
+          style: const TextStyle(
+            fontSize: 12,
+            height: 16 / 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         if (error != null)
           TextButton(onPressed: load, child: Text(error!))
         else if (text == null)
-          const LinearProgressIndicator()
+          const SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
         else
-          SelectionArea(
-            child: Text(
-              text!,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 16 / 12,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        if (total > 1)
-          _PageButtons(
-            page: page,
-            total: total,
-            length: length,
-            previous: () {
-              page--;
-              unawaited(load());
-            },
-            next: () {
-              page++;
-              unawaited(load());
-            },
-          ),
+          _PagedText(text: text!, query: widget.query),
       ],
     );
   }
@@ -1202,7 +1356,7 @@ class _NoteDialogState extends State<_NoteDialog> {
     try {
       await (await widget.owner.connect()).appendConversationNote(
         widget.id,
-        input.text,
+        input.text.trim(),
       );
       if (mounted) _remove(context);
     } catch (_) {
@@ -1228,20 +1382,14 @@ class _NoteDialogState extends State<_NoteDialog> {
             '记录复现步骤、网络变化或预期结果，便于之后排查。备注会永久追加到审计和导出中，不发送给 AI，也不改变消息或工具结果。',
             style: TextStyle(fontSize: 12, height: 16 / 12),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SizedBox(
             height: 180,
-            child: TextField(
+            child: _AuditInput(
               controller: input,
               enabled: !busy,
-              expands: true,
-              maxLines: null,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                hintText: '注释内容',
-                filled: true,
-                border: OutlineInputBorder(),
-              ),
+              placeholder: '注释内容',
             ),
           ),
           if (error != null)
@@ -1288,7 +1436,7 @@ class _RevisionDialogState extends State<_RevisionDialog> {
   }
 
   Future<void> save() async {
-    if (busy) return;
+    if (busy || widget.owner.busy) return;
     setState(() => busy = true);
     final ok = await widget.owner.changeMessage(
       widget.item,
@@ -1308,55 +1456,106 @@ class _RevisionDialogState extends State<_RevisionDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !busy,
-    child: HistoryAlert(
-      title: '编辑消息',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            '保存后更新当前消息，影响后续发送给 AI 的上下文与缓存前缀。原文和修订永久保留；不会重新生成后续回答、撤销已执行工具或改写历史用量。编辑工具标记可能使历史无法重放。',
-            style: TextStyle(fontSize: 12, height: 16 / 12),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 240,
-            child: TextField(
-              controller: input,
-              enabled: !busy,
-              expands: true,
-              maxLines: null,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                hintText: '当前版本',
-                filled: true,
-                border: OutlineInputBorder(),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.owner,
+    builder: (context, _) => PopScope(
+      canPop: !busy,
+      child: HistoryAlert(
+        title: '编辑消息',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '保存后更新当前消息，影响后续发送给 AI 的上下文与缓存前缀。原文和修订永久保留；不会重新生成后续回答、撤销已执行工具或改写历史用量。编辑工具标记可能使历史无法重放。',
+              style: TextStyle(fontSize: 12, height: 16 / 12),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 220,
+              child: _AuditInput(
+                controller: input,
+                enabled: !busy,
+                onChanged: (_) => setState(() {}),
+                placeholder: '当前版本',
               ),
             ),
+            if (failed)
+              Text(
+                _writeFailure,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: busy ? null : () => _remove(context),
+            child: const Text('取消'),
           ),
-          if (failed)
-            Text(
-              _writeFailure,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
+          TextButton(
+            onPressed:
+                busy ||
+                    widget.owner.busy ||
+                    input.text == widget.message.content
+                ? null
+                : save,
+            child: Text(busy ? '处理中…' : '保存修订'),
+          ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: busy ? null : () => _remove(context),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed:
-              busy ||
-                  input.text == widget.message.content ||
-                  input.text.trim().isEmpty
-              ? null
-              : save,
-          child: Text(busy ? '处理中…' : '保存修订'),
-        ),
-      ],
+    ),
+  );
+}
+
+class _AuditInput extends StatelessWidget {
+  const _AuditInput({
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+    required this.placeholder,
+  });
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+  final String placeholder;
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    enabled: enabled,
+    expands: true,
+    maxLines: null,
+    textAlignVertical: TextAlignVertical.top,
+    onChanged: onChanged,
+    style: TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      color: Theme.of(context).colorScheme.onSurface,
+    ),
+    decoration: InputDecoration(
+      hintText: placeholder,
+      hintStyle: TextStyle(
+        fontSize: 14,
+        height: 20 / 14,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      filled: true,
+      fillColor: PrimaryColors.of(context).background,
+      contentPadding: const EdgeInsets.all(14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
     ),
   );
 }
@@ -1469,10 +1668,10 @@ class _ExportDialogState extends State<_ExportDialog> {
   );
   Widget _option(String title, String description, String format) => Material(
     color: Theme.of(context).colorScheme.surfaceContainerLow,
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(16),
     child: InkWell(
       onTap: busy ? null : () => save(format),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
