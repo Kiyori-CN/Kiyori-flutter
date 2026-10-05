@@ -8,10 +8,13 @@ use crate::{
     storage::AppStore,
 };
 use std::collections::HashSet;
+#[path = "extension_checks.rs"]
+mod checks;
 
 #[derive(Clone)]
 pub struct ExtensionInput {
     pub thinking: bool,
+    pub(super) connection_test: bool,
     draft: ModelConfigDraft,
     binding: Option<Result<Binding, CoreError>>,
 }
@@ -26,6 +29,7 @@ impl ExtensionInput {
     pub fn new(draft: ModelConfigDraft) -> Self {
         Self {
             thinking: false,
+            connection_test: false,
             draft,
             binding: None,
         }
@@ -201,7 +205,7 @@ fn invocation(
 }
 fn track(
     run: scripts::ScriptRun,
-    permit: Option<limits::Permit>,
+    permit: Option<Arc<limits::Permit>>,
     sender: &EventSender,
 ) -> Arc<scripts::ScriptRun> {
     let run = Arc::new(run);
@@ -270,6 +274,9 @@ pub(super) async fn execute(
             "扩展媒体与原生工具探测合同尚未接入",
         ));
     }
+    if extension.connection_test {
+        return checks::connection(client, input, &binding, sender).await;
+    }
     let parameters: Value = serde_json::from_str(&input.parameters).map_err(|_| protocol())?;
     let object = parameters.as_object().ok_or_else(protocol)?;
     let model_parameters: Vec<_> = object.iter().map(|(name,value)| json!({"id":name,"name":name,"value":value,
@@ -303,14 +310,46 @@ pub(super) async fn execute(
         input.timeout_ms,
         &token,
     )?;
+    let count_call = invocation(
+        &binding,
+        &input.provider,
+        ProviderHandler::CalculateInputTokens,
+        json!({"config":host.config(&draft,&input.model),"providerId":extensions::provider_parts(&input.provider).map_err(core_failure)?.1,
+            "chatHistory":history,"availableTools":null}),
+        input.timeout_ms,
+        &token,
+    )?;
     let timeout_ms = input.timeout_ms;
     let operation = async {
         let permit = match &input.admission {
             Some(gate) => {
-                tokio::select! { biased; _ = token.cancelled() => return Err(interrupted()), permit = gate.acquire() => Some(permit) }
+                tokio::select! { biased; _ = token.cancelled() => return Err(interrupted()), permit = gate.acquire() => Some(Arc::new(permit)) }
             }
             None => None,
         };
+        // 计数与发送属于同一次模型请求，共用一个配额；不得在单并发槽内再次取槽自锁。
+        let count = checks::count(
+            &binding,
+            count_call,
+            host.clone(),
+            &token,
+            sender,
+            permit.clone(),
+        )
+        .await?;
+        if let Some(tracker) = &sender.observation {
+            let mut tracker = tracker
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let limit = tracker.snapshot().context_limit;
+            if limit > 0 && count > limit {
+                return Err(ChatFailure::new(
+                    ChatFailureKind::InvalidInput,
+                    "扩展计算的输入超过上下文上限；原文保留，请调整上下文或总结",
+                ));
+            }
+            tracker.set_context_tokens(count);
+        }
         let run = binding
             .scripts
             .clone()

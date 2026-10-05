@@ -48,6 +48,14 @@ SDK只支持旧示例实际builder/request/execute/response窄合同。
 有界整数和旧别名，冲突/畸形拒绝；缺失报告不伪造成真实计数。摘要失败仍保留原文并
 阻止后续聊天。
 
+密钥池按旧testConnection独立handler，综合模型测试继续sendMessage；连接正文不穿过
+FFI。发送前calculateInputTokens对最终投影history计数，接受旧number/string及
+tokens/inputTokens/count别名，十进制按旧规则截断并夹到0–Int.MAX_VALUE，畸形明确失败。
+计数和发送属于同一次模型请求，共用一个Gate许可与有界HTTP host；许可按Arc保持到全部
+worker释放，不在单并发槽内重复获取。计数写入请求窗口观察，与实际Usage及输出速度
+分开；超过当前会话上下文上限则保留原文并停止。总结触发仍使用原保守预算，提供方窗口
+触发在后续切片接入，不能据本批称完整阈值兼容。
+
 ## 验收与回滚
 
 真实QuickJS/包/共享HTTP测试覆盖未改旧源四handler、URL/头/响应、UTF8、超时与取消，

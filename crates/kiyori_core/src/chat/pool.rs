@@ -88,6 +88,9 @@ pub(crate) fn start_pool(
                             ));
                         };
                         request.extension = extension;
+                        if let Some(extension) = &mut request.extension {
+                            extension.connection_test = true;
+                        }
                         // 单key探测复用同一execute；collector只保留终态，不累计事件。
                         let run = super::start(client, request, key_cancel);
                         let mut available = false;

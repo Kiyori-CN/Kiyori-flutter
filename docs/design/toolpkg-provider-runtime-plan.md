@@ -91,6 +91,8 @@ core/extensions现已实现schema19包持久化、受控ZIP导入、安装/升�
 公共FFI及Dart桥已接入；具体合同与兼容缺口见[ADR 0012](../decisions/0012-persistent-provider-packages.md)。
 包生命周期核心及真实QuickJS/FFI、整体验证与双端构建已通过。受控网络、动态目录与
 正式ChatRun/总结接线已实现，当前验收见status；AI抽屉插件导入/详情/启停/卸载已接，
+密钥池连接与发送前输入计数分别接旧testConnection/calculateInputTokens，窗口与Usage
+分开投影，计数/发送共用单模型配额；自动阈值的提供方窗口触发仍需后续完成。
 JSON/HJSON清单、schema1/2分发元数据及流式ZIP兼容见ADR0012；排序与完整旧宿主
 能力仍待实现，未接扩展标签动作保留旧外观。
 精确网络、配额与结果合同见[ADR 0013](../decisions/0013-controlled-provider-http.md)。

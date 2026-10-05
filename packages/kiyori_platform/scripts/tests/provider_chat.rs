@@ -336,6 +336,9 @@ async fn directory_stream_buffered_probes_conversation_summary_and_reopen_use_fo
             )
             .unwrap();
         complete(&events(&run).await, answer);
+        let statistics = runtime.conversation_statistics(id.clone()).unwrap();
+        assert_eq!(statistics.context_tokens, Some(7));
+        assert_eq!(statistics.recent_input_tokens, Some(4));
     }
     let snapshot = runtime.conversation(id.clone()).unwrap();
     assert_eq!(snapshot.messages.len(), 4);
@@ -529,7 +532,9 @@ sendMessage:{function:async e=>{const c=e.eventPayload.config;try {await OkHttp.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn extension_pool_and_xml_continuation_share_chat_owner_and_release_for_next_key() {
     let source = r#"exports.registerToolPkg=()=>ToolPkg.registerAiProvider({id:'fixture',displayName:'夹具',description:'',
-listModels:{function:()=>['fixture-model']},testConnection:{function:()=>true},calculateInputTokens:{function:()=>1},
+listModels:{function:()=>['fixture-model']},testConnection:{function:async e=>{const c=e.eventPayload.config;
+ const r=await OkHttp.newBuilder().build().newRequest().url(c.apiEndpoint).method('POST').headers({Authorization:'Bearer '+c.apiKey}).body({messages:[],connection:true},'json').build().execute({});
+ return {success:r.json().answer==='ok'};}},calculateInputTokens:{function:()=>1},
 sendMessage:{function:async e=>{const p=e.eventPayload,c=p.config;
  const result=await OkHttp.newBuilder().build().newRequest().url(c.apiEndpoint).method('POST').headers({Authorization:'Bearer '+c.apiKey}).body({messages:p.chatHistory},'json').build().execute({});
  return {text:result.json().answer};}}});"#;
@@ -547,6 +552,7 @@ sendMessage:{function:async e=>{const p=e.eventPayload,c=p.config;
         for index in 0..3 {
             let (mut socket, _, body) = read(&listener);
             let answer = if index == 0 {
+                assert_eq!(body["connection"], true);
                 "ok".to_owned()
             } else if index == 1 {
                 "<tool name=\"echo\"><param name=\"text\">ping</param></tool>".into()
@@ -610,6 +616,250 @@ sendMessage:{function:async e=>{const p=e.eventPayload,c=p.config;
         "{outcome:?}"
     );
     server.join().unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pool_uses_connection_handler_without_chat_or_count_and_rejects_false_results() {
+    for (result, accepted) in [
+        ("true", true),
+        ("'ready'", true),
+        ("{success:true,message:'ready'}", true),
+        ("false", false),
+        ("{success:false}", false),
+        ("{success:'true'}", false),
+        ("{success:true,error:'failed'}", false),
+        ("null", false),
+    ] {
+        let source = format!(
+            "exports.registerToolPkg=()=>ToolPkg.registerAiProvider({{id:'fixture',displayName:'夹具',description:'',listModels:{{function:()=>[]}},calculateInputTokens:{{function:()=>{{throw Error('count must not run')}}}},sendMessage:{{function:()=>{{throw Error('chat must not run')}}}},testConnection:{{function:e=>{{if(e.eventPayload.chatHistory)throw Error('history');return {result};}}}}}});"
+        );
+        let fixture = Fixture::new(&source).await;
+        fixture.configure("http://127.0.0.1:1/v1/chat/completions".into(), false);
+        let draft = fixture
+            .runtime
+            .model_catalog()
+            .unwrap()
+            .configs
+            .remove(0)
+            .draft;
+        let run = fixture
+            .runtime
+            .start_pool_test(
+                draft,
+                vec![chat::pool::PoolKey {
+                    id: "key".into(),
+                    key: "synthetic-fixture-key".into(),
+                    enabled: true,
+                    availability: "UNTESTED".into(),
+                }],
+                vec![],
+                1,
+            )
+            .unwrap();
+        let outcome = events(&run).await;
+        assert!(
+            outcome
+                .iter()
+                .any(|e| matches!(e,ChatEvent::PoolResult{available,..} if *available==accepted)),
+            "{result}: {outcome:?}"
+        );
+        assert!(
+            !outcome.iter().any(|e| matches!(
+                e,
+                ChatEvent::Text(_) | ChatEvent::Usage { .. } | ChatEvent::Failed(_)
+            )),
+            "{outcome:?}"
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn count_and_send_use_same_final_history_and_one_concurrency_permit() {
+    let source = r#"exports.registerToolPkg=()=>ToolPkg.registerAiProvider({id:'fixture',displayName:'夹具',description:'',listModels:{function:()=>[]},testConnection:{function:()=>true},
+calculateInputTokens:{function:async e=>{const p=e.eventPayload,c=p.config;
+ const r=await OkHttp.newBuilder().build().newRequest().url(c.apiEndpoint).method('POST').headers({Authorization:'Bearer '+c.apiKey}).body({phase:'count',history:p.chatHistory,tools:p.availableTools},'json').build().execute({});return r.json();}},
+sendMessage:{function:async e=>{const p=e.eventPayload,c=p.config;const r=await OkHttp.newBuilder().build().newRequest().url(c.apiEndpoint).method('POST').headers({Authorization:'Bearer '+c.apiKey}).body({phase:'send',history:p.chatHistory},'json').build().execute({});return r.json();}}});"#;
+    let fixture = Fixture::new(source).await;
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    fixture.configure(
+        format!(
+            "http://{}/v1/chat/completions",
+            listener.local_addr().unwrap()
+        ),
+        false,
+    );
+    let server = std::thread::spawn(move || {
+        let (mut socket, _, count) = read(&listener);
+        assert_eq!(count["phase"], "count");
+        assert_eq!(
+            count["history"].as_array().unwrap().last().unwrap()["content"],
+            "final input 😀"
+        );
+        assert_eq!(count["tools"], Value::Null);
+        respond(&mut socket, r#"{"inputTokens":"123.99"}"#);
+        let (mut socket, _, send) = read(&listener);
+        assert_eq!(send["phase"], "send");
+        assert_eq!(send["history"], count["history"]);
+        respond(
+            &mut socket,
+            r#"{"text":"answer","usage":{"input":4,"output":2}}"#,
+        );
+    });
+    let id = fixture.runtime.create_conversation().unwrap();
+    let run = fixture
+        .runtime
+        .start_conversation(
+            fixture.runtime.prepare_conversation(id.clone()).unwrap(),
+            "final input 😀".into(),
+            CREDENTIALS.into(),
+        )
+        .unwrap();
+    let outcome = events(&run).await;
+    assert!(
+        outcome
+            .iter()
+            .any(|e| matches!(e, ChatEvent::Completed { .. })),
+        "{outcome:?}"
+    );
+    assert!(
+        !outcome.iter().any(|e| matches!(e, ChatEvent::Failed(_))),
+        "{outcome:?}"
+    );
+    let stats = fixture.runtime.conversation_statistics(id).unwrap();
+    assert_eq!(stats.context_tokens, Some(123));
+    assert_eq!(stats.recent_input_tokens, Some(4));
+    server.join().unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn invalid_or_over_budget_count_never_sends_or_claims_usage() {
+    for (count, expected) in [
+        ("'invalid'", ChatFailureKind::Protocol),
+        ("{error:'failure',tokens:2}", ChatFailureKind::Protocol),
+        ("2147483647", ChatFailureKind::InvalidInput),
+    ] {
+        let source = format!(
+            "exports.registerToolPkg=()=>ToolPkg.registerAiProvider({{id:'fixture',displayName:'夹具',description:'',listModels:{{function:()=>[]}},testConnection:{{function:()=>true}},calculateInputTokens:{{function:()=>({count})}},sendMessage:{{function:()=>({{text:'MUST NOT SEND',usage:{{input:2,output:1}}}})}}}});"
+        );
+        let fixture = Fixture::new(&source).await;
+        fixture.configure("http://127.0.0.1:1/v1/chat/completions".into(), false);
+        let id = fixture.runtime.create_conversation().unwrap();
+        let run = fixture
+            .runtime
+            .start_conversation(
+                fixture.runtime.prepare_conversation(id.clone()).unwrap(),
+                "keep original".into(),
+                CREDENTIALS.into(),
+            )
+            .unwrap();
+        let outcome = events(&run).await;
+        assert!(
+            outcome
+                .iter()
+                .any(|e| matches!(e,ChatEvent::Failed(f) if f.kind==expected)),
+            "{outcome:?}"
+        );
+        assert!(
+            !outcome.iter().any(|e| matches!(
+                e,
+                ChatEvent::Text(_) | ChatEvent::Usage { .. } | ChatEvent::Completed { .. }
+            )),
+            "{outcome:?}"
+        );
+        let snapshot = fixture.runtime.conversation(id).unwrap();
+        assert_eq!(snapshot.messages[0].content, "keep original");
+        assert!(snapshot.messages[1].content.is_empty());
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn revocation_during_count_or_connection_waits_for_http_and_never_marks_key_unavailable() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    for handler in ["calculateInputTokens", "testConnection"] {
+        let work = "async e=>{const c=e.eventPayload.config;const r=await OkHttp.newBuilder().build().newRequest().url(c.apiEndpoint).method('POST').headers({Authorization:'Bearer '+c.apiKey}).body({},'json').build().execute({});return r.json();}";
+        let source = format!(
+            "exports.registerToolPkg=()=>ToolPkg.registerAiProvider({{id:'fixture',displayName:'夹具',description:'',listModels:{{function:()=>[]}},sendMessage:{{function:()=>{{throw Error('send must not run')}}}},calculateInputTokens:{{function:{}}},testConnection:{{function:{}}}}});",
+            if handler == "calculateInputTokens" {
+                work
+            } else {
+                "()=>1"
+            },
+            if handler == "testConnection" {
+                work
+            } else {
+                "()=>true"
+            }
+        );
+        let fixture = Fixture::new(&source).await;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        fixture.configure(
+            format!(
+                "http://{}/v1/chat/completions",
+                listener.local_addr().unwrap()
+            ),
+            false,
+        );
+        let connected = Arc::new(AtomicBool::new(false));
+        let signal = connected.clone();
+        let server = std::thread::spawn(move || {
+            let (mut socket, _, _) = read(&listener);
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 10000\r\n\r\n")
+                .unwrap();
+            signal.store(true, Ordering::Release);
+            assert_eq!(socket.read(&mut [0; 16]).unwrap(), 0);
+            assert!(listener.accept().is_err());
+        });
+        let r = &fixture.runtime;
+        let run = if handler == "testConnection" {
+            r.start_pool_test(
+                r.model_catalog().unwrap().configs.remove(0).draft,
+                vec![chat::pool::PoolKey {
+                    id: "key".into(),
+                    key: "synthetic-fixture-key".into(),
+                    enabled: true,
+                    availability: "UNTESTED".into(),
+                }],
+                vec![],
+                1,
+            )
+            .unwrap()
+        } else {
+            r.start_configured_probe("default".into(), 2, CREDENTIALS.into(), "chat".into())
+                .unwrap()
+        };
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while !connected.load(Ordering::Acquire) {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        })
+        .await
+        .unwrap();
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            r.change_extension("fixture".into(), 1, Some(false)),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let outcome = events(&run).await;
+        assert!(
+            outcome
+                .iter()
+                .any(|e| matches!(e,ChatEvent::Failed(f) if f.kind==ChatFailureKind::Interrupted)),
+            "{handler}: {outcome:?}"
+        );
+        assert!(
+            !outcome.iter().any(|e| matches!(
+                e,
+                ChatEvent::PoolResult { .. } | ChatEvent::Completed { .. } | ChatEvent::Text(_)
+            )),
+            "{outcome:?}"
+        );
+        server.join().unwrap();
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

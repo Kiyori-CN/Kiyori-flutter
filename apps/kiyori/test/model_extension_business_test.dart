@@ -3,10 +3,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kiyori/features/assistant/presentation/chat_controller.dart';
+import 'package:kiyori/features/assistant/presentation/chat_page.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_api_connection.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_credentials.dart';
 import 'package:kiyori/features/assistant/presentation/models/model_edit_session.dart';
 import 'package:kiyori/features/assistant/presentation/models/models_controller.dart';
+import 'package:kiyori/features/assistant/presentation/models/model_pool_test_controller.dart';
+import 'package:kiyori/features/assistant/presentation/models/model_options_editing.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_platform/src/windows_secret_store.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
@@ -16,6 +20,96 @@ const _package =
     'UEsDBBQAAAAAANBYRV1cGMmqmgAAAJoAAAANAAAAbWFuaWZlc3QuanNvbnsic2NoZW1hX3ZlcnNpb24iOjEsInRvb2xwa2dfaWQiOiJjb20ua2l5b3JpLmZpeHR1cmUiLCJ2ZXJzaW9uIjoiMS4wLjAiLCJtYWluIjoiZGlzdC9tYWluLmpzIiwiZGlzcGxheV9uYW1lIjp7InpoIjoi5ZCI5oiQ5YyFIn0sImVuYWJsZWRfYnlfZGVmYXVsdCI6dHJ1ZX1QSwMEFAAAAAAA0FhFXU+ZjLPTAQAA0wEAAAwAAABkaXN0L21haW4uanNleHBvcnRzLnJlZ2lzdGVyVG9vbFBrZz0oKT0+VG9vbFBrZy5yZWdpc3RlckFpUHJvdmlkZXIoe2lkOidmaXh0dXJlJyxkaXNwbGF5TmFtZTon5ZCI5oiQ5L6b5bqU5ZWGJyxkZXNjcmlwdGlvbjon55yf5a6e5a6J6KOF6aqM5pS2JyxsaXN0TW9kZWxzOntmdW5jdGlvbjooKT0+WydmaXh0dXJlLW1vZGVsJ119LHNlbmRNZXNzYWdlOntmdW5jdGlvbjooe2V2ZW50UGF5bG9hZH0pPT57aWYoZXZlbnRQYXlsb2FkLndhaXQpd2hpbGUodHJ1ZSl7fTtzZW5kSW50ZXJtZWRpYXRlUmVzdWx0KHt0ZXh0OifkvaAnfSk7c2VuZEludGVybWVkaWF0ZVJlc3VsdCh7dGV4dDon5aW9J30pO3JldHVybiB7Y29udGVudDon5L2g5aW9Jyx1c2FnZTp7aW5wdXQ6MixvdXRwdXQ6MX19O319LHRlc3RDb25uZWN0aW9uOntmdW5jdGlvbjooKT0+KHtzdWNjZXNzOnRydWV9KX0sY2FsY3VsYXRlSW5wdXRUb2tlbnM6e2Z1bmN0aW9uOigpPT43fX0pO1BLAQIUABQAAAAAANBYRV1cGMmqmgAAAJoAAAANAAAAAAAAAAAAAAAAAAAAAABtYW5pZmVzdC5qc29uUEsBAhQAFAAAAAAA0FhFXU+ZjLPTAQAA0wEAAAwAAAAAAAAAAAAAAAAAxQAAAGRpc3QvbWFpbi5qc1BLBQYAAAAAAgACAHUAAADCAgAAAAA=';
 
 void main() {
+  testWidgets(
+    'product pool and chat project real provider connection and input count through FFI',
+    (tester) async {
+      final root = Directory.systemTemp.createTempSync(
+        'kiyori-provider-checks-ui-',
+      );
+      late NativeRuntimeClient runtime;
+      late ModelsController models;
+      ChatController? chat;
+      ModelPoolTestController? pool;
+      try {
+        await tester.runAsync(() async {
+          runtime = await NativeRuntimeClient.open(dataDirectory: root.path);
+          final secrets = WindowsSecretStore(Directory('${root.path}/secrets'));
+          models = ModelsController(() async => runtime, () async => secrets);
+          final importer = await runtime.beginExtensionImport();
+          try {
+            await importer.append(base64Decode(_package));
+            await importer.finish();
+          } finally {
+            await importer.close();
+          }
+          await models.load();
+          final base = models.catalog!.configs.single;
+          final draft = ModelConfigDraft(
+            name: base.draft.name,
+            provider: models.extensionProviders.single.id,
+            protocol: 'native',
+            endpoint: 'http://127.0.0.1:1/v1/chat/completions',
+            models: const ['fixture-model'],
+            options: base.draft.options.copyWith(summaryEnabled: false),
+          );
+          expect(
+            await models.save(
+              base,
+              draft,
+              const ModelCredentials(),
+              const ModelCredentials(apiKey: 'synthetic-fixture-key'),
+              replacement: 'fixture-model',
+            ),
+            isA<ModelConfig>(),
+          );
+          await models.select('chat', base.id, 'fixture-model');
+          pool = ModelPoolTestController(() async => runtime);
+          final results = <String>[];
+          await pool!.start(
+            draft,
+            ModelCredentials(
+              keys: [ModelPoolKey.create('synthetic-fixture-key')],
+            ),
+            (_, availability) async => results.add(availability),
+          );
+          expect(results, ['AVAILABLE']);
+          expect(pool!.error, isNull);
+          chat = ChatController(() async => runtime, () async => secrets);
+          await chat!.load();
+          await chat!.send('最终消息😀');
+          expect(chat!.error, isNull);
+          expect(chat!.snapshot!.messages.last.content, '你好');
+          expect(chat!.statistics!.contextTokens, 7);
+          expect(chat!.statistics!.recentInputTokens, 2);
+          expect(chat!.statistics!.recentOutputTokens, 1);
+        });
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: KiyoriTheme.light(),
+            home: Scaffold(body: ChatPage(controller: chat)),
+          ),
+        );
+        final answer = find.textContaining('你好', findRichText: true);
+        for (var i = 0; i < 200 && answer.evaluate().isEmpty; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(answer, findsWidgets);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        pool?.dispose();
+        if (chat != null) await tester.runAsync(chat!.shutdown);
+        chat?.dispose();
+        models.dispose();
+        await tester.runAsync(runtime.close);
+        root.deleteSync(recursive: true);
+      }
+    },
+    skip: !Platform.isWindows,
+  );
   testWidgets(
     'installed provider appears in original drawer, saves, reopens and revokes without fallback',
     (tester) async {

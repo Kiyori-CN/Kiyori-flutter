@@ -5,6 +5,35 @@
 
 ## 当前任务：模型与 API 全功能旧源复刻
 
+### TOOLPKG 产品连接测试与输入计数（本机完整验证与双端构建通过）
+
+本批基线main/c4de653与远端一致、工作区干净。旧ApiKeyPoolAvailabilityTester使用
+testConnection，综合检测使用sendMessage；新密钥池已改为独立连接handler，不再用聊天
+成功替代连接结果。聊天/综合探测/自动与手动总结/XML续答在发送前执行calculateInputTokens，
+计数与发送使用相同最终history，同一HTTP host和模型配额；许可保持到worker释放，取消与
+包撤销等待VM/HTTP结束。窗口计数更新同请求观察，不伪造成Usage。无效/超上下文结果
+失败并保留原文，不继续发送。自动总结触发仍沿原保守预算，提供方预估触发尚未接入。
+旧number/string及tokens/inputTokens/count别名、十进制截断/零下限/Int上限已实现；
+连接接受明确bool/string/object，拒绝畸形或error/false，不回显供应商文字。
+核心2项通过（work/toolpkg-checks-core-v2.log）；初轮&ChatRequest跨await要求Sync编译失败
+已改可变借用，v1保留。正式QuickJS/HTTP/SQLite9项通过（checks-native-v1），覆盖不同handler、
+真实窗口与Usage隔离、最终history、单并发、无效/超预算、撤销中止并不标密钥不可用。
+产品真实FFI/UI2项通过（checks-ui-v3），窗口7、实际Usage输入2/输出1与富文本正文分别
+核对；v1保存返回类型误断言和v2未等待异步富文本已修，失败日志保留。完整verify-v1
+在既有native超时夹具失败：100ms包含资源核验/排队，未入adapter却断言其已结束。
+夹具现在1s并追加begin输出断言，保留Timeout、ended及UTF8 Protocol断言，定向通过
+（checks-native-timeout-v1）。完整verify-v2通过：foundation65、核心172/HTTP3/provider_chat9/
+原生6、387 Dart格式/analyze、应用627（16条件跳过）、platform9、独立FFI22（1条件跳过）、
+Windows引擎5，日志work/toolpkg-checks-verify-v2.log。Android ARM64 Debug162.3秒与普通
+Windows x64 Debug18.6秒串行通过（checks-android-v1/windows-v1）。固定包
+artifacts/ui-preview/20261005-161008：APK155687989字节，SHA256
+0DB71F99DB8D6E2BFD0B5DE610ADCCEAB9FF013A4BC19A84F252520915EB7B10；Windows99文件
+170164546字节。100副本hash、APK身份/v2签名/ZIP16K/ELF、Windows x64/Flutter DLL pin
+与15份许可证两端/源一致审计通过（work/toolpkg-checks-artifacts-20261005-161008）。
+14路径精确允许清单交付，最终ref见Git与固定manifest.sourceCommit；自动阈值、排序/
+完整包能力及设备/Apple继续，整体仍部分完成。授权API的此前报告不作为本批新连接/
+计数handler真实供应商HTTP验收；新接线已通过正式QuickJS与loopback HTTP。
+
 ### TOOLPKG 清单与流式ZIP兼容（本机完整验证与双端构建通过）
 
 本批基线main/7d95fb9核对干净。根HJSON→根JSON→嵌套HJSON→嵌套JSON按旧优先级

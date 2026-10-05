@@ -31,6 +31,8 @@ core/extensions复用AppStore/ResourceRef；schema19保存TOOLPKG包和安装恢
 提供方包支持schema1/2 JSON/HJSON清单与单JS源，schema2的distribution仅是构建元数据；
 缺字段沿旧默认值，清单选择/相对入口共用有界解析。受控HTTP与正式ChatRun复用同client/Registry/Gate，
 JS只接凭据引用，限定GET目录/POST生成，取消等待VM/HTTP释放，终态核对全文和用量。
+密钥池调用testConnection，综合探测调用sendMessage；发送前calculateInputTokens投影
+最终history窗口，和发送共享一个模型配额，不将窗口计数当实际Usage。
 动态provider来自同Runtime，撤销不替换配置引用；AI抽屉扩展页的插件导入、详情、启停和
 确认卸载已接同owner，成功后刷新模型目录。文件选择复用模型分片句柄，原包详情按revision
 在blocking worker核验hash，撤销及Runtime关闭等待读取释放。详情/删除确认绑定原revision，

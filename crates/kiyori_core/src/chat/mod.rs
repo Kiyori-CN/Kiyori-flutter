@@ -467,7 +467,11 @@ async fn execute(
             }
             reason = execute_once(client, &mut input, sender).await?;
         }
-        let verified = input.probe.as_ref().map(|p| p.verified(&reason));
+        let verified = if input.extension.as_ref().is_some_and(|e| e.connection_test) {
+            Some(reason == "stop")
+        } else {
+            input.probe.as_ref().map(|p| p.verified(&reason))
+        };
         let _ = sender.send(ChatEvent::Completed { reason, verified }).await;
         Ok(())
     };

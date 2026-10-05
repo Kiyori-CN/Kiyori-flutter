@@ -403,10 +403,14 @@ async fn timeout_waits_for_worker_and_invalid_utf8_fails() {
         let mut input = request();
         // 仅超时场景使用短期限；UTF-8场景必须给worker正常执行预算，不能在并行负载下
         // 让调度超时抢先遮蔽原本要验证的Protocol终态。
-        input.timeout_ms = if mode == 1 { 100 } else { 10_000 };
+        // 期限包含资源核验和worker排队；100ms在全量并行负载下可能在adapter启动前耗尽。
+        // 保留Timeout/结束断言，并用begin证明本例实际覆盖运行中的推理，而非仅启动超时。
+        input.timeout_ms = if mode == 1 { 1_000 } else { 10_000 };
         let run = runtime.start_chat(input).unwrap();
         let mut failed = false;
+        let mut started = false;
         while let Some(event) = run.next_event().await.unwrap() {
+            started |= matches!(&event, ChatEvent::Text(text) if text == "begin");
             if let ChatEvent::Failed(f) = event {
                 assert_eq!(
                     f.kind,
@@ -422,6 +426,9 @@ async fn timeout_waits_for_worker_and_invalid_utf8_fails() {
             }
         }
         assert!(failed);
+        if mode == 1 {
+            assert!(started, "Timeout case must enter the inference adapter");
+        }
         assert!(ended.load(Ordering::Acquire));
     }
 }

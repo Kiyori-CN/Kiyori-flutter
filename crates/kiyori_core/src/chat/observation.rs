@@ -75,6 +75,10 @@ impl Tracker {
             .map(|m| estimate(&m.content))
             .fold(0i64, i64::saturating_add);
     }
+    pub fn set_context_tokens(&mut self, tokens: i64) {
+        // 提供方的输入窗口估计独立于Usage，不据此伪造实际用量或输出速度。
+        self.snapshot.context_tokens = tokens;
+    }
 
     pub fn observe(&mut self, event: &ChatEvent) {
         self.observe_at(
