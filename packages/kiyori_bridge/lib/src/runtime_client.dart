@@ -57,6 +57,8 @@ abstract interface class RuntimeClient {
     String text,
   );
   Future<PreparedConversation> prepareConversation(String id, {String? target});
+  Future<PreparedTitle?> prepareConversationTitle(String id);
+  Future<void> failConversationTitle(String id, {bool cancelled = false});
   Future<PreparedConversation> prepareSummary(
     String id,
     String boundary,
@@ -256,6 +258,35 @@ abstract interface class PreparedConversation {
     String? replyTo,
   });
   Future<void> close();
+}
+
+abstract interface class PreparedTitle {
+  Future<String?> secretReference();
+  Future<ChatRun> start(String payload);
+  Future<void> close();
+}
+
+final class _NativePreparedTitle implements PreparedTitle {
+  _NativePreparedTitle(this.handle, this.owner);
+  final api.TitlePreparation handle;
+  final NativeRuntimeClient owner;
+  bool closed = false;
+  @override
+  Future<String?> secretReference() => handle.secretReference();
+  @override
+  Future<ChatRun> start(String payload) async {
+    owner._ensureOpen();
+    return owner._trackChat(await handle.start(payload: payload));
+  }
+
+  @override
+  Future<void> close() async {
+    if (closed) return;
+    closed = true;
+    await handle.close();
+    handle.dispose();
+    owner._titlePreparations.remove(this);
+  }
 }
 
 abstract interface class TransferRun {
@@ -518,6 +549,7 @@ final class NativeRuntimeClient implements RuntimeClient {
 
   final _imports = <_NativeModelImport>{};
   final _preparations = <_NativePreparedConversation>{};
+  final _titlePreparations = <_NativePreparedTitle>{};
   @override
   Future<List<String>> searchConversations(String query) {
     _ensureOpen();
@@ -640,6 +672,27 @@ final class NativeRuntimeClient implements RuntimeClient {
       action: action,
       text: text,
     );
+  }
+
+  @override
+  Future<PreparedTitle?> prepareConversationTitle(String id) async {
+    _ensureOpen();
+    final handle = await _handle.prepareConversationTitle(id: id);
+    if (handle == null) return null;
+    if (_closing != null) {
+      await handle.close();
+      handle.dispose();
+      _ensureOpen();
+    }
+    final preparation = _NativePreparedTitle(handle, this);
+    _titlePreparations.add(preparation);
+    return preparation;
+  }
+
+  @override
+  Future<void> failConversationTitle(String id, {bool cancelled = false}) {
+    _ensureOpen();
+    return _handle.failConversationTitle(id: id, cancelled: cancelled);
   }
 
   @override
@@ -1131,6 +1184,7 @@ final class NativeRuntimeClient implements RuntimeClient {
     await Future.wait(_extensionRuns.toList().map((item) => item.cancel()));
     await Future.wait(_imports.toList().map((item) => item.close()));
     await Future.wait(_preparations.toList().map((item) => item.close()));
+    await Future.wait(_titlePreparations.toList().map((item) => item.close()));
     await Future.wait(_chatRuns.toList().map((run) => run.stop()));
     await Future.wait(_transfers.toList().map((run) => run.stop()));
     await Future.wait(_runs.toList().map((run) => run.stop()));

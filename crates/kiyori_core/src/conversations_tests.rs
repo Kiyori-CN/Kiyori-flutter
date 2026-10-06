@@ -5,6 +5,8 @@ mod audit_tests;
 mod opening_tests;
 #[path = "conversations_summary_tests.rs"]
 mod summary_tests;
+#[path = "conversations_title_tests.rs"]
+mod title_tests;
 use serde_json::{Value, json};
 use std::{
     io::{Read, Write},
@@ -65,7 +67,12 @@ fn fixture(count: usize, body: String) -> (String, std::thread::JoinHandle<Vec<V
                     }
                 }
             }
-            write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
+            let content_type = if body.starts_with("data:") {
+                "text/event-stream"
+            } else {
+                "application/json"
+            };
+            write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
         }
         requests
     });
@@ -1477,7 +1484,7 @@ fn history_creation_inherits_folder_and_resolves_card_or_explicit_group() {
 }
 
 #[tokio::test]
-async fn timestamp_title_advances_on_first_send_and_preserves_explicit_rename() {
+async fn timestamp_title_uses_legacy_first_send_fallback() {
     let dir = Directory::new();
     let runtime = Runtime::with_data_dir(&dir.0).unwrap();
     let (endpoint, worker) = fixture(2, response("回复", "stop"));
@@ -1499,7 +1506,7 @@ async fn timestamp_title_advances_on_first_send_and_preserves_explicit_rename() 
         drain(&run).await;
         assert_eq!(
             runtime.conversation(id).unwrap().conversation.title,
-            title.unwrap_or("首轮问题")
+            "新对话"
         );
     }
     assert_eq!(worker.join().unwrap().len(), 2);

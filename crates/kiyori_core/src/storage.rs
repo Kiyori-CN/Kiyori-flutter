@@ -5,12 +5,14 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 23;
+const SCHEMA_VERSION: i32 = 24;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
     pub(crate) directory: PathBuf,
     pub(crate) audit_crypto: std::sync::Arc<dyn crate::audit_crypto::AuditCrypto>,
+    pub(crate) title_owner: String,
+    title_owner_guard: Option<std::fs::File>,
 }
 
 impl AppStore {
@@ -30,6 +32,24 @@ impl AppStore {
         }
         std::fs::create_dir_all(path)
             .map_err(|e| error(&format!("Cannot create application data directory: {e}")))?;
+        use ring::rand::SecureRandom;
+        let mut random = [0u8; 16];
+        ring::rand::SystemRandom::new()
+            .fill(&mut random)
+            .map_err(|_| error("Cannot create title execution identity."))?;
+        let title_owner = random
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        let title_owner_guard = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(path.join(format!("title-owner-{title_owner}.lock")))
+            .map_err(|_| error("Cannot create title execution lifetime lock."))?;
+        title_owner_guard
+            .try_lock()
+            .map_err(|_| error("Cannot lock title execution lifetime."))?;
         let database_path = path.join("kiyori.sqlite3");
         let mut connection = Connection::open(database_path)
             .map_err(|e| error(&format!("Cannot open Kiyori database: {e}")))?;
@@ -309,6 +329,11 @@ impl AppStore {
                 .execute_batch(crate::conversations::opening::SCHEMA)
                 .map_err(|_| error("Cannot migrate non-generated message metadata."))?;
         }
+        if version < 24 {
+            transaction
+                .execute_batch(crate::conversations::title::SCHEMA)
+                .map_err(|_| error("Cannot migrate independent conversation titles."))?;
+        }
         if crypto.persistent() {
             let proof = crypto.sign(b"kiyori-audit-key-check-v1")?;
             if proof.algorithm != "SHA256withECDSA" {
@@ -365,7 +390,20 @@ impl AppStore {
             directory: std::fs::canonicalize(path)
                 .map_err(|_| error("Cannot resolve application data directory."))?,
             audit_crypto: crypto,
+            title_owner,
+            title_owner_guard: Some(title_owner_guard),
         })
+    }
+}
+
+impl Drop for AppStore {
+    fn drop(&mut self) {
+        // 只清理当前Runtime自己创建的精确生命周期锁；失效旧锁无需递归清理。
+        self.title_owner_guard.take();
+        let _ = std::fs::remove_file(
+            self.directory
+                .join(format!("title-owner-{}.lock", self.title_owner)),
+        );
     }
 }
 

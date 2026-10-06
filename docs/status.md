@@ -12,8 +12,50 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 用户授权全部提交普通推送至origin/main；设备授权问题尚未答复，未安装或操作MuMu，
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
+本轮已按2026-10-06最新要求完成收尾构建和提交推送流程，随后暂停；继续开发需用户
+恢复任务。暂停不代表整体像素/设备或完整工具附件验收完成。
 
-### 最新增量：角色开场白与消息事实
+### 收尾增量：独立标题生成
+
+用户要求在合适阶段停止，完成构建并全部提交推送。本增量从main/a1b0d25干净基线
+继续，完成后暂停任务，不扩大工具/附件业务。旧MessageProcessingDelegate219–243、
+ConversationService74–93/476–535、FunctionalPrompts249–306和ChatDao99确认首轮
+回退、独立非流式无重试、清洗及更新时间行为。schema24辅助标题账本复用同Runtime/
+client/凭据/配额/native adapter/ProviderAudit，不创建聊天消息或并入聊天用量。
+专属标题版本与源消息/最新工作CAS保护改名、源消息编辑；准备取消/失败、删除、
+Runtime存活与中断恢复均可核对。短租约先释放再开放下一轮，网络独立继续；停止先
+同时撤销两个准备窗口，避免等待native取消期间外发。详见[ADR0018](decisions/0018-independent-conversation-titles.md)。
+
+最终7项定向核心通过（work/history-title-core-v5.log），正式桥Check-v2五文件一致。
+联合UI-v5共26项及actions-v4联合11项通过，覆盖真实FFI/SQLite的独立模型/凭据/
+真实用量、改名/切会话/删除/取消/HTTP失败/准备无外发与后续不重试、共享单并发，
+以及开场白、总结、编辑、重发和聊天统计。capture-v1共12项通过，86PNG位于
+work/history-drawer-capture-v35；已审阅五窗口总览work/history-title-review.png及明暗
+设置、双向滑动、窄屏绑定、横屏滚动、删除和桌面详情原尺寸。
+
+tools/verify.ps1 -WindowsIntegration的verify-v4：foundation71/tooling4、Clippy、
+Rust core208/HTTP3/provider13/native6/native-audit1、412 Dart格式与analyze通过；
+app692（17条件跳过）/platform15/独立FFI22（1条件跳过）通过。Windows集成原夹具
+将新增title算作chat并返回SSE，4通过1失败；修为独立JSON标题并核对认证、请求体、
+用量和重开后，重新analyze无问题及Windows集成5项通过（windows-integration-v1）。
+该失败原日志保留，不称verify-v4单次全通过；最终所有检查项已有通过证据。
+普通Android/Windows Debug串行134.2s/17.8s通过（history-title双端v1），Windows
+恢复普通产品入口。Rust三项条件忽略不计真实供应商验收。
+
+固定包artifacts/ui-preview/20261006-123240：APK137874641字节，SHA256
+C4D5301FF162DA222AB9055E7900899AACCA132C949756F8F322E13C9B75D6FB；Windows101文件171974571字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证及Windows x64/
+Flutter DLL pin通过（work/history-title-delivery-v1.log）。本批33路径精确审计后
+按授权提交普通推送main；最终提交与三ref核对见Git/固定manifest，日志/包均保持忽略。
+
+title-core-v1的SSE夹具与v2重复seed、UI-v1错误payload封套/短租约/消息版本竞争、
+UI-v2停止间隙竞态、UI-v4单并发夹具丢secretReference均已定位修复。verify-v1
+unused事件变量已修；verify-v2/v3重发清理超时由fake时钟停在新独立标题期间导致，
+测试等待实际执行和UI终态，保留5秒清理与完整断言；不关闭检查或掩盖失败。
+完整工具/多附件、全局provider累计页面、真实供应商、设备/Apple仍未验收；暂停后
+优先获得同设备像素/触摸/Profile验收，再按正式方案推进统一工具和附件事实。
+
+### 前序增量：角色开场白与消息事实
 
 从main/c8c2990干净基线继续。旧ChatHistoryDelegate851–951、960–1058确认当前无
 user时绑定单卡优先同步开场白，绑定失效回落当前单卡，群聊跳过，模型回复不替换。

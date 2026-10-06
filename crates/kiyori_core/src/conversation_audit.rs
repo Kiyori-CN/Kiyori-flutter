@@ -39,6 +39,18 @@ PRAGMA user_version=21;";
 const MAX_EXPORT: usize = 64 * 1024 * 1024;
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(c: &Connection) {
+    c.execute_batch("DROP TABLE IF EXISTS conversation_title_requests;")
+        .unwrap();
+    let has_title_revision = c
+        .prepare("PRAGMA table_info(conversations)")
+        .unwrap()
+        .query_map([], |r| r.get::<_, String>(1))
+        .unwrap()
+        .any(|r| r.unwrap() == "title_revision");
+    if has_title_revision {
+        c.execute_batch("ALTER TABLE conversations DROP COLUMN title_revision;")
+            .unwrap();
+    }
     c.execute_batch("DROP TABLE IF EXISTS conversation_message_metadata;")
         .unwrap();
     c.execute_batch("DROP TABLE IF EXISTS conversation_audit_portable_seals; DROP TABLE IF EXISTS conversation_audit_security; DROP TABLE IF EXISTS conversation_audit_seals; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
@@ -265,7 +277,7 @@ impl AppStore {
         }
         events.reverse();
         let runtime:Option<String>=tx.query_row("SELECT model FROM conversation_runs WHERE conversation_id=?1 ORDER BY created_at DESC LIMIT 1",[id],|r|r.get(0)).optional().map_err(db)?;
-        let running=tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE conversation_id=?1 AND state='running')",[id],|r|r.get::<_,bool>(0)).map_err(db)?;
+        let running=tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE conversation_id=?1 AND state='running' UNION ALL SELECT 1 FROM conversation_title_requests WHERE conversation_id=?1 AND state='running')",[id],|r|r.get::<_,bool>(0)).map_err(db)?;
         let result=json!({"events":events,"hasOlder":more,"scannedCount":scanned,"nextBeforeSequence":cursor,"eventCount":total,"payloadBytes":bytes,"chainHead":head,"runtime":runtime,"status":if running {"IN_PROGRESS"} else {"BASIC"}}).to_string();
         tx.commit().map_err(db)?;
         Ok(result)

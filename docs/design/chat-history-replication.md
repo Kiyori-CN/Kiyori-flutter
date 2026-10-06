@@ -207,15 +207,20 @@ Android channel mock及构建只能证明接线，实际系统Toast位置/显示
 
 history_create在既有Immediate事务读取当前分组与单角色回落，显式绑定仍验证存在；
 统一核心创建函数保存该时间标题，普通创建、分组与删除替代均复用，不让UI生成另一
-份标题事实。首次发送兼容既有无时间标题与创建时默认标题，手工改名继续保留。创建
+份标题事实。首轮有效user按旧实际先覆盖为“新对话”回退；请求期间的手工改名保留。创建
 已提交而读取失败仍收起历史并保留可观察错误；捕获原路由身份避免迟到成功pop掉新弹窗。
 
 角色开场白按旧delegate在当前无user的单角色会话同步，绑定优先、失效回落、群聊
 跳过，真实模型回复不替换。创建/选择/加载复用同事务，schema23保存非生成角色/
 时间并保留旧未知时间，审计失败回滚且幂等无写入；分支与导出保留元数据，见
-[ADR0017](../decisions/0017-character-opening-messages.md)。首轮独立titleGeneration
-请求仍需同Runtime接线，当前标题继续正文摘要，不能称旧模型生成。标题请求需复用
-凭据租约、配额、取消、实际请求审计与CAS，不能在Dart额外请求供应商或伪造事件。
+[ADR0017](../decisions/0017-character-opening-messages.md)。首轮独立titleGeneration已接
+同Runtime，复用凭据租约、配额、取消、native adapter和实际请求审计；stream=false且
+不自动重试，辅助账本不占聊天Run。清洗按旧thinking/search/meta和UTF16规则，标题
+版本/源消息/最新工作CAS保护手工改名和原问编辑；准备取消、删除与重开终态可核对。
+短租约释放后开放下一轮，标题网络继续独立运行；真实用量保存在辅助账本和审计，
+沿旧路径不混入聊天累计。当前真实发送仅文本，附件名为“无”；完整文件附件和全局
+provider累计页面仍未接入，不能把本机合成服务验证当真实供应商验收。见
+[ADR0018](../decisions/0018-independent-conversation-titles.md)。
 
 ## 完整工具与附件的后续实施条件
 

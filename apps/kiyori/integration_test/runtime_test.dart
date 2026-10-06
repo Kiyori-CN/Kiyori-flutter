@@ -35,10 +35,36 @@ void main() {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final requests = <Map>[];
       final authentications = <String?>[];
+      final titleRequests = <Map>[];
+      final titleAuthentications = <String?>[];
       server.listen((request) async {
-        requests.add(
-          jsonDecode(await utf8.decoder.bind(request).join()) as Map,
-        );
+        final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
+        if ((body['messages'] as List).first['content'].toString().contains(
+          '你负责生成简短的对话标题。',
+        )) {
+          titleRequests.add(body);
+          titleAuthentications.add(request.headers.value('authorization'));
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'choices': [
+                {
+                  'index': 0,
+                  'message': {'role': 'assistant', 'content': 'DESKTOP_TITLE'},
+                  'finish_reason': 'stop',
+                },
+              ],
+              'usage': {
+                'prompt_tokens': 3,
+                'completion_tokens': 2,
+                'total_tokens': 5,
+              },
+            }),
+          );
+          await request.response.close();
+          return;
+        }
+        requests.add(body);
         authentications.add(request.headers.value('authorization'));
         request.response.headers.contentType = ContentType(
           'text',
@@ -107,12 +133,32 @@ void main() {
         ]);
         expect(requests.last['model'], 'desktop-model');
         expect((requests.last['messages'] as List).length, 4);
+        for (
+          var i = 0;
+          i < 200 &&
+              (chat.generatingTitle ||
+                  chat.snapshot!.conversation.title != 'DESKTOP_TITLE');
+          i++
+        ) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+        }
+        expect(titleRequests.length, 1);
+        expect(titleAuthentications, ['Bearer desktop-fixture']);
+        expect(titleRequests.single['stream'], false);
+        expect(titleRequests.single['model'], 'desktop-model');
+        expect(chat.snapshot!.conversation.title, 'DESKTOP_TITLE');
+        expect(chat.statistics!.requests, 2);
         final id = chat.snapshot!.conversation.id;
         await tester.pumpWidget(const SizedBox());
         await chat.shutdown();
         await runtime.close();
         runtime = await NativeRuntimeClient.open(dataDirectory: directory.path);
         expect((await runtime.conversation(id)).messages.length, 4);
+        expect(
+          (await runtime.conversation(id)).conversation.title,
+          'DESKTOP_TITLE',
+        );
         expect((await runtime.conversationCatalog()).activeId, id);
       } finally {
         await tester.pumpWidget(const SizedBox());

@@ -20,6 +20,7 @@
 - [ADR 0015：审计正文保护](decisions/0015-audit-native-protection.md)：平台AES-GCM与持久P-256签名、schema21迁移和密钥恢复边界。
 - [ADR 0016：旧格式审计导出](decisions/0016-portable-audit-export.md)：schema1移植投影、链头封印、诊断预算与假名化。
 - [ADR 0017：角色开场白](decisions/0017-character-opening-messages.md)：非生成消息元数据、选择同步、幂等事务及迁移边界。
+- [ADR 0018：独立对话标题](decisions/0018-independent-conversation-titles.md)：首轮回退、辅助执行、标题CAS、取消恢复与真实用量边界。
 
 ## 架构
 

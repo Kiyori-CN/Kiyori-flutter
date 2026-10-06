@@ -293,7 +293,7 @@ async fn opening_first_user_send_titles_context_and_branch_keep_exact_origin() {
             .contains("sender=\"开场角色\"")
     );
     let before = runtime.conversation(id.clone()).unwrap();
-    assert_eq!(before.conversation.title, "第一条用户消息");
+    assert_eq!(before.conversation.title, "新对话");
     assert_eq!(before.messages.len(), 3);
     update(&runtime, &role, "后来开场", "后来角色");
     assert_eq!(
@@ -328,7 +328,7 @@ fn opening_schema22_migration_preserves_unknown_time_and_original_audit_hashes()
         tx.execute("INSERT INTO conversation_messages(id,conversation_id,position,role,content,state) VALUES('old-opening',?1,0,'assistant','旧开场','completed')", [&id]).unwrap();
         tx.execute("UPDATE conversations SET character_id='' WHERE id=?1", [&id]).unwrap();
         crate::conversation_audit::initialize(&tx, &id).unwrap();
-        tx.execute_batch("DROP TABLE conversation_message_metadata; PRAGMA user_version=22;").unwrap();
+        tx.execute_batch("DROP TABLE conversation_title_requests; ALTER TABLE conversations DROP COLUMN title_revision; DROP TABLE conversation_message_metadata; PRAGMA user_version=22;").unwrap();
         tx.commit().unwrap();
         Ok(())
     }).unwrap();
@@ -345,7 +345,7 @@ fn opening_schema22_migration_preserves_unknown_time_and_original_audit_hashes()
     assert_eq!(snapshot.messages[0].created_at, None);
     runtime.with_store(|s| {
         let c = s.connection.lock().unwrap();
-        assert_eq!(c.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0)).unwrap(), 23);
+        assert_eq!(c.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0)).unwrap(), 24);
         assert_eq!(c.query_row("SELECT event_hash FROM conversation_audit_events WHERE conversation_id=?1 AND sequence=1", [&id], |r| r.get::<_, String>(0)).unwrap(), hash);
         assert_eq!(c.query_row("SELECT created_at FROM conversation_message_metadata WHERE message_id='old-opening'", [], |r| r.get::<_, Option<i64>>(0)).unwrap(), None);
         Ok(())

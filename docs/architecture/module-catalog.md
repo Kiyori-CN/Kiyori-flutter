@@ -51,6 +51,9 @@ core/conversations_manual_summary冻结手动边界、复用摘要请求编译�
 core/conversations_opening投影单角色无user时的开场白，同事务同步当前消息与审计。
 schema23非生成消息元数据与Run事实分别保存；FFI可空created_at不代表请求发送时间。
 创建/选择/当前加载共用同函数，分支复制独立快照，迁移和回滚见ADR0017。
+core/conversations_title在同SQLite保存独立标题工作，复用client/凭据/限流/取消/
+provider审计，辅助执行不占chat Run或聊天用量。schema24标题版本和源消息CAS、
+Runtime生命周期锁及恢复避免迟到覆盖与自动重发；FFI类型由正式入口生成，见ADR0018。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实

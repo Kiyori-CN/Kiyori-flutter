@@ -172,7 +172,7 @@ void main() {
           await f.chat.send('独立的用户消息');
           final before = f.chat.snapshot!;
           expect(before.messages.length, 3);
-          expect(before.conversation.title, '独立的用户消息');
+          expect(before.conversation.title, anyOf('新对话', f.titleAnswer));
           await update(f, '不应覆盖原消息', '后来角色');
           expect(await f.chat.load(), isTrue);
           expect(f.chat.snapshot!.messages, before.messages);

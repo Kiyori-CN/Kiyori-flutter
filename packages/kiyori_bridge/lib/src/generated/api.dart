@@ -256,6 +256,11 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
 
   Future<List<ExtensionProvider>> extensionProviders();
 
+  Future<void> failConversationTitle({
+    required String id,
+    required bool cancelled,
+  });
+
   Future<void> forgetRetiredModelSecret({required String reference});
 
   Future<MemoryRecord?> getMemory({required String space, required String id});
@@ -278,6 +283,8 @@ abstract class RuntimeHandle implements RustOpaqueInterface {
     required String id,
     String? target,
   });
+
+  Future<TitlePreparation?> prepareConversationTitle({required String id});
 
   Future<ConversationPreparation> prepareSummary({
     required String id,
@@ -448,6 +455,15 @@ abstract class TaskHandle implements RustOpaqueInterface {
   Future<void> cancel();
 
   Future<TaskEvent?> nextEvent();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TitlePreparation>>
+abstract class TitlePreparation implements RustOpaqueInterface {
+  Future<void> close();
+
+  Future<String?> secretReference();
+
+  Future<ChatHandle> start({required String payload});
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<TransferHandle>>

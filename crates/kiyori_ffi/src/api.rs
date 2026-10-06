@@ -179,6 +179,49 @@ pub struct ConversationPreparation {
     summary: std::sync::Mutex<Option<kiyori_core::conversations::PreparedSummary>>,
     runtime: Arc<runtime::Runtime>,
 }
+
+#[frb(opaque)]
+pub struct TitlePreparation {
+    prepared: std::sync::Mutex<Option<kiyori_core::conversations::PreparedTitle>>,
+    runtime: Arc<runtime::Runtime>,
+}
+impl TitlePreparation {
+    pub fn secret_reference(&self) -> Result<Option<String>, BridgeError> {
+        let guard = self.prepared.lock().map_err(|_| BridgeError {
+            code: ErrorCode::Storage,
+            message: "标题准备锁不可用".into(),
+        })?;
+        Ok(guard
+            .as_ref()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "标题准备已释放".into(),
+            })?
+            .secret_reference())
+    }
+    pub async fn start(&self, payload: String) -> Result<ChatHandle, BridgeError> {
+        let prepared = self
+            .prepared
+            .lock()
+            .map_err(|_| BridgeError {
+                code: ErrorCode::Storage,
+                message: "标题准备锁不可用".into(),
+            })?
+            .take()
+            .ok_or_else(|| BridgeError {
+                code: ErrorCode::InvalidInput,
+                message: "标题准备已使用或释放".into(),
+            })?;
+        Ok(ChatHandle {
+            inner: Arc::new(self.runtime.start_conversation_title(prepared, payload)?),
+        })
+    }
+    pub fn close(&self) {
+        if let Ok(mut guard) = self.prepared.lock() {
+            guard.take();
+        }
+    }
+}
 impl ConversationPreparation {
     pub fn secret_reference(&self) -> Result<Option<String>, BridgeError> {
         if let Some(summary) = self
@@ -1633,6 +1676,21 @@ impl RuntimeHandle {
         Ok(self
             .inner
             .change_message(id, revision, message, action, text)?)
+    }
+    pub fn prepare_conversation_title(
+        &self,
+        id: String,
+    ) -> Result<Option<TitlePreparation>, BridgeError> {
+        Ok(self
+            .inner
+            .prepare_conversation_title(id)?
+            .map(|prepared| TitlePreparation {
+                prepared: std::sync::Mutex::new(Some(prepared)),
+                runtime: self.inner.clone(),
+            }))
+    }
+    pub fn fail_conversation_title(&self, id: String, cancelled: bool) -> Result<(), BridgeError> {
+        Ok(self.inner.fail_conversation_title(id, cancelled)?)
     }
     pub fn prepare_conversation(
         &self,

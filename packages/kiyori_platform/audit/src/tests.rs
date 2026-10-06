@@ -63,7 +63,7 @@ fn native_keys_reopen_encrypt_authenticate_and_sign_real_store() {
     r.close();
     {
         let c = rusqlite::Connection::open(directory.join("kiyori.sqlite3")).unwrap();
-        c.execute_batch("DROP TABLE conversation_message_metadata; DROP TABLE conversation_audit_portable_seals; DROP TABLE conversation_audit_seals; DROP TABLE conversation_audit_security; ALTER TABLE conversation_audit_events DROP COLUMN payload_characters; ALTER TABLE conversation_audit_events DROP COLUMN payload_bytes; ALTER TABLE conversation_audit_events DROP COLUMN run_id; ALTER TABLE conversation_audit_events DROP COLUMN terminal_state; PRAGMA user_version=20;").unwrap();
+        c.execute_batch("DROP TABLE conversation_title_requests; ALTER TABLE conversations DROP COLUMN title_revision; DROP TABLE conversation_message_metadata; DROP TABLE conversation_audit_portable_seals; DROP TABLE conversation_audit_seals; DROP TABLE conversation_audit_security; ALTER TABLE conversation_audit_events DROP COLUMN payload_characters; ALTER TABLE conversation_audit_events DROP COLUMN payload_bytes; ALTER TABLE conversation_audit_events DROP COLUMN run_id; ALTER TABLE conversation_audit_events DROP COLUMN terminal_state; PRAGMA user_version=20;").unwrap();
     }
     struct FailingCrypto(Arc<dyn AuditCrypto>);
     impl AuditCrypto for FailingCrypto {

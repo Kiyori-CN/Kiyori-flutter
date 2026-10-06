@@ -40,6 +40,10 @@ mod summary;
 mod manual_summary;
 pub use manual_summary::PreparedSummary;
 
+#[path = "conversations_title.rs"]
+pub(crate) mod title;
+pub use title::PreparedTitle;
+
 #[path = "conversations_history.rs"]
 pub(crate) mod history;
 
@@ -369,6 +373,7 @@ impl AppStore {
         Ok(file)
     }
     fn recover(&self, tx: &Connection) -> Result<(), CoreError> {
+        title::recover(self, tx)?;
         let ids = tx
             .prepare("SELECT DISTINCT conversation_id FROM conversation_runs WHERE state='running'")
             .map_err(storage)?
@@ -613,7 +618,7 @@ impl AppStore {
                     return Err(invalid("文件夹已不存在"));
                 }
                 tx.execute(
-                    "UPDATE conversations SET title=?2,folder=?3,character_id=coalesce(?4,character_id) WHERE id=?1",
+                    "UPDATE conversations SET title=?2,folder=?3,character_id=coalesce(?4,character_id),title_revision=title_revision+CASE WHEN title<>?2 THEN 1 ELSE 0 END WHERE id=?1",
                     params![id, value.title.trim(), value.folder, value.character],
                 )
                 .map_err(storage)?;
@@ -624,7 +629,7 @@ impl AppStore {
                     return Err(invalid("名称不能为空"));
                 }
                 tx.execute(
-                    "UPDATE conversations SET title=?2 WHERE id=?1",
+                    "UPDATE conversations SET title=?2,title_revision=title_revision+1 WHERE id=?1",
                     params![id, value.trim()],
                 )
                 .map_err(storage)?;
@@ -891,6 +896,8 @@ impl AppStore {
                 if text.len() > 8 * 1024 * 1024 {
                     return Err(invalid("消息超过8 MiB限制"));
                 }
+                // 源消息改走再改回也必须使旧标题失效，不能用迟到摘要覆盖新的编辑意图。
+                tx.execute("UPDATE conversations SET title_revision=title_revision+1 WHERE id=?1 AND EXISTS(SELECT 1 FROM conversation_title_requests WHERE conversation_id=?1 AND source_message_id=?2 AND state IN ('pending','running'))",params![id,message]).map_err(storage)?;
                 tx.execute(
                     "UPDATE conversation_messages SET content=?2 WHERE id=?1",
                     params![message, text],
@@ -1093,8 +1100,8 @@ impl Runtime {
             let selected=selection(&tx,&prepared.conversation,prepared.target.as_deref())?;
             if selected!=prepared.selection {return Err(invalid("配置、角色或模型已变化，请重新发送"));}
             if !matches!(selected.config.draft.protocol.as_str(),"chat"|"responses"|"messages"|"native") {return Err(invalid("该模型协议的请求执行尚未接入"));}
-            // 标题只取用户输入；引用标签属于最终上下文，不能泄漏进历史标题。
-            let fallback_title = text.trim().chars().take(30).collect::<String>();
+            // 独立标题只取原用户输入；引用标签仅属于聊天最终上下文。
+            let title_input = text.clone();
             let text = if let Some(reply) = &reply_to {
                 let (content,name,created): (String,String,i64) = tx.query_row("SELECT m.content,coalesce(r.role_name,d.role_name,''),coalesce(r.created_at,d.created_at,0) FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id LEFT JOIN conversation_message_metadata d ON d.message_id=m.id WHERE m.id=?1 AND m.conversation_id=?2 AND m.role='assistant'",params![reply,prepared.conversation],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(|_| invalid("回复目标已不存在，请重新选择"))?;
                 fn escape(value: &str) -> String { value.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;") }
@@ -1180,10 +1187,7 @@ impl Runtime {
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state) VALUES(?1,?2,?3,?4,'assistant','','running')",params![assistant_id,prepared.conversation,run_id,position+1]).map_err(storage)?;
             }
             if first_user && !regenerating {
-                let title=fallback_title;
-                let created_at:i64=tx.query_row("SELECT created_at FROM conversations WHERE id=?1",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
-                let empty_title=history::default_title(&tx,created_at)?;
-                tx.execute("UPDATE conversations SET title=?2 WHERE id=?1 AND (title='新对话' OR title=?3)",params![prepared.conversation,title,empty_title]).map_err(storage)?;
+                title::enqueue(&tx,&prepared.conversation,&user_id,&title_input,&store.title_owner)?;
             }
             crate::conversation_audit::initialize(&tx,&prepared.conversation)?;
             crate::conversation_audit::append(&tx,&prepared.conversation,"EXECUTION","RUN_STARTED","开始生成回复",serde_json::json!({"runId":run_id,"model":selected.model,"character":selected.character,"messages":crate::conversation_audit::messages(&tx,&prepared.conversation,Some(&run_id))?}))?;

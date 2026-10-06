@@ -49,7 +49,7 @@ impl ProviderAudit {
         let tx = connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(|_| Self::failure())?;
-        let running: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE id=?1 AND conversation_id=?2 AND state='running')",rusqlite::params![self.run,self.conversation],|r|r.get(0)).map_err(|_| Self::failure())?;
+        let running: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM conversation_runs WHERE id=?1 AND conversation_id=?2 AND state='running' UNION ALL SELECT 1 FROM conversation_title_requests WHERE id=?1 AND conversation_id=?2 AND state='running')",rusqlite::params![self.run,self.conversation],|r|r.get(0)).map_err(|_| Self::failure())?;
         if !running {
             return Err(Self::failure());
         }

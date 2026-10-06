@@ -17,6 +17,11 @@ class ChatFixture {
   late ChatController chat;
   late HttpServer server;
   final requests = <Map<String, dynamic>>[];
+  final titleRequests = <Map<String, dynamic>>[];
+  String titleAnswer = '首轮对话目的';
+  String titleCredential = 'synthetic-fixture';
+  bool titleFail = false;
+  Completer<void>? titleGate;
   Completer<void>? gate;
   bool fail = false;
   Map<String, Object?>? usage;
@@ -30,11 +35,45 @@ class ChatFixture {
     models = ModelsController(() async => runtime, () async => secrets);
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
-      requests.add(
-        Map<String, dynamic>.from(
-          jsonDecode(await utf8.decoder.bind(request).join()) as Map,
-        ),
+      final body = Map<String, dynamic>.from(
+        jsonDecode(await utf8.decoder.bind(request).join()) as Map,
       );
+      if ((body['messages'] as List).first['content'].toString().contains(
+        '你负责生成简短的对话标题。',
+      )) {
+        titleRequests.add(body);
+        expect(body['stream'], false);
+        expect(
+          request.headers.value('authorization'),
+          'Bearer $titleCredential',
+        );
+        request.response.headers.contentType = ContentType.json;
+        if (titleGate != null) await titleGate!.future;
+        if (titleFail) {
+          request.response.statusCode = 401;
+          await request.response.close();
+          return;
+        }
+        request.response.write(
+          jsonEncode({
+            'choices': [
+              {
+                'index': 0,
+                'message': {'role': 'assistant', 'content': titleAnswer},
+                'finish_reason': 'stop',
+              },
+            ],
+            'usage': {
+              'prompt_tokens': 3,
+              'completion_tokens': 4,
+              'total_tokens': 7,
+            },
+          }),
+        );
+        await request.response.close();
+        return;
+      }
+      requests.add(body);
       expect(
         request.headers.value('authorization'),
         requests.last['model'] == summaryModel
@@ -126,6 +165,7 @@ class ChatFixture {
 
   Future<void> close() async {
     if (gate != null && !gate!.isCompleted) gate!.complete();
+    if (titleGate != null && !titleGate!.isCompleted) titleGate!.complete();
     await chat.shutdown().timeout(const Duration(seconds: 5));
     chat.dispose();
     models.dispose();

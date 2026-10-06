@@ -28,6 +28,7 @@ class ChatController extends ChangeNotifier {
   ChatPreferences? preferences;
   KnowledgeSnapshot? knowledge;
   final _replies = <String, ConversationMessage>{};
+  final _titles = <String, ChatExecution>{};
   final memoryFolderDrafts = <String, List<String>>{};
   List<String> get memoryFolders => memoryFolderDrafts[draftId] ?? const [];
   void attachMemoryFolders(List<String> folders) {
@@ -133,6 +134,12 @@ class ChatController extends ChangeNotifier {
         value,
       );
       committed = true;
+      if (key == 'history_group' && jsonDecode(value)['action'] == 'delete') {
+        final members = (jsonDecode(value)['members'] as Map).keys;
+        for (final id in members) {
+          await _cancelTitle(id as String);
+        }
+      }
       if (key == 'history_create') {
         // 已创建就收起入口；刷新失败仍显示error，不能把落盘成功当失败允许重复创建。
         await load(followActive: true);
@@ -159,6 +166,7 @@ class ChatController extends ChangeNotifier {
   String get draftId => snapshot?.conversation.id ?? 'new';
   ChatExecution? get execution => executions[snapshot?.conversation.id];
   bool get busy => changing || (execution?.active ?? false);
+  bool get generatingTitle => _titles[draftId]?.active ?? false;
   PromptCharacter? get character => prompts?.characters
       .where((c) => c.id == prompts?.activeCharacter)
       .firstOrNull;
@@ -438,6 +446,7 @@ class ChatController extends ChangeNotifier {
         value,
       );
       if (action == 'delete') {
+        await _cancelTitle(item.id);
         drafts.remove(item.id);
         if (snapshot?.conversation.id == item.id) snapshot = null;
       }
@@ -592,7 +601,22 @@ class ChatController extends ChangeNotifier {
       prepared = null;
       if (_disposed || operation.stopping) {
         await run.cancel();
+        if (summaryBoundary == null) {
+          await runtime.failConversationTitle(id, cancelled: true);
+        }
         return;
+      }
+      if (summaryBoundary == null) {
+        final title = ChatExecution();
+        final previousTitle = _titles[id];
+        if (previousTitle == null || !previousTitle.active) {
+          previousTitle?.dispose();
+          _titles[id] = title;
+          title.done = _generateTitle(runtime, id, title);
+          unawaited(title.done);
+        } else {
+          title.dispose();
+        }
       }
       // 网络可能先于FFI快照返回；流正文从空串累积，禁止把DB快照与重放delta相加。
       final started = await runtime.conversation(id);
@@ -624,6 +648,8 @@ class ChatController extends ChangeNotifier {
       await operation.run?.cancel();
     } finally {
       await prepared?.close();
+      // 标题网络独立继续；短凭据租约先释放再开放下一轮，避免同库准备相互抢锁。
+      await _titles[id]?.ready.future;
       if (!_disposed) {
         try {
           final runtime = await connect();
@@ -650,11 +676,24 @@ class ChatController extends ChangeNotifier {
 
   Future<void> stop() async {
     final operation = execution;
-    if (operation == null || !operation.active) return;
-    operation.stopping = true;
-    _notify();
-    await operation.run?.cancel();
-    await operation.done;
+    final id = draftId;
+    // 两个准备窗口先同时撤销，再等待任何native取消，防止凭据读取在间隙发出标题。
+    final title = _titles[id];
+    if (title?.active == true) title!.stopping = true;
+    if (operation?.active == true) {
+      operation!.stopping = true;
+      _notify();
+      await operation.run?.cancel();
+    }
+    await _cancelTitle(id);
+    await operation?.done;
+  }
+
+  Future<void> _cancelTitle(String id) async {
+    final title = _titles[id];
+    if (title == null || !title.active) return;
+    title.stopping = true;
+    await title.run?.cancel();
   }
 
   Future<void> insertSummary(ConversationMessage boundary) async {
@@ -679,19 +718,112 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> shutdown() async {
-    final pending = executions.values.where((e) => e.active).toList();
+    final pending = [
+      ...executions.values,
+      ..._titles.values,
+    ].where((e) => e.active).toList();
     for (final operation in pending) {
       operation.stopping = true;
+    }
+    for (final operation in pending) {
       await operation.run?.cancel();
     }
     await Future.wait(pending.map((e) => e.done ?? Future<void>.value()));
+  }
+
+  Future<void> _generateTitle(
+    RuntimeClient runtime,
+    String id,
+    ChatExecution operation,
+  ) async {
+    PreparedTitle? prepared;
+    var started = false;
+    var pending = false;
+    try {
+      prepared = await runtime.prepareConversationTitle(id);
+      if (prepared == null) return;
+      pending = true;
+      if (_disposed || operation.stopping) return;
+      final reference = await prepared.secretReference();
+      final raw = reference == null
+          ? null
+          : await (await openSecrets()).read(reference);
+      if (reference != null && raw == null) {
+        throw const SecretStoreException('missing');
+      }
+      if (_disposed || operation.stopping) return;
+      final payload = raw == null
+          ? const ModelCredentials().encode()
+          : ModelCredentials.decode(raw).encode();
+      final run = await prepared.start(payload);
+      started = true;
+      operation.run = run;
+      await prepared.close();
+      prepared = null;
+      operation.ready.complete();
+      if (_disposed || operation.stopping) {
+        await run.cancel();
+        return;
+      }
+      await for (final _ in run.events) {
+        if (_disposed || operation.stopping) {
+          await run.cancel();
+          break;
+        }
+      }
+    } catch (_) {
+      pending = true;
+      await operation.run?.cancel();
+    } finally {
+      if (!started && pending) {
+        try {
+          await runtime.failConversationTitle(
+            id,
+            cancelled: _disposed || operation.stopping,
+          );
+        } catch (_) {
+          if (!_disposed && snapshot?.conversation.id == id) {
+            error ??= '标题准备失败，历史记录未能保存，请重新载入';
+          }
+        }
+      }
+      await prepared?.close();
+      if (!operation.ready.isCompleted) operation.ready.complete();
+      operation.finish();
+      if (!_disposed && pending) {
+        final generation = _generation;
+        try {
+          final directory = await runtime.conversationCatalog();
+          final selected = snapshot?.conversation.id;
+          final exists = directory.conversations.any((item) => item.id == id);
+          final value = selected == id && exists
+              ? await runtime.conversation(id)
+              : null;
+          final totals = selected == id && exists
+              ? await runtime.conversationStatistics(id)
+              : null;
+          if (!_disposed && generation == _generation) {
+            catalog = directory;
+            if (snapshot?.conversation.id == id && value != null) {
+              snapshot = value;
+              statistics = totals;
+            }
+          }
+        } catch (_) {
+          if (!_disposed && snapshot?.conversation.id == id) {
+            error ??= '标题已结束，但历史读取失败，请重新载入';
+          }
+        }
+        _notify();
+      }
+    }
   }
 
   @override
   void dispose() {
     _disposed = true;
     _generation++;
-    for (final operation in executions.values) {
+    for (final operation in [...executions.values, ..._titles.values]) {
       operation.stopping = true;
       unawaited(operation.run?.cancel().catchError((Object _) {}));
       operation.dispose();
@@ -701,6 +833,7 @@ class ChatController extends ChangeNotifier {
 }
 
 class ChatExecution {
+  final ready = Completer<void>();
   ChatRun? run;
   Future<void>? done;
   String? messageId;

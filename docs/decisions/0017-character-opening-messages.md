@@ -25,7 +25,7 @@ schema23增加conversation_message_metadata子表，按message_id级联，保存
 桥在既有ConversationMessage追加可空created_at，由generate-bridge生成并Check；
 详情timestamp使用真实创建时间，缺少时沿旧sent_at投影，不能将开场白计作供应商
 请求。首次发送判断是否已有user，而不是总消息position为零；标题使用原用户输入，
-引用标签只属于最终模型上下文。独立titleGeneration仍按后续执行链接入。
+引用标签只属于最终模型上下文。独立titleGeneration接入见[ADR0018](0018-independent-conversation-titles.md)。
 
 新开场白的本机审计记录OPENING_SYNCHRONIZED及前后正文，基础记录明确已观察
 快照。旧源链、旧密文和已保存签名不修改。导出副本保留非生成角色名称与真实创建

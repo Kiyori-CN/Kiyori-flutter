@@ -167,6 +167,14 @@ void main() {
       expect(f.chat.execution!.active, isTrue);
       f.gate!.complete();
       await until(tester, () => !f.chat.execution!.active);
+      // 重发首轮也独立生成标题；继续泵送真实FFI事件后才进入清理的runAsync。
+      await until(
+        tester,
+        () =>
+            !f.chat.generatingTitle &&
+            f.chat.snapshot!.conversation.title == f.titleAnswer,
+      );
+      expect(f.chat.snapshot!.conversation.title, f.titleAnswer);
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox());

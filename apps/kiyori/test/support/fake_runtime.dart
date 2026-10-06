@@ -167,6 +167,13 @@ class FakeClient implements RuntimeClient {
     String? target,
   }) async => throw UnimplementedError();
   @override
+  Future<PreparedTitle?> prepareConversationTitle(String id) async => null;
+  @override
+  Future<void> failConversationTitle(
+    String id, {
+    bool cancelled = false,
+  }) async {}
+  @override
   Future<PreparedConversation> prepareSummary(
     String id,
     String boundary,
