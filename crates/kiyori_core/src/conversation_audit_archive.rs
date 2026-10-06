@@ -168,9 +168,9 @@ impl Snapshot {
             let timestamp = if let Some(existing) = self.locators.get(native_id) {
                 *existing
             } else {
-                // 新runtime没有旧timestamp。采用首次审计观察时的稳定定位符，并保留native ID；
-                // 它是移植身份，不是消息实际发送时间，不能从该值推断网络耗时。
-                let mut timestamp = at.max(1);
+                // 非生成消息保存真实创建时间；旧消息继续采用首次观察的稳定移植定位符。
+                // 创建时间和移植身份都不代表模型请求发送时间。
+                let mut timestamp = message["createdAt"].as_i64().unwrap_or(at).max(1);
                 while self.occupied_locators.contains(&timestamp) {
                     timestamp = timestamp
                         .checked_add(1)
@@ -273,7 +273,17 @@ pub(super) fn build(tx: &Connection, id: &str, rows: Vec<Value>) -> Result<Snaps
                 _ => Value::Null,
             };
         }
-        let payload=json!({"nativeEventId":format!("{id}/{}",source["sequence"]),"nativeEventSha256":source["eventSha256"],"observed":redacted_json(data)?,"projection":"BASIC: native message IDs retained; messageTimestamp is first audit observation locator, not send time"}).to_string();
+        // 无新时间事实的源事件必须保留既有投影字节，否则已持久封印的链头会漂移。
+        let projection = if data["messages"].as_array().is_some_and(|messages| {
+            messages
+                .iter()
+                .any(|message| message["createdAt"].as_i64().is_some())
+        }) {
+            "BASIC: native message IDs retained; messageTimestamp uses saved non-generated creation time or first audit observation locator, not provider send time"
+        } else {
+            "BASIC: native message IDs retained; messageTimestamp is first audit observation locator, not send time"
+        };
+        let payload=json!({"nativeEventId":format!("{id}/{}",source["sequence"]),"nativeEventSha256":source["eventSha256"],"observed":redacted_json(data)?,"projection":projection}).to_string();
         snapshot.push(event, &payload, "application/json", "metadata")?;
         if let Some(observed) = data["messages"].as_array() {
             snapshot.observe(observed, at)?;
@@ -325,6 +335,9 @@ fn attach_run(projected: &mut Value, message: &Value, runs: &BTreeMap<String, Va
         return;
     }
     let Some(run) = runs.get(&text(message, "runId")) else {
+        if let Some(name) = message["roleName"].as_str() {
+            projected["roleName"] = json!(redact(name));
+        }
         return;
     };
     for key in [
@@ -454,7 +467,7 @@ pub(super) fn package(
     let archive = json!({"schemaVersion":1,"audit":root,"events":snapshot.events,"eventPayloads":snapshot.refs,"revisions":snapshot.revisions,"projections":snapshot.projections,"seals":[seal],"payloads":snapshot.payloads.values().collect::<Vec<_>>()});
     validate(&archive)?;
     let payload_index=snapshot.payloads.values().map(|p|json!({"payloadSha256":p["payloadSha256"],"path":format!("payloads/{}.txt",text(p,"payloadSha256")),"mediaType":p["mediaType"],"encoding":p["encoding"],"plainByteCount":p["plainByteCount"]})).collect::<Vec<_>>();
-    let manifest = json!({"archiveType":"kiyori_conversation_audit","formatVersion":1,"chatId":snapshot.chat["id"],"title":snapshot.chat["title"],"exportedAt":time(),"cutoffEventId":snapshot.events.last().map(|e|e["eventId"].clone()),"cutoffSequenceNumber":snapshot.events.len(),"completenessStatus":"BASIC","executionState":"TERMINAL_UNKNOWN","eventCount":snapshot.events.len(),"revisionCount":snapshot.revisions.len(),"sealCount":1,"payloads":payload_index,"nativeSourceChainHead":snapshot.source_head,"projection":"BASIC native audit projection; messageTimestamp is an observation locator; dates are UTC; unknown provider/tool facts are not reconstructed"});
+    let manifest = json!({"archiveType":"kiyori_conversation_audit","formatVersion":1,"chatId":snapshot.chat["id"],"title":snapshot.chat["title"],"exportedAt":time(),"cutoffEventId":snapshot.events.last().map(|e|e["eventId"].clone()),"cutoffSequenceNumber":snapshot.events.len(),"completenessStatus":"BASIC","executionState":"TERMINAL_UNKNOWN","eventCount":snapshot.events.len(),"revisionCount":snapshot.revisions.len(),"sealCount":1,"payloads":payload_index,"nativeSourceChainHead":snapshot.source_head,"projection":"BASIC native audit projection; messageTimestamp uses saved non-generated creation time or an observation locator, with collisions resolved by incrementing; it is not provider send time; dates are UTC; unknown provider/tool facts are not reconstructed"});
     let integrity = json!({"chainHeadSha256":snapshot.head,"lastSequenceNumber":snapshot.events.len(),"latestSealSequenceNumber":snapshot.events.len(),"seals":[seal]});
     let report = json!({"policyVersion":1,"credentialsPersisted":false,"alwaysRedacted":["Authorization","Cookie","password","private key","access token","request signature","credential URL parameter"],"note":"Native source chain is preserved locally; the portable chain binds credential-redacted export projections. This ZIP is plaintext.","aiReviewMarkdown":"Additional pseudonymization of private paths and identity fields; plaintext UTF-8."});
     let entries = [
@@ -690,7 +703,7 @@ pub(super) fn markdown(snapshot: &Snapshot, external: bool) -> Result<String, Co
             .push(reference);
     }
     let mut output = format!(
-        "# Kiyori AI 对话审计\n\n- Chat ID: `{}`\n- 标题: {}\n- 完整性: `BASIC`\n- 事件数: {}\n- 链头: `{}`\n\n> 仅包含实际持久化事实。messageTimestamp 是首次审计观察的移植定位符，未知供应商、工具事实及迁移前修订不补造。\n\n",
+        "# Kiyori AI 对话审计\n\n- Chat ID: `{}`\n- 标题: {}\n- 完整性: `BASIC`\n- 事件数: {}\n- 链头: `{}`\n\n> 仅包含实际持久化事实。messageTimestamp 优先取非生成消息的已保存创建时间，否则取首次审计观察时间；同值冲突递增，是移植定位符而非模型请求发送时间。未知供应商、工具事实及迁移前修订不补造。\n\n",
         snapshot.chat["id"].as_str().unwrap_or(""),
         snapshot.chat["title"].as_str().unwrap_or(""),
         snapshot.events.len(),
@@ -1023,6 +1036,33 @@ mod tests {
     use std::io::Read;
 
     #[test]
+    fn opening_upgrade_preserves_legacy_projection_payload_and_seal() {
+        let dir = std::env::temp_dir().join(format!(
+            "kiyori-portable-upgrade-{}-{}",
+            std::process::id(),
+            time()
+        ));
+        let runtime = Runtime::with_data_dir(&dir).unwrap();
+        let id = runtime.create_conversation().unwrap();
+        runtime.with_store(|s| {
+            let c = s.connection.lock().unwrap();
+            let data = json!({"messages":[]});
+            let source = json!({"sequence":1,"recordedAt":123,"category":"HISTORY","eventType":"BASIC_SNAPSHOT","summary":"旧快照","payload":data,"eventSha256":"old-source-head"});
+            let snapshot = build(&c, &id, vec![source.clone()]).unwrap();
+            let legacy_payload = json!({"nativeEventId":format!("{id}/1"),"nativeEventSha256":"old-source-head","observed":data,"projection":"BASIC: native message IDs retained; messageTimestamp is first audit observation locator, not send time"}).to_string();
+            assert!(snapshot.payloads.contains_key(&hash(legacy_payload.as_bytes())));
+            package(&c, &ReferenceAuditCrypto, &snapshot).unwrap();
+            let repeated = build(&c, &id, vec![source]).unwrap();
+            assert_eq!(snapshot.head, repeated.head);
+            package(&c, &ReferenceAuditCrypto, &repeated).unwrap();
+            assert_eq!(c.query_row("SELECT count(*) FROM conversation_audit_portable_seals WHERE conversation_id=?1", [&id], |r| r.get::<_, i64>(0)).unwrap(), 1);
+            Ok(())
+        }).unwrap();
+        runtime.close();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn legacy_utf8_event_hash_matches_independent_node_vector() {
         let event = json!({"previousEventSha256":"0".repeat(64),"eventId":"event-1","chatId":"chat-1","sequenceNumber":1,"occurredAt":100,"recordedAt":101,"category":"USER","eventType":"USER_INPUT_SUBMITTED","actor":"USER","summary":"提交😀","messageTimestamp":100,"variantIndex":0,"localExecutionId":null,"providerCallId":null,"parentEventId":null,"sourceChatId":null,"sourceEventId":null,"visibility":"TIMELINE","terminalState":null});
         let sha = "1".repeat(64);
@@ -1044,12 +1084,51 @@ mod tests {
     }
 
     #[test]
+    fn portable_opening_preserves_role_creation_and_has_no_provider_usage() {
+        let dir = std::env::temp_dir().join(format!(
+            "kiyori-portable-opening-{}-{}",
+            std::process::id(),
+            time()
+        ));
+        let runtime = Runtime::with_data_dir(&dir).unwrap();
+        let card = runtime.prompt_catalog().unwrap().characters.remove(0);
+        let mut draft = card.draft;
+        draft.opening = "真实角色开场😀".into();
+        runtime
+            .save_character(Some(card.id), Some(card.revision), draft)
+            .unwrap();
+        let id = runtime.create_conversation().unwrap();
+        let message = runtime.conversation(id.clone()).unwrap().messages.remove(0);
+        runtime.with_store(|s| {
+            let c = s.connection.lock().unwrap();
+            let rows=c.prepare("SELECT sequence,recorded_at,category,event_type,summary,payload,event_hash FROM conversation_audit_events WHERE conversation_id=?1 ORDER BY sequence").unwrap().query_map([&id],|r|{let payload:String=r.get(5)?;Ok(json!({"sequence":r.get::<_,i64>(0)?,"recordedAt":r.get::<_,i64>(1)?,"category":r.get::<_,String>(2)?,"eventType":r.get::<_,String>(3)?,"summary":r.get::<_,String>(4)?,"payload":serde_json::from_str::<Value>(&payload).unwrap(),"eventSha256":r.get::<_,String>(6)?}))}).unwrap().collect::<Result<Vec<_>,_>>().unwrap();
+            let snapshot = build(&c, &id, rows).unwrap();
+            let projected = &snapshot.chat["messages"][0]["baseMessage"];
+            assert_eq!(projected["content"], "真实角色开场😀");
+            assert_eq!(projected["timestamp"], message.created_at.unwrap());
+            assert_eq!(projected["roleName"], "Kiyori");
+            assert!(projected.get("sentAt").is_none());
+            assert!(projected.get("providerRequestCount").is_none());
+            let bytes = package(&c, &ReferenceAuditCrypto, &snapshot).unwrap();
+            let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut text = String::new();
+            zip.by_name("audit.json").unwrap().read_to_string(&mut text).unwrap();
+            validate(&serde_json::from_str::<Value>(&text).unwrap()).unwrap();
+            Ok(())
+        }).unwrap();
+        runtime.close();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn portable_revisions_validate_and_tampered_relationships_are_rejected() {
         let dir =
             std::env::temp_dir().join(format!("kiyori-portable-{}-{}", std::process::id(), time()));
         let runtime = Runtime::with_data_dir(&dir).unwrap();
         let id = runtime.create_conversation().unwrap();
         runtime.with_store(|s|{s.connection.lock().unwrap().execute("INSERT INTO conversation_messages(id,conversation_id,position,role,content,state,variant) VALUES('synthetic-message',?1,0,'assistant','原文😀','completed',0)",[&id]).unwrap();Ok(())}).unwrap();
+        // 此夹具是既有归档正文，不是当前角色的空会话开场白。
+        runtime.create_conversation().unwrap();
         runtime
             .conversation_audit(id.clone(), 0, String::new())
             .unwrap();

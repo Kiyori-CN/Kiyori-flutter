@@ -6896,6 +6896,7 @@ impl SseDecode for crate::api::ConversationMessage {
         let mut var_model = <String>::sse_decode(deserializer);
         let mut var_roleName = <Option<String>>::sse_decode(deserializer);
         let mut var_sentAt = <Option<i64>>::sse_decode(deserializer);
+        let mut var_createdAt = <Option<i64>>::sse_decode(deserializer);
         let mut var_firstOutputMs = <Option<i64>>::sse_decode(deserializer);
         let mut var_durationMs = <Option<i64>>::sse_decode(deserializer);
         let mut var_inputTokens = <Option<i64>>::sse_decode(deserializer);
@@ -6913,6 +6914,7 @@ impl SseDecode for crate::api::ConversationMessage {
             model: var_model,
             role_name: var_roleName,
             sent_at: var_sentAt,
+            created_at: var_createdAt,
             first_output_ms: var_firstOutputMs,
             duration_ms: var_durationMs,
             input_tokens: var_inputTokens,
@@ -9334,6 +9336,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::ConversationMessage {
             self.model.into_into_dart().into_dart(),
             self.role_name.into_into_dart().into_dart(),
             self.sent_at.into_into_dart().into_dart(),
+            self.created_at.into_into_dart().into_dart(),
             self.first_output_ms.into_into_dart().into_dart(),
             self.duration_ms.into_into_dart().into_dart(),
             self.input_tokens.into_into_dart().into_dart(),
@@ -10764,6 +10767,7 @@ impl SseEncode for crate::api::ConversationMessage {
         <String>::sse_encode(self.model, serializer);
         <Option<String>>::sse_encode(self.role_name, serializer);
         <Option<i64>>::sse_encode(self.sent_at, serializer);
+        <Option<i64>>::sse_encode(self.created_at, serializer);
         <Option<i64>>::sse_encode(self.first_output_ms, serializer);
         <Option<i64>>::sse_encode(self.duration_ms, serializer);
         <Option<i64>>::sse_encode(self.input_tokens, serializer);

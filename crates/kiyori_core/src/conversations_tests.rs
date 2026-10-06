@@ -1,6 +1,8 @@
 use super::*;
 #[path = "conversations_audit_tests.rs"]
 mod audit_tests;
+#[path = "conversations_opening_tests.rs"]
+mod opening_tests;
 #[path = "conversations_summary_tests.rs"]
 mod summary_tests;
 use serde_json::{Value, json};

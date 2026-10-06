@@ -6066,8 +6066,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConversationMessage dco_decode_conversation_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 16)
-      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
+    if (arr.length != 17)
+      throw Exception('unexpected arr length: expect 17 but see ${arr.length}');
     return ConversationMessage(
       variant: dco_decode_u_32(arr[0]),
       variantCount: dco_decode_u_32(arr[1]),
@@ -6080,11 +6080,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       model: dco_decode_String(arr[8]),
       roleName: dco_decode_opt_String(arr[9]),
       sentAt: dco_decode_opt_box_autoadd_i_64(arr[10]),
-      firstOutputMs: dco_decode_opt_box_autoadd_i_64(arr[11]),
-      durationMs: dco_decode_opt_box_autoadd_i_64(arr[12]),
-      inputTokens: dco_decode_opt_box_autoadd_i_64(arr[13]),
-      outputTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
-      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
+      createdAt: dco_decode_opt_box_autoadd_i_64(arr[11]),
+      firstOutputMs: dco_decode_opt_box_autoadd_i_64(arr[12]),
+      durationMs: dco_decode_opt_box_autoadd_i_64(arr[13]),
+      inputTokens: dco_decode_opt_box_autoadd_i_64(arr[14]),
+      outputTokens: dco_decode_opt_box_autoadd_i_64(arr[15]),
+      cacheReadTokens: dco_decode_opt_box_autoadd_i_64(arr[16]),
     );
   }
 
@@ -7940,6 +7941,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_model = sse_decode_String(deserializer);
     var var_roleName = sse_decode_opt_String(deserializer);
     var var_sentAt = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_createdAt = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_firstOutputMs = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_durationMs = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_inputTokens = sse_decode_opt_box_autoadd_i_64(deserializer);
@@ -7957,6 +7959,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       model: var_model,
       roleName: var_roleName,
       sentAt: var_sentAt,
+      createdAt: var_createdAt,
       firstOutputMs: var_firstOutputMs,
       durationMs: var_durationMs,
       inputTokens: var_inputTokens,
@@ -10185,6 +10188,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.model, serializer);
     sse_encode_opt_String(self.roleName, serializer);
     sse_encode_opt_box_autoadd_i_64(self.sentAt, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.createdAt, serializer);
     sse_encode_opt_box_autoadd_i_64(self.firstOutputMs, serializer);
     sse_encode_opt_box_autoadd_i_64(self.durationMs, serializer);
     sse_encode_opt_box_autoadd_i_64(self.inputTokens, serializer);

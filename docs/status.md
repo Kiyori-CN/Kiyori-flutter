@@ -13,7 +13,40 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：普通新建对话与迟到退出
+### 最新增量：角色开场白与消息事实
+
+从main/c8c2990干净基线继续。旧ChatHistoryDelegate851–951、960–1058确认当前无
+user时绑定单卡优先同步开场白，绑定失效回落当前单卡，群聊跳过，模型回复不替换。
+同Runtime创建/选择/当前目录与快照复用Immediate事务，更新保留消息ID/时间，空白
+删除，幂等无revision写入；审计失败回滚全部事实。schema23追加非生成消息元数据，
+created_at与请求sent_at分开；旧未知时间不猜测，分支/导出保留真实角色与时间。
+首轮标题按是否已有user判断，修复引用标签进入标题；独立titleGeneration仍未接。
+同名同正文的角色切换也更新来源ID；无新createdAt的归档源事件保留旧投影字节与
+持久封印链头。正式generate-bridge/Check-v3通过，五文件一致；定向Rust9项及真实
+FFI/SQLite联合UI22项通过（opening-core-v9/UI-v3）。capture-v1八项通过、86PNG在
+work/history-drawer-capture-v34，已审阅五窗口总览与明暗开场白/设置、双向滑动、
+管理/删除、窄屏绑定及横屏滚动/桌面详情原尺寸。共用ChatFixture迁到test/support，
+原测试导出保持既有引用兼容，新开场白测试直接用support。
+
+最终tools/verify.ps1 -WindowsIntegration通过（work/history-opening-verify-v4.log）：
+foundation70/tooling4，Rust core202/HTTP3/provider13/native6/native-audit1，411 Dart
+格式、Clippy/analyze，app684（17条件跳过）/platform15/独立FFI22（1条件跳过）/
+Windows引擎5。Rust三项条件忽略不计真实供应商验收。普通Android/Windows Debug
+串行134.5s/17.9s通过（opening双端v1），Windows恢复普通产品入口。
+
+固定包artifacts/ui-preview/20261006-112547：APK137760369字节，SHA256
+D1C1F95B75532EEB737B810E6B1EF2C1BE3E51333FDFCCC1BCA081C0913101B9；Windows101文件171732603字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证及Windows x64/
+Flutter DLL pin通过（work/history-opening-delivery-v1.log）。本批27路径精确审计后
+按授权提交普通推送main；最终提交/远端一致性见Git和固定manifest。
+
+先前夹具API/返回类型、动态角色名/群聊活跃、引用标题、富文本异步定位已修；
+旧归档/原生迁移夹具显式非当前会话及清理schema23新表，不绕过产品同步或降低
+加密/hash/签名断言。桥格式曾因Windows文件映射锁失败，释放后正式Check通过；
+Clippy两处结构与analyze三处花括号已修，失败日志保留。独立titleGeneration、
+完整工具/多附件和设备/Apple验收仍未关闭，详见[ADR0017](decisions/0017-character-opening-messages.md)。
+
+### 前序增量：普通新建对话与迟到退出
 
 从main/2617c82干净基线核对旧ChatScreenContent、ChatHistoryDelegate960–1058及
 ChatHistoryManager2533–2598。历史新建复用原事务继承当前分组，空绑定回落当前单

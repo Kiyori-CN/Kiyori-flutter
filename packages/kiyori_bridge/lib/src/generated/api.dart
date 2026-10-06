@@ -960,6 +960,7 @@ class ConversationMessage {
   final String model;
   final String? roleName;
   final PlatformInt64? sentAt;
+  final PlatformInt64? createdAt;
   final PlatformInt64? firstOutputMs;
   final PlatformInt64? durationMs;
   final PlatformInt64? inputTokens;
@@ -978,6 +979,7 @@ class ConversationMessage {
     required this.model,
     this.roleName,
     this.sentAt,
+    this.createdAt,
     this.firstOutputMs,
     this.durationMs,
     this.inputTokens,
@@ -998,6 +1000,7 @@ class ConversationMessage {
       model.hashCode ^
       roleName.hashCode ^
       sentAt.hashCode ^
+      createdAt.hashCode ^
       firstOutputMs.hashCode ^
       durationMs.hashCode ^
       inputTokens.hashCode ^
@@ -1020,6 +1023,7 @@ class ConversationMessage {
           model == other.model &&
           roleName == other.roleName &&
           sentAt == other.sentAt &&
+          createdAt == other.createdAt &&
           firstOutputMs == other.firstOutputMs &&
           durationMs == other.durationMs &&
           inputTokens == other.inputTokens &&

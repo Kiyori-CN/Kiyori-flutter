@@ -152,6 +152,7 @@ fn create_with_selection(
             [&id],
         )
         .map_err(storage)?;
+        super::opening::sync(tx, &id)?;
     }
     Ok(id)
 }

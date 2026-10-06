@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-const SCHEMA_VERSION: i32 = 22;
+const SCHEMA_VERSION: i32 = 23;
 
 pub struct AppStore {
     pub(crate) connection: Mutex<Connection>,
@@ -303,6 +303,11 @@ impl AppStore {
             transaction
                 .execute_batch(crate::conversation_audit::archive::SCHEMA)
                 .map_err(|_| error("Cannot migrate portable audit seals."))?;
+        }
+        if version < 23 {
+            transaction
+                .execute_batch(crate::conversations::opening::SCHEMA)
+                .map_err(|_| error("Cannot migrate non-generated message metadata."))?;
         }
         if crypto.persistent() {
             let proof = crypto.sign(b"kiyori-audit-key-check-v1")?;

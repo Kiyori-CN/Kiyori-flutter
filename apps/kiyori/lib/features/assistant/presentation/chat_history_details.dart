@@ -380,6 +380,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
             m.model,
             m.content,
             m.sentAt?.toString() ?? '',
+            m.createdAt?.toString() ?? '',
           ].any((field) => historySearchFold(field).contains(query)),
         )
         .toList();
@@ -960,7 +961,7 @@ class _MessageCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '消息 timestamp=${message.sentAt ?? '未知'}',
+                    '消息 timestamp=${message.createdAt ?? message.sentAt ?? '未知'}',
                     style: TextStyle(
                       fontSize: 11,
                       height: 16 / 11,
@@ -1014,7 +1015,7 @@ class _MessageCard extends StatelessWidget {
           const Divider(height: 1),
           const SizedBox(height: 7),
           Text(
-            'timestamp=${message.sentAt ?? '未知'} · 历史实际 Token in=${message.inputTokens ?? '未知'}, out=${message.outputTokens ?? '未知'}',
+            'timestamp=${message.createdAt ?? message.sentAt ?? '未知'} · 历史实际 Token in=${message.inputTokens ?? '未知'}, out=${message.outputTokens ?? '未知'}',
             style: TextStyle(
               fontSize: 11,
               height: 16 / 11,

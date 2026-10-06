@@ -47,6 +47,8 @@ fn native_keys_reopen_encrypt_authenticate_and_sign_real_store() {
     }
     r.append_conversation_note(id.clone(), "migration-synthetic-secret😀".into())
         .unwrap();
+    // 这是旧归档消息而非当前角色开场白，读取时不触发空会话的角色同步。
+    r.create_conversation().unwrap();
     let revision = r.conversation(id.clone()).unwrap().conversation.revision;
     r.change_message(
         id.clone(),
@@ -61,7 +63,7 @@ fn native_keys_reopen_encrypt_authenticate_and_sign_real_store() {
     r.close();
     {
         let c = rusqlite::Connection::open(directory.join("kiyori.sqlite3")).unwrap();
-        c.execute_batch("DROP TABLE conversation_audit_portable_seals; DROP TABLE conversation_audit_seals; DROP TABLE conversation_audit_security; ALTER TABLE conversation_audit_events DROP COLUMN payload_characters; ALTER TABLE conversation_audit_events DROP COLUMN payload_bytes; ALTER TABLE conversation_audit_events DROP COLUMN run_id; ALTER TABLE conversation_audit_events DROP COLUMN terminal_state; PRAGMA user_version=20;").unwrap();
+        c.execute_batch("DROP TABLE conversation_message_metadata; DROP TABLE conversation_audit_portable_seals; DROP TABLE conversation_audit_seals; DROP TABLE conversation_audit_security; ALTER TABLE conversation_audit_events DROP COLUMN payload_characters; ALTER TABLE conversation_audit_events DROP COLUMN payload_bytes; ALTER TABLE conversation_audit_events DROP COLUMN run_id; ALTER TABLE conversation_audit_events DROP COLUMN terminal_state; PRAGMA user_version=20;").unwrap();
     }
     struct FailingCrypto(Arc<dyn AuditCrypto>);
     impl AuditCrypto for FailingCrypto {

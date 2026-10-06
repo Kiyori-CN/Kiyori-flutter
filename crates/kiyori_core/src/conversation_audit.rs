@@ -39,6 +39,8 @@ PRAGMA user_version=21;";
 const MAX_EXPORT: usize = 64 * 1024 * 1024;
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(c: &Connection) {
+    c.execute_batch("DROP TABLE IF EXISTS conversation_message_metadata;")
+        .unwrap();
     c.execute_batch("DROP TABLE IF EXISTS conversation_audit_portable_seals; DROP TABLE IF EXISTS conversation_audit_security; DROP TABLE IF EXISTS conversation_audit_seals; DROP TABLE IF EXISTS conversation_audit_events; DROP TABLE IF EXISTS conversation_audit_key;").unwrap();
     let has_parent = c
         .prepare("PRAGMA table_info(conversations)")
@@ -139,7 +141,7 @@ pub(crate) fn append(
     Ok(())
 }
 pub(crate) fn messages(tx: &Connection, id: &str, run: Option<&str>) -> Result<Value, CoreError> {
-    let values=tx.prepare("SELECT id,role,content,state,variant,run_id,position FROM conversation_messages WHERE conversation_id=?1 AND (?2 IS NULL OR run_id=?2) ORDER BY position").map_err(db)?.query_map(params![id,run],|r|Ok(json!({"id":r.get::<_,String>(0)?,"role":r.get::<_,String>(1)?,"content":r.get::<_,String>(2)?,"state":r.get::<_,String>(3)?,"variant":r.get::<_,i64>(4)?,"runId":r.get::<_,Option<String>>(5)?,"position":r.get::<_,i64>(6)?}))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
+    let values=tx.prepare("SELECT m.id,m.role,m.content,m.state,m.variant,m.run_id,m.position,d.role_id,d.role_name,d.created_at FROM conversation_messages m LEFT JOIN conversation_message_metadata d ON d.message_id=m.id WHERE m.conversation_id=?1 AND (?2 IS NULL OR m.run_id=?2) ORDER BY m.position").map_err(db)?.query_map(params![id,run],|r|Ok(json!({"id":r.get::<_,String>(0)?,"role":r.get::<_,String>(1)?,"content":r.get::<_,String>(2)?,"state":r.get::<_,String>(3)?,"variant":r.get::<_,i64>(4)?,"runId":r.get::<_,Option<String>>(5)?,"position":r.get::<_,i64>(6)?,"roleId":r.get::<_,Option<String>>(7)?,"roleName":r.get::<_,Option<String>>(8)?,"createdAt":r.get::<_,Option<i64>>(9)?}))).map_err(db)?.collect::<Result<Vec<_>,_>>().map_err(db)?;
     Ok(json!(values))
 }
 pub(crate) fn changed_messages(

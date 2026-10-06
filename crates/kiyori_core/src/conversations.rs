@@ -43,6 +43,9 @@ pub use manual_summary::PreparedSummary;
 #[path = "conversations_history.rs"]
 pub(crate) mod history;
 
+#[path = "conversations_opening.rs"]
+pub(crate) mod opening;
+
 #[cfg(test)]
 pub(crate) fn remove_schema_for_fixture(connection: &Connection) {
     crate::downloads::remove_schema_for_fixture(connection);
@@ -77,6 +80,8 @@ pub struct Message {
     pub model: String,
     pub role_name: Option<String>,
     pub sent_at: Option<i64>,
+    /// 非生成消息的真实创建时间；不冒充模型请求的sent_at。
+    pub created_at: Option<i64>,
     pub first_output_ms: Option<i64>,
     pub duration_ms: Option<i64>,
     pub input_tokens: Option<i64>,
@@ -399,6 +404,18 @@ impl AppStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         self.recover(&tx)?;
+        let active: Option<String> = tx
+            .query_row(
+                "SELECT active_id FROM conversation_state WHERE id=1",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(storage)?;
+        if let Some(id) = active
+            && opening::sync(&tx, &id)?
+        {
+            touch(&tx, &id)?;
+        }
         let conversations = tx
             .prepare(&format!(
                 "{SELECT_CONVERSATIONS} ORDER BY c.pinned DESC,c.sort_order DESC,c.updated_at DESC,c.id"
@@ -448,6 +465,9 @@ impl AppStore {
             .map_err(storage)?;
         self.recover(&tx)?;
         exists(&tx, id)?;
+        if opening::sync(&tx, id)? {
+            touch(&tx, id)?;
+        }
         let conversation = tx
             .query_row(
                 &format!("{SELECT_CONVERSATIONS} WHERE c.id=?1"),
@@ -455,8 +475,8 @@ impl AppStore {
                 record,
             )
             .map_err(storage)?;
-        let messages = tx.prepare("SELECT m.id,coalesce(m.run_id,''),m.role,m.content,m.state,coalesce(r.error,''),coalesce(r.model,''),r.role_name,r.created_at,r.first_output_at-r.created_at,r.finished_at-r.first_output_at,CASE WHEN r.usage_reported=1 THEN r.input_tokens END,CASE WHEN r.usage_reported=1 THEN r.output_tokens END,m.variant,max(m.variant,coalesce((SELECT max(v.variant) FROM conversation_variants v WHERE v.message_id=m.id),0))+1,r.cache_read_tokens FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id WHERE m.conversation_id=?1 ORDER BY m.position").map_err(storage)?
-            .query_map([id],|r|Ok(Message {id:r.get(0)?,run_id:r.get(1)?,role:r.get(2)?,content:r.get(3)?,state:r.get(4)?,error:r.get(5)?,model:r.get(6)?,role_name:r.get(7)?,sent_at:r.get(8)?,first_output_ms:r.get(9)?,duration_ms:r.get(10)?,input_tokens:r.get(11)?,output_tokens:r.get(12)?,variant:r.get(13)?,variant_count:r.get(14)?,cache_read_tokens:r.get(15)?})).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+        let messages = tx.prepare("SELECT m.id,coalesce(m.run_id,''),m.role,m.content,m.state,coalesce(r.error,''),coalesce(r.model,''),coalesce(r.role_name,d.role_name),r.created_at,r.first_output_at-r.created_at,r.finished_at-r.first_output_at,CASE WHEN r.usage_reported=1 THEN r.input_tokens END,CASE WHEN r.usage_reported=1 THEN r.output_tokens END,m.variant,max(m.variant,coalesce((SELECT max(v.variant) FROM conversation_variants v WHERE v.message_id=m.id),0))+1,r.cache_read_tokens,d.created_at FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id LEFT JOIN conversation_message_metadata d ON d.message_id=m.id WHERE m.conversation_id=?1 ORDER BY m.position").map_err(storage)?
+            .query_map([id],|r|Ok(Message {id:r.get(0)?,run_id:r.get(1)?,role:r.get(2)?,content:r.get(3)?,state:r.get(4)?,error:r.get(5)?,model:r.get(6)?,role_name:r.get(7)?,sent_at:r.get(8)?,created_at:r.get(16)?,first_output_ms:r.get(9)?,duration_ms:r.get(10)?,input_tokens:r.get(11)?,output_tokens:r.get(12)?,variant:r.get(13)?,variant_count:r.get(14)?,cache_read_tokens:r.get(15)?})).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
         let summary =
             summary::cached(&tx, id)?.map(|(through_position, content)| ConversationSummary {
                 through_position,
@@ -514,6 +534,9 @@ impl AppStore {
             [id],
         )
         .map_err(storage)?;
+        if opening::sync(&tx, id)? {
+            touch(&tx, id)?;
+        }
         tx.commit().map_err(storage)
     }
     fn select_chat_character(&self, id: &str) -> Result<(), CoreError> {
@@ -853,6 +876,7 @@ impl AppStore {
                 // 分支复制独立运行快照与完整消息；源对话删除/编辑不会级联影响分支。
                 tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,error,created_at,finished_at,input_tokens,output_tokens,usage_reported,first_output_at,role_name,role_id,cache_read_tokens,cache_write_tokens,reasoning_tokens,kind) SELECT ?3||'/'||r.id,?3,r.state,r.config_id,r.config_revision,r.model,r.error,r.created_at,r.finished_at,r.input_tokens,r.output_tokens,r.usage_reported,r.first_output_at,r.role_name,r.role_id,r.cache_read_tokens,r.cache_write_tokens,r.reasoning_tokens,r.kind FROM conversation_runs r WHERE r.conversation_id=?1 AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.position<=?2 AND (m.run_id=r.id OR EXISTS(SELECT 1 FROM conversation_variants v WHERE v.message_id=m.id AND v.run_id=r.id)))",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state,variant) SELECT ?3||'/'||id,?3,CASE WHEN run_id IS NULL THEN NULL ELSE ?3||'/'||run_id END,position,role,content,state,variant FROM conversation_messages WHERE conversation_id=?1 AND position<=?2",params![id,position,branch]).map_err(storage)?;
+                tx.execute("INSERT INTO conversation_message_metadata SELECT ?3||'/'||d.message_id,d.role_id,d.role_name,d.created_at FROM conversation_message_metadata d JOIN conversation_messages m ON m.id=d.message_id WHERE m.conversation_id=?1 AND m.position<=?2", params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_variants SELECT ?3||'/'||v.message_id,v.variant,CASE WHEN v.run_id IS NULL THEN NULL ELSE ?3||'/'||v.run_id END,v.content,v.state FROM conversation_variants v JOIN conversation_messages m ON m.id=v.message_id WHERE m.conversation_id=?1 AND m.position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_summaries SELECT ?3,through_position,content FROM conversation_summaries WHERE conversation_id=?1 AND through_position<=?2",params![id,position,branch]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_summary_usage SELECT ?2||'/'||s.run_id,s.model,s.input_tokens,s.output_tokens,s.usage_reported,s.cache_read_tokens,s.cache_write_tokens,s.reasoning_tokens FROM conversation_summary_usage s WHERE EXISTS(SELECT 1 FROM conversation_runs r WHERE r.id=?2||'/'||s.run_id)",params![id,branch]).map_err(storage)?;
@@ -1069,8 +1093,10 @@ impl Runtime {
             let selected=selection(&tx,&prepared.conversation,prepared.target.as_deref())?;
             if selected!=prepared.selection {return Err(invalid("配置、角色或模型已变化，请重新发送"));}
             if !matches!(selected.config.draft.protocol.as_str(),"chat"|"responses"|"messages"|"native") {return Err(invalid("该模型协议的请求执行尚未接入"));}
+            // 标题只取用户输入；引用标签属于最终上下文，不能泄漏进历史标题。
+            let fallback_title = text.trim().chars().take(30).collect::<String>();
             let text = if let Some(reply) = &reply_to {
-                let (content,name,created): (String,String,i64) = tx.query_row("SELECT m.content,coalesce(r.role_name,''),coalesce(r.created_at,0) FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id WHERE m.id=?1 AND m.conversation_id=?2 AND m.role='assistant'",params![reply,prepared.conversation],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(|_| invalid("回复目标已不存在，请重新选择"))?;
+                let (content,name,created): (String,String,i64) = tx.query_row("SELECT m.content,coalesce(r.role_name,d.role_name,''),coalesce(r.created_at,d.created_at,0) FROM conversation_messages m LEFT JOIN conversation_runs r ON r.id=m.run_id LEFT JOIN conversation_message_metadata d ON d.message_id=m.id WHERE m.id=?1 AND m.conversation_id=?2 AND m.role='assistant'",params![reply,prepared.conversation],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(|_| invalid("回复目标已不存在，请重新选择"))?;
                 fn escape(value: &str) -> String { value.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;") }
                 // 保留完整引用正文，不用旧预览长度截断正式上下文；源消息不变。
                 format!("{text}\n\n<reply_to sender=\"{}\" timestamp=\"{created}\">用户正在回复你之前的这条消息：\"{}\"</reply_to>",escape(&name),escape(&content))
@@ -1138,6 +1164,7 @@ impl Runtime {
                 })?));
             }
             let position:i64=tx.query_row("SELECT coalesce(max(position)+1,0) FROM conversation_messages WHERE conversation_id=?1",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
+            let first_user:bool=tx.query_row("SELECT NOT EXISTS(SELECT 1 FROM conversation_messages WHERE conversation_id=?1 AND role='user')",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
             tx.execute("INSERT INTO conversation_runs(id,conversation_id,state,config_id,config_revision,model,created_at,role_name,role_id) VALUES(?1,?2,'running',?3,?4,?5,?6,?7,?8)",params![run_id,prepared.conversation,selected.config.id,selected.config.revision,selected.model,now(),selected.role_name,selected.character]).map_err(storage)?;
             if should_summarize && !conditional {
                 tx.execute("INSERT INTO conversation_summary_usage(run_id,model) VALUES(?1,?2)",params![run_id,selected.summary.as_ref().ok_or_else(||invalid("总结模型绑定不可用"))?.name]).map_err(storage)?;
@@ -1152,8 +1179,8 @@ impl Runtime {
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state) VALUES(?1,?2,?3,?4,'user',?5,'completed')",params![user_id,prepared.conversation,run_id,position,text]).map_err(storage)?;
                 tx.execute("INSERT INTO conversation_messages(id,conversation_id,run_id,position,role,content,state) VALUES(?1,?2,?3,?4,'assistant','','running')",params![assistant_id,prepared.conversation,run_id,position+1]).map_err(storage)?;
             }
-            if position==0 {
-                let title=text.trim().chars().take(30).collect::<String>();
+            if first_user && !regenerating {
+                let title=fallback_title;
                 let created_at:i64=tx.query_row("SELECT created_at FROM conversations WHERE id=?1",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
                 let empty_title=history::default_title(&tx,created_at)?;
                 tx.execute("UPDATE conversations SET title=?2 WHERE id=?1 AND (title='新对话' OR title=?3)",params![prepared.conversation,title,empty_title]).map_err(storage)?;

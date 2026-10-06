@@ -434,7 +434,7 @@ fn schema18_migration_preserves_resources_and_rolls_back_conflicting_structure()
             connection
                 .pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            22
+            23
         );
         // 非法旧库保留19版同名表时必须失败，不静默采纳不兼容结构。
         connection

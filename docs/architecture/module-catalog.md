@@ -48,6 +48,9 @@ core/conversations_summary管理总结功能绑定与请求投影缓存，原始
 使用同HTTP client、限流和Run取消，summary_usage计入同库累计，不替换聊天最近样本。
 core/conversations_manual_summary冻结手动边界、复用摘要请求编译，完整终态原子插入
 可见检查点；同会话OS锁/ChatRun/SQLite，不建立第二历史或执行器。
+core/conversations_opening投影单角色无user时的开场白，同事务同步当前消息与审计。
+schema23非生成消息元数据与Run事实分别保存；FFI可空created_at不代表请求发送时间。
+创建/选择/当前加载共用同函数，分支复制独立快照，迁移和回滚见ADR0017。
 
 详情路由由 app 的 `SettingsNavigation` 装配，feature只提供页面/快照/类型化回调。
 目录按现有领域继续迭代，不按单页拆package；`video`与`music`保留UI语义，共享播放事实
