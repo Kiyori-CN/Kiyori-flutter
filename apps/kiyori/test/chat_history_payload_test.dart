@@ -81,6 +81,109 @@ void main() {
 
   for (final dark in [false, true]) {
     testWidgets(
+      'message and raw text preserve tap and copy selection dark=$dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        if (output.isNotEmpty) await loadCaptureFonts(tester);
+        final boundary = GlobalKey();
+        final name = dark ? 'phone-dark' : 'phone-light';
+        final f = ChatFixture();
+        await tester.runAsync(() async {
+          await f.open();
+          await f.chat.send('可复制消息正文');
+          await f.runtime.appendConversationNote(
+            f.chat.snapshot!.conversation.id,
+            '可复制原始事件',
+          );
+        });
+        void expectCopy(Finder text) {
+          final selected = tester.state<SelectionAreaState>(
+            find.ancestor(of: text, matching: find.byType(SelectionArea)),
+          );
+          expect(
+            selected.selectableRegion.contextMenuButtonItems.any(
+              (item) => item.type == ContextMenuButtonType.copy,
+            ),
+            isTrue,
+          );
+        }
+
+        try {
+          await showDetails(
+            tester,
+            f.chat,
+            f.chat.snapshot!.conversation.id,
+            boundary: boundary,
+            dark: dark,
+          );
+          await tester.tap(find.text('对话'));
+          await tester.pumpAndSettle();
+          final message = find.text('可复制消息正文');
+          await tester.longPress(message);
+          await tester.pumpAndSettle();
+          expectCopy(message);
+          expect(find.byTooltip('编辑消息'), findsNothing);
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-message-selection',
+            );
+          }
+          // 选择工具条会覆盖左侧标题；使用未被遮挡的行尾展开图标。
+          await tester.tap(
+            find.descendant(
+              of: find
+                  .ancestor(of: find.text('用户'), matching: find.byType(Row))
+                  .first,
+              matching: find.byIcon(Icons.expand_more),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byTooltip('编辑消息'), findsOneWidget);
+          await tester.tap(message);
+          await tester.pumpAndSettle();
+          expect(find.byTooltip('编辑消息'), findsNothing);
+          await tester.tap(message);
+          await tester.pumpAndSettle();
+          expect(find.byTooltip('编辑消息'), findsOneWidget);
+          if (output.isNotEmpty) {
+            await captureUi(tester, boundary, output, '$name-message-expanded');
+          }
+          await tester.tap(find.text('原始事件'));
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byType(TextField), '已添加审计注释');
+          await tester.pumpAndSettle();
+          final raw = find.byWidgetPredicate(
+            (widget) =>
+                widget is Text && (widget.data?.contains('已添加审计注释') ?? false),
+          );
+          expect(raw, findsOneWidget);
+          await tester.tap(raw);
+          await tester.pumpAndSettle();
+          expect(tester.widget<Text>(raw).maxLines, isNull);
+          await tester.tap(raw);
+          await tester.pumpAndSettle();
+          expect(tester.widget<Text>(raw).maxLines, 3);
+          await tester.longPress(raw);
+          await tester.pumpAndSettle();
+          expectCopy(raw);
+          expect(tester.widget<Text>(raw).maxLines, 3);
+          if (output.isNotEmpty) {
+            await captureUi(tester, boundary, output, '$name-raw-selection');
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox());
+          await tester.runAsync(f.close);
+        }
+      },
+    );
+
+    testWidgets(
       'payload failure retains the row and has a separate legacy retry dark=$dark',
       (tester) async {
         tester.view.physicalSize = const Size(390, 844);

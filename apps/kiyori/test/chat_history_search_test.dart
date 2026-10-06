@@ -18,10 +18,20 @@ class _SearchClient extends FakeClient {
   final RuntimeClient inner;
   final calls = <(int, String)>[];
   bool failSecond = false;
+  bool failSnapshotOnce = false;
   Completer<void>? gate;
+  Completer<void>? snapshotGate;
   @override
-  Future<ConversationSnapshot> conversation(String id) =>
-      inner.conversation(id);
+  Future<ConversationSnapshot> conversation(String id) async {
+    if (failSnapshotOnce) {
+      failSnapshotOnce = false;
+      throw StateError('synthetic snapshot failure');
+    }
+    final value = await inner.conversation(id);
+    if (snapshotGate != null) await snapshotGate!.future;
+    return value;
+  }
+
   @override
   Future<String> conversationAuditPayload(String id, int sequence, int page) =>
       inner.conversationAuditPayload(id, sequence, page);
@@ -98,7 +108,7 @@ void main() {
   }
 
   testWidgets(
-    'dense search stops at the legacy batch threshold and tab return does not continue',
+    'dense search pauses for explicit continue and reenters a tab from a fresh search',
     (tester) async {
       final f = ChatFixture();
       await tester.runAsync(() => seed(f, dense: true));
@@ -134,8 +144,22 @@ void main() {
         await tester.tap(find.text('对话'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('时间线'));
+        await until(
+          tester,
+          () =>
+              client.calls.where((call) => call.$2 == 'needle').length == 2 &&
+              find.text('匹配 100 / 100').evaluate().isNotEmpty,
+        );
         await tester.pumpAndSettle();
-        expect(client.calls.where((call) => call.$2 == 'needle').length, 1);
+        expect(client.calls.where((call) => call.$2 == 'needle').length, 2);
+        if (output.isNotEmpty) {
+          await captureUi(
+            tester,
+            boundary,
+            output,
+            'phone-light-search-tab-reentry',
+          );
+        }
         await tester.tap(find.text('继续搜索'));
         await until(
           tester,
@@ -153,7 +177,7 @@ void main() {
           client.calls
               .where((call) => call.$2 == 'needle')
               .map((call) => call.$1),
-          [0, 106, 6],
+          [0, 0, 106, 6],
         );
         expect(tester.takeException(), isNull);
       } finally {
@@ -197,14 +221,6 @@ void main() {
                 .map((call) => call.$1),
             [0, 106],
           );
-          await tester.tap(find.text('原始事件'));
-          await tester.pumpAndSettle();
-          expect(find.text('重新加载详情'), findsNothing);
-          expect(find.textContaining('搜索未完成'), findsNothing);
-          await tester.tap(find.text('时间线'));
-          await tester.pumpAndSettle();
-          expect(find.text('匹配 1 / 100'), findsOneWidget);
-          expect(find.text('重新加载详情'), findsOneWidget);
           if (output.isNotEmpty) {
             await captureUi(tester, boundary, output, '$name-search-failure');
           }
@@ -294,6 +310,12 @@ void main() {
         );
         expect(find.textContaining('Café'), findsNothing);
         await tester.tap(find.text('时间线'));
+        await until(
+          tester,
+          () =>
+              find.text('匹配 1 / 205').evaluate().isNotEmpty &&
+              find.byType(CircularProgressIndicator).evaluate().isEmpty,
+        );
         await tester.pumpAndSettle();
         expect(find.text('匹配 1 / 205'), findsOneWidget);
         expect(find.textContaining('Café'), findsOneWidget);
@@ -306,4 +328,318 @@ void main() {
       }
     },
   );
+
+  for (final dark in [false, true]) {
+    final name = dark ? 'phone-dark' : 'phone-light';
+    testWidgets(
+      'snapshot failure stays visible through independent search dark=$dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        if (output.isNotEmpty) await loadCaptureFonts(tester);
+        final f = ChatFixture();
+        await tester.runAsync(() => seed(f));
+        final client = _SearchClient(f.runtime)..failSnapshotOnce = true;
+        final owner = ChatController(() async => client, () async => f.secrets)
+          ..catalog = f.chat.catalog;
+        final boundary = GlobalKey();
+        try {
+          await tester.pumpWidget(
+            RepaintBoundary(
+              key: boundary,
+              child: MaterialApp(
+                debugShowCheckedModeBanner: false,
+                theme: dark ? KiyoriTheme.dark() : KiyoriTheme.light(),
+                home: Scaffold(
+                  body: HistoryDetails(
+                    owner: owner,
+                    id: f.chat.snapshot!.conversation.id,
+                    exchange: MemoryAuditExchange(),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await until(
+            tester,
+            () => find.text('对话详情加载失败，可重新加载。').evaluate().isNotEmpty,
+          );
+          await tester.enterText(find.byType(TextField), 'needle');
+          await until(
+            tester,
+            () => find.text('匹配 2 / 205').evaluate().isNotEmpty,
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('对话详情加载失败，可重新加载。'), findsOneWidget);
+          expect(find.text('重新加载详情'), findsOneWidget);
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-search-base-failure',
+            );
+          }
+          final searchCalls = client.calls
+              .where((call) => call.$2 == 'needle')
+              .length;
+          await tester.tap(find.text('重新加载详情'));
+          await until(
+            tester,
+            () =>
+                find.text('对话详情加载失败，可重新加载。').evaluate().isEmpty &&
+                find.byType(LinearProgressIndicator).evaluate().isEmpty,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            client.calls.where((call) => call.$2 == 'needle').length,
+            searchCalls,
+          );
+          expect(find.text('匹配 2 / 205'), findsOneWidget);
+          expect(
+            tester
+                .widget<TextButton>(
+                  find.ancestor(
+                    of: find.text('导出'),
+                    matching: find.byType(TextButton),
+                  ),
+                )
+                .onPressed,
+            isNotNull,
+          );
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-search-base-recovered',
+            );
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox());
+          owner.dispose();
+          await tester.runAsync(f.close);
+        }
+      },
+    );
+    testWidgets(
+      'trim-equivalent query and modal close retain the current search batch and annotation draft dark=$dark',
+      (tester) async {
+        final f = ChatFixture();
+        await tester.runAsync(() => seed(f, dense: true));
+        final client = _SearchClient(f.runtime);
+        final owner = ChatController(() async => client, () async => f.secrets)
+          ..catalog = f.chat.catalog;
+        final boundary = GlobalKey();
+        try {
+          await show(
+            tester,
+            owner,
+            f.chat.snapshot!.conversation.id,
+            boundary,
+            dark,
+          );
+          await tester.enterText(find.byType(TextField), 'needle');
+          await until(
+            tester,
+            () =>
+                find.text('匹配 100 / 100').evaluate().isNotEmpty &&
+                find.text('继续搜索').evaluate().isNotEmpty,
+          );
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byType(TextField), ' needle ');
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(find.text('匹配 100 / 100'), findsOneWidget);
+          expect(client.calls.where((call) => call.$2 == 'needle').length, 1);
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-search-trim-equivalent',
+            );
+          }
+          await tester.tap(find.text('备注'));
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byType(TextField).last, '保留取消草稿');
+          await tester.tap(find.text('取消'));
+          await tester.pump(const Duration(milliseconds: 400));
+          await until(
+            tester,
+            () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('匹配 100 / 100'), findsOneWidget);
+          expect(client.calls.where((call) => call.$2 == 'needle').length, 1);
+          await tester.tap(find.text('备注'));
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<TextField>(find.byType(TextField).last)
+                .controller!
+                .text,
+            '保留取消草稿',
+          );
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-note-cancel-draft',
+            );
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox());
+          owner.dispose();
+          await tester.runAsync(f.close);
+        }
+      },
+    );
+
+    testWidgets(
+      'header actions remain available while independent timeline search is loading dark=$dark',
+      (tester) async {
+        final f = ChatFixture();
+        await tester.runAsync(() => seed(f));
+        final gate = Completer<void>();
+        final client = _SearchClient(f.runtime)..gate = gate;
+        final owner = ChatController(() async => client, () async => f.secrets)
+          ..catalog = f.chat.catalog;
+        final boundary = GlobalKey();
+        try {
+          await show(
+            tester,
+            owner,
+            f.chat.snapshot!.conversation.id,
+            boundary,
+            dark,
+          );
+          await tester.enterText(find.byType(TextField), 'needle');
+          await until(
+            tester,
+            () => client.calls.any((call) => call.$2 == 'needle'),
+          );
+          final action = find.ancestor(
+            of: find.text('备注'),
+            matching: find.byType(TextButton),
+          );
+          expect(tester.widget<TextButton>(action).onPressed, isNotNull);
+          expect(
+            tester
+                .widget<TextButton>(
+                  find.ancestor(
+                    of: find.text('导出'),
+                    matching: find.byType(TextButton),
+                  ),
+                )
+                .onPressed,
+            isNotNull,
+          );
+          if (output.isNotEmpty) {
+            await captureUi(
+              tester,
+              boundary,
+              output,
+              '$name-search-header-loading',
+              animated: true,
+            );
+          }
+          await tester.tap(find.text('备注'));
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(find.text('添加诊断备注'), findsOneWidget);
+          await tester.tap(find.text('取消'));
+          await tester.pump(const Duration(milliseconds: 400));
+          gate.complete();
+          await until(
+            tester,
+            () => find.text('匹配 2 / 205').evaluate().isNotEmpty,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            client.calls
+                .where((call) => call.$2 == 'needle')
+                .map((call) => call.$1),
+            [0, 106, 6],
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          if (!gate.isCompleted) gate.complete();
+          await tester.pumpWidget(const SizedBox());
+          owner.dispose();
+          await tester.runAsync(f.close);
+        }
+      },
+    );
+  }
+
+  testWidgets('tab changes leave the independent initial snapshot loading', (
+    tester,
+  ) async {
+    final f = ChatFixture();
+    await tester.runAsync(() => seed(f));
+    final gate = Completer<void>();
+    final client = _SearchClient(f.runtime)..snapshotGate = gate;
+    final owner = ChatController(() async => client, () async => f.secrets)
+      ..catalog = f.chat.catalog;
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HistoryDetails(
+              owner: owner,
+              id: f.chat.snapshot!.conversation.id,
+              exchange: MemoryAuditExchange(),
+            ),
+          ),
+        ),
+      );
+      await until(tester, () => client.calls.isNotEmpty);
+      await tester.tap(find.text('对话'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('时间线'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.enterText(find.byType(TextField), 'needle');
+      await until(tester, () => find.text('匹配 2 / 205').evaluate().isNotEmpty);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(
+        tester
+            .widget<TextButton>(
+              find.ancestor(
+                of: find.text('备注'),
+                matching: find.byType(TextButton),
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(client.calls.where((call) => call.$2.isEmpty).length, 1);
+      gate.complete();
+      await until(
+        tester,
+        () => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextButton>(
+              find.ancestor(
+                of: find.text('备注'),
+                matching: find.byType(TextButton),
+              ),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      expect(find.text('匹配 2 / 205'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      await tester.pumpWidget(const SizedBox());
+      owner.dispose();
+      await tester.runAsync(f.close);
+    }
+  });
 }

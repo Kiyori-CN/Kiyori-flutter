@@ -57,6 +57,7 @@ class HistoryDetails extends StatefulWidget {
 class _HistoryDetailsState extends State<HistoryDetails> {
   final children = ChatModalSession();
   final search = TextEditingController();
+  final annotation = TextEditingController();
   final expanded = <String>{};
   final tabQueries = List.filled(3, '');
   final tabOffsets = List.filled(3, 0.0);
@@ -83,9 +84,9 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   List<Map<String, dynamic>> get events => page.events;
   Map<String, dynamic>? audit;
   ConversationSnapshot? snapshot;
-  int tab = 0, epoch = 0;
+  int tab = 0, epoch = 0, searchEpoch = 0;
   int? revision;
-  bool loading = false;
+  bool loading = false, searchLoading = false;
   int lastSequence = 0, unread = 0;
   String? error;
   Timer? debounce;
@@ -116,9 +117,11 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   @override
   void dispose() {
     epoch++;
+    searchEpoch++;
     children.dispose();
     debounce?.cancel();
     search.dispose();
+    annotation.dispose();
     for (final controller in scrolls) {
       controller.dispose();
     }
@@ -127,13 +130,9 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   Future<void> load({bool older = false}) async {
-    if (identical(page, timelineSearch)) {
-      await loadSearch();
-      return;
-    }
     final generation = ++epoch;
-    final target = page;
-    final query = identical(target, timelineSearch) ? search.text.trim() : '';
+    final target = loaded;
+    const query = '';
     // 搜索页与已加载目录使用独立游标；刷新保留用户已加载的更早页。
     final first = !older && target.query == query && target.events.isNotEmpty
         ? target.events.first['sequence'] as int
@@ -212,33 +211,26 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   Future<void> loadSearch({bool delayed = true}) async {
-    final generation = ++epoch;
+    final generation = ++searchEpoch;
     final query = search.text.trim();
     final target = timelineSearch;
     final initialCount = target.events.length;
-    target.needsResume = false;
     setState(() {
-      loading = true;
+      searchLoading = true;
       target.searchError = false;
     });
     try {
       if (delayed) {
         await Future<void>.delayed(const Duration(milliseconds: 350));
       }
-      if (!mounted || generation != epoch) return;
+      if (!mounted || generation != searchEpoch) return;
       final client = await widget.owner.connect();
-      if (!mounted || generation != epoch) return;
-      final conversation = await client.conversation(widget.id);
-      if (!mounted || generation != epoch) return;
-      setState(() {
-        snapshot = conversation;
-        revision = conversation.conversation.revision;
-      });
+      if (!mounted || generation != searchEpoch) return;
       while (!target.initialized || target.hasOlder) {
         final next = jsonDecode(
           await client.conversationAudit(widget.id, target.cursor ?? 0, query),
         ) as Map<String, dynamic>;
-        if (!mounted || generation != epoch) return;
+        if (!mounted || generation != searchEpoch) return;
         final cursor = next['nextBeforeSequence'] as int?;
         if (cursor != null &&
             target.cursor != null &&
@@ -265,16 +257,17 @@ class _HistoryDetailsState extends State<HistoryDetails> {
           target.initialized = true;
           target.query = query;
           target.revision = revision;
-          audit = next;
         });
         if (target.events.length - initialCount >= 100) break;
       }
     } catch (_) {
-      if (mounted && generation == epoch) {
+      if (mounted && generation == searchEpoch) {
         setState(() => target.searchError = true);
       }
     } finally {
-      if (mounted && generation == epoch) setState(() => loading = false);
+      if (mounted && generation == searchEpoch) {
+        setState(() => searchLoading = false);
+      }
     }
   }
 
@@ -286,27 +279,22 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   void queryChanged(String value) {
+    final previous = tabQueries[tab].trim();
     tabQueries[tab] = value;
     setState(() {});
-    debounce?.cancel();
-    if (tab == 0) {
+    if (tab == 0 && previous != value.trim()) {
+      debounce?.cancel();
       // 立即使旧请求失效，防止防抖等待期间回填上一个查询。
-      epoch++;
-      timelineSearch.events.clear();
-      timelineSearch.hasOlder = false;
-      timelineSearch.cursor = null;
-      timelineSearch.scanned = 0;
-      timelineSearch.initialized = false;
-      timelineSearch.query = '';
-      timelineSearch.searchError = false;
-      loading = value.trim().isNotEmpty;
+      searchEpoch++;
+      timelineSearch.reset();
+      searchLoading = value.trim().isNotEmpty;
       if (value.trim().isNotEmpty) {
         debounce = Timer(
           const Duration(milliseconds: 350),
           () => loadSearch(delayed: false),
         );
       } else {
-        unawaited(load());
+        if (loaded.events.isEmpty) unawaited(load());
       }
     }
   }
@@ -316,7 +304,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
       setState(expanded.clear);
       return;
     }
-    if (search.text.isNotEmpty) {
+    if (search.text.trim().isNotEmpty) {
       search.clear();
       queryChanged('');
       return;
@@ -336,6 +324,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
         return SettingsTheme(child: child);
       },
     );
+    // 宿主加载和搜索各有代次，关闭模态刷新事实不会触发继续搜索。
     if (mounted) await load();
   }
 
@@ -346,27 +335,27 @@ class _HistoryDetailsState extends State<HistoryDetails> {
     if (next == tab) return;
     debounce?.cancel();
     tabQueries[tab] = search.text;
-    if (identical(page, timelineSearch) && loading) {
-      timelineSearch.needsResume = true;
-    }
+    if (tab == 0) timelineSearch.reset();
     if (scroll.hasClients) tabOffsets[tab] = scroll.offset;
     setState(() {
       tab = next;
       // 旧SaveableStateProvider恢复查询和列表；remember展开集随标签离开释放。
       expanded.clear();
       search.text = tabQueries[next];
-      epoch++;
-      loading = false;
+      searchEpoch++;
+      searchLoading = false;
     });
     final item = widget.owner.catalog?.conversations
         .where((c) => c.id == widget.id)
         .firstOrNull;
-    if (audit == null ||
-        item?.revision != page.revision ||
-        identical(page, timelineSearch) &&
-            (!page.initialized ||
-                page.needsResume ||
-                page.query != search.text.trim())) {
+    if (next == 0 && search.text.trim().isNotEmpty) {
+      unawaited(loadSearch());
+    }
+    // 基础详情由宿主持有，切换标签不能取消仍在加载的快照或提前启用操作。
+    if (!loading &&
+        (audit == null ||
+            item?.revision != loaded.revision ||
+            loaded.events.isEmpty)) {
       unawaited(load());
     }
   }
@@ -500,7 +489,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                             Icons.search_outlined,
                             size: 18,
                           ),
-                          suffixIcon: search.text.isEmpty
+                          suffixIcon: search.text.trim().isEmpty
                               ? null
                               : IconButton(
                                   tooltip: '清除',
@@ -560,8 +549,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                   ],
                 ),
               ),
-              if (loading && !searching)
-                const LinearProgressIndicator(minHeight: 2),
+              if (loading) const LinearProgressIndicator(minHeight: 2),
               if (tab == 0 && search.text.trim().isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -579,7 +567,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                           ),
                         ),
                       ),
-                      if (loading)
+                      if (searchLoading)
                         const Padding(
                           padding: EdgeInsets.all(8),
                           child: SizedBox(
@@ -596,7 +584,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                     ],
                   ),
                 ),
-              if (error != null && !searching)
+              if (error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -609,7 +597,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                       ),
                       TextButton(
                         onPressed: () => load(),
-                        child: const Text('重新加载'),
+                        child: const Text('重新加载详情'),
                       ),
                     ],
                   ),
@@ -623,7 +611,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                             child: Padding(
                               padding: const EdgeInsets.all(28),
                               child: Text(
-                                searching && loading
+                                searching && searchLoading
                                     ? '正在搜索历史记录…'
                                     : searchError
                                     ? '搜索未完成，已找到的结果保留；请重试，不能将此状态视为没有匹配。'
@@ -669,6 +657,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                               if (tab == 1) {
                                 final m = filteredMessages[offset];
                                 return _MessageCard(
+                                  key: ValueKey('${m.id}/${m.variant}'),
                                   message: m,
                                   open: expanded.contains(m.id),
                                   onTap: () => toggle(m.id),
@@ -785,7 +774,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
               ),
               const SizedBox(width: 4),
               TextButton(
-                onPressed: loading
+                onPressed: loading || audit == null
                     ? null
                     : () => dialog(
                         _ExportDialog(
@@ -805,10 +794,14 @@ class _HistoryDetailsState extends State<HistoryDetails> {
               ),
               const SizedBox(width: 4),
               TextButton(
-                onPressed: loading
+                onPressed: loading || audit == null
                     ? null
                     : () => dialog(
-                        _NoteDialog(owner: widget.owner, id: widget.id),
+                        _NoteDialog(
+                          owner: widget.owner,
+                          id: widget.id,
+                          input: annotation,
+                        ),
                       ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -896,9 +889,18 @@ class _HistoryAuditPage {
   bool hasOlder = false;
   bool initialized = false;
   bool searchError = false;
-  bool needsResume = false;
   int scanned = 0;
   int? revision, cursor;
+  void reset() {
+    events.clear();
+    query = '';
+    hasOlder = false;
+    initialized = false;
+    searchError = false;
+    scanned = 0;
+    revision = null;
+    cursor = null;
+  }
 }
 
 class _DetailsCard extends StatelessWidget {
@@ -929,6 +931,7 @@ class _MessageCard extends StatelessWidget {
     required this.open,
     required this.onTap,
     required this.onEdit,
+    super.key,
   });
   final ConversationMessage message;
   final bool open;
@@ -986,22 +989,30 @@ class _MessageCard extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         if (open)
-          _PagedText(text: message.content)
+          _PagedText(text: message.content, onTap: onTap)
         else
-          Text(
-            message.content.length > 1200
-                ? message.content.substring(0, 1200)
-                : message.content,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14,
-              height: 20 / 14,
-              fontFamily: 'monospace',
+          SelectionArea(
+            child: GestureDetector(
+              onTap: onTap,
+              excludeFromSemantics: true,
+              child: Text(
+                message.content.length > 1200
+                    ? message.content.substring(0, 1200)
+                    : message.content,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 20 / 14,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
           ),
         if (open) ...[
-          const Divider(),
+          const SizedBox(height: 7),
+          const Divider(height: 1),
+          const SizedBox(height: 7),
           Text(
             'timestamp=${message.sentAt ?? '未知'} · 历史实际 Token in=${message.inputTokens ?? '未知'}, out=${message.outputTokens ?? '未知'}',
             style: TextStyle(
@@ -1010,7 +1021,8 @@ class _MessageCard extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          if (message.model.isNotEmpty)
+          if (message.model.isNotEmpty) ...[
+            const SizedBox(height: 7),
             Text(
               message.model,
               style: TextStyle(
@@ -1019,6 +1031,7 @@ class _MessageCard extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
         ],
       ],
     ),
@@ -1209,20 +1222,24 @@ class _EventCard extends StatelessWidget {
                         ),
                       ),
                       SelectionArea(
-                        child: Text(
-                          open
-                              ? const JsonEncoder.withIndent('  ')
-                                    .convert(event)
-                              : jsonEncode(event),
-                          maxLines: open ? null : 3,
-                          overflow: open
-                              ? TextOverflow.clip
-                              : TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 16 / 12,
-                            fontFamily: 'monospace',
-                            color: colors.onSurface,
+                        child: GestureDetector(
+                          onTap: onTap,
+                          excludeFromSemantics: true,
+                          child: Text(
+                            open
+                                ? const JsonEncoder.withIndent('  ')
+                                      .convert(event)
+                                : jsonEncode(event),
+                            maxLines: open ? null : 3,
+                            overflow: open
+                                ? TextOverflow.clip
+                                : TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 16 / 12,
+                              fontFamily: 'monospace',
+                              color: colors.onSurface,
+                            ),
                           ),
                         ),
                       ),
@@ -1266,9 +1283,10 @@ String _payloadSize(int bytes) {
 }
 
 class _PagedText extends StatefulWidget {
-  const _PagedText({required this.text, this.query = ''});
+  const _PagedText({required this.text, this.query = '', this.onTap});
   final String text;
   final String query;
+  final VoidCallback? onTap;
   @override
   State<_PagedText> createState() => _PagedTextState();
 }
@@ -1324,16 +1342,20 @@ class _PagedTextState extends State<_PagedText> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SelectionArea(
-          child: Text(
-            text.substring(
-              boundary(page * 12000),
-              boundary((page + 1) * 12000),
-            ),
-            style: TextStyle(
-              fontSize: 12,
-              height: 16 / 12,
-              fontFamily: 'monospace',
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            excludeFromSemantics: true,
+            child: Text(
+              text.substring(
+                boundary(page * 12000),
+                boundary((page + 1) * 12000),
+              ),
+              style: TextStyle(
+                fontSize: 12,
+                height: 16 / 12,
+                fontFamily: 'monospace',
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
@@ -1497,23 +1519,22 @@ class _AuditPayloadState extends State<_AuditPayload> {
 
 /// 操作尚未结束时Back、遮罩与按钮不能销毁等待者；错误保留原草稿。
 class _NoteDialog extends StatefulWidget {
-  const _NoteDialog({required this.owner, required this.id});
+  const _NoteDialog({
+    required this.owner,
+    required this.id,
+    required this.input,
+  });
   final ChatController owner;
   final String id;
+  final TextEditingController input;
   @override
   State<_NoteDialog> createState() => _NoteDialogState();
 }
 
 class _NoteDialogState extends State<_NoteDialog> {
-  final input = TextEditingController();
+  TextEditingController get input => widget.input;
   bool busy = false;
   String? error;
-  @override
-  void dispose() {
-    input.dispose();
-    super.dispose();
-  }
-
   Future<void> save() async {
     if (busy || input.text.trim().isEmpty) return;
     setState(() => busy = true);
@@ -1522,7 +1543,10 @@ class _NoteDialogState extends State<_NoteDialog> {
         widget.id,
         input.text.trim(),
       );
-      if (mounted) _remove(context);
+      if (mounted) {
+        input.clear();
+        _remove(context);
+      }
     } catch (_) {
       if (mounted) {
         setState(() {

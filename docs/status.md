@@ -13,7 +13,36 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：详情全文搜索旧合同
+### 最新增量：详情标签与模态生命周期
+
+从main/5471435继续逐项核对旧ConversationDetailsScreen的SaveableStateHolder、
+remember(query)与宿主annotationText。本批纠正前批“搜索结果随标签保留”的判断：
+查询/滚动保留，全文搜索命中/游标及展开集离开标签释放，返回时间线从头搜索；仅改
+查询首尾空白不重搜。基础详情和搜索独立代次，切标签不取消基础快照，搜索加载不禁用
+备注/导出；模态关闭刷新基础事实，不推进搜索。备注取消保留宿主草稿，成功清空。
+消息折叠/展开正文与raw JSON同时支持单击展开收起、长按复制，展开消息分隔线前后7dp。
+反向审查修复搜索期间隐藏基础详情失败/重试栏的问题；旧错误栏属于宿主而非标签，
+恢复基础快照不会推进全文搜索。
+
+定向lifecycle-ui-v2共29项通过；扩展capture-v5共14项通过，states与五窗口捕获在v3
+通过。基础错误续核capture-v6共11项通过。108PNG位于work/history-drawer-capture-v27，
+明暗设置、消息展开、搜索加载操作、基础错误/恢复、
+备注草稿、窄屏双倍字编辑及横屏设置已审阅。capture-v3/v4失败日志保留：新增选择
+工具条遮挡测试点击、raw finder同时匹配查询框、加载截图误用pumpAndSettle，已调整
+正确定位及animated捕获并保持原断言。完整verify-v1通过（app663/platform13/独立FFI22/
+Windows引擎5），基础错误续核后最终tools/verify.ps1 -WindowsIntegration再次通过
+（work/history-detail-lifecycle-verify-v2.log）：foundation69/tooling4、Rust core189/HTTP3/
+provider13/native6/native-audit1、403格式、Clippy/analyze、app665（17条件跳过）/
+platform13/独立FFI22（1条件跳过）/Windows引擎5。Rust三项条件忽略不代表供应商验收。
+普通Android/Windows Debug串行24.5s/17.6s通过（lifecycle双端v1）。最终固定包
+artifacts/ui-preview/20261006-083621：APK137704534字节，SHA256
+27770C4AFDEA7B2B4242262FA0139E0FB316C5836385FEE098466B76D577AF6C；Windows101文件171629219字节。
+102副本hash、APK身份/v2/ZIP16K/ELF、53表情、17两端许可证和Windows x64/DLL pin
+审计通过（work/history-detail-lifecycle-delivery-v1.log）。本批八个源码/测试/文档路径
+精确清单审计通过，按授权提交普通推送main；最终提交与远端一致性以Git和固定manifest为准。
+设备像素/触摸/Profile及完整工具/多附件边界仍保留。
+
+### 前序增量：详情全文搜索旧合同
 
 从main/cd62921干净基线继续。旧searchEventPage每批扫描100条未过滤事件；此前SQL先
 筛选命中再分页，缺少扫描计数/游标/摘录，Unicode与元数据匹配亦有差异。原态before
@@ -21,7 +50,8 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 返回scannedCount/nextBeforeSequence/searchExcerpt，schema、公开FFI与原链不变。
 详情恢复350ms防抖、每次新增至少100命中或到尾的自动续扫、原游标重试、失败保留
 命中、说明右侧20dp/2dp加载与继续/重试、accent四行可选择摘录。切词/标签拒绝迟到，
-完成批次返回不多扫，错误只留搜索页；对话查询逐字段且空时间不作为null文本命中。
+当时实现保留完成批次，现已按上方最新旧源证据纠正；错误只留搜索页，对话查询逐字段
+且空时间不作为null文本命中。
 核心core-v2八项通过；历史联合UI-v5共38项通过。UI-v4两项超时来自既有测试等待已移除
 的线性进度，已按旧圆形加载更新等待且保留正文/分页/标签断言。UI-v1公共SDK版本不符、
 v2局部函数声明顺序编译失败均保留；实际验证固定使用tools/activate.ps1。
