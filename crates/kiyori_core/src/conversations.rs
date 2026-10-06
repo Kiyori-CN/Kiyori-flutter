@@ -486,17 +486,7 @@ impl AppStore {
             .map_err(storage)?;
         let character =
             character.ok_or_else(|| invalid("群组自动对话尚未接入，请先选择单个角色"))?;
-        let id = identity(&tx)?;
-        tx.execute(
-            "INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision) VALUES(?1,'新对话',?2,?3,?3,1)",
-            params![id, character, now()],
-        )
-        .map_err(storage)?;
-        tx.execute(
-            "UPDATE conversation_state SET active_id=?1 WHERE id=1",
-            [&id],
-        )
-        .map_err(storage)?;
+        let id = history::create(&tx, &character, "")?;
         tx.commit().map_err(storage)?;
         Ok(id)
     }
@@ -1164,7 +1154,9 @@ impl Runtime {
             }
             if position==0 {
                 let title=text.trim().chars().take(30).collect::<String>();
-                tx.execute("UPDATE conversations SET title=?2 WHERE id=?1 AND title='新对话'",params![prepared.conversation,title]).map_err(storage)?;
+                let created_at:i64=tx.query_row("SELECT created_at FROM conversations WHERE id=?1",[&prepared.conversation],|r|r.get(0)).map_err(storage)?;
+                let empty_title=history::default_title(&tx,created_at)?;
+                tx.execute("UPDATE conversations SET title=?2 WHERE id=?1 AND (title='新对话' OR title=?3)",params![prepared.conversation,title,empty_title]).map_err(storage)?;
             }
             crate::conversation_audit::initialize(&tx,&prepared.conversation)?;
             crate::conversation_audit::append(&tx,&prepared.conversation,"EXECUTION","RUN_STARTED","开始生成回复",serde_json::json!({"runId":run_id,"model":selected.model,"character":selected.character,"messages":crate::conversation_audit::messages(&tx,&prepared.conversation,Some(&run_id))?}))?;

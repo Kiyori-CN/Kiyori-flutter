@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_controller.dart';
+import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_groups.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
@@ -103,6 +104,137 @@ Future<BuildContext> host(
 
 void main() {
   const output = String.fromEnvironment('KIYORI_CAPTURE');
+  testWidgets(
+    'history new chat inherits folder and active card in folder mode',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+        await f.chat.setPreference('create_folder', '当前分组');
+        await f.chat.change(f.chat.snapshot!.conversation, 'folder', '当前分组');
+      });
+      final origin = f.chat.snapshot!.conversation.id;
+      try {
+        final context = await host(tester, GlobalKey(), false);
+        showChatHistory(context, f.chat);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('新建对话'));
+        await until(
+          tester,
+          () =>
+              !f.chat.savingPreference &&
+              f.chat.snapshot!.conversation.id != origin,
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('chat-history-panel')), findsNothing);
+        expect(f.chat.snapshot!.conversation.folder, '当前分组');
+        expect(f.chat.snapshot!.conversation.characterId, 'default_character');
+        final title = f.chat.snapshot!.conversation.title;
+        expect(
+          title,
+          matches(r'^新对话 (?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'),
+        );
+        await tester.runAsync(f.chat.load);
+        expect(f.chat.snapshot!.conversation.title, title);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'history creation closes its own route after commit read failure without duplicate',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+      });
+      final client = _CreationClient(f.runtime)..failCatalog = true;
+      final chat = _owner(f, client);
+      try {
+        final context = await host(tester, GlobalKey(), false);
+        showChatHistory(context, chat);
+        await tester.pumpAndSettle();
+        final before = f.chat.catalog!.conversations.length;
+        await tester.tap(find.text('新建对话'));
+        await until(
+          tester,
+          () =>
+              !chat.savingPreference &&
+              find.byKey(const Key('chat-history-panel')).evaluate().isEmpty,
+        );
+        expect(chat.error, isNotNull);
+        expect(client.writes, 1);
+        await tester.runAsync(() async {
+          expect(
+            (await f.runtime.conversationCatalog()).conversations.length,
+            before + 1,
+          );
+          client.failCatalog = false;
+          expect(await chat.load(followActive: true), isTrue);
+        });
+        expect(
+          chat.snapshot!.conversation.id,
+          isNot(f.chat.snapshot!.conversation.id),
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        chat.dispose();
+        await tester.runAsync(f.close);
+      }
+    },
+  );
+
+  testWidgets(
+    'late new-chat completion removes history route and preserves later modal',
+    (tester) async {
+      final f = ChatFixture();
+      await tester.runAsync(() async {
+        await f.open();
+        await f.chat.create();
+      });
+      final client = _CreationClient(f.runtime)
+        ..beforeCommit = Completer<void>();
+      final chat = _owner(f, client);
+      try {
+        final context = await host(tester, GlobalKey(), false);
+        showChatHistory(context, chat);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('新建对话'));
+        await tester.pump();
+        expect(chat.savingPreference, isTrue);
+        showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(title: Text('后开的窗口')),
+        );
+        await tester.pumpAndSettle();
+        client.beforeCommit!.complete();
+        await until(
+          tester,
+          () =>
+              !chat.savingPreference &&
+              find
+                  .byKey(const Key('chat-history-panel'), skipOffstage: false)
+                  .evaluate()
+                  .isEmpty,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('后开的窗口'), findsOneWidget);
+        expect(client.writes, 1);
+        expect(tester.takeException(), isNull);
+      } finally {
+        if (!client.beforeCommit!.isCompleted) client.beforeCommit!.complete();
+        await tester.pumpWidget(const SizedBox());
+        chat.dispose();
+        await tester.runAsync(f.close);
+      }
+    },
+  );
   testWidgets(
     'late group creation preserves concurrent selection in SQLite and UI',
     (tester) async {

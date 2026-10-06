@@ -581,7 +581,17 @@ fn last_conversation_delete_atomically_replaces_and_restores_active() {
     assert_eq!(catalog.conversations.len(), 1);
     let replacement = &catalog.conversations[0];
     assert_ne!(replacement.id, original);
-    assert_eq!(replacement.title, "新对话");
+    assert!(replacement.title.starts_with("新对话 "));
+    let clock = replacement
+        .title
+        .strip_prefix("新对话 ")
+        .unwrap()
+        .split(':')
+        .collect::<Vec<_>>();
+    assert_eq!(clock.len(), 3);
+    assert!(clock[0].parse::<u8>().unwrap() < 24);
+    assert_eq!(clock[1].len(), 2);
+    assert_eq!(clock[2].len(), 2);
     assert_eq!(replacement.message_count, 0);
     assert_eq!(catalog.active_id.as_deref(), Some(replacement.id.as_str()));
     assert!(
@@ -1398,6 +1408,99 @@ fn group_creation_null_origin_selects_only_when_no_current_chat() {
         runtime.conversation_catalog().unwrap().active_id,
         Some(origin)
     );
+    runtime.close();
+}
+
+#[test]
+fn history_creation_inherits_folder_and_resolves_card_or_explicit_group() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let source = runtime.create_conversation().unwrap();
+    let p = runtime.chat_preferences().unwrap();
+    let p = runtime
+        .change_chat_preference(p.revision, "create_folder".into(), "学习".into())
+        .unwrap();
+    runtime
+        .change_conversation(source.clone(), 1, "folder".into(), "学习".into())
+        .unwrap();
+    let p = runtime
+        .change_chat_preference(p.revision, "history_create".into(), String::new())
+        .unwrap();
+    let created = runtime.conversation_catalog().unwrap().active_id.unwrap();
+    let new = runtime.conversation(created.clone()).unwrap().conversation;
+    assert_eq!(new.folder, "学习");
+    assert_eq!(new.character_id, "default_character");
+    assert!(new.title.starts_with("新对话 "));
+    assert_eq!(
+        runtime.conversation(source).unwrap().conversation.folder,
+        "学习"
+    );
+    let group = runtime
+        .save_prompt_group(
+            None,
+            None,
+            crate::prompts::GroupDraft {
+                name: "讨论".into(),
+                description: String::new(),
+                members: vec!["default_character".into()],
+            },
+        )
+        .unwrap();
+    runtime
+        .activate_prompt("group".into(), group.clone())
+        .unwrap();
+    let p = runtime
+        .change_chat_preference(p.revision, "history_create".into(), String::new())
+        .unwrap();
+    let unbound = runtime.conversation_catalog().unwrap().active_id.unwrap();
+    assert!(
+        runtime
+            .conversation(unbound)
+            .unwrap()
+            .conversation
+            .character_id
+            .is_empty()
+    );
+    runtime
+        .change_chat_preference(p.revision, "history_create".into(), group.clone())
+        .unwrap();
+    let current = runtime.conversation_catalog().unwrap().active_id.unwrap();
+    let new = runtime.conversation(current.clone()).unwrap().conversation;
+    assert_eq!(new.character_id, group);
+    assert_eq!(new.folder, "学习");
+    runtime.close();
+    let reopened = Runtime::with_data_dir(&dir.0).unwrap();
+    assert_eq!(reopened.conversation(current).unwrap().conversation, new);
+    reopened.close();
+}
+
+#[tokio::test]
+async fn timestamp_title_advances_on_first_send_and_preserves_explicit_rename() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let (endpoint, worker) = fixture(2, response("回复", "stop"));
+    configure(&runtime, endpoint);
+    for title in [None, Some("自定义标题")] {
+        let id = runtime.create_conversation().unwrap();
+        if let Some(title) = title {
+            runtime
+                .change_conversation(id.clone(), 1, "rename".into(), title.into())
+                .unwrap();
+        }
+        let run = runtime
+            .start_conversation(
+                runtime.prepare_conversation(id.clone()).unwrap(),
+                "首轮问题".into(),
+                payload(),
+            )
+            .unwrap();
+        drain(&run).await;
+        assert_eq!(
+            runtime.conversation(id).unwrap().conversation.title,
+            title.unwrap_or("首轮问题")
+        );
+    }
+    assert_eq!(worker.join().unwrap().len(), 2);
     runtime.close();
 }
 

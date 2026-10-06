@@ -127,7 +127,13 @@ void main() {
         await tester.tap(find.byTooltip('清空搜索'));
         await tester.pumpAndSettle();
         if (scenario.$1.startsWith('phone-')) {
-          final handle = find.byTooltip('拖动项目 新对话').first;
+          final handle = find
+              .byWidgetPredicate(
+                (w) =>
+                    w is Tooltip &&
+                    (w.message?.startsWith('拖动项目 新对话 ') ?? false),
+              )
+              .first;
           final pointer = await tester.startGesture(tester.getCenter(handle));
           await pointer.moveBy(const Offset(0, 22));
           await tester.pump();

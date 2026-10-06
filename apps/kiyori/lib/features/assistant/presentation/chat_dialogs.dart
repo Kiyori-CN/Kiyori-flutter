@@ -309,12 +309,15 @@ Future<void> showChatHistory(
                                     ),
                                   ),
                                   onPressed: () async {
+                                    final route = ModalRoute.of(context);
                                     if (await owner.setPreference(
                                           'history_create',
                                           historyBinding(owner),
                                         ) &&
                                         context.mounted) {
-                                      Navigator.pop(context);
+                                      if (route?.isActive == true) {
+                                        route!.navigator?.removeRoute(route);
+                                      }
                                     }
                                   },
                                   icon: const Icon(Icons.add, size: 18),
@@ -477,6 +480,9 @@ Future<void> showChatHistory(
                                                         .unfocus();
                                                   }
                                                 : () async {
+                                                    final route = ModalRoute.of(
+                                                      context,
+                                                    );
                                                     if (await owner
                                                             .setPreference(
                                                               'history_create',
@@ -485,10 +491,6 @@ Future<void> showChatHistory(
                                                               ),
                                                             ) &&
                                                         context.mounted) {
-                                                      final route =
-                                                          ModalRoute.of(
-                                                            context,
-                                                          );
                                                       if (route?.isActive ==
                                                           true) {
                                                         route!.navigator

@@ -122,6 +122,7 @@ class ChatController extends ChangeNotifier {
   Future<bool> setPreference(String key, String value) async {
     final base = preferences;
     if (_disposed || savingPreference || base == null) return false;
+    var committed = false;
     savingPreference = true;
     error = null;
     _notify();
@@ -131,16 +132,18 @@ class ChatController extends ChangeNotifier {
         key,
         value,
       );
-      if (key.endsWith('_folder') ||
-          key == 'history_group' ||
-          key == 'history_create') {
+      committed = true;
+      if (key == 'history_create') {
+        // 已创建就收起入口；刷新失败仍显示error，不能把落盘成功当失败允许重复创建。
+        await load(followActive: true);
+      } else if (key.endsWith('_folder') || key == 'history_group') {
         final directory = await (await connect()).conversationCatalog();
         await load(id: directory.activeId);
       }
       return true;
     } catch (failure) {
       error = _error(failure);
-      return false;
+      return committed && key == 'history_create';
     } finally {
       savingPreference = false;
       _notify();

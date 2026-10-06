@@ -107,7 +107,7 @@ impl AppStore {
                 execution_guards = crate::conversations::history::apply_group(self, &tx, value)?
             }
             "history_create" => {
-                crate::conversations::history::create(&tx, value, "")?;
+                crate::conversations::history::create_from_history(&tx, value)?;
             }
             "history_mode" if matches!(value, "folder" | "character" | "current") => {
                 current.value.history_mode = value.into()

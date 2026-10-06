@@ -1385,7 +1385,10 @@ void main() {
         );
         await tester.tap(find.text('打开'));
         await tester.pumpAndSettle();
-        await tester.drag(find.text('新对话'), const Offset(-160, 0));
+        await tester.drag(
+          find.text(f.chat.snapshot!.conversation.title),
+          const Offset(-160, 0),
+        );
         await tester.pumpAndSettle();
         expect(find.text('确认删除聊天'), findsOneWidget);
         await tester.tap(find.text('确定删除'));
@@ -1400,7 +1403,11 @@ void main() {
         expect(f.chat.snapshot!.conversation.id, f.chat.catalog!.activeId);
         expect(f.chat.snapshot!.conversation.id, isNot(deleted));
         expect(find.byKey(const Key('chat-history-panel')), findsOneWidget);
-        expect(find.text('新对话'), findsOneWidget);
+        expect(find.text(f.chat.snapshot!.conversation.title), findsOneWidget);
+        expect(
+          f.chat.snapshot!.conversation.title,
+          matches(r'^新对话 (?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'),
+        );
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox());

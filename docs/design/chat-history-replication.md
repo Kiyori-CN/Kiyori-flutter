@@ -197,6 +197,24 @@ Toast能力，返回明确原因并由既有消息组件呈现相同文字。
 迟到目录、目录/快照读取失败、前提交失败重试、冻结绑定、写入中Back/遮罩与单次提交。
 Android channel mock及构建只能证明接线，实际系统Toast位置/显示仍需设备验证。
 
+### 普通新建对话的绑定、分组与标题
+
+旧`ChatScreenContent`1154–1158调用delegate后收起历史；`ChatHistoryDelegate`960–1058
+在未显式绑定时回落当前角色卡，默认继承当前对话分组。BY_FOLDER虽然入口返回null，
+普通创建仍由delegate回落角色，与新建分组直接调用manager的未绑定语义不同。当前
+群聊且未显式传groupId时没有单角色回落；character/current模式显式groupId则绑定群聊。
+旧`ChatHistoryManager`2533–2598标题为本地新对话H:mm:ss，小时不补零。
+
+history_create在既有Immediate事务读取当前分组与单角色回落，显式绑定仍验证存在；
+统一核心创建函数保存该时间标题，普通创建、分组与删除替代均复用，不让UI生成另一
+份标题事实。首次发送兼容既有无时间标题与创建时默认标题，手工改名继续保留。创建
+已提交而读取失败仍收起历史并保留可观察错误；捕获原路由身份避免迟到成功pop掉新弹窗。
+
+本增量只修复历史创建与空标题；旧角色开场白的无用户消息同步，以及首轮独立
+titleGeneration模型请求仍需同Runtime事实接线，当前首轮标题继续是正文摘要，不能
+将其称为旧模型生成。开场白需要准确保存角色/时间且无虚构Run；标题请求需复用
+凭据租约、配额、取消、实际请求审计与CAS，不能在Dart额外请求供应商或伪造事件。
+
 ## 完整工具与附件的后续实施条件
 
 旧`ToolExecutionManager`1254–1394记录REQUESTED、STARTED、COMPLETED/FAILED/REUSED；

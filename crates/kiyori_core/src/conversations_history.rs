@@ -114,6 +114,27 @@ pub(crate) fn create(tx: &Connection, binding: &str, folder: &str) -> Result<Str
     create_with_selection(tx, binding, folder, true)
 }
 
+/// 旧历史入口不指定文件夹时继承当前对话；空角色参数回落当前角色卡，非当前群聊。
+pub(crate) fn create_from_history(tx: &Connection, requested: &str) -> Result<String, CoreError> {
+    let binding = if requested.is_empty() {
+        tx.query_row(
+            "SELECT coalesce(character_id,'') FROM prompt_active WHERE id=1",
+            [],
+            |r| r.get::<_, String>(0),
+        )
+        .map_err(storage)?
+    } else {
+        requested.to_owned()
+    };
+    let folder: String = tx.query_row("SELECT coalesce((SELECT c.folder FROM conversations c JOIN conversation_state s ON s.active_id=c.id WHERE s.id=1),'')", [], |r| r.get(0)).map_err(storage)?;
+    create(tx, &binding, &folder)
+}
+
+/// 沿旧LocalDateTime格式：小时不补零，分钟/秒两位；时间在创建时保存，UI不每帧改标题。
+pub(crate) fn default_title(tx: &Connection, created_at: i64) -> Result<String, CoreError> {
+    tx.query_row("SELECT '新对话 ' || CAST(strftime('%H',?1/1000,'unixepoch','localtime') AS INTEGER) || strftime(':%M:%S',?1/1000,'unixepoch','localtime')", [created_at], |r| r.get(0)).map_err(storage)
+}
+
 fn create_with_selection(
     tx: &Connection,
     binding: &str,
@@ -122,7 +143,9 @@ fn create_with_selection(
 ) -> Result<String, CoreError> {
     validate_binding(tx, binding)?;
     let id = identity(tx)?;
-    tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) VALUES(?1,'新对话',?2,?3,?3,1,?4)",params![id,binding,now(),folder]).map_err(storage)?;
+    let created_at = now();
+    let title = default_title(tx, created_at)?;
+    tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) VALUES(?1,?5,?2,?3,?3,1,?4)",params![id,binding,created_at,folder,title]).map_err(storage)?;
     if select {
         tx.execute(
             "UPDATE conversation_state SET active_id=?1 WHERE id=1",

@@ -13,7 +13,32 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：新建分组的并发选择与提交后错误
+### 最新增量：普通新建对话与迟到退出
+
+从main/2617c82干净基线核对旧ChatScreenContent、ChatHistoryDelegate960–1058及
+ChatHistoryManager2533–2598。历史新建复用原事务继承当前分组，空绑定回落当前单
+角色，显式群聊按原ID；folder普通创建与分组创建的绑定语义不同，未混成同一规则。
+核心统一创建标题为本地新对话H:mm:ss，保留首轮摘要兼容与手工改名。创建已提交后
+读取失败收起原入口并保留error，迟到退出只移除捕获路由而不pop后来窗口。
+
+定向Rust两项、真实FFI/SQLite联合UI32项通过（new-core/UI-v1）。最终capture13项
+通过，86PNG在work/history-drawer-capture-v33；已审阅五窗口总览及时间标题、明暗
+设置/管理/删除/绑定菜单、窄屏大字、横屏菜单和已创建失败原尺寸图。完整
+tools/verify.ps1 -WindowsIntegration通过（work/history-new-verify-v1.log）：
+foundation69/tooling4，Rust core193/HTTP3/provider13/native6/native-audit1，409 Dart
+格式、Clippy/analyze，app681（17条件跳过）/platform15/独立FFI22（1条件跳过）/
+Windows引擎5。Rust三项条件忽略不计真实供应商验收。普通Android/Windows Debug
+串行138.4s/17.1s通过（new双端v1）；Windows恢复普通产品入口。
+
+固定包artifacts/ui-preview/20261006-103604：APK137736152字节，SHA256
+9CF200238DD0576C8AD60EE03972FC64E5716EC979AE91FA63614CE27BC572B1；Windows101文件171692139字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证及Windows x64/
+Flutter DLL pin通过（work/history-new-delivery-v1.log）。本批15路径精确审计后按
+授权提交普通推送main；最终提交及远端一致性见Git/固定manifest。原失败夹具、
+截图及前序包均保留在忽略目录。旧开场白同步与独立titleGeneration请求接线仍有
+业务缺口，当前首轮标题是正文摘要，不能当旧模型生成；设备与工具/多附件边界保留。
+
+### 前序增量：新建分组的并发选择与提交后错误
 
 从main/50735c0干净基线继续。旧源码确认BY_FOLDER创建不绑定角色；打开弹窗冻结
 绑定，提交时冻结origin。Rust复用history_group Immediate事务条件选择，未提供

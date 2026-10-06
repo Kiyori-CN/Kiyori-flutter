@@ -208,9 +208,14 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('空目录'), findsOneWidget);
         await tester.runAsync(f.chat.create);
-        await until(tester, () => find.text('新对话').evaluate().isNotEmpty);
+        final title = f.chat.snapshot!.conversation.title;
+        expect(
+          title,
+          matches(r'^新对话 (?:[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'),
+        );
+        await until(tester, () => find.text(title).evaluate().isNotEmpty);
         await tester.pumpAndSettle();
-        await tester.drag(find.text('新对话'), const Offset(170, 0));
+        await tester.drag(find.text(title), const Offset(170, 0));
         await tester.pumpAndSettle();
         expect(find.text('绑定角色卡'), findsOneWidget);
         await tester.enterText(find.byType(TextField).last, '改后标题');

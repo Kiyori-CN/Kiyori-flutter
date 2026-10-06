@@ -56,6 +56,10 @@ chat_history_creation使用真实FFI/SQLite核对提交前切换保留新选择�
 core/group_creation验证同源/null origin及未提供selection的兼容语义；transient_notice
 mock核对Android系统长Toast的原文请求、不可用原因与桌面不调用Android。PNG覆盖明暗
 已创建失败弹窗；mock/构建不证明设备Toast位置和实际可见性。
+history_creation/timestamp_title验证历史新建继承分组、folder单角色回落、显式群聊与
+未显式群聊的旧差异、带时间标题重开、首轮自动摘要兼容与手工改名保留。UI追加
+实际点击新建后的关闭/持久绑定、提交后读取失败单次创建，以及迟到结果只移除历史
+路由、不误关后来弹窗；删除替代回归继续核对带时间空会话。
 搜索回归覆盖Unicode标题/分组与正文异步并集、等值目录重读和持续无关通知不重置400ms
 防抖、改名后重新查询、清空拒绝迟到结果；核心核对单Emoji的UTF-16正文门槛、BMP单字
 不查正文、SQLite ASCII大小写与百分号/下划线字面语义。真实loopback只用合成正文。
