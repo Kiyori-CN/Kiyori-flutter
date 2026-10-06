@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_management.dart';
+import 'package:kiyori/features/assistant/presentation/chat_history_menu.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
@@ -102,7 +103,7 @@ void main() {
             .widget<FocusableActionDetector>(
               find
                   .descendant(
-                    of: find.byType(MenuAnchor),
+                    of: find.byType(HistoryBindingMenu),
                     matching: find.byType(FocusableActionDetector),
                   )
                   .first,
@@ -283,6 +284,14 @@ void main() {
           await tester.tap(find.byKey(bindingField));
           await tester.pumpAndSettle();
           final last = option(f.chat.prompts!.groups.last.id);
+          final menu = tester.getRect(
+            find.byKey(const Key('history-binding-menu')),
+          );
+          expect(menu.top, greaterThanOrEqualTo(48));
+          expect(
+            menu.bottom,
+            lessThanOrEqualTo(scenario.$1.height - scenario.$3 - 48),
+          );
           await tester.scrollUntilVisible(
             last,
             120,

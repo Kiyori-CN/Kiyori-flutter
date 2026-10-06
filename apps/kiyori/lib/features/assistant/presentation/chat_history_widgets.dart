@@ -95,12 +95,16 @@ class HistoryDrawer extends StatelessWidget {
     required this.close,
     required this.children,
     this.footer,
+    this.bottomPadding = 0,
+    this.itemSpacing = 0,
     super.key,
   });
   final String title;
   final VoidCallback close;
   final List<Widget> children;
   final Widget? footer;
+  final double bottomPadding;
+  final double itemSpacing;
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -123,7 +127,15 @@ class HistoryDrawer extends StatelessWidget {
         ),
       ),
       Expanded(
-        child: ListView(padding: EdgeInsets.zero, children: children),
+        child: ListView(
+          padding: EdgeInsets.only(bottom: bottomPadding),
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0 && itemSpacing > 0) SizedBox(height: itemSpacing),
+              children[i],
+            ],
+          ],
+        ),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -229,9 +241,17 @@ class HistoryAlert extends StatelessWidget {
     constraints: const BoxConstraints(minWidth: 280, maxWidth: 560),
     insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
     icon: icon,
+    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     title: Text(title, style: const TextStyle(fontSize: 24, height: 32 / 24)),
-    scrollable: true,
-    content: content,
+    // 旧Compose只在text内部滚动；标题和操作始终固定在弹窗两端。
+    content: SingleChildScrollView(child: content),
+    contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontSize: 14,
+      height: 20 / 14,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
     actions: actions,
   );
 }

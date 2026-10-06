@@ -59,12 +59,25 @@ Rust Runtime/SQLite继续唯一持久owner，Dart只管理草稿与几何。错�
 元数据绑定按旧`ChatHistorySelector`1919–1963投影：只读描边字段整个区域点击、
 上下键盘箭头、同字段宽度的锚定菜单，未绑定/角色卡/群聊顺序不变。菜单优先在字段
 下方，空间不足时上移并可滚动；48dp行高、12dp横内距、8dp纵内距及48dp上下可用
-边界经本机旧Material3 1.4.0 `MenuKt`字节码核对。Flutter SDK的定位避开键盘但尺寸
-上限仍是全屏，投影显式限制可用高度。菜单继承明暗字体/颜色，选择只更新草稿，保存
+边界经本机旧Material3 1.4.0 `MenuKt`字节码核对。`DropdownMenuPositionProvider`采用
+下方、上方、顶端居中及按锚点中心选择窗口边缘的四候选；横向为start/start、end/end、
+窗口边缘。用公开RawMenuAnchor保留overlay生命周期与外部点击，领域定位delegate
+投影旧算法。视口从编辑宿主传入，避开Dialog子树清除viewInsets而漏掉键盘的风险。
+圆角来自旧KiyoriMaterialShapes.extraSmall=12，不能套标准4dp；开合按本机旧
+StandardMotionTokens的FastSpatial（1400/0.9）和FastEffects（3800/1）弹簧投影
+0.8至1缩放、0至1透明度及锚点交集中心pivot。反向保留速度，关闭期间拒绝重复动作，
+动画终态释放overlay/ticker；减少动画偏好直接到终态。菜单继承明暗字体/颜色，选择只更新草稿，保存
 才提交；Back/遮罩先收菜单，随后退出才检查未保存修改。既有ChatController目录更新
 刷新名称与选项而保留标题输入，移除绑定不加入伪选项，缺失群聊沿旧文案显示ID。
-MenuAnchor随原实体编辑会话释放；无需第二业务owner或额外依赖。Enter/Space打开、
+RawMenuAnchor随原实体编辑会话释放；无需第二业务owner或额外依赖。Enter/Space打开、
 Escape关闭和读屏单一可点击语义均可用；设备TalkBack仍须独立验证。
+
+历史AlertDialog沿旧DialogTokens使用surfaceContainerHigh背景、20圆角、BodyMedium
+正文和onSurfaceVariant；标题与按钮固定，只在正文内部滚动。详情沿其SettingsTheme
+取得明暗#F2F4F7/#22272D，不全局改变其它领域弹窗。管理对话正文底留4dp，分组管理
+12dp，删除分组8dp；分组栏目2dp项间距，名称titleSmall中等字重，两行省略。会话
+管理时间/分组同样两行省略，避免长分组名称挤掉操作。新建纯空白关闭无放弃确认；
+重命名保存先trim，等于原名称直接关闭，不写事务或触发旧成员快照冲突。
 
 拖排由`chat_history_drag.dart`投影一次手势，Rust/SQLite仍为唯一业务owner。沿旧
 [Reorderable2.5.1](https://github.com/Calvin-LL/Reorderable/tree/v2.5.1)核对Press二维跟手、

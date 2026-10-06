@@ -154,6 +154,8 @@ Future<void> _showHistoryFolderManagement(
     builder: (context, dismiss) => HistoryDrawer(
       title: '管理分组',
       close: () => dismiss(),
+      bottomPadding: 12,
+      itemSpacing: 2,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -168,7 +170,11 @@ Future<void> _showHistoryFolderManagement(
               Expanded(
                 child: Text(
                   folder,
-                  style: const TextStyle(fontSize: 14, height: 20 / 14),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 20 / 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -182,7 +188,6 @@ Future<void> _showHistoryFolderManagement(
           label: '重命名分组',
           onTap: () => dismiss('rename'),
         ),
-        const SizedBox(height: 2),
         HistoryActionRow(
           icon: Icons.delete_outline,
           label: '删除分组',
@@ -276,6 +281,8 @@ class _GroupDeleteState extends State<_GroupDelete> {
   Widget build(BuildContext context) => HistoryDrawer(
     title: '确认删除分组',
     close: saving ? () {} : widget.dismiss,
+    bottomPadding: 8,
+    itemSpacing: 2,
     footer: Align(
       alignment: Alignment.centerRight,
       child: TextButton(
@@ -297,7 +304,13 @@ class _GroupDeleteState extends State<_GroupDelete> {
             Expanded(
               child: Text(
                 widget.folder,
-                style: const TextStyle(fontSize: 14, height: 20 / 14),
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 20 / 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -338,7 +351,6 @@ class _GroupDeleteState extends State<_GroupDelete> {
         supporting: '对话将移至"未分组"',
         onTap: saving ? null : () => apply('dissolve'),
       ),
-      const SizedBox(height: 2),
       HistoryActionRow(
         icon: Icons.delete_outline,
         label: '删除分组和所有对话',
@@ -421,7 +433,10 @@ class _FolderEditorState extends State<_FolderEditor> {
   Future<void> close() async {
     if (saving || closing) return;
     closing = true;
-    if (name.text != (widget.initial ?? '') &&
+    final changed = widget.initial == null
+        ? name.text.trim().isNotEmpty
+        : name.text != widget.initial;
+    if (changed &&
         !await historyDiscard(
           context,
           '分组名称尚未保存。要放弃此次修改吗？',
@@ -438,6 +453,13 @@ class _FolderEditorState extends State<_FolderEditor> {
 
   Future<void> save() async {
     if (saving || name.text.trim().isEmpty) return;
+    final submitted = name.text.trim();
+    // 旧重命名提交trim后相同则关闭，不写事务，也不校验可能已变化的成员。
+    if (widget.initial == submitted) {
+      final r = ModalRoute.of(context)!;
+      if (r.isActive) r.navigator?.removeRoute(r);
+      return;
+    }
     setState(() {
       saving = true;
       error = null;
@@ -446,8 +468,8 @@ class _FolderEditorState extends State<_FolderEditor> {
       'history_group',
       jsonEncode({
         'action': widget.initial == null ? 'create' : 'rename',
-        'name': widget.initial ?? name.text.trim(),
-        'next_name': name.text.trim(),
+        'name': widget.initial ?? submitted,
+        'next_name': submitted,
         'binding': widget.binding,
         'include_unbound': widget.includeUnbound,
         'members': members,

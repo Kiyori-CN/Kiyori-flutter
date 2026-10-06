@@ -10,6 +10,7 @@ import 'chat_history_groups.dart';
 import 'chat_history_widgets.dart';
 import 'chat_history_details.dart';
 import 'chat_history_lifetime.dart';
+import 'chat_history_menu.dart';
 
 export 'chat_history_groups.dart'
     show showHistoryFolderEditor, showHistoryFolderManagement, historyBinding;
@@ -191,6 +192,7 @@ Future<void> _showHistoryManagement(
         return HistoryDrawer(
           title: '管理对话',
           close: () => dismiss(),
+          bottomPadding: 4,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -215,6 +217,8 @@ Future<void> _showHistoryManagement(
                       height: 16 / 11,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (current == null || owner.error != null)
                     Text(
@@ -472,14 +476,6 @@ class _MetadataEditorState extends State<_MetadataEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final viewport = MediaQuery.of(context);
-    // 旧菜单上下各留48dp；SDK尺寸上限仍是全屏，显式避开键盘才不会遮住末项。
-    final menuHeight =
-        (viewport.size.height -
-                viewport.viewInsets.vertical -
-                viewport.padding.vertical -
-                96)
-            .clamp(0.0, double.infinity);
     final p = widget.owner.prompts;
     final options = <String, String>{
       '': '未绑定',
@@ -516,39 +512,17 @@ class _MetadataEditorState extends State<_MetadataEditor> {
             const SizedBox(height: 12),
             SizedBox(
               width: double.maxFinite,
-              child: MenuAnchor(
+              child: HistoryBindingMenu(
                 controller: bindingMenu,
-                childFocusNode: bindingFocus,
-                consumeOutsideTap: true,
-                crossAxisUnconstrained: false,
+                viewport: MediaQuery.of(context),
+                focus: bindingFocus,
                 onOpen: () => setState(() {}),
                 onClose: () => setState(() {}),
-                style: MenuStyle(
-                  alignment: AlignmentDirectional.bottomStart,
-                  minimumSize: WidgetStatePropertyAll(Size(bindingWidth, 0)),
-                  maximumSize: WidgetStatePropertyAll(
-                    Size(bindingWidth, menuHeight),
-                  ),
-                  padding: const WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  backgroundColor: WidgetStatePropertyAll(
-                    Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                  surfaceTintColor: const WidgetStatePropertyAll(
-                    Colors.transparent,
-                  ),
-                  elevation: const WidgetStatePropertyAll(3),
-                  shape: const WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ),
-                ),
-                menuChildren: [
+                children: [
                   for (final entry in options.entries)
                     MenuItemButton(
                       key: ValueKey('history-binding-option-${entry.key}'),
+                      autofocus: entry.key.isEmpty,
                       style: MenuItemButton.styleFrom(
                         minimumSize: Size(bindingWidth, 48),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -557,13 +531,16 @@ class _MetadataEditorState extends State<_MetadataEditor> {
                       ),
                       onPressed: saving
                           ? null
-                          : () => setState(() {
-                              character = entry.key;
-                              characterName = entry.value;
-                              groupBinding =
-                                  p?.groups.any((g) => g.id == character) ==
-                                  true;
-                            }),
+                          : () {
+                              bindingMenu.close();
+                              setState(() {
+                                character = entry.key;
+                                characterName = entry.value;
+                                groupBinding =
+                                    p?.groups.any((g) => g.id == character) ==
+                                    true;
+                              });
+                            },
                       child: SizedBox(
                         width: (bindingWidth - 24).clamp(0, double.infinity),
                         child: Text(entry.value),

@@ -13,7 +13,36 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：元数据角色绑定菜单
+### 最新增量：弹窗正文与绑定菜单边界
+
+从main/7929611干净基线继续核对旧主题、MenuPosition、DialogTokens及分组管理。
+绑定菜单恢复产品12dp圆角，公开RawMenuAnchor与领域定位delegate投影下方/上方/
+顶端居中/窗口边缘四候选；在真实键盘/安全区内保留上下48dp。动画沿旧普通主题
+FastSpatial1400/0.9、FastEffects3800/1，缩放0.8至1/透明0至1，锚点交集中心pivot，
+反向保留速度，关闭期间防重复，终态释放overlay/ticker。无新依赖或业务owner。
+历史弹窗使用surfaceContainerHigh与20圆角，固定标题/按钮，只滚正文；详情继承
+SettingsTheme色表。分组名称恢复titleSmall字重/两行省略/2dp项间距及12/8底留白；
+会话管理底留4dp、时间与分组两行省略。新建纯空白直接退出；重命名trim等值直接
+关闭，不进行成员快照事务，不推进偏好/会话revision。
+
+定向UI-v2共31项通过，motion-v1共7项通过；最终捕获联合9项通过，84PNG位于
+work/history-drawer-capture-v30，已审阅明暗弹窗与菜单、320大字/键盘、横屏及设置。
+新增modal回归覆盖固定标题动作、四候选几何、12圆角、焦点恢复、连续动画反向和
+SQLite等值无写入。首轮新增几何用例错误地忽略下方仍可容纳，已修正测试输入，
+不是弱化产品断言；原失败日志保留。完整tools/verify.ps1 -WindowsIntegration通过
+（work/history-modal-verify-v1.log）：foundation69/tooling4，Rust core189/HTTP3/
+provider13/native6/native-audit1，Clippy/analyze、406格式，app673（17条件跳过）/
+platform13/独立FFI22（1条件跳过）/Windows引擎5。Rust三项条件忽略不计供应商验收。
+普通Android/Windows Debug串行23.3s/17.2s通过（modal双端v1），Windows恢复产品
+入口。固定artifacts/ui-preview/20261006-093254：APK137722308字节，SHA256
+B9368C5AC2495AAF02144EBA04E66B690EBA694765285D3539AF5081876757CA；Windows101文件171670835字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证与Windows x64/
+Flutter DLL pin审计通过（work/history-modal-delivery-v1.log）。本批10路径精确源码/
+测试/正式文档清单审计通过，按授权提交普通推送main；最终提交与远端一致性以Git
+及固定manifest为准。前序包、失败日志及截图保留。设备像素/触摸/TalkBack/Profile、
+完整工具/多附件及Apple仍未验收。
+
+### 前序增量：元数据角色绑定菜单
 
 从main/fa91639干净基线继续核对旧ChatHistorySelector1919–1963。绑定编辑改为
 整字段点击、开合上下箭头、同宽锚定菜单，未绑定/角色/群聊沿旧顺序与文案；
