@@ -1323,6 +1323,84 @@ fn reorder_is_scoped_to_visible_character_and_folder_rename_is_atomic() {
     runtime.close();
 }
 
+#[test]
+fn group_creation_preserves_selection_changed_since_submission() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let origin = runtime.create_conversation().unwrap();
+    let other = runtime.create_conversation().unwrap();
+    let p = runtime.chat_preferences().unwrap();
+    let p = runtime.change_chat_preference(p.revision, "history_group".into(),
+        json!({"action":"create","name":"迟到分组","binding":null,"selection":{"origin":origin}}).to_string()).unwrap();
+    let directory = runtime.conversation_catalog().unwrap();
+    assert_eq!(directory.active_id, Some(other.clone()));
+    let created = directory
+        .conversations
+        .iter()
+        .find(|c| c.folder == "迟到分组")
+        .unwrap();
+    assert!(created.character_id.is_empty());
+    assert_eq!(created.revision, 1);
+    // 同源创建自动选择；未提供selection的旧调用仍保持原来选择语义。
+    let p = runtime.change_chat_preference(p.revision, "history_group".into(),
+        json!({"action":"create","name":"同源分组","binding":"default_character","selection":{"origin":other}}).to_string()).unwrap();
+    let directory = runtime.conversation_catalog().unwrap();
+    assert_eq!(
+        directory
+            .conversations
+            .iter()
+            .find(|c| c.folder == "同源分组")
+            .map(|c| &c.id),
+        directory.active_id.as_ref()
+    );
+    runtime
+        .change_chat_preference(
+            p.revision,
+            "history_group".into(),
+            json!({"action":"create","name":"兼容分组","binding":null}).to_string(),
+        )
+        .unwrap();
+    let directory = runtime.conversation_catalog().unwrap();
+    assert_eq!(
+        directory
+            .conversations
+            .iter()
+            .find(|c| c.folder == "兼容分组")
+            .map(|c| &c.id),
+        directory.active_id.as_ref()
+    );
+    runtime.close();
+}
+
+#[test]
+fn group_creation_null_origin_selects_only_when_no_current_chat() {
+    let dir = Directory::new();
+    let runtime = Runtime::with_data_dir(&dir.0).unwrap();
+    let p = runtime.chat_preferences().unwrap();
+    let p = runtime
+        .change_chat_preference(
+            p.revision,
+            "history_group".into(),
+            json!({"action":"create","name":"初次分组","binding":null,"selection":{"origin":null}})
+                .to_string(),
+        )
+        .unwrap();
+    let origin = runtime.conversation_catalog().unwrap().active_id.unwrap();
+    runtime
+        .change_chat_preference(
+            p.revision,
+            "history_group".into(),
+            json!({"action":"create","name":"迟到初次","binding":null,"selection":{"origin":null}})
+                .to_string(),
+        )
+        .unwrap();
+    assert_eq!(
+        runtime.conversation_catalog().unwrap().active_id,
+        Some(origin)
+    );
+    runtime.close();
+}
+
 #[tokio::test]
 async fn regeneration_adds_version_without_deleting_later_messages() {
     let dir = Directory::new();

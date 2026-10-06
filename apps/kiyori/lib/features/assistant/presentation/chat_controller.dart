@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
@@ -6,6 +7,13 @@ import 'package:kiyori_platform/kiyori_platform.dart';
 
 import 'models/model_credentials.dart';
 import 'models/model_options_editing.dart';
+
+enum HistoryGroupCreation {
+  selected,
+  selectionChanged,
+  selectionFailed,
+  failed,
+}
 
 /// 只持有交互与不可变快照；历史、模型解析和终态均由Rust决定。
 class ChatController extends ChangeNotifier {
@@ -44,6 +52,72 @@ class ChatController extends ChangeNotifier {
   }
 
   bool savingPreference = false;
+
+  Future<HistoryGroupCreation> createHistoryGroup(
+    String name, {
+    String? binding,
+    required bool includeUnbound,
+  }) async {
+    final base = preferences;
+    if (_disposed || savingPreference || base == null) {
+      return HistoryGroupCreation.failed;
+    }
+    final origin = snapshot?.conversation.id ?? catalog?.activeId;
+    final generation = _generation;
+    var committed = false;
+    savingPreference = true;
+    error = null;
+    _notify();
+    try {
+      final runtime = await connect();
+      preferences = await runtime.changeChatPreference(
+        base.revision,
+        'history_group',
+        jsonEncode({
+          'action': 'create',
+          'name': name,
+          'binding': binding,
+          'include_unbound': includeUnbound,
+          'selection': {'origin': origin},
+        }),
+      );
+      // 此后任何读取失败都不能让用户再次创建：短事务已经提交。
+      committed = true;
+      final directory = await runtime.conversationCatalog();
+      final created = directory.conversations
+          .where(
+            (c) => c.folder == name.trim() && c.characterId == (binding ?? ''),
+          )
+          .single;
+      if (_disposed) return HistoryGroupCreation.selectionFailed;
+      if (generation != _generation) {
+        // 刷新当前事实而不回填已过期目录；新加载始终跟随SQLite最新active。
+        return await load(followActive: true)
+            ? HistoryGroupCreation.selectionChanged
+            : HistoryGroupCreation.selectionFailed;
+      }
+      final loaded = await load(
+        expectedGeneration: generation,
+        followActive: true,
+      );
+      if (!loaded) {
+        return error == null && !_disposed
+            ? HistoryGroupCreation.selectionChanged
+            : HistoryGroupCreation.selectionFailed;
+      }
+      return snapshot?.conversation.id == created.id
+          ? HistoryGroupCreation.selected
+          : HistoryGroupCreation.selectionChanged;
+    } catch (failure) {
+      error = _error(failure);
+      return committed
+          ? HistoryGroupCreation.selectionFailed
+          : HistoryGroupCreation.failed;
+    } finally {
+      savingPreference = false;
+      _notify();
+    }
+  }
 
   Future<bool> setPreference(String key, String value) async {
     final base = preferences;
@@ -153,7 +227,15 @@ class ChatController extends ChangeNotifier {
   String _error(Object value) =>
       value is BridgeError ? value.message : '聊天操作失败，请保留输入并重试';
 
-  Future<void> load({String? id}) async {
+  Future<bool> load({
+    String? id,
+    int? expectedGeneration,
+    bool followActive = false,
+  }) async {
+    if (_disposed ||
+        (expectedGeneration != null && expectedGeneration != _generation)) {
+      return false;
+    }
     final generation = ++_generation;
     loading = true;
     error = null;
@@ -165,7 +247,9 @@ class ChatController extends ChangeNotifier {
       final promptDirectory = await runtime.promptCatalog();
       final chatPreferences = await runtime.chatPreferences();
       final knowledgeDirectory = await runtime.knowledgeSnapshot();
-      final previous = id ?? snapshot?.conversation.id;
+      final previous = followActive
+          ? directory.activeId
+          : id ?? snapshot?.conversation.id;
       final selected = directory.conversations.any((c) => c.id == previous)
           ? previous
           : directory.activeId;
@@ -174,7 +258,7 @@ class ChatController extends ChangeNotifier {
       final stats = exists
           ? await runtime.conversationStatistics(selected!)
           : null;
-      if (_disposed || generation != _generation) return;
+      if (_disposed || generation != _generation) return false;
       catalog = directory;
       snapshot = value;
       statistics = stats;
@@ -187,8 +271,10 @@ class ChatController extends ChangeNotifier {
       prompts = promptDirectory;
       preferences = chatPreferences;
       knowledge = knowledgeDirectory;
+      return true;
     } catch (failure) {
       if (!_disposed && generation == _generation) error = _error(failure);
+      return false;
     } finally {
       if (!_disposed && generation == _generation) {
         loading = false;

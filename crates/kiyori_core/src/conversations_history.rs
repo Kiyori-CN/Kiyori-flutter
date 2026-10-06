@@ -111,14 +111,25 @@ pub(crate) fn select_latest(tx: &Connection, binding: &str) -> Result<(), CoreEr
 }
 
 pub(crate) fn create(tx: &Connection, binding: &str, folder: &str) -> Result<String, CoreError> {
+    create_with_selection(tx, binding, folder, true)
+}
+
+fn create_with_selection(
+    tx: &Connection,
+    binding: &str,
+    folder: &str,
+    select: bool,
+) -> Result<String, CoreError> {
     validate_binding(tx, binding)?;
     let id = identity(tx)?;
     tx.execute("INSERT INTO conversations(id,title,character_id,created_at,updated_at,revision,folder) VALUES(?1,'新对话',?2,?3,?3,1,?4)",params![id,binding,now(),folder]).map_err(storage)?;
-    tx.execute(
-        "UPDATE conversation_state SET active_id=?1 WHERE id=1",
-        [&id],
-    )
-    .map_err(storage)?;
+    if select {
+        tx.execute(
+            "UPDATE conversation_state SET active_id=?1 WHERE id=1",
+            [&id],
+        )
+        .map_err(storage)?;
+    }
     Ok(id)
 }
 
@@ -212,6 +223,12 @@ pub(crate) fn prepare_deletion(
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+pub(crate) struct CreationSelection {
+    pub origin: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct GroupOperation {
     pub action: String,
     pub name: String,
@@ -224,6 +241,8 @@ pub(crate) struct GroupOperation {
     pub include_unbound: bool,
     #[serde(default)]
     pub members: BTreeMap<String, u32>,
+    /// 未提供时兼容旧请求；提供origin:null表示提交时没有当前会话。
+    pub selection: Option<CreationSelection>,
 }
 
 pub(crate) fn apply_group(
@@ -253,7 +272,20 @@ pub(crate) fn apply_group(
             [op.name.trim()],
         )
         .map_err(storage)?;
-        create(tx, binding, op.name.trim())?;
+        // 比较与创建同一Immediate事务，迟到创建不能夺回其它入口的新选择。
+        let select = if let Some(selection) = &op.selection {
+            let active: Option<String> = tx
+                .query_row(
+                    "SELECT active_id FROM conversation_state WHERE id=1",
+                    [],
+                    |r| r.get(0),
+                )
+                .map_err(storage)?;
+            active == selection.origin
+        } else {
+            true
+        };
+        create_with_selection(tx, binding, op.name.trim(), select)?;
         return Ok(Vec::new());
     }
     let members: BTreeMap<String,u32> = tx.prepare("SELECT id,revision FROM conversations WHERE folder=?1 AND (?2 IS NULL OR character_id=?2 OR (?3 AND character_id=''))").map_err(storage)?.query_map(params![op.name,op.binding,op.include_unbound],|r|Ok((r.get(0)?,r.get(1)?))).map_err(storage)?.collect::<Result<_,_>>().map_err(storage)?;

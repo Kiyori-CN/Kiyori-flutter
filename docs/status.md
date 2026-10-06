@@ -13,7 +13,32 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：弹窗正文与绑定菜单边界
+### 最新增量：新建分组的并发选择与提交后错误
+
+从main/50735c0干净基线继续。旧源码确认BY_FOLDER创建不绑定角色；打开弹窗冻结
+绑定，提交时冻结origin。Rust复用history_group Immediate事务条件选择，未提供
+selection的请求兼容原语义；不改变删除替代或公开FFI/schema。ChatController区分
+提交前失败与提交后读取失败，后者恢复旧禁输入/隐藏取消/确认改“关闭”，不能重复
+创建；目录迟到不夺回较新选择。Android选择变化提示接入系统Toast.LENGTH_LONG，
+桌面使用现有短暂消息，原生生命周期负责取消提示。
+
+定向Rust group_creation两项通过，真实FFI/SQLite最终UI-v4五项通过；联合capture-v2
+34项通过与86PNG在work/history-drawer-capture-v32，已审阅五窗口总览和明暗已创建
+失败原尺寸图。UI-v1按钮未等待重建/异步夹具挂起、capture-v1未等待原生提示边界
+已修正，原失败日志保留；UI-v3因并行Flutter共享DLL被占用失败，串行v4通过，没有
+修改产品以绕过检查。完整tools/verify.ps1 -WindowsIntegration通过（creation-verify-v1）：
+foundation69/tooling4、Rust core191/HTTP3/provider13/native6/native-audit1，409 Dart格式、
+Clippy/analyze，app678（17条件跳过）/platform15/独立FFI22（1条件跳过）/Windows引擎5。
+Rust三项条件忽略不计真实供应商验收。普通Android/Windows Debug串行145.2s/18.9s
+通过（creation双端v1）。本批16路径精确源码/测试/正式文档审计，按授权普通提交推送
+main；最终提交、固定包与远端一致性以Git及manifest为准。设备像素/触摸/Profile、
+Toast位置及Apple仍待验证；完整工具和多附件事实缺口未由本增量改变。
+固定包artifacts/ui-preview/20261006-100742：APK137740033字节，SHA256
+EB616A951327D48E0AE42DB15EF6CB53D8BC54AB270D48445C7355784C355DC7；Windows101文件171693883字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证与Windows x64/
+Flutter DLL pin审计通过（work/history-creation-delivery-v1.log）。产物与临时证据保持忽略。
+
+### 前序增量：弹窗正文与绑定菜单边界
 
 从main/7929611干净基线继续核对旧主题、MenuPosition、DialogTokens及分组管理。
 绑定菜单恢复产品12dp圆角，公开RawMenuAnchor与领域定位delegate投影下方/上方/

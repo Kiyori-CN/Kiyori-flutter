@@ -177,6 +177,26 @@ HTTP响应只记录状态/协议，终态先等待在途写入/执行资源。HT
 BASIC移植投影、链头ASCII封印与九类文件；原始源链和未知覆盖标记继续保留。
 旧导入不在抽屉/详情入口，设备与旧Android进程兼容测试仍未运行。
 
+### 新建分组提交与选择
+
+旧`ChatHistorySelector.resolveBindingForCreate`188–200在BY_FOLDER返回null/null，
+其它模式在打开弹窗时冻结角色/群聊绑定；`ChatHistoryDelegate.createGroupAwait`
+1810–1850在提交时冻结origin，先持久化再条件选择。`ChatCreationCompletion`明确
+创建成功但选择失败不可重复创建；旧弹窗2163–2248禁用输入、隐藏取消、确认改为关闭，
+使用原中文失败文案。选择变化则关闭并发出系统Toast.LENGTH_LONG。
+
+新实现复用history_group的Immediate事务，在内部JSON增加可选selection对象；origin
+可以为null，未提供对象兼容现有调用。比较数据库active与origin相等才自动选择；
+不修改删除替代、自动聊天与history_create的既有行为，不改公开FFI或数据库schema。
+ChatController只拥有本次操作的提交状态与投影代次。成功返回偏好即为提交事实，
+后续目录/快照错误均返回selectionFailed；正常选择变化回到当前事实，过期读取不能
+夺回较新选择。Android使用系统Toast拥有者并在宿主释放时取消；其它平台没有Android
+Toast能力，返回明确原因并由既有消息组件呈现相同文字。
+
+真实SQLite回归覆盖同源、不同源、null origin和旧JSON兼容；UI覆盖提交前切换、提交后
+迟到目录、目录/快照读取失败、前提交失败重试、冻结绑定、写入中Back/遮罩与单次提交。
+Android channel mock及构建只能证明接线，实际系统Toast位置/显示仍需设备验证。
+
 ## 完整工具与附件的后续实施条件
 
 旧`ToolExecutionManager`1254–1394记录REQUESTED、STARTED、COMPLETED/FAILED/REUSED；

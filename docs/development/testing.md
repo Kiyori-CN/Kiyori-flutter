@@ -51,6 +51,11 @@ chat_history_modal实测长正文在390、320双倍字/180键盘和横屏滚动�
 背景继承当前surfaceContainerHigh。绑定定位覆盖下方、上方、顶端居中及窗口边缘，
 12圆角/48边界；键盘焦点导航、弹簧中间帧/连续反向、关闭后无持续帧请求。真实SQLite
 检查新建空白直接退出、并发成员变化时trim等值重命名直接关闭且偏好/会话revision不变。
+chat_history_creation使用真实FFI/SQLite核对提交前切换保留新选择、提交后目录迟到拒绝
+旧回填、创建已提交而目录/快照失败只能关闭、前提交失败保留草稿重试及打开时冻结绑定。
+core/group_creation验证同源/null origin及未提供selection的兼容语义；transient_notice
+mock核对Android系统长Toast的原文请求、不可用原因与桌面不调用Android。PNG覆盖明暗
+已创建失败弹窗；mock/构建不证明设备Toast位置和实际可见性。
 搜索回归覆盖Unicode标题/分组与正文异步并集、等值目录重读和持续无关通知不重置400ms
 防抖、改名后重新查询、清空拒绝迟到结果；核心核对单Emoji的UTF-16正文门槛、BMP单字
 不查正文、SQLite ASCII大小写与百分号/下划线字面语义。真实loopback只用合成正文。

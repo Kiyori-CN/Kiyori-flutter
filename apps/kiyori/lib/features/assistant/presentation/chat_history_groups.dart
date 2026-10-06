@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
+import 'package:kiyori_platform/kiyori_platform.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
 import 'chat_controller.dart';
@@ -68,7 +69,11 @@ Future<void> showHistoryFolderEditor(
   bool? includeUnbound,
   ValueChanged<ModalRoute<dynamic>>? onRoute,
 }) {
-  final targetBinding = initial == null ? historyBinding(owner) : binding;
+  final targetBinding = initial == null
+      ? (owner.preferences?.historyMode == 'folder'
+            ? null
+            : historyBinding(owner))
+      : binding;
   final include =
       includeUnbound ?? historyIncludesUnbound(owner, targetBinding);
   return initial == null
@@ -408,7 +413,7 @@ class _FolderEditor extends StatefulWidget {
 class _FolderEditorState extends State<_FolderEditor> {
   late final name = TextEditingController(text: widget.initial ?? '');
   late final Map<String, int> members;
-  bool saving = false, closing = false;
+  bool saving = false, closing = false, createdButNotSelected = false;
   String? error;
   @override
   void initState() {
@@ -433,9 +438,11 @@ class _FolderEditorState extends State<_FolderEditor> {
   Future<void> close() async {
     if (saving || closing) return;
     closing = true;
-    final changed = widget.initial == null
-        ? name.text.trim().isNotEmpty
-        : name.text != widget.initial;
+    final changed =
+        !createdButNotSelected &&
+        (widget.initial == null
+            ? name.text.trim().isNotEmpty
+            : name.text != widget.initial);
     if (changed &&
         !await historyDiscard(
           context,
@@ -452,6 +459,10 @@ class _FolderEditorState extends State<_FolderEditor> {
   }
 
   Future<void> save() async {
+    if (createdButNotSelected) {
+      await close();
+      return;
+    }
     if (saving || name.text.trim().isEmpty) return;
     final submitted = name.text.trim();
     // 旧重命名提交trim后相同则关闭，不写事务，也不校验可能已变化的成员。
@@ -464,6 +475,43 @@ class _FolderEditorState extends State<_FolderEditor> {
       saving = true;
       error = null;
     });
+    if (widget.initial == null) {
+      final result = await widget.owner.createHistoryGroup(
+        submitted,
+        binding: widget.binding,
+        includeUnbound: widget.includeUnbound,
+      );
+      if (!mounted) return;
+      if (result == HistoryGroupCreation.selected ||
+          result == HistoryGroupCreation.selectionChanged) {
+        if (result == HistoryGroupCreation.selectionChanged) {
+          const message = '分组已创建。当前聊天已从其他入口切换，已保留你的新选择。';
+          final notice = await TransientNotice.showLong(message);
+          if (!mounted) return;
+          // 桌面没有Android系统提示；使用宿主现有的短暂消息，不改变业务结果。
+          if (notice.status != TransientNoticeStatus.requested) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(message),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+        final r = ModalRoute.of(context)!;
+        if (r.isActive) r.navigator?.removeRoute(r);
+      } else {
+        setState(() {
+          saving = false;
+          createdButNotSelected =
+              result == HistoryGroupCreation.selectionFailed;
+          error = createdButNotSelected
+              ? '分组已创建，但切换聊天失败。请关闭此窗口，从历史列表打开新分组；不要重复创建。'
+              : '分组操作未完成，输入和确认已保留。请核对列表后重试。';
+        });
+      }
+      return;
+    }
     final ok = await widget.owner.setPreference(
       'history_group',
       jsonEncode({
@@ -501,7 +549,7 @@ class _FolderEditorState extends State<_FolderEditor> {
         children: [
           TextField(
             controller: name,
-            enabled: !saving,
+            enabled: !saving && !createdButNotSelected,
             maxLines: 1,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
@@ -530,10 +578,20 @@ class _FolderEditorState extends State<_FolderEditor> {
         ],
       ),
       actions: [
-        TextButton(onPressed: saving ? null : close, child: const Text('取消')),
+        if (!createdButNotSelected)
+          TextButton(onPressed: saving ? null : close, child: const Text('取消')),
         FilledButton(
-          onPressed: saving || name.text.trim().isEmpty ? null : save,
-          child: Text(widget.initial == null ? '创建' : '保存'),
+          onPressed:
+              saving || (!createdButNotSelected && name.text.trim().isEmpty)
+              ? null
+              : save,
+          child: Text(
+            createdButNotSelected
+                ? '关闭'
+                : widget.initial == null
+                ? '创建'
+                : '保存',
+          ),
         ),
       ],
     ),

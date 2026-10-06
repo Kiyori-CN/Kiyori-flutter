@@ -7,3 +7,4 @@ export 'src/audit_exchange.dart';
 export 'src/native_inference_licenses.dart';
 export 'src/model_file.dart';
 export 'src/haptics.dart';
+export 'src/transient_notice.dart';

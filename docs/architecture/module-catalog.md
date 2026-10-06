@@ -36,6 +36,8 @@ core/models拥有配置、功能绑定、参数验证与安全引用账本；sch
 凭据不得进入目录DTO，双存储失败/恢复限制见[ADR 0006](../decisions/0006-model-secrets-and-configurations.md)。
 native的TextExchange提供用户选中的单次文本读写，不缓存路径或另建资源数据库；
 Windows使用COM/后台isolate，Android使用SAF与受控I/O生命周期，iOS当前返回unsupported。
+native的TransientNotice只转发Android系统长Toast并随Activity释放，返回请求/不可用
+原因；非Android不调用channel，Dart宿主使用现有短暂消息，不持有业务状态。
 core/chat/pool使用同一请求client做有界并发可用性探测，Dart的ModelPoolTestController仅管理
 页面执行代次和逐项安全保存；core/model_execution拥有候选筛选与独立SQLite游标，
 配置模型测试按revision调用，不能由UI自行选择首个密钥。
