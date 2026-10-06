@@ -56,6 +56,16 @@ Rust Runtime/SQLite继续唯一持久owner，Dart只管理草稿与几何。错�
 历史抽屉；错误保留草稿，处理中拒绝重复提交。设置即时保存、单一单选/开关语义、
 紧凑卡片与固定完成操作均已实施。源码色表/尺寸逐项核对，尚无同设备像素差分证据。
 
+元数据绑定按旧`ChatHistorySelector`1919–1963投影：只读描边字段整个区域点击、
+上下键盘箭头、同字段宽度的锚定菜单，未绑定/角色卡/群聊顺序不变。菜单优先在字段
+下方，空间不足时上移并可滚动；48dp行高、12dp横内距、8dp纵内距及48dp上下可用
+边界经本机旧Material3 1.4.0 `MenuKt`字节码核对。Flutter SDK的定位避开键盘但尺寸
+上限仍是全屏，投影显式限制可用高度。菜单继承明暗字体/颜色，选择只更新草稿，保存
+才提交；Back/遮罩先收菜单，随后退出才检查未保存修改。既有ChatController目录更新
+刷新名称与选项而保留标题输入，移除绑定不加入伪选项，缺失群聊沿旧文案显示ID。
+MenuAnchor随原实体编辑会话释放；无需第二业务owner或额外依赖。Enter/Space打开、
+Escape关闭和读屏单一可点击语义均可用；设备TalkBack仍须独立验证。
+
 拖排由`chat_history_drag.dart`投影一次手势，Rust/SQLite仍为唯一业务owner。沿旧
 [Reorderable2.5.1](https://github.com/Calvin-LL/Reorderable/tree/v2.5.1)核对Press二维跟手、
 覆盖条目中点让位、48dp手柄边界、viewport*0.5基速、阈值0/边缘5/越界10倍率与源项

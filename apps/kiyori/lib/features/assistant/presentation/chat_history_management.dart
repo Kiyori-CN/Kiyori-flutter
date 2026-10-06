@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
@@ -366,15 +367,51 @@ class _MetadataEditor extends StatefulWidget {
 class _MetadataEditorState extends State<_MetadataEditor> {
   late final title = TextEditingController(text: widget.item.title);
   late String character = widget.item.characterId;
+  late String characterName = widget.item.characterName;
+  late bool groupBinding =
+      widget.owner.prompts?.groups.any((g) => g.id == character) == true;
+  final bindingMenu = MenuController();
+  final bindingField = GlobalKey();
+  final bindingFocus = FocusNode();
+  double bindingWidth = 0;
   bool saving = false, closing = false;
   String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.owner.addListener(changed);
+  }
+
+  void changed() {
+    if (!mounted) return;
+    final p = widget.owner.prompts;
+    final card = p?.characters.where((c) => c.id == character).firstOrNull;
+    final group = p?.groups.where((g) => g.id == character).firstOrNull;
+    if (card != null) {
+      characterName = card.draft.name;
+      groupBinding = false;
+    } else if (group != null) {
+      characterName = group.draft.name;
+      groupBinding = true;
+    }
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    widget.owner.removeListener(changed);
+    bindingFocus.dispose();
     title.dispose();
     super.dispose();
   }
 
   Future<void> close() async {
+    // 旧DropdownMenu先消费遮罩和Back；未保存确认只在菜单收起之后出现。
+    if (bindingMenu.isOpen) {
+      bindingMenu.close();
+      return;
+    }
     if (saving || closing) return;
     closing = true;
     if ((title.text != widget.item.title ||
@@ -395,6 +432,7 @@ class _MetadataEditorState extends State<_MetadataEditor> {
 
   Future<void> save() async {
     if (saving || title.text.trim().isEmpty) return;
+    bindingMenu.close();
     setState(() {
       saving = true;
       error = null;
@@ -420,15 +458,38 @@ class _MetadataEditorState extends State<_MetadataEditor> {
     }
   }
 
+  void toggleBinding() {
+    if (saving) return;
+    if (bindingMenu.isOpen) {
+      bindingMenu.close();
+    } else {
+      // 量实际字段，避开AlertDialog的固有尺寸测量，也支持大字与键盘。
+      final box = bindingField.currentContext!.findRenderObject()! as RenderBox;
+      setState(() => bindingWidth = box.size.width);
+      bindingMenu.open();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final viewport = MediaQuery.of(context);
+    // 旧菜单上下各留48dp；SDK尺寸上限仍是全屏，显式避开键盘才不会遮住末项。
+    final menuHeight =
+        (viewport.size.height -
+                viewport.viewInsets.vertical -
+                viewport.padding.vertical -
+                96)
+            .clamp(0.0, double.infinity);
     final p = widget.owner.prompts;
     final options = <String, String>{
       '': '未绑定',
       for (final c in p?.characters ?? <PromptCharacter>[]) c.id: c.draft.name,
       for (final g in p?.groups ?? <PromptGroup>[]) g.id: '群聊: ${g.draft.name}',
     };
-    options.putIfAbsent(character, () => widget.item.characterName);
+    // 已移除的绑定仍显示原名称供核对，但不能作为当前目录里的可选项。
+    final bindingLabel =
+        options[character] ??
+        (groupBinding ? '缺失角色群聊（$character）' : characterName);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -453,29 +514,125 @@ class _MetadataEditorState extends State<_MetadataEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: character,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: '绑定角色卡',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              items: [
-                for (final entry in options.entries)
-                  DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(
-                      entry.value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            SizedBox(
+              width: double.maxFinite,
+              child: MenuAnchor(
+                controller: bindingMenu,
+                childFocusNode: bindingFocus,
+                consumeOutsideTap: true,
+                crossAxisUnconstrained: false,
+                onOpen: () => setState(() {}),
+                onClose: () => setState(() {}),
+                style: MenuStyle(
+                  alignment: AlignmentDirectional.bottomStart,
+                  minimumSize: WidgetStatePropertyAll(Size(bindingWidth, 0)),
+                  maximumSize: WidgetStatePropertyAll(
+                    Size(bindingWidth, menuHeight),
+                  ),
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  backgroundColor: WidgetStatePropertyAll(
+                    Theme.of(context).colorScheme.surfaceContainer,
+                  ),
+                  surfaceTintColor: const WidgetStatePropertyAll(
+                    Colors.transparent,
+                  ),
+                  elevation: const WidgetStatePropertyAll(3),
+                  shape: const WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
                     ),
                   ),
-              ],
-              onChanged: saving
-                  ? null
-                  : (value) => setState(() => character = value ?? ''),
+                ),
+                menuChildren: [
+                  for (final entry in options.entries)
+                    MenuItemButton(
+                      key: ValueKey('history-binding-option-${entry.key}'),
+                      style: MenuItemButton.styleFrom(
+                        minimumSize: Size(bindingWidth, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: Theme.of(context).textTheme.bodyLarge
+                            ?.copyWith(fontSize: 16, height: 24 / 16),
+                      ),
+                      onPressed: saving
+                          ? null
+                          : () => setState(() {
+                              character = entry.key;
+                              characterName = entry.value;
+                              groupBinding =
+                                  p?.groups.any((g) => g.id == character) ==
+                                  true;
+                            }),
+                      child: SizedBox(
+                        width: (bindingWidth - 24).clamp(0, double.infinity),
+                        child: Text(entry.value),
+                      ),
+                    ),
+                ],
+                builder: (context, controller, _) => Semantics(
+                  label: '绑定角色卡',
+                  value: bindingLabel,
+                  button: true,
+                  enabled: !saving,
+                  expanded: controller.isOpen,
+                  excludeSemantics: true,
+                  onTap: saving ? null : toggleBinding,
+                  child: FocusableActionDetector(
+                    focusNode: bindingFocus,
+                    enabled: !saving,
+                    shortcuts: const {
+                      SingleActivator(LogicalKeyboardKey.enter):
+                          ActivateIntent(),
+                      SingleActivator(LogicalKeyboardKey.space):
+                          ActivateIntent(),
+                    },
+                    actions: {
+                      ActivateIntent: CallbackAction<ActivateIntent>(
+                        onInvoke: (_) {
+                          toggleBinding();
+                          return null;
+                        },
+                      ),
+                    },
+                    child: SizedBox(
+                      key: bindingField,
+                      child: GestureDetector(
+                        key: const Key('history-binding-field'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: saving ? null : toggleBinding,
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: '绑定角色卡',
+                            enabled: !saving,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            suffixIcon: Icon(
+                              controller.isOpen
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            bindingLabel,
+                            style: TextStyle(
+                              fontSize: 16,
+                              height: 24 / 16,
+                              color: Theme.of(context).colorScheme.onSurface
+                                  .withValues(alpha: saving ? .38 : 1),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             Text(

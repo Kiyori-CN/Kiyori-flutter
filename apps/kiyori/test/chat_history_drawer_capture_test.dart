@@ -7,6 +7,7 @@ import 'package:kiyori/features/assistant/presentation/chat_history_details.dart
 import 'package:kiyori/features/assistant/presentation/chat_history_swipe.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_list.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
+import 'package:kiyori_bridge/kiyori_bridge.dart';
 
 import 'chat_business_test.dart' show ChatFixture, until;
 import 'support/memory_audit_exchange.dart';
@@ -43,6 +44,16 @@ void main() {
       }
       await f.chat.change(f.chat.snapshot!.conversation, 'locked', 'true');
       await f.chat.setPreference('history_mode', 'character');
+      await f.runtime.savePromptGroup(
+        null,
+        null,
+        const GroupDraft(
+          name: '历史绑定群聊',
+          description: '',
+          members: ['default_character'],
+        ),
+      );
+      await f.chat.load();
       await f.runtime.appendConversationNote(
         f.chat.snapshot!.conversation.id,
         '原始事件与展开视觉样本：保留完整中文、Emoji 😀 和诊断字段。',
@@ -216,6 +227,23 @@ void main() {
         showHistoryMetadata(host, f.chat, f.chat.snapshot!.conversation);
         await tester.pumpAndSettle();
         await captureUi(tester, boundary, output, '${scenario.$1}-editor');
+        await tester.ensureVisible(
+          find.byKey(const Key('history-binding-field')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('history-binding-field')));
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
+        await captureUi(
+          tester,
+          boundary,
+          output,
+          '${scenario.$1}-binding-menu',
+        );
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(MenuItemButton), findsNothing);
+        expect(find.text('编辑标题'), findsOneWidget);
         await tester.tap(find.text('取消'));
         await tester.pumpAndSettle();
         showHistoryFolderEditor(host, f.chat);

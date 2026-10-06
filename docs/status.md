@@ -13,7 +13,35 @@ main/c8dc3274，旧只读Kiyori-Android/6b03b03；归档增量从main/abbcd9a cl
 未调用真实供应商、发布或执行Apple构建。来源、尺寸和方案见
 [复刻方案](design/chat-history-replication.md)，前序批次证据见[历史记录](status-history.md)。
 
-### 最新增量：详情标签与模态生命周期
+### 最新增量：元数据角色绑定菜单
+
+从main/fa91639干净基线继续核对旧ChatHistorySelector1919–1963。绑定编辑改为
+整字段点击、开合上下箭头、同宽锚定菜单，未绑定/角色/群聊沿旧顺序与文案；
+选择只修改草稿，Back/遮罩先收菜单，再退出才询问未保存修改。原ChatController
+更新目录时刷新菜单名称/选项而保留标题，缺失群聊显示旧提示，不插入伪选项；
+实体删除释放编辑与菜单。新增Enter/Space/Escape和单一读屏操作，保存期间禁用。
+旧Material3 1.4.0字节码核对48行高、12横内距、8纵内距与48上下边界。本机回归
+发现SDK菜单上限不扣键盘，已显式限制可用高度；首轮AlertDialog固有测量冲突改为
+打开时量字段，夹具默认角色ID和菜单字体继承也已修正，原失败证据保留。
+
+定向联合UI-v3共28项通过，含删空保留新会话、96dp滑动与旧状态回归。新增绑定
+4项覆盖同宽/下方、草稿/确认、目录动态变化、实体释放和18长群聊窄屏键盘/横屏。
+最终capture-v2共5项通过，84PNG在work/history-drawer-capture-v29；已审阅明暗菜单/
+设置、320双倍文字键盘、横屏向上展开和桌面同宽代表图。v28暴露菜单未继承宿主字体，
+改为主题bodyLarge后重新捕获，原图保留。完整tools/verify.ps1 -WindowsIntegration
+通过（work/history-binding-verify-v1.log）：foundation69/tooling4、Rust core189/HTTP3/
+provider13/native6/native-audit1，Clippy/analyze、404格式，app669（17条件跳过）/
+platform13/独立FFI22（1条件跳过）/Windows引擎5。Rust三项条件忽略不计供应商验收。
+普通Android/Windows Debug串行22.9s/17.4s通过（binding双端v1）。固定包
+artifacts/ui-preview/20261006-090436：APK137709816字节，SHA256
+A94B1377D76DE910914510C0569E0DC1DAE250B4D8ED3EFE8EC96F0F4C76A032；Windows101文件171642931字节。
+102副本hash、APK身份/v2签名/ZIP16K/ELF、53表情、17两端许可证与Windows x64/
+Flutter DLL pin审计通过（work/history-binding-delivery-v1.log）。本批7路径精确
+源码/测试/正式文档清单审计通过，按授权提交普通推送main；最终提交与远端一致性
+以Git及固定manifest为准。前序包、失败日志和截图均保留。
+设备像素/触摸/TalkBack/Profile、完整旧工具/多附件与Apple边界仍保留。
+
+### 前序增量：详情标签与模态生命周期
 
 从main/5471435继续逐项核对旧ConversationDetailsScreen的SaveableStateHolder、
 remember(query)与宿主annotationText。本批纠正前批“搜索结果随标签保留”的判断：
