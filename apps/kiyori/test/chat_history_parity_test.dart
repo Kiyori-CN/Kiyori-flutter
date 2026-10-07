@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori/features/assistant/presentation/chat_dialogs.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_management.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 
 void main() {
   testWidgets(

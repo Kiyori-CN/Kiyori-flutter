@@ -6,7 +6,7 @@ import 'package:kiyori/features/assistant/presentation/chat_history_menu.dart';
 import 'package:kiyori/features/assistant/presentation/chat_history_widgets.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 
 void main() {
   testWidgets(

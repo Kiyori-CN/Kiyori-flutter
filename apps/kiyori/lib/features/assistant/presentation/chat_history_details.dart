@@ -85,6 +85,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   Map<String, dynamic>? audit;
   ConversationSnapshot? snapshot;
   int tab = 0, epoch = 0, searchEpoch = 0;
+  int latestScrollEpoch = 0;
   int? revision;
   bool loading = false, searchLoading = false;
   int lastSequence = 0, unread = 0;
@@ -118,6 +119,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   void dispose() {
     epoch++;
     searchEpoch++;
+    latestScrollEpoch++;
     children.dispose();
     debounce?.cancel();
     search.dispose();
@@ -130,6 +132,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   Future<void> load({bool older = false}) async {
+    if (older) latestScrollEpoch++;
     final generation = ++epoch;
     final target = loaded;
     const query = '';
@@ -272,13 +275,41 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   }
 
   void jumpLatest() {
-    if (!mounted || tab != 0 || !scrolls[0].hasClients) return;
-    scrolls[0].jumpTo(scrolls[0].position.maxScrollExtent);
-    tabOffsets[0] = scrolls[0].offset;
+    if (!mounted ||
+        tab != 0 ||
+        search.text.trim().isNotEmpty ||
+        !scrolls[0].hasClients) {
+      return;
+    }
+    final generation = ++latestScrollEpoch;
+    // 惰性列表的末端距离是估算值，第一次跳转后会随新卡片布局改变。
+    // 逐帧校准到真实末端；用户操作、切标签或搜索立即撤销，不持续抢占滚动。
+    void alignLatest() {
+      if (!mounted ||
+          generation != latestScrollEpoch ||
+          tab != 0 ||
+          search.text.trim().isNotEmpty ||
+          !scrolls[0].hasClients) {
+        return;
+      }
+      final position = scrolls[0].position;
+      if (!position.hasContentDimensions) return;
+      if ((position.maxScrollExtent - position.pixels).abs() <= 0.5) {
+        tabOffsets[0] = position.pixels;
+        return;
+      }
+      position.jumpTo(position.maxScrollExtent);
+      tabOffsets[0] = position.pixels;
+      WidgetsBinding.instance.addPostFrameCallback((_) => alignLatest());
+      WidgetsBinding.instance.ensureVisualUpdate();
+    }
+
+    alignLatest();
     if (unread != 0) setState(() => unread = 0);
   }
 
   void queryChanged(String value) {
+    latestScrollEpoch++;
     final previous = tabQueries[tab].trim();
     tabQueries[tab] = value;
     setState(() {});
@@ -333,6 +364,7 @@ class _HistoryDetailsState extends State<HistoryDetails> {
   });
   void selectTab(int next) {
     if (next == tab) return;
+    latestScrollEpoch++;
     debounce?.cancel();
     tabQueries[tab] = search.text;
     if (tab == 0) timelineSearch.reset();
@@ -627,64 +659,70 @@ class _HistoryDetailsState extends State<HistoryDetails> {
                               ),
                             ),
                           )
-                        : ListView.builder(
-                            key: ValueKey('history-details-list-$tab'),
-                            controller: scroll,
-                            padding: const EdgeInsets.only(bottom: 18),
-                            itemCount:
-                                count + (older ? 1 : 0) + (count == 0 ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (count == 0 && index == 0) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Text('已加载的事件中没有匹配结果，可继续加载更早的事件。'),
-                                );
-                              }
-                              if (older && index == (count == 0 ? 1 : 0)) {
-                                return TextButton(
-                                  onPressed: loading
-                                      ? null
-                                      : () => load(older: true),
-                                  child: Text(
-                                    loading
-                                        ? '正在加载更早事件'
-                                        : identical(page, timelineSearch)
-                                        ? '继续搜索'
-                                        : '加载更早事件',
-                                  ),
-                                );
-                              }
-                              final offset = index - (older ? 1 : 0);
-                              if (tab == 1) {
-                                final m = filteredMessages[offset];
-                                return _MessageCard(
-                                  key: ValueKey('${m.id}/${m.variant}'),
-                                  message: m,
-                                  open: expanded.contains(m.id),
-                                  onTap: () => toggle(m.id),
-                                  onEdit: widget.owner.busy
-                                      ? null
-                                      : () => dialog(
-                                          _RevisionDialog(
-                                            owner: widget.owner,
-                                            item: snapshot!.conversation,
-                                            message: m,
+                        : Listener(
+                            onPointerDown: (_) => latestScrollEpoch++,
+                            onPointerSignal: (_) => latestScrollEpoch++,
+                            child: ListView.builder(
+                              key: ValueKey('history-details-list-$tab'),
+                              controller: scroll,
+                              padding: const EdgeInsets.only(bottom: 18),
+                              itemCount:
+                                  count +
+                                  (older ? 1 : 0) +
+                                  (count == 0 ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (count == 0 && index == 0) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text('已加载的事件中没有匹配结果，可继续加载更早的事件。'),
+                                  );
+                                }
+                                if (older && index == (count == 0 ? 1 : 0)) {
+                                  return TextButton(
+                                    onPressed: loading
+                                        ? null
+                                        : () => load(older: true),
+                                    child: Text(
+                                      loading
+                                          ? '正在加载更早事件'
+                                          : identical(page, timelineSearch)
+                                          ? '继续搜索'
+                                          : '加载更早事件',
+                                    ),
+                                  );
+                                }
+                                final offset = index - (older ? 1 : 0);
+                                if (tab == 1) {
+                                  final m = filteredMessages[offset];
+                                  return _MessageCard(
+                                    key: ValueKey('${m.id}/${m.variant}'),
+                                    message: m,
+                                    open: expanded.contains(m.id),
+                                    onTap: () => toggle(m.id),
+                                    onEdit: widget.owner.busy
+                                        ? null
+                                        : () => dialog(
+                                            _RevisionDialog(
+                                              owner: widget.owner,
+                                              item: snapshot!.conversation,
+                                              message: m,
+                                            ),
                                           ),
-                                        ),
+                                  );
+                                }
+                                final e = filteredEvents[offset];
+                                return _EventCard(
+                                  key: ValueKey(e['eventId']),
+                                  event: e,
+                                  raw: tab == 2,
+                                  open: expanded.contains(e['eventId']),
+                                  onTap: () => toggle(e['eventId'] as String),
+                                  owner: widget.owner,
+                                  id: widget.id,
+                                  query: tab == 0 ? search.text.trim() : '',
                                 );
-                              }
-                              final e = filteredEvents[offset];
-                              return _EventCard(
-                                key: ValueKey(e['eventId']),
-                                event: e,
-                                raw: tab == 2,
-                                open: expanded.contains(e['eventId']),
-                                onTap: () => toggle(e['eventId'] as String),
-                                owner: widget.owner,
-                                id: widget.id,
-                                query: tab == 0 ? search.text.trim() : '',
-                              );
-                            },
+                              },
+                            ),
                           ),
                     if (tab == 0 && search.text.trim().isEmpty && unread > 0)
                       Align(

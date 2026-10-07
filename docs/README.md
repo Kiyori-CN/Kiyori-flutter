@@ -1,10 +1,15 @@
 # Kiyori 文档中心
 
-本目录是项目方案的正式入口。先了解产品范围与技术决策，再阅读目录和模块设计；实施证据始终查看当前状态。
+本目录是唯一完整文档导航。使用者从用户指南开始；开发者先读根 AGENTS / CONTEXT，再按任务选择架构、设计与验证文档。当前进度只看 status，历史记录只证明对应批次。
+
+## 用户指南
+
+- [当前能力与使用边界](user-guide/current-capabilities.md)：首次配置、会话、本地模型、记忆与预览限制。
 
 ## 产品与决策
 
 - [产品范围](product/scope.md)：目标用户、能力范围和非目标。
+
 - [ADR 0001：语言与框架](decisions/0001-technology-stack.md)：候选方案、选择、成本与重新评估条件。
 - [ADR 0002：交互与边界](decisions/0002-interaction-and-module-boundaries.md)：分页性能、模块化单体与原生方案的取舍。
 - [ADR 0003：资料 Markdown](decisions/0003-profile-markdown-presentation.md)：编辑高亮、静态解析、展示与资源边界。
@@ -16,6 +21,8 @@
 - [ADR 0009：托管模型传输](decisions/0009-managed-model-transfers.md)：ResourceRef、单执行者、断点校验和原子交付。
 - [ADR 0010：本地模型推理](decisions/0010-native-model-inference.md)：平台句柄、资源租约、静态构建与停止等待。
 - [ADR 0011：受控脚本执行器](decisions/0011-controlled-script-executor.md)：CommonJS/Promise真实调用、限额、取消析构和静态构建。
+- [ADR 0012 持久提供方包](decisions/0012-persistent-provider-packages.md)：包导入、稳定身份、撤销、恢复和兼容范围。
+- [ADR 0013 提供方 HTTP 与聊天](decisions/0013-controlled-provider-http.md)：共享网络、凭据引用、配额、取消和结果校验。
 - [ADR 0014：历史目录与基础审计](decisions/0014-conversation-history-and-audit.md)：删除替代事务、分组作用域、消息修订、事件链与导出边界。
 - [ADR 0015：审计正文保护](decisions/0015-audit-native-protection.md)：平台AES-GCM与持久P-256签名、schema21迁移和密钥恢复边界。
 - [ADR 0016：旧格式审计导出](decisions/0016-portable-audit-export.md)：schema1移植投影、链头封印、诊断预算与假名化。
@@ -25,7 +32,9 @@
 ## 架构
 
 - [整体架构](architecture/overview.md)：层次、状态所有权、依赖与调用流。
-- [仓库布局](architecture/repository-layout.md)：目标目录树、模块拆分门槛和工作区规则。
+- [仓库布局](architecture/repository-layout.md)：真实目录、规划分区、模块拆分门槛和工作区规则。
+- [运行契约](architecture/runtime-contracts.md)：事务、取消、凭据、会话与界面状态边界。
+- [模块实现与接线](architecture/module-implementation.md)：源码位置、持久宿主和纯展示组件。
 - [命名规范](architecture/naming.md)：目录、符号、包名、应用身份与并存隔离。
 - [模块目录](architecture/module-catalog.md)：各功能的所有者、输入输出、依赖和验收。
 - [旧项目模块地图](architecture/legacy-module-map.md)：九个 Android 模块、领域所有者、迁移细节与审查范围。
@@ -43,8 +52,6 @@
 - [角色卡与提示词](design/character-prompts.md)：旧源码深度、角色/群组成员草稿、目录身份、嵌套弹层与业务接入边界。
 - [AI 与扩展](design/ai-and-extensions.md)：助手、脚本、插件、Skill、MCP 与工具执行。
 - [TOOLPKG提供方运行时方案](design/toolpkg-provider-runtime-plan.md)：动态提供方旧源、执行器实证、权限与正式接入切片。
-- [ADR 0012 持久提供方包](decisions/0012-persistent-provider-packages.md)：包导入、稳定身份、撤销、恢复和兼容范围。
-- [ADR 0013 提供方 HTTP 与聊天](decisions/0013-controlled-provider-http.md)：共享网络、凭据引用、配额、取消和结果校验。
 - [浏览器与网络](design/browser-and-network.md)：会话、广告拦截、应用代理与系统代理边界。
 - [文件、下载与媒体](design/files-downloads-and-media.md)：资源引用、后台任务、音视频与终端。
 - [数据与权限](design/data-and-security.md)：存储、安全、权限、迁移、日志与依赖来源。
@@ -57,11 +64,14 @@
 - [工具链基线](development/toolchains.md)：稳定版本、激活、安装与更新规则。
 - [本机环境报告](development/environment-report.md)：实际探测、安装、构建与剩余缺口。
 - [验证策略](development/testing.md)：哪些检查能证明什么，以及何时执行。
+- [领域测试目录](development/test-catalog.md)：按行为定位回归，区分 mock、loopback 和平台证据。
+- [文档维护规范](development/documentation.md)：职责、标题、表格、链接、归档与事实审阅。
 - [代码与语言约定](development/coding-conventions.md)：真实目录、依赖方向和各语言职责。
 - [UI 复刻开发流程](development/ui-replication-workflow.md)：来源追踪、定向验证、截图与交付复用。
 - [输入响应与帧性能](development/performance.md)：滑动优化、Profile 入口、真机指标与未验证边界。
 - [路线图](roadmap.md)：各里程碑的输入、交付和完成信号。
 - [当前状态](status.md)：唯一实施进度与下一任务入口。
+- [2026 年 10 月实施记录](status-history-2026-10.md)：当前产品基线之前的完整批次正文。
 - [历史实施记录](status-history.md)：保留历史批次证据，不代表当前授权或最新产物。
 - [资料来源](references.md)：官方资料与核验日期。
 

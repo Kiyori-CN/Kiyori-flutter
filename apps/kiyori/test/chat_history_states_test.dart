@@ -12,7 +12,7 @@ import 'package:kiyori/features/assistant/presentation/chat_history_widgets.dart
 import 'package:kiyori/features/assistant/presentation/chat_history_list.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 import 'support/memory_audit_exchange.dart';
 
 void main() {
@@ -1541,6 +1541,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('基础记录'), findsOneWidget);
+      final timeline = tester
+          .widget<ListView>(
+            find.byKey(const ValueKey('history-details-list-0')),
+          )
+          .controller!;
+      expect(timeline.position.extentAfter, lessThanOrEqualTo(0.5));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.binding.hasScheduledFrame, isFalse);
       expect(find.text('时间线'), findsOneWidget);
       expect(find.text('原始事件'), findsOneWidget);
       await tester.tap(find.text('备注'));
@@ -1563,6 +1571,27 @@ void main() {
         () => find.textContaining('稳定复现记录').evaluate().isNotEmpty,
       );
       await tester.pumpAndSettle();
+      // 阅读较早事件时保留位置；主动点击新事件入口才重新定位真实末端。
+      await tester.drag(
+        find.byKey(const ValueKey('history-details-list-0')),
+        const Offset(0, 250),
+      );
+      await tester.pumpAndSettle();
+      expect(timeline.position.extentAfter, greaterThan(80));
+      await tester.tap(find.text('备注'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, '阅读期间的新备注');
+      await tester.pump();
+      await tester.tap(find.text('追加注释'));
+      await until(tester, () => find.text('添加诊断备注').evaluate().isEmpty);
+      await until(tester, () => find.text('1 条新事件').evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+      expect(timeline.position.extentAfter, greaterThan(80));
+      await tester.tap(find.text('1 条新事件'));
+      await tester.pumpAndSettle();
+      expect(timeline.position.extentAfter, lessThanOrEqualTo(0.5));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.binding.hasScheduledFrame, isFalse);
       await tester.tap(find.text('导出'));
       await tester.pumpAndSettle();
       exchange.failNext = true;

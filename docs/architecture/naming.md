@@ -16,6 +16,14 @@
 
 不在所有内部类型前机械添加 Kiyori；`BrowserSession` 比 `KiyoriBrowserSessionManagerImpl` 更清楚。禁止 `new/old/v2/final/temp` 充当持久架构分类。标准协议 MCP、Agent Skills、Flutter 等准确技术名称保留。
 
+## 文件归属与改名
+
+- Dart 页面、controller、展示快照及测试遵循现有 `snake_case`；测试使用 `*_test.dart`，共享夹具进入 `test/support/`，不互相导入测试套件。
+- Rust 小领域使用 `storage.rs` 等同名文件，大领域再拆目录；文件大小不是必须改名或拆层的理由。
+- ADR 使用四位连续新增编号与主题名，既有编号不重排；历史证据用明确日期或月份，不使用“最终版”。
+- 改名先核对大小写碰撞、导入、part/include、构建脚本、生成器和文档引用，同次修改闭合；生态入口、第三方协议和生成路径保留标准拼写。
+- `Persistent*` 表示持久业务宿主，纯展示页面保留可注入快照；名称不能掩盖空实现或把草稿称为已保存。
+
 ## 新旧应用并存
 
 M1 已在 Android APK 中验证 `com.kiyori`，并生成 Windows `Kiyori.exe`；iOS runner 已配置 bundle ID，但尚未在 Apple 环境编译或注册。其余未实现能力仍为设计预留。身份检查不能替代新旧应用的设备并存验收。

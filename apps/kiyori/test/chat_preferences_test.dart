@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 
-import 'chat_business_test.dart' show ChatFixture;
+import 'support/chat_fixture.dart' show ChatFixture;
 
 void main() {
   test(

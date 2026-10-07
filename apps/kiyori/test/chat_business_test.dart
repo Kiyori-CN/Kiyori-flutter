@@ -13,8 +13,6 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 import 'support/ui_capture.dart';
 import 'support/chat_fixture.dart';
 
-export 'support/chat_fixture.dart' show ChatFixture, until;
-
 class GatedSecrets implements SecretStore {
   GatedSecrets(this.inner);
   final SecretStore inner;

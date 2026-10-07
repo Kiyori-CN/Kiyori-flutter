@@ -1,5 +1,14 @@
 # 仓库布局
 
+<!-- doc-toc:start -->
+- [设计原则](#设计原则)
+- [当前目录](#当前目录)
+- [尚未创建的规划](#尚未创建的规划)
+- [模块内部布局](#模块内部布局)
+- [依赖规则](#依赖规则)
+- [拆包条件](#拆包条件)
+<!-- doc-toc:end -->
+
 ## 设计原则
 
 当前详情装配集中在 `apps/kiyori/lib/app/shell/settings_navigation.dart`，只借用现有
@@ -11,95 +20,72 @@ Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存
 
 根目录表示工程角色，角色内部按语言生态和领域命名。初期采用模块化单体，不把每个页面拆成 package，也不预造几十个 crate。目录只有在承载真实实现、测试或文档时创建。
 
-下图是**目标布局**；已有app、UI、bridge、core、FFI与根Pub/Cargo workspace。
-kiyori_platform现已为安全凭据建立lib/test，Windows绑定DPAPI、移动端委托安全存储插件；
-未生成空android/windows/ios目录。业务feature、SDK、extensions和CI按需求建立。
+## 当前目录
+
+以下按 `138f42e` 的实际目录整理，仅省略同类文件，不列尚未建立的目标目录。Pub workspace
+有四个成员，Cargo workspace 有五个成员；成员清单以根 manifest 为准。
 
 ```text
 Kiyori/
-├── apps/
-│   └── kiyori/                    # 唯一 Flutter 产品入口
-│       ├── lib/
-│       │   ├── app/               # 启动、路由、依赖装配、外壳与 diagnostics
-│       │   ├── features/          # 按用户功能组织 UI 和交互状态
-│       │   │   ├── assistant/
-│       │   │   ├── browser/
-│       │   │   ├── toolbox/
-│       │   │   ├── files/
-│       │   │   ├── downloads/
-│       │   │   ├── video/
-│       │   │   ├── music/
-│       │   │   ├── extensions/
-│       │   │   ├── terminal/
-│       │   │   └── settings/
-│       │   └── l10n/              # 本地化资源
-│       ├── android/              # 薄 runner、清单、签名接线
-│       ├── windows/              # 薄 runner、窗口与打包接线
-│       ├── ios/                  # 薄 runner、权限与签名接线
-│       ├── assets/
-│       ├── test/
-│       ├── integration_test/
-│       └── test_driver/           # Profile 基准结果回收入口
+├── apps/kiyori/                 # Flutter 产品入口
+│   ├── lib/app/                 # 启动、装配、路由与 diagnostics
+│   ├── lib/features/            # 用户功能的界面与交互
+│   ├── android/                 # Android runner 与平台通道
+│   ├── windows/                 # Windows runner
+│   ├── ios/                     # iOS 源集，Apple 构建待验证
+│   ├── assets/                  # 品牌、旧源素材及许可证
+│   ├── test/                    # 组件与行为测试，support/ 为共享夹具
+│   ├── integration_test/        # 引擎集成与性能场景
+│   └── test_driver/             # Profile 结果回收
 ├── packages/
-│   ├── kiyori_ui/                # 语义颜色、排版、组件与响应式原语
-│   ├── kiyori_bridge/            # Dart FFI 外观和独立 generated/ 区
-│   └── kiyori_platform/          # 类型化系统接口与原生实现
-│       ├── lib/
-│       ├── android/
-│       ├── windows/
-│       ├── ios/
-│       └── test/
+│   ├── kiyori_ui/lib/           # 公共 UI，包入口显式导出
+│   ├── kiyori_bridge/           # Dart 外观、hook、test、src/generated/
+│   └── kiyori_platform/
+│       ├── lib/                 # 平台能力的 Dart 接口
+│       ├── test/                # 平台通道与接口测试
+│       ├── assets/              # 平台能力使用的静态资源
+│       ├── native/              # 本地推理 Rust/C++ adapter
+│       ├── scripts/             # QuickJS-NG Rust/C++ adapter
+│       └── audit/               # 审计保护 Rust/原生 adapter
 ├── crates/
-│   ├── kiyori_core/
-│   │   ├── src/
-│   │   │   ├── assistant/        # 会话、provider、执行编排
-│   │   │   ├── tools/            # 工具注册与调用，非仓库开发脚本
-│   │   │   ├── extensions/       # scripts/plugins/skills/mcp
-│   │   │   ├── browser/          # 会话元数据与浏览策略
-│   │   │   ├── files/            # ResourceRef 与文件操作契约
-│   │   │   ├── downloads/        # 下载状态机与恢复
-│   │   │   ├── media/            # 库、队列、播放命令
-│   │   │   ├── network/          # 应用网络策略、代理配置
-│   │   │   ├── adblock/          # 规则、编译快照、站点策略
-│   │   │   ├── terminal/         # 进程会话策略与任务模型
-│   │   │   ├── permissions/      # 授权判断与撤销
-│   │   │   ├── tasks/            # 公共任务生命周期与取消
-│   │   │   ├── storage/          # SQLite、迁移、仓储实现
-│   │   │   └── platform/         # 宿主能力端口，不包含三端业务副本
-│   │   └── tests/
-│   └── kiyori_ffi/               # 对外 API、DTO、装配与代码生成边界
-├── sdk/
-│   └── typescript/               # 扩展作者 API/schema 类型及构建工具
-├── extensions/                   # 随仓库维护的第一方扩展与可运行示例
-│   ├── scripts/
-│   ├── plugins/
-│   └── skills/
-├── tests/
-│   └── fixtures/                 # 跨语言协议与场景夹具，不重复单元测试
-├── tools/                        # 本仓库开发/检查脚本，非应用内脚本
-├── docs/                         # 正式产品、架构、领域设计与证据
-├── .github/workflows/            # 有实际构建入口后建立 CI
-├── toolchains.json               # 审核后的工具版本及验证状态
-├── rust-toolchain.toml           # rustup 精确版本选择
-├── pubspec.yaml                  # M1 建立原生 Pub workspace
-├── Cargo.toml                    # M1 建立 Cargo workspace
-├── README.md
-├── CONTEXT.md
-└── AGENTS.md
+│   ├── kiyori_core/src/         # lib.rs 导出领域，storage.rs 统一迁移
+│   │   ├── chat/               # 请求协议、流式、观测与推理端口
+│   │   └── extensions/         # 持久包、清单、校验及受控 HTTP
+│   └── kiyori_ffi/              # API、句柄、DTO 与生成边界
+├── tools/                      # PowerShell 开发与验证入口
+├── docs/                       # 用户指南、架构、设计、决策及证据
+├── pubspec.yaml                # Pub workspace；根 pubspec.lock
+├── Cargo.toml                  # Cargo workspace；根 Cargo.lock
+├── toolchains.json             # 版本与验证状态
+├── rust-toolchain.toml          # rustup 版本选择
+├── README.md                   # 概览和上手
+├── CONTEXT.md                  # 高频语义
+└── AGENTS.md                   # 协作规则
 ```
+
+现有 feature 为 accounts、assistant、browser、documents、downloads、extensions、files、knowledge、
+music、onboarding、player、settings、speech、toolbox、video、workflows。目录存在不代表业务完成，
+实现位置与空动作边界见[模块实现](module-implementation.md)。
+
+## 尚未创建的规划
+
+`sdk/typescript`、根 `extensions/`、根 `tests/fixtures/` 和 `.github/workflows/`
+在当前基线尚未建立。只有真实用例需要时才创建；CI 与远端资源另需授权。新增 browser、
+tools、permissions、media、terminal 等核心领域时优先接现有 Runtime，不照目标树生成空实现。
+平台专属源码按实际接线管理，不预建平台包的 android/windows/ios 空目录。
 
 ## 模块内部布局
 
 Dart feature 使用 `presentation/`、`application/`（交互控制）与局部 `widgets/`，按实际复杂度创建。不再放业务数据库、provider HTTP 客户端或第二套领域仓储。导入通过各包公共入口，禁止从外部导入别的 feature 私有实现。
 
-Rust 小模块可从一个 `mod.rs` 开始，再自然拆成 `model.rs`、`service.rs`、`ports.rs`。不要求每个领域机械建立多层 `domain/application/infrastructure`。跨模块协调放在上层用例，不制造循环依赖。
+Rust 小模块从领域同名 `.rs` 文件开始，出现内聚子模块时再使用目录与 `mod.rs`，再自然拆成 `model.rs`、`service.rs`、`ports.rs`。不要求每个领域机械建立多层 `domain/application/infrastructure`。跨模块协调放在上层用例，不制造循环依赖。
 
 现有跨 feature 的公开展示复用保持单向：聊天历史复用设置的 BackupCard/BackupText，
 引导复用协议正文/阅读组件和权限展示类型；均不访问领域状态或服务。它们是已有同源
 展示契约，不为消除路径差异复制一份数据。真实权限/协议持久能力接入时由 app 注入，
 不能让这些展示引用扩展成跨 feature 的业务状态所有权。
 
-原生代码主要在 `kiyori_platform` 内：浏览器、文件授权、后台传输、播放、凭据和终端各自拥有适配模块。runner 只做启动与注册。平台包膨胀后才按可独立构建/测试的能力拆成 federated packages。
+已实现的推理、脚本、审计与安全存储适配归 `kiyori_platform`；当前部分 Android 系统选择器与通道位于 app runner。后续浏览器、后台传输、播放和终端仍按能力建立 adapter，避免在 runner 增加领域规则。平台包膨胀后才按可独立构建/测试的能力拆成 federated packages。
 
 ## 依赖规则
 

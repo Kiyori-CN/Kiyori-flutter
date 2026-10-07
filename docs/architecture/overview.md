@@ -1,5 +1,7 @@
 # 整体架构
 
+本文描述目标架构；图中的 tools、permissions、浏览器和媒体完整链路尚未全部接入。实际目录见[仓库布局](repository-layout.md)，已实现接线见[模块目录](module-catalog.md)，当前进度见[状态](../status.md)。
+
 ## 分层与所有权
 
 ```mermaid
@@ -16,7 +18,7 @@ flowchart TD
     TOOLS --> CORE
 ```
 
-这是逻辑依赖与调用关系，不要求 Rust 直接加载 Dart。平台调用可通过类型化宿主回调、Pigeon/平台通道或原生 FFI 接入；M1 验证后选最少通道的方案并固定。不得在同步 FFI 中阻塞主线程或等待原生 UI 回调。
+这是逻辑依赖与调用关系，不要求 Rust 直接加载 Dart。平台调用可通过类型化宿主回调、Pigeon/平台通道或原生 FFI 接入；现有 FFI / 平台通道及 Rust/C++ adapter 已按能力接线；新能力复用这些边界。不得在同步 FFI 中阻塞主线程或等待原生 UI 回调。
 
 | 状态 | 唯一权威所有者 | 其它层如何使用 |
 | --- | --- | --- |
@@ -32,7 +34,7 @@ AI 请求读取附件 → 工具注册表验证 schema → 权限服务检查 wo
 
 ## FFI 与异步契约
 
-命令携带 `request_id`、`workspace_id` 和输入；长任务返回 `task_id`。事件携带实体 ID、单调 revision、状态与脱敏错误。订阅恢复先获取快照，再应用后续事件；有界缓冲溢出明确要求重取快照，不默默丢失关键完成事件。
+以下是未来统一命令的设计要求，不是当前所有 FFI 函数已具备的字段：命令携带请求与工作空间身份，长任务返回可取消任务身份。实际 API 以 `crates/kiyori_ffi/src` 和生成 DTO 为准。事件携带实体 ID、单调 revision、状态与脱敏错误。订阅恢复先获取快照，再应用后续事件；有界缓冲溢出明确要求重取快照，不默默丢失关键完成事件。
 
 领域错误至少区分 `invalid_input`、`permission_denied`、`unsupported_capability`、`unavailable`、`cancelled`、`conflict`、`external_outcome_unknown`。展示文案单独本地化，不把原生异常文本当作稳定 API。
 

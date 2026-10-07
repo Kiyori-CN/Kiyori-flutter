@@ -1,5 +1,7 @@
 # 文件、下载、媒体与终端
 
+本文为目标领域契约。现有 files/downloads 已支持应用私有模型资源与前台传输，见[ADR 0009](../decisions/0009-managed-model-transfers.md)；通用文件、OS 后台传输、媒体与终端的实施状态见[当前状态](../status.md)。
+
 ## 资源与文件管理
 
 `ResourceRef` 至少携带稳定 ID、来源种类、workspace、显示名称、MIME、可用能力与授权引用。绝对路径只是 Windows/应用私有文件的一种实现；Android SAF URI 与 iOS security-scoped bookmark 不能强制转换为可自由访问的路径。

@@ -6,7 +6,7 @@ import 'package:kiyori/features/assistant/presentation/chat_messages.dart';
 import 'package:kiyori/features/settings/presentation/appearance/appearance_settings_page.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 import 'support/ui_capture.dart';
 
 void main() {

@@ -6,7 +6,7 @@ import 'package:kiyori/features/assistant/presentation/chat_history_menu.dart';
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 
 const bindingField = Key('history-binding-field');
 Finder option(String id) => find.byKey(ValueKey('history-binding-option-$id'));

@@ -10,7 +10,7 @@ import 'package:kiyori/features/knowledge/presentation/memory_search_simulation.
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'knowledge_graph_test.dart' show settleNative;
+import 'support/knowledge_test_helpers.dart';
 import 'support/fake_runtime.dart';
 import 'support/ui_capture.dart';
 

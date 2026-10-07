@@ -1,45 +1,32 @@
+#requires -Version 7.0
 [CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'foundation-content.ps1')
 $failures = [System.Collections.Generic.List[string]]::new()
 $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
 $paths = @('README.md', 'AGENTS.md', 'CONTEXT.md', 'toolchains.json', 'rust-toolchain.toml', '.editorconfig', '.gitattributes', '.gitignore')
 $paths += Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'docs') -Recurse -File | ForEach-Object { [IO.Path]::GetRelativePath($repositoryRoot, $_.FullName) }
 $paths += Get-ChildItem -LiteralPath $PSScriptRoot -File | ForEach-Object { [IO.Path]::GetRelativePath($repositoryRoot, $_.FullName) }
+# 跟踪文件与未忽略的新文件都参与；不会遍历 build/target 或读取机器私有 JSON。
+$jsonPaths = @(git -C $repositoryRoot ls-files --cached --others --exclude-standard -- '*.json')
+if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate repository JSON files.' }
+$paths += $jsonPaths
+$paths += 'apps/kiyori/README.md'
+$paths = @($paths | Sort-Object -Unique)
 
 foreach ($relative in $paths) {
   $path = Join-Path $repositoryRoot $relative
   if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $failures.Add("Missing: $relative"); continue }
   $bytes = [IO.File]::ReadAllBytes($path)
-  try { $content = $utf8.GetString($bytes) } catch { $failures.Add("Invalid UTF-8: $relative"); continue }
-  if ($content.StartsWith([char]0xFEFF)) { $failures.Add("UTF-8 BOM: $relative") }
-  if ($content.Contains("`r")) { $failures.Add("Expected LF: $relative") }
-  if (-not $content.EndsWith("`n")) { $failures.Add("Missing final newline: $relative") }
+  foreach ($failure in (Get-FoundationContentFailures -Relative $relative -Bytes $bytes)) { $failures.Add($failure) }
+  try { $content = $utf8.GetString($bytes) } catch { continue }
   if ($relative.EndsWith('.md')) {
-    $lines = $content -split "`n"
-    $inFence = $false
-    $headingCount = 0
-    $lastLevel = 0
-    foreach ($line in $lines) {
-      if ($line -match '^```') { $inFence = -not $inFence; continue }
-      if ($inFence) { continue }
-      if ($line -match '^(#{1,6}) ') {
-        $level = $Matches[1].Length
-        if ($level -eq 1) { $headingCount++ }
-        if ($lastLevel -gt 0 -and $level -gt ($lastLevel + 1)) { $failures.Add("Skipped heading level: $relative :: $line") }
-        $lastLevel = $level
-      }
-      foreach ($link in [regex]::Matches($line, '\[[^\]]*\]\(([^)]+)\)')) {
-        $target = $link.Groups[1].Value.Trim('<', '>')
-        if ($target -match '^[a-zA-Z][a-zA-Z0-9+.-]*:' -or $target.StartsWith('#')) { continue }
-        $target = [Uri]::UnescapeDataString(($target -split '#')[0])
-        if ($target -and -not (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $path) $target))) { $failures.Add("Broken local link: $relative -> $target") }
-      }
+    foreach ($target in (Get-FoundationLocalLinks -Content $content)) {
+      if (-not (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $path) $target))) { $failures.Add("Broken local link: $relative -> $target") }
     }
-    if ($inFence) { $failures.Add("Unclosed code fence: $relative") }
-    if ($headingCount -ne 1) { $failures.Add("Expected one H1: $relative") }
   }
   if ($relative.EndsWith('.ps1')) {
     $parseErrors = $null
@@ -47,6 +34,15 @@ foreach ($relative in $paths) {
     [void][System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors)
     foreach ($parseError in $parseErrors) { $failures.Add("PowerShell parse: $relative :: $($parseError.Message)") }
   }
+}
+
+# 导航只检查覆盖，不生成第二套目录；新文档必须从唯一文档中心可发现。
+$docsRoot = Join-Path $repositoryRoot 'docs'
+$catalogTargets = @(Get-FoundationLocalLinks -Content ([IO.File]::ReadAllText((Join-Path $docsRoot 'README.md'))))
+$catalogPaths = @($catalogTargets | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $docsRoot $_)) })
+foreach ($doc in Get-ChildItem -LiteralPath $docsRoot -Recurse -Filter '*.md' -File) {
+  if ($doc.FullName -eq (Join-Path $docsRoot 'README.md')) { continue }
+  if ($doc.FullName -notin $catalogPaths) { $failures.Add("Document missing from docs/README.md: $([IO.Path]::GetRelativePath($repositoryRoot, $doc.FullName))") }
 }
 
 # 公共 UI 不能反向依赖应用/桥接。检查真实 import/export，不维护文件哈希快照。
@@ -99,5 +95,5 @@ foreach ($file in Get-ChildItem (Join-Path $repositoryRoot 'apps/kiyori/lib/feat
   }
 }
 if ($failures.Count -gt 0) { $failures | ForEach-Object { Write-Host "FAIL: $_" }; throw "$($failures.Count) foundation checks failed." }
-Write-Host "PASS: $($paths.Count) files; UTF-8/LF, Markdown/local links, JSON, PowerShell syntax, toolchain wiring and feature-to-app boundary."
+Write-Host "PASS: $($paths.Count) files; UTF-8/LF, Markdown/tables/local links/catalog, $($jsonPaths.Count) JSON files, PowerShell syntax, toolchain wiring and feature-to-app boundary."
 Write-Host 'Scope: foundation structure only; not external URLs, Markdown anchor resolution, architecture correctness or application builds.'

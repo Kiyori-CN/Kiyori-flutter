@@ -1,17 +1,36 @@
 # UI 复刻契约
 
+本文保存旧源几何、资源与交互合同；业务接线以[运行契约](../architecture/runtime-contracts.md)和[当前状态](../status.md)为准。底部 2026-10-02 初始批次保留历史计划与结果，不是当前 Git 状态或授权。
+
+<!-- doc-toc:start -->
+- [角色、模型与上下文](#角色模型与上下文)
+- [历史管理与引导](#历史管理与引导)
+- [账号与界面定制](#账号与界面定制)
+- [备份、许可与权限](#备份许可与权限)
+- [路径、代理与广告拦截](#路径代理与广告拦截)
+- [播放器与工具箱设置追加](#播放器与工具箱设置追加)
+- [全页面持续复刻（2026-10-02）](#全页面持续复刻2026-10-02)
+- [四个一级页面增量（2026-10-02）](#四个一级页面增量2026-10-02)
+- [初始首页批次：目标与基线（2026-10-02）](#初始首页批次目标与基线2026-10-02)
+- [源码依据与几何](#源码依据与几何)
+- [初始首页批次：实施和验证计划](#初始首页批次实施和验证计划)
+- [初始首页批次：实际结果](#初始首页批次实际结果)
+<!-- doc-toc:end -->
+
+## 角色、模型与上下文
+
 角色卡/提示词本轮契约见[角色卡与提示词](character-prompts.md)：三标签、默认角色、
-八字段编辑、标签与模型/记忆/工具绑定、群组列表/名称/描述/成员下拉及目录身份；业务
-CRUD 仍未接入。局部选择和添加不能被描述为真实群组保存；旧群组没有规划参数、默认
+八字段编辑、标签与模型/记忆/工具绑定、群组列表/名称/描述/成员下拉及目录身份。持久宿主
+已接入 Rust CRUD；嵌套选择只回填父草稿，最终保存才提交。旧群组没有规划参数、默认
 徽章或手动排序，不能补造控制项。
 
 模型与 API 默认页来自 ModelConfigScreen、ModelApiSettingsSection、ModelParametersSection、
 AdvancedSettingsSection 和 ModelNameTagEditor。保留配置选择16px圆角、API/折叠卡12px圆角、
 提供方30项/52协议目录、端点选择、三行模型标签与真实长按排序、四类参数、请求头六预设、
-请求队列及空密钥池。配置目录复用 ModelConfigPresentation；表单暂投影旧默认值，未加载
-真实配置和连接结果。新建/重命名/删除/保存/测试/获取模型/导入/导出/下载均不执行业务；
-请求头行、输入、开关、协议和顺序只修改本页草稿。端点预览纯字符串变换，密钥只在
-controller 生存期保留，失焦超过8字符时显示前4/星号/后4，离开页面释放。
+请求队列及空密钥池。配置目录复用 ModelConfigPresentation；纯展示组件允许注入默认快照，产品持久宿主已经
+接入配置 CRUD、自动保存、模型测试/目录、密钥文本交换与托管模型传输。普通输入先为草稿，
+成功提交才成为事实；密钥由平台安全存储保护，页面关闭释放输入控制器。失焦超过8字符
+时显示前4/星号/后4；完整业务与平台限制见[模型方案](model-api-replication-plan.md)。
 模型页上下文与总结分别默认折叠，布局不同于独立上下文页；标准参数全部默认关闭。
 默认目录是旧 Android 的文字快照，不访问当前宿主路径。供应商目录不表示服务当前可用。
 共享工作台按旧 KiyoriSettingsTheme 覆盖卡片/背景/文字色，暗色不再使用浅色背景；
@@ -19,7 +38,7 @@ controller 生存期保留，失焦超过8字符时显示前4/星号/后4，离�
 
 功能模型分配来自 FunctionalConfigScreen / FunctionConfigCard 与 FunctionType，11卡顺序
 不变，保留16px外层圆角、8px当前配置/候选卡、6px模型子项、配置展开及模型二级展开。
-管理模型使用宿主回调；测试、真实重置为空点击，模型选择只更新页面草稿，离屏保留。
+管理模型使用宿主回调；产品选择与恢复默认已接同 Rust 目录，测试按钮仍为空点击。
 FunctionModelsPresentation 注入配置摘要、绑定、加载/失败、媒体能力和测试结果；默认
 无已知配置，不创建虚假模型或连接结果。媒体能力未知时不声称已支持或不支持。
 旧 autoglm 对话主模型限制保留，结果一行省略/24px更多按钮展开遵循 ExpandableStatusText。
@@ -27,10 +46,12 @@ FunctionModelsPresentation 注入配置摘要、绑定、加载/失败、媒体�
 上下文与总结来自 ContextSummarySettingsScreen；模型默认值64K/200K、总结启用、0.7、
 按消息数启用/16条来自 ModelConfigDefaults，历史媒体2/1回合来自 ApiPreferences。
 页面采用6px圆角、12×8px内边距、4px纵间距、88/72px数值输入、80px最小规则编辑区。
-默认快照不创建真实模型；输入、依赖开关、格式过滤和错误展示仅影响局部草稿，历史媒体
+纯展示快照不创建真实模型；产品宿主从 CHAT 绑定加载配置，输入先保存为草稿，历史媒体
 重置只恢复2/1且保留上下文与规则。标题使用旧图标语义色；窄屏大字数值移至第二行。
 错误判定沿用旧实际逻辑（比例大于0且小于1、消息数正整数），说明文案保留原0.1–0.95
-和1–20条；当前不自动保存，不启动总结或向模型发送内容。
+和1–20条；产品宿主以700ms去抖并在返回前刷写，失败保留草稿。打开设置不启动总结；发送时由共享请求链消费已保存策略。
+
+## 历史管理与引导
 
 聊天历史五卡来自 ChatHistorySettingsScreen，归类弹层来自 CharacterCardAssignDialog /
 CharacterGroupAssignDialog，日期范围来自 MemoryRebuildDateSelector。保留20px卡片内边距、
@@ -48,6 +69,8 @@ CharacterGroupAssignDialog，日期范围来自 MemoryRebuildDateSelector。保�
 未确认时实际只有五页，确认后才加入权限页；协议事实、权限快照与本次草稿分离。
 23项权限目录与设置共用，选择/清空/折叠是局部交互，授权、退出应用与首启写入由后续宿主接入。
 默认快照未知，未访问 Android 或 Windows 权限系统。iOS 构建及设备像素与触摸仍待验证。
+
+## 账号与界面定制
 
 界面定制与数据备份的父级列表、AI 助手五组十四项来自 KiyoriApplicationSettingsPages，
 保留父页后再打开主题/备份详情，系统 Back 逐级恢复。语言清单来自 LocaleUtils 与
@@ -86,6 +109,8 @@ FontAvatarSections与AvatarPicker定义字体文件名/清除及70px圆形头像
 CoreSections的聊天样例头像固定30px圆形，不受方形偏好影响；样例名称仍用旧固定文案。
 注册family更新只改变预览资源，等值设置保留草稿，权威名称改变更新controller。
 
+## 备份、许可与权限
+
 备份页来自 ChatBackupSettingsScreen / BackupCards / BackupManagementCards /
 BackupDialogs，十张卡片原顺序，聊天导出为选择与格式两层，记忆导出为配置选择。
 BackupPresentation 仅为展示快照，默认零值是旧初始化外观，不代表本机统计；未加载审计
@@ -117,6 +142,8 @@ values/strings.xml 的 CDATA 按旧章节规则提取，版本 2026-09-08-r1，�
 保留完整正文、选择、展开目录和章节定位；定位标题自身以避免大字长段将标题滚出视口。
 这属于旧 UI 快照，未替新跨平台版本做法律审阅，不修改正文、不写同意记录；正式发布前
 必须按实际实现重新核对软件范围、第三方归属、数据处理和联系地址。
+
+## 路径、代理与广告拦截
 
 更多功能和存储汇总来自 KiyoriMoreFeaturesSettingsPage / KiyoriStoragePathsPage；
 产物编辑来自 ArtifactStorageSettingsScreen、ArtifactPathRules 和 values/strings.xml。
@@ -235,7 +262,7 @@ AI 草稿保留。双倍字体测试同时发现首页既有两处横向溢出�
 真实触摸、系统字体渲染和 iOS 编译仍为 `verification_pending`。最终构建/交付证据见
 [当前状态](../status.md)，不能将参数对照与本地截图说成全平台像素验收。
 
-## 目标与基线
+## 初始首页批次：目标与基线（2026-10-02）
 
 本文的版本、授权和产物记录是前轮 UI 复刻历史；2026-10-02 后续工程基础优化、
 Flutter 补丁升级与提交推送以 [status](../status.md) 为准，分页变更见[性能契约](../development/performance.md)。
@@ -261,7 +288,7 @@ Flutter 补丁升级与提交推送以 [status](../status.md) 为准，分页变
 
 尺寸单位映射为 Flutter logical pixel；系统 inset 由平台提供，不硬编码状态栏或导航栏高度。桌面保留相同五图标底栏，首页内容采用原有宽度断点，不再切换 NavigationRail。字体使用各平台系统字体；不同字体栅格器、系统栏、Compose/Flutter 动画积分和触摸采样须在同设备对照验收，源码参数相同不等于已经证明每帧像素相同。
 
-## 实施和验证计划
+## 初始首页批次：实施和验证计划
 
 STT 依据 `SpeechServicesSettingsScreen.kt` / `SpeechServicesPreferences.kt`：语音配置
 选择、新建/重命名/删除弹窗，本地 Sherpa、远程 OpenAI/Deepgram 引擎及端点/密钥/model
@@ -320,7 +347,7 @@ AI用量与费用依据 `TokenUsageStatisticsScreen.kt` / `TokenUsageStatisticsC
 
 恢复点为 M1 文件与任务日记；不清理未知用户文件，不改共享 Rust 契约。README 本轮面向开发者，修改理由是产品入口改为原样复刻；权威来源为本文源码依据与实际实现；结构/链接检查和 Flutter 渲染图分别验证，不声称做过 Markdown 宽窄屏预览；当前无英文副本。
 
-## 本轮实际结果
+## 初始首页批次：实际结果
 
 已复制旧项目品牌图标；`apps/kiyori/assets/branding/kiyori-app-icon.png` 的 SHA-256 为 `2220044E62C8BDAD0AFB9BB03C00AC2D106AB55D417EEFA26AB52E0A833DBE01`，与旧文件一致。Android 自适应前景 SHA-256 为 `9AAF6FA98EA65D8FA5D82F5017C8B9924C7D430AC6EE2A8C1588B3CDC4E9D2C3`，也与旧文件一致。Windows ICO 与 iOS AppIcon 各尺寸来自同一源图。五项导航原矢量转换为 4 倍逻辑尺寸的透明 PNG，保留原轮廓、填充和细节分层。
 

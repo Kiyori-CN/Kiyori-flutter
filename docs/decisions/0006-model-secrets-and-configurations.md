@@ -3,6 +3,14 @@
 日期：2026-10-03。状态：已采用，基础配置批次已交付；恢复及上下文扩展已实现，
 本机测试与平台验收证据见当前状态。
 
+<!-- doc-toc:start -->
+- [背景与选择](#背景与选择)
+- [核心契约](#核心契约)
+- [双存储提交与恢复](#双存储提交与恢复)
+- [独立上下文设置](#独立上下文设置)
+- [验证与后续](#验证与后续)
+<!-- doc-toc:end -->
+
 ## 背景与选择
 
 旧ModelConfigManager把模型配置、API key池和请求头保存在Android偏好中。
@@ -68,7 +76,7 @@ v2无可用性字段时迁移为UNTESTED；v3只接受UNTESTED/AVAILABLE/UNAVAIL
 但写入v3后不可仅回退代码。回滚须恢复升级前整套数据库与安全存储备份，或另行实现显式降级迁移；
 不得删除不可读凭据或假装恢复成功。升级仍须先退出旧进程。
 
-后续轮换切片将SQLite升至schema8，仅新增model_key_cursors(config_id,next_index)，FK级联删除。
+已实施的轮换切片将 SQLite 升至 schema8，仅新增model_key_cursors(config_id,next_index)，FK级联删除。
 Immediate事务校验配置revision、读取游标、选择候选并提交下一索引，不推进配置revision；
 网络发生在事务之后，网络失败/取消不回退游标，不自动重试。编辑会话将已持有的v3快照传入
 Rust解析，限制1 MiB且不Debug/记录；正式会话从native引用获取凭据采用上述短lease保护。
@@ -83,7 +91,7 @@ ContextSummarySettingsScreen的currentConfig来自FunctionType.CHAT；新实现�
 save_context_settings在Immediate事务校验聊天绑定、模型revision、历史revision，局部更新
 上下文/总结字段，保留模型其它参数和安全引用。仅媒体变化不推进模型revision，反之亦然；
 任一校验失败整体不写，保持草稿。返回前刷写，重载显式放弃草稿并等待已有保存结束。
-当前持久化选项不等于实际压缩/媒体裁剪执行，后者由后续消息构建owner消费。
+持久化与执行分别验收；自动/手动总结已由同一会话请求链消费，见[ADR 0008](0008-conversation-summary-projection.md)。完整用户媒体附件裁剪仍需后续接入。
 
 ## 验证与后续
 
@@ -103,7 +111,7 @@ UTF-8严格解码，原文件上限1 MiB；去BOM、逐行trim、忽略空行、
 和DPAPI验证写入失败、清理失败、旧值可读、SQLite无凭据夹具明文、保存中输入及页面新建。
 Android真实构建与Windows引擎验收按验证策略执行；真实供应商、设备和Apple另列。
 真实子进程测试验证活跃锁拒绝恢复、进程终止后回收；上下文测试验证全局媒体、局部更新、
-绑定切换、陈旧revision、非法输入回滚与schema6迁移。请求/池测试见ADR0007，轮换继续推进。
+绑定切换、陈旧revision、非法输入回滚与schema6迁移。请求、池测试与已接入的轮换见[ADR 0007](0007-chat-request-runtime.md)。
 
 来源：[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)、
 [CryptProtectData](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata)、

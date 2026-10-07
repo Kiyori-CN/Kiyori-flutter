@@ -7,7 +7,7 @@ import 'package:kiyori/features/assistant/presentation/chat_history_details.dart
 import 'package:kiyori_bridge/kiyori_bridge.dart';
 import 'package:kiyori_ui/kiyori_ui.dart';
 
-import 'chat_business_test.dart' show ChatFixture, until;
+import 'support/chat_fixture.dart';
 import 'support/fake_runtime.dart';
 import 'support/memory_audit_exchange.dart';
 import 'support/ui_capture.dart';

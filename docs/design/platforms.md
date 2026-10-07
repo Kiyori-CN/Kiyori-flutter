@@ -1,5 +1,7 @@
 # 平台能力与同步开发
 
+本文为平台目标与差异矩阵，不代表表中各能力已实现。版本候选和 Apple 环境描述沿用 2026-10-02 观察；实际安装前需复核官方要求，当前 pin 见[工具链](../development/toolchains.md)，产品证据见[状态](../status.md)。
+
 ## 支持基线
 
 设计目标为 Android API 24+、Windows 10/11 x64、iOS 15+，这些是当前 Flutter 的基础候选下限，具体依赖可提高最低版本；首次 runner 和插件选择时必须复核。首轮设备重点 Android arm64 与 Windows x64，Android x64 用于后续模拟器。Windows arm64 与 Android 32 位不是首期交付目标。

@@ -13,6 +13,14 @@ ModelConfigConnectionTester的Hi与SystemInstructionCapabilityProbe随机口令�
 `app/src/main/java/`，新路径相对仓库根。实现证据和当前进度只在
 [status](../status.md)更新；本表定义来源、范围及验收契约，不能把入口存在视为业务完成。
 
+<!-- doc-toc:start -->
+- [抽屉与根目的地](#抽屉与根目的地)
+- [工作流定义存储切片](#工作流定义存储切片)
+- [后续 AI 垂直切片边界](#后续-ai-垂直切片边界)
+- [基本聊天垂直切片](#基本聊天垂直切片)
+- [验收证据入口](#验收证据入口)
+<!-- doc-toc:end -->
+
 ## 抽屉与根目的地
 
 旧 `com/kiyori/app/shell/KiyoriAiDrawer.kt`、`com/kiyori/design/theme/KiyoriDrawerGeometry.kt`、
@@ -122,7 +130,7 @@ ModelConfigManager的密钥池条目保留稳定ID，v1字符串payload兼容迁
 Windows/Android密钥文本交换通过同一native adapter接入；ApiKeyPoolAvailabilityTester映射到
 core/chat/pool及ModelPoolTestController，复用Chat探测并逐项安全保存。开始/暂停/清标记及
 取消释放已接入；ApiKeyProvider候选规则和轮询映射到core/model_execution与SQLite游标，
-上下文压缩执行尚未实现；正式文字会话已接入，详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)。
+正式文字会话、自动总结和手动总结已接入同一请求链，保留完整原文；详见[模型决策](../decisions/0006-model-secrets-and-configurations.md)和[摘要决策](../decisions/0008-conversation-summary-projection.md)。
 
 ## 基本聊天垂直切片
 
@@ -137,8 +145,7 @@ core/chat/pool及ModelPoolTestController，复用Chat探测并逐项安全保存
 | ChatViewModel / ChatHistoryManager | core/conversations + ChatController | 多轮、唯一终态、取消/失败内容、锁恢复、活跃会话重开；真实FFI测试 |
 | ModelConfigManager / ApiKeyProvider / 活跃角色组合 | PreparedSend + model_execution | 当前绑定/参数/角色/system、安全lease、池轮换；指定供应商两轮实证 |
 
-本批为基本文字链路；历史文件夹/置顶/批量导入导出、回复变体、完整修订审计、工具媒体与群组
-执行未实现，不将此表视为整页全功能或像素级验收。详细日志与截图路径以当前状态为准。
+上表记录首个基本文字批次，不作为当前全量功能清单。后续已接入历史文件夹/置顶、回复版本与基础修订审计，见[历史复刻方案](chat-history-replication.md)。完整工具媒体、群组执行和批量导入导出仍有缺口，设备像素另行验收。批次日志与截图路径由[当前状态](../status.md)链接到历史记录。
 
 ## 验收证据入口
 
