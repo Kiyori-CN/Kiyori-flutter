@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "Kiyori" "\0"
-            VALUE "FileDescription", "Kiyori" "\0"
+            VALUE "FileDescription", "Kiyori Flutter" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "kiyori" "\0"
+            VALUE "InternalName", "KiyoriFlutter" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.kiyori. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Kiyori.exe" "\0"
-            VALUE "ProductName", "Kiyori" "\0"
+            VALUE "OriginalFilename", "KiyoriFlutter.exe" "\0"
+            VALUE "ProductName", "Kiyori Flutter" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

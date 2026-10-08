@@ -19,7 +19,7 @@ class MoreSettingsPage extends StatelessWidget {
   static const groups = [
     (
       '系统能力',
-      '管理 Kiyori 在设备上运行所需的授权和系统访问能力',
+      '管理 Kiyori Flutter 在设备上运行所需的授权和系统访问能力',
       [
         ('权限管理', '查看应用权限、系统访问和高级设备能力的当前状态', MoreSettingsSection.permissions),
         ('存储与路径', '管理工作区、下载、主动导出和 AI 工具生成文件的位置', MoreSettingsSection.storage),
@@ -27,21 +27,29 @@ class MoreSettingsPage extends StatelessWidget {
     ),
     (
       '网络能力',
-      '为 Kiyori 内部模块管理代理订阅、策略组和路由规则',
+      '为 Kiyori Flutter 内部模块管理代理订阅、策略组和路由规则',
       [('网络代理', '配置直连或内嵌 Mihomo 代理，并查看当前连接策略', MoreSettingsSection.network)],
     ),
     (
       '开源与法律',
-      '了解 Kiyori 的开源组成、使用规则和数据处理方式',
+      '了解 Kiyori Flutter 的开源组成、使用规则和数据处理方式',
       [
-        ('开源协议', '查看随 Kiyori 分发的开源组件、许可证和项目地址', MoreSettingsSection.licenses),
-        ('用户协议', '查看 Kiyori 的服务边界、使用规则和责任说明', MoreSettingsSection.agreement),
+        (
+          '开源协议',
+          '查看随 Kiyori Flutter 分发的开源组件、许可证和项目地址',
+          MoreSettingsSection.licenses,
+        ),
+        (
+          '用户协议',
+          '查看 Kiyori Flutter 的服务边界、使用规则和责任说明',
+          MoreSettingsSection.agreement,
+        ),
         ('隐私政策', '查看设备端数据、联网场景、权限用途和删除方式', MoreSettingsSection.privacy),
       ],
     ),
     (
       '使用引导',
-      '回顾功能入口与使用方式，按自己的节奏重新了解 Kiyori',
+      '回顾功能入口与使用方式，按自己的节奏重新了解 Kiyori Flutter',
       [
         (
           '重新查看首次引导',

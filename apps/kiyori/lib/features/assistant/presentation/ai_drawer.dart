@@ -296,7 +296,7 @@ class _DrawerTitle extends StatelessWidget {
       const style = TextStyle(fontSize: 22, fontWeight: FontWeight.bold);
       final text = TextPainter(
         text: TextSpan(
-          text: 'Kiyori',
+          text: 'Kiyori Flutter',
           style: DefaultTextStyle.of(context).style.merge(style),
         ),
         textDirection: Directionality.of(context),
@@ -306,7 +306,7 @@ class _DrawerTitle extends StatelessWidget {
           text.width + 8 + MediaQuery.textScalerOf(context).scale(52) >
           constraints.maxWidth;
       text.dispose();
-      const title = Text('Kiyori', style: style);
+      const title = Text('Kiyori Flutter', style: style);
       final section = Text(
         'AI 助手',
         style: TextStyle(

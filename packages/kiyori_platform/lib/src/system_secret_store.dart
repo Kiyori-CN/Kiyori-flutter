@@ -8,17 +8,17 @@ import 'secret_contract.dart';
 class SystemSecretStore implements SecretStore {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
-      storageNamespace: 'kiyori_secrets_v1',
+      storageNamespace: 'kiyori_flutter_secrets_v1',
       resetOnError: false,
       migrateWithBackup: true,
     ),
     iOptions: IOSOptions(
-      accountName: 'com.kiyori.secrets.v1',
+      accountName: 'com.kiyori.flutter.secrets.v1',
       accessibility: KeychainAccessibility.unlocked_this_device,
       synchronizable: false,
     ),
     mOptions: MacOsOptions(
-      accountName: 'com.kiyori.secrets.v1',
+      accountName: 'com.kiyori.flutter.secrets.v1',
       accessibility: KeychainAccessibility.unlocked_this_device,
       synchronizable: false,
       // 不共享凭据，避免 Keychain Sharing 引入 provisioning 依赖。

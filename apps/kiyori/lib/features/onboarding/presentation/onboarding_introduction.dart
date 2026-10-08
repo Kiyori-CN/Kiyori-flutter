@@ -22,10 +22,17 @@ class _CardData {
   final String? badge;
 }
 
-const _nav = ['认识 Kiyori', '浏览与媒体', 'AI 协作', '工具与个性化', '协议与隐私', '按需开启权限'];
+const _nav = [
+  '认识 Kiyori Flutter',
+  '浏览与媒体',
+  'AI 协作',
+  '工具与个性化',
+  '协议与隐私',
+  '按需开启权限',
+];
 const _intro = <_IntroData>[
   _IntroData(
-    'Kiyori',
+    'Kiyori Flutter',
     '浏览、协作与创作，从这里开始',
     '用底栏打开浏览器、工具箱与文件管理。在软件首页向左滑，或点击 AI 入口，即可进入右侧的 AI 首页。',
     '向左滑查看下一页，向右滑返回；内容较长时可上下滚动。以后可在「设置 → 更多功能 → 重新查看首次引导」重看。',

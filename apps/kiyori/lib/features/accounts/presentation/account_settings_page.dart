@@ -22,7 +22,7 @@ class AccountSettingsPage extends StatelessWidget {
         content: Text(
           github
               ? '确定要断开当前 GitHub 账号连接吗？'
-              : '将删除 Kiyori 保存的哔哩哔哩账号与凭据。浏览器及哔哩哔哩客户端的登录状态不受影响。',
+              : '将删除 Kiyori Flutter 保存的哔哩哔哩账号与凭据。浏览器及哔哩哔哩客户端的登录状态不受影响。',
         ),
         actions: [
           TextButton(

@@ -47,10 +47,15 @@ class _AgreementPage extends StatelessWidget {
               const SizedBox(height: 12),
               _InfoBox(),
               const SizedBox(height: 8),
-              _DocCard('Kiyori 用户协议', '使用规则、高影响操作与开源许可', termsRead, onTerms),
+              _DocCard(
+                'Kiyori Flutter 用户协议',
+                '使用规则、高影响操作与开源许可',
+                termsRead,
+                onTerms,
+              ),
               const SizedBox(height: 8),
               _DocCard(
-                'Kiyori 隐私政策',
+                'Kiyori Flutter 隐私政策',
                 '数据类型、联网场景、保存期限与删除方式',
                 privacyRead,
                 onPrivacy,
@@ -182,10 +187,12 @@ class _DocCard extends StatelessWidget {
       child: Row(
         children: [
           ToneBadge(
-            title == 'Kiyori 用户协议'
+            title == 'Kiyori Flutter 用户协议'
                 ? Icons.description_outlined
                 : Icons.security_outlined,
-            title == 'Kiyori 用户协议' ? IconTone.document : IconTone.security,
+            title == 'Kiyori Flutter 用户协议'
+                ? IconTone.document
+                : IconTone.security,
             size: 34,
             iconSize: 19,
           ),

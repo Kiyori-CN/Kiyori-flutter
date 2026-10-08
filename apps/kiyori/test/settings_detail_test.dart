@@ -171,7 +171,7 @@ void main() {
         await tester.tap(find.text('Android 系统下载器'));
         await tester.pumpAndSettle();
         expect(find.text('Android 系统下载器'), findsNothing);
-        expect(find.text('Kiyori 内置下载器'), findsOneWidget);
+        expect(find.text('Kiyori Flutter 内置下载器'), findsOneWidget);
         await tester.tap(find.text('默认下载器'));
         await tester.pumpAndSettle();
         await tester.binding.handlePopRoute();

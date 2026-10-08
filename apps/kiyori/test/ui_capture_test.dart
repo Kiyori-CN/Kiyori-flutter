@@ -329,8 +329,8 @@ void main() {
         await tester.tap(find.text(entry.$1));
         await capture(entry.$2);
       }
-      await revealOnboarding(tester, find.text('Kiyori 用户协议'));
-      await tester.tap(find.text('Kiyori 用户协议'));
+      await revealOnboarding(tester, find.text('Kiyori Flutter 用户协议'));
+      await tester.tap(find.text('Kiyori Flutter 用户协议'));
       await capture('onboarding-legal-phone');
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

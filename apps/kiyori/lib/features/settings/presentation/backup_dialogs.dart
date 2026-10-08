@@ -143,13 +143,13 @@ class BackupFormatDialog extends StatefulWidget {
 class _BackupFormatDialogState extends State<BackupFormatDialog> {
   late int selected = widget.importing ? 1 : 0;
   static const exportFormats = [
-    ('JSON（推荐）', 'Kiyori 原生格式，完整保留消息切换等所有数据'),
+    ('JSON（推荐）', 'Kiyori Flutter 原生格式，完整保留消息切换等所有数据'),
     ('Markdown', '轻量级标记格式，便于阅读和编辑'),
     ('HTML', '网页格式，适合在浏览器中查看'),
     ('纯文本', '简单的文本格式，便于分享'),
   ];
   static const importFormats = [
-    ('Kiyori 对话审计包', '导入单个 .kiyori-audit 完整审计包，并验证路径、哈希链、payload 与签名'),
+    ('Kiyori Flutter 对话审计包', '导入单个 .kiyori-audit 完整审计包，并验证路径、哈希链、payload 与签名'),
     ('Kiyori JSON（推荐）', '本应用的原生格式，完整保留消息切换等所有数据'),
     ('ChatGPT', 'OpenAI ChatGPT conversations.json 导出格式'),
     ('ChatBox', 'ChatBox 桌面应用导出格式'),

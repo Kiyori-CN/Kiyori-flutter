@@ -1,8 +1,8 @@
-# Kiyori
+# Kiyori Flutter
 
-Kiyori 是开发中的跨平台 AI 工作台，面向 Android、Windows、iOS、macOS 与 Linux，计划连接 AI 助手、网页浏览、文件与下载、音视频和可授权的扩展工具。项目尚未正式发布。
+Kiyori Flutter 是保留中的跨平台 AI 工作台，面向 Android、Windows、iOS、macOS 与 Linux，连接已有 AI 助手、文件、模型和扩展切片。项目尚未正式发布。2026-10-08 起暂停功能开发，完整保留代码、历史、依赖锁与构建入口；[原生 Kiyori](https://github.com/Kiyori-CN/Kiyori) 恢复为唯一主项目。本仓库仍为 private，未设置 archived。
 
-**产品完整复刻旧 Kiyori Android；跨平台重构改变内部实现，不重新设计 UI 与交互。** 旧项目为 `D:\10_Project\Kiyori-Android`，新旧应用独立安装、独立保存数据。
+**产品设计沿用原生 Kiyori；跨平台内部实现不授权重新设计 UI 与交互。** 原生参考项目为 `D:\10_Project\Kiyori`，本仓库为 `D:\10_Project\Kiyori-flutter`。Android 包名为 `com.kiyori.flutter`；旧 `com.kiyori` 数据与凭据保留在原安装/作用域，不自动迁移或接管。
 
 ## 当前能力
 
@@ -29,7 +29,7 @@ Kiyori 是开发中的跨平台 AI 工作台，面向 Android、Windows、iOS、
 在已配置受管理环境的 Windows PowerShell 中执行：
 
 ```powershell
-Set-Location D:\10_Project\Kiyori
+Set-Location D:\10_Project\Kiyori-flutter
 . .\tools\activate.ps1
 flutter --version
 rustc --version
@@ -68,4 +68,4 @@ iOS、macOS、Linux 工程已准备，对应宿主分别使用 `tools/build.ps1 
 
 ## 项目身份
 
-产品和新仓库均命名为 **Kiyori**，内部包使用 `kiyori` 前缀。新 Android 应用使用 `com.kiyori`，与独立维护的旧 Android 应用并存。详细标识见[命名规范](docs/architecture/naming.md)。
+产品显示名为 **Kiyori Flutter**，仓库为 [Kiyori-CN/Kiyori-flutter](https://github.com/Kiyori-CN/Kiyori-flutter)，数字 ID `1400228299` 保持不变。Android/iOS/macOS/Linux 身份为 `com.kiyori.flutter`，Windows 为 `KiyoriFlutter.exe`；Dart/Rust 内部包继续使用 `kiyori` 前缀。详细身份、存储和历史数据边界见[命名规范](docs/architecture/naming.md)。

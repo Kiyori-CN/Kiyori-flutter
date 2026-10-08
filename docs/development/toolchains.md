@@ -38,7 +38,7 @@ Flutter 3.47 的官方迁移说明要求 AGP 9+ 应用在确认应用和插件�
 本机 SDK 归 `D:\01_Environment` 管理，持久配置归 `Variables/user-env.json`。仓库 `tools/activate.ps1` 复用 `Maintenance/EnvPolicy.psm1`，只给当前 PowerShell 选择项目 Flutter/JDK；不会改注册表或切换全局 Rust 默认。
 
 ```powershell
-Set-Location D:\10_Project\Kiyori
+Set-Location D:\10_Project\Kiyori-flutter
 . .\tools\activate.ps1
 flutter --version
 dart --version

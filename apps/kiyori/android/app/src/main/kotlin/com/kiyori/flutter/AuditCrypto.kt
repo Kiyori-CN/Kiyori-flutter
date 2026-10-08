@@ -1,4 +1,4 @@
-package com.kiyori
+package com.kiyori.flutter
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

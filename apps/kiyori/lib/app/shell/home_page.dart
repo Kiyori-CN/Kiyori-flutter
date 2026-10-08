@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage>
                     children: [
                       Flexible(
                         child: Text(
-                          'Kiyori',
+                          'Kiyori Flutter',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

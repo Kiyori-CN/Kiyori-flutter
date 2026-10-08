@@ -136,7 +136,7 @@ const permissionEntries = <PermissionEntry>[
   PermissionEntry(
     "install",
     "安装未知来源应用",
-    "安装你选择的 APK、内置 Shizuku 或 Kiyori 无障碍支持。",
+    "安装你选择的 APK、内置 Shizuku 或 Kiyori Flutter 无障碍支持。",
     Icons.install_mobile,
     IconTone.neutral,
     PermissionAction.settings,
@@ -160,7 +160,7 @@ const permissionEntries = <PermissionEntry>[
   PermissionEntry(
     "assistant",
     "系统默认助手",
-    "通过系统助手手势或入口快速唤起 Kiyori。",
+    "通过系统助手手势或入口快速唤起 Kiyori Flutter。",
     Icons.smart_toy,
     IconTone.ai,
     PermissionAction.settings,
@@ -224,7 +224,7 @@ const permissionEntries = <PermissionEntry>[
   PermissionEntry(
     "accessibility",
     "无障碍 UI 自动化",
-    "安装并启用 Kiyori 无障碍支持，可读取界面、点击、输入及执行手势。仅向可信任务提供此能力。",
+    "安装并启用 Kiyori Flutter 无障碍支持，可读取界面、点击、输入及执行手势。仅向可信任务提供此能力。",
     Icons.accessibility_new,
     IconTone.security,
     PermissionAction.accessibility,

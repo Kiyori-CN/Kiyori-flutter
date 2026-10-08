@@ -37,7 +37,7 @@ class _FileSettingsPageState extends State<FileSettingsPage> {
       [
         (
           'Android工作区',
-          '/storage/emulated/0/Download/Kiyori/workspace',
+          '/storage/emulated/0/Download/Kiyori-flutter/workspace',
           '编辑',
           null,
         ),
@@ -69,7 +69,7 @@ class _FileSettingsPageState extends State<FileSettingsPage> {
     ),
     (
       '隐藏项目',
-      '只改变 Kiyori 中的可见性，不修改文件，也不提供加密保护。',
+      '只改变 Kiyori Flutter 中的可见性，不修改文件，也不提供加密保护。',
       [
         ('显示系统隐藏项', '名称以点开头的文件和文件夹', null, true),
         ('显示手动隐藏项', '临时查看隐藏清单中的项目，清单仍保留', null, false),

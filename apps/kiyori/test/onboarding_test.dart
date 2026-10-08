@@ -22,7 +22,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('不同意并退出'));
       await tester.pumpAndSettle();
-      expect(find.text('不同意就无法使用 Kiyori'), findsOneWidget);
+      expect(find.text('不同意就无法使用 Kiyori Flutter'), findsOneWidget);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.text('5/6'), findsOneWidget);
@@ -72,6 +72,7 @@ void main() {
           await tester.tap(find.text('打开引导'));
           await tester.pumpAndSettle();
           expect(find.text('1/6'), findsOneWidget);
+          expect(tester.takeException(), isNull);
           for (final cta in ['看看能做什么', '了解 AI 协作', '了解工具与个性化', '查看协议与隐私']) {
             await tester.tap(find.text(cta));
             await tester.pumpAndSettle();
@@ -89,9 +90,10 @@ void main() {
                 .onPressed,
             isNull,
           );
-          await revealOnboarding(tester, find.text('Kiyori 用户协议'));
-          await tester.tap(find.text('Kiyori 用户协议'));
+          await revealOnboarding(tester, find.text('Kiyori Flutter 用户协议'));
+          await tester.tap(find.text('Kiyori Flutter 用户协议'));
           await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
           expect(find.text('展开目录可定位章节；正文支持滚动与长按复制。'), findsOneWidget);
           await tester.binding.handlePopRoute();
           await tester.pumpAndSettle();
@@ -103,6 +105,7 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(find.text('同意并继续'));
           await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
           expect(find.text('6/6'), findsOneWidget);
           final recommend = find.text('选择通知与媒体');
           await revealOnboarding(tester, recommend);
@@ -118,12 +121,14 @@ void main() {
           expect(find.text('完成介绍，返回设置'), findsOneWidget);
           await tester.tap(find.text('完成介绍，返回设置'));
           await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
           expect(find.text('打开引导'), findsOneWidget);
           await tester.tap(find.text('打开引导'));
           await tester.pumpAndSettle();
           expect(find.text('1/6'), findsOneWidget);
           await tester.tap(find.text('跳过介绍'));
           await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
           expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
           expect(tester.takeException(), isNull);
         },

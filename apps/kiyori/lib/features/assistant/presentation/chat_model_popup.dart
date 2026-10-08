@@ -101,7 +101,7 @@ class _ChatModelPopupState extends State<ChatModelPopup> {
                       icon: const Icon(Icons.info_outline),
                       onPressed: () => info(
                         '思考设置',
-                        '统一管理模型推理开关和思考程度。具体支持能力由当前供应商、API 协议和模型决定；Kiyori 只发送该模型合同允许的参数。',
+                        '统一管理模型推理开关和思考程度。具体支持能力由当前供应商、API 协议和模型决定；Kiyori Flutter 只发送该模型合同允许的参数。',
                       ),
                     ),
                     const SizedBox(width: 8),

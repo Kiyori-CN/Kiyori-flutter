@@ -194,38 +194,54 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.document.summary,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 20 / 14,
-                    color: PrimaryColors.of(context).secondary,
+          // 长产品名和大字号会增加页头高度。说明与正文共用滚动区，
+          // 保留完整内容和字体比例，避免固定说明挤出正文。
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.document.summary,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 20 / 14,
+                            color: PrimaryColors.of(context).secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '完整正文',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '展开目录可定位章节；正文支持滚动与长按复制。',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 18 / 12,
+                            color: PrimaryColors.of(context).secondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  '完整正文',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '展开目录可定位章节；正文支持滚动与长按复制。',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 18 / 12,
-                    color: PrimaryColors.of(context).secondary,
-                  ),
-                ),
-              ],
+                  const Divider(height: 1),
+                  _body(context),
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
-          Expanded(child: SingleChildScrollView(child: _body(context))),
         ],
       ),
     ),

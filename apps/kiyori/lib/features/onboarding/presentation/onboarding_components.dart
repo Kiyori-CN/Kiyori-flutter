@@ -108,13 +108,15 @@ class _Eyebrow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            height: 18 / 13,
-            color: PrimaryColors.of(context).accent,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              height: 18 / 13,
+              color: PrimaryColors.of(context).accent,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

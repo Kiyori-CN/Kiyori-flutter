@@ -101,7 +101,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('不同意就无法使用 Kiyori'),
+        title: const Text('不同意就无法使用 Kiyori Flutter'),
         content: const Text('你可以先阅读两份文档，再决定是否同意。仍要退出吗？'),
         actions: [
           TextButton(

@@ -11,7 +11,12 @@ class DownloadSettingsPage extends StatelessWidget {
       '下载器与性能',
       '选择任务执行方式，并控制内置下载器的并发和线程预算',
       [
-        ('默认下载器', '选择 Kiyori 内置下载器或 Android 系统下载器', 'Kiyori 内置下载器', null),
+        (
+          '默认下载器',
+          '选择 Kiyori Flutter 内置下载器或 Android 系统下载器',
+          'Kiyori Flutter 内置下载器',
+          null,
+        ),
         ('默认保存位置', '选择应用目录、公开下载目录或 SAF 自定义目录', '应用下载目录', null),
         ('并行下载任务', '同时运行的内置下载任务数，受每任务线程预算限制', '3', null),
         ('普通文件线程数', '支持 Range 的普通文件每个任务最多使用的分段线程', '6', null),
@@ -54,7 +59,7 @@ class DownloadSettingsPage extends StatelessWidget {
   List<SettingsOption> _options(String title) => switch (title) {
     '默认下载器' => const [
       SettingsOption(
-        'Kiyori 内置下载器',
+        'Kiyori Flutter 内置下载器',
         description: '支持并行分段、M3U8 离线包、SAF 目录和任务管理',
         selected: true,
       ),
@@ -66,13 +71,12 @@ class DownloadSettingsPage extends StatelessWidget {
     '默认保存位置' => const [
       SettingsOption(
         '应用下载目录',
-        description: '保存到 Kiyori 应用专属目录，由下载抽屉统一管理',
+        description: '保存到 Kiyori Flutter 应用专属目录，由下载抽屉统一管理',
         selected: true,
       ),
       SettingsOption(
         '公开下载目录',
-        description:
-            '普通文件完成后转存到 Download/Kiyori/browser/downloads；M3U8 离线包保留在应用目录',
+        description: '普通文件完成后转存到 Download/Kiyori-flutter/browser/downloads；M3U8 离线包保留在应用目录',
       ),
       SettingsOption('SAF 自定义目录', description: '通过 Android 系统目录选择器授权一个长期保存位置'),
     ],

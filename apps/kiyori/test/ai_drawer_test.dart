@@ -194,6 +194,10 @@ void main() {
           140,
           scrollable: find.byType(Scrollable).first,
         );
+        // ensureVisible 最后一次跳转仍需布局；长产品标题改变滚动几何后，
+        // 不能立即用旧坐标点击页脚下的条目。
+        await tester.pumpAndSettle();
+        expect(plugin.hitTestable(), findsOneWidget);
         await tester.tap(plugin);
         expect(selection, 'plugin-11');
         entries.value = [];

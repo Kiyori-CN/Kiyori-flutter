@@ -143,7 +143,7 @@ class _AdblockSettingsPageState extends State<AdblockSettingsPage> {
     title: widget.section.title,
     children: switch (widget.section) {
       AdblockSection.overview => [
-        _group('拦截状态', '用于 Kiyori 内置浏览器的网页广告过滤，不影响其他应用；网址过滤与元素隐藏共用此开关', [
+        _group('拦截状态', '用于 Kiyori Flutter 内置浏览器的网页广告过滤，不影响其他应用；网址过滤与元素隐藏共用此开关', [
           SettingsRow(
             title: '启用广告拦截',
             description: !snapshot.ready

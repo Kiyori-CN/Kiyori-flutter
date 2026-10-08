@@ -1,5 +1,8 @@
 # 对话历史左抽屉复刻方案
 
+2026-10-08 身份调整后，原生参考入口为 `D:\10_Project\Kiyori`，本工程位于
+`D:\10_Project\Kiyori-flutter` 并暂停功能开发。下文旧路径与 revision 是历史记录，保持原观察事实。
+
 本轮基线为2026-10-05 `main/c8dc3274`，旧源只读
 `D:\10_Project\Kiyori-Android/6b03b03`。实现与验收状态以[status](../status.md)为准。
 

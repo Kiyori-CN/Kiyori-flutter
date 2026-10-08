@@ -5,8 +5,8 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 List<SettingsOption> playerSettingsOptions(String title) => switch (title) {
   '默认视频播放器' => const [
     SettingsOption(
-      'Kiyori 内置播放器',
-      description: '使用 Kiyori 的 MPV 播放器，支持网页候选、队列和完整播放器控制',
+      'Kiyori Flutter 内置播放器',
+      description: '使用 Kiyori Flutter 的 MPV 播放器，支持网页候选、队列和完整播放器控制',
       selected: true,
     ),
     SettingsOption('系统默认播放器', description: '将外部视频交给 Android 上的其他视频播放器处理'),

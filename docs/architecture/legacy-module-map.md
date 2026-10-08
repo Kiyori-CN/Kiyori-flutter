@@ -11,7 +11,7 @@
 
 ## 证据范围
 
-参考仓库为 `D:\10_Project\Kiyori-Android`，2026-10-02 核对 `main` 的
+当前原生参考仓库为 `D:\10_Project\Kiyori`；下列是迁移前历史观察：2026-10-02 在 `D:\10_Project\Kiyori-Android` 核对 `main` 的
 `6b03b03aa082803bb279db5e78773583e2d91154`，工作区干净。该仓库仅只读，不能把其
 Gradle、terminal 子模块、包根和数据库布局套进新仓库。
 

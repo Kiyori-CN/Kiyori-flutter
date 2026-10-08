@@ -2,7 +2,7 @@
 
 ## 来源与范围
 
-产品基线是独立只读 checkout `Kiyori-Android`，当前来源 revision 为
+产品基线是原生主项目 `D:\10_Project\Kiyori`，在 Flutter 功能恢复授权前仅作只读参考；下列历史来源 revision 为
 `6b03b03aa082803bb279db5e78773583e2d91154`。目录名、文件名与类名只是检索入口，
 不能据此判断页面已复刻。页面往往分散在宿主、组合组件、偏好、资源和非路由弹层。
 总顺序见[实施方案](../design/ui-replication-plan.md)，当前缺口只写入[状态](../status.md)。
@@ -32,7 +32,7 @@
 
 ```powershell
 . ./tools/activate.ps1
-./tools/inspect-legacy.ps1 -Source D:/10_Project/Kiyori-Android -Filter settings
+./tools/inspect-legacy.ps1 -Source D:/10_Project/Kiyori -Filter settings
 ./tools/test-ui.ps1 -Test tts_settings_test.dart,wakeup_settings_test.dart
 ./tools/test-ui.ps1 -Capture -Test profile_permissions_capture_test.dart -Output work/ui-review
 ./tools/verify.ps1

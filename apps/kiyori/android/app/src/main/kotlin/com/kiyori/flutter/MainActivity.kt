@@ -1,4 +1,4 @@
-package com.kiyori
+package com.kiyori.flutter
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

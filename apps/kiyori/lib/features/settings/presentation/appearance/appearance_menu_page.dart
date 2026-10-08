@@ -13,7 +13,7 @@ class AppearanceMenuPage extends StatelessWidget {
     children: [
       SettingsGroup(
         title: '界面与语言',
-        description: '调整 Kiyori 的界面语言、主题、全局显示和 AI 对话布局',
+        description: '调整 Kiyori Flutter 的界面语言、主题、全局显示和 AI 对话布局',
         children: [
           SettingsRow(
             title: '语言',

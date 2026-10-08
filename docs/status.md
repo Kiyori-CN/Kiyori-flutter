@@ -1,8 +1,52 @@
 # 当前实施状态
 
+## 当前任务：主次身份迁移与功能开发暂停
+
+2026-10-08（Asia/Shanghai）：in_progress。用户明确暂停 Flutter 功能开发，恢复原生
+Android 为唯一 Kiyori 主项目；本工程目标路径 `D:\10_Project\Kiyori-flutter`，GitHub
+`Kiyori-CN/Kiyori-flutter`（数字 ID `1400228299`），产品名 Kiyori Flutter，Android
+安装身份 `com.kiyori.flutter`。保持已有实现、历史、锁文件、空动作边界与未来恢复条件。
+本轮不归档 GitHub 仓库，不升级依赖，不实施后续业务或架构重构。
+
+起点 `main / dd90fb4ee8e9652a30a481354d69d7d4ed2cfe9b`，工作区干净、远端一致。
+三个仓库历史与本地必要配置已在仓库外备份。新会话恢复时旧目录占用已释放，未结束未知进程；
+本地目录已改至最终路径，原生位于 `D:\10_Project\Kiyori`，当前源码、五平台配置、JNI、
+凭据作用域和活动文档已迁移。GitHub 尚待产物验收后切换。
+
+`check-foundation.ps1` 84 文件通过，`generate-bridge.ps1 -Check` 5 文件保持一致；旧 CMake/
+Flutter 派生缓存已移至仓库外备份并在新路径重建，依赖锁未升级。首轮完整验证发现长产品名的
+布局与测试时序问题；修正后 20 项定向测试通过。完整 `verify.ps1 -WindowsIntegration` 已退出 0：
+Rust 236 通过/3 忽略，应用 692 通过/17 跳过，平台 18 通过，桥接 22 通过/1 跳过，Windows
+引擎 5 通过；fmt/Clippy/analyze 通过。普通 Android 构建退出 0（317.6s）；普通 Windows
+构建退出 0（18.2s）。最终 APK、Windows bundle 与入口审计通过，Git 交付尚在进行。
+
+| 本轮身份迁移产物 | 已验证结果 |
+| --- | --- |
+| Android APK | `com.kiyori.flutter` / Kiyori Flutter；0.1.0(1)，minSdk 24 / targetSdk 37，arm64-v8a；115386583 bytes |
+| APK SHA-256 | `7ac9ad9a3d64f894000a80f74515ccefa99e06eeab1977f4e9d579efb52dd74f` |
+| APK 签名与对齐 | V2 Debug；ZIP 与 native ELF 16 KiB 通过；JNI `Java_com_kiyori_flutter_AuditCrypto_bind` 存在 |
+| Windows 普通 bundle | `apps/kiyori/build/windows/x64/runner/Debug/`；100 文件，DLL/data/kernel 齐全，x64，真实入口 `package:kiyori/main.dart` |
+| EXE SHA-256 | `9c9da69ae28913db30e19bd9cf494caf94e072703d695b6278804d4d64090885` |
+| kernel SHA-256 | `dbe847d77fdad84de9394347a5b6a0ab1df220a81aa84f6a0429a8121c5e687d` |
+| 完整文件清单 SHA-256 | `defa70109f64e10425515a97d5493e63c1130fac651762b2f8903649cee6ea28`；清单与日志在本次任务外部工作区，未提交产物 |
+| 正常启动 | 实际窗口 Kiyori Flutter、正常主页与图标显示；本任务窗口已关闭；旧 support 根 4 文件字节/摘要/修改时间未变 |
+| 五平台静态核对 | 17 Apple XML 可解析；bundle/test ID、macOS test host、Linux/Windows 产品及安全存储身份一致；Apple/Linux 未编译 |
+
+两 APK actual/merged manifest 的组件与注册一致，Provider authority、自定义 permission 无冲突；
+本应用没有原生 Kiyori 的 scheme/action 注册，不接管另一应用数据。Windows 独立 support 根
+为 `C:\Users\admin\AppData\Roaming\Kiyori\Kiyori Flutter`。依赖锁、内部 Dart/Rust/FFI/channel
+保持稳定，完整实现保留；GitHub 更名与 main 同步完成后再回填交付证据。
+
+验收顺序：五平台配置及存储/JNI边界 → foundation/verify + Windows 引擎 → Android/Windows
+普通构建与产物审计 → 候选提交 → 核验仓库 ID 后更名与正常推送。
+iOS/macOS/Linux 无对应宿主，维持 verification_pending；MuMu 未启动，设备并存待验证。
+旧 `com.kiyori` 安装与数据未操作，不通过新 APK 接管旧数据库或凭据。
+
+下文为迁移前五平台基础工作记录，原包名、产物摘要和路径是历史事实，不是本轮验收证据。
+
 本轮交付复验日期：2026-10-08（Asia/Shanghai）；首轮实施跨越 10 月 7–8 日。本文为实施进度唯一入口，长期顺序见[路线图](roadmap.md)，历史证据见[10 月归档](status-history-2026-10.md)。
 
-## 当前任务：五平台工程基础与架构完善
+## 迁移前记录：五平台工程基础与架构完善
 
 状态：本轮限定范围实现与本机验收已完成；2026-10-08 重新执行完整验证、Windows 引擎集成、Android/Windows 普通构建与产物审计，全部通过。iOS/macOS/Linux 保持 source_ready / verification_pending。实现基线为 main / c71e60623dfda867de068e0fda09dad54e493eb6，首轮开始时工作树干净。本次用户已授权全部提交推送，Git 交付结果由本批提交与 main / origin/main 核对；未执行设备安装、远端 CI、发布或部署，旧 Kiyori-Android 未修改。
 

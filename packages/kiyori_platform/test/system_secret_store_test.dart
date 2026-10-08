@@ -32,7 +32,7 @@ void main() {
           expect(arguments['key'], 'kiyori_secret_$reference');
           final options = arguments['options'] as Map;
           if (platform != TargetPlatform.linux) {
-            expect(options['accountName'], 'com.kiyori.secrets.v1');
+            expect(options['accountName'], 'com.kiyori.flutter.secrets.v1');
             expect(options['synchronizable'], 'false');
           }
           if (platform == TargetPlatform.macOS) {
@@ -87,7 +87,7 @@ void main() {
       await store.writeNew(reference, 'fixture');
       final options = (calls.last.arguments as Map)['options'] as Map;
       expect(options['resetOnError'], 'false');
-      expect(options['storageNamespace'], 'kiyori_secrets_v1');
+      expect(options['storageNamespace'], 'kiyori_flutter_secrets_v1');
       expect(options['migrateWithBackup'], 'true');
       await expectLater(
         store.read(reference),

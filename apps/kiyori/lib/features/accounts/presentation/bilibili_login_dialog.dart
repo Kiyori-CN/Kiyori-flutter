@@ -122,18 +122,18 @@ class _BilibiliLoginDialogState extends State<BilibiliLoginDialog> {
               OutlinedButton(
                 onPressed: widget.busy ? null : cookie.clear,
                 child: const Text(
-                  '从 Kiyori 浏览器获取并登录',
+                  '从 Kiyori Flutter 浏览器获取并登录',
                   textAlign: TextAlign.center,
                 ),
               ),
               description(
-                '读取 Kiyori 普通浏览模式下的哔哩哔哩登录信息。无痕模式、其他浏览器与其他应用的 Cookie 不会被读取。',
+                '读取 Kiyori Flutter 普通浏览模式下的哔哩哔哩登录信息。无痕模式、其他浏览器与其他应用的 Cookie 不会被读取。',
               ),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: widget.busy ? null : emptyAction,
-                  child: const Text('打开 Kiyori 浏览器登录'),
+                  child: const Text('打开 Kiyori Flutter 浏览器登录'),
                 ),
               ),
               description(

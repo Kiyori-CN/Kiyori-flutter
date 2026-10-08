@@ -44,8 +44,8 @@ class PlayerSettingsPage extends StatelessWidget {
           rows: [
             (
               title: '默认视频播放器',
-              description: '选择打开外部视频文件时使用 Kiyori 内置播放器或系统默认播放器',
-              value: 'Kiyori 内置播放器',
+              description: '选择打开外部视频文件时使用 Kiyori Flutter 内置播放器或系统默认播放器',
+              value: 'Kiyori Flutter 内置播放器',
               toggle: false,
               enabled: true,
             ),

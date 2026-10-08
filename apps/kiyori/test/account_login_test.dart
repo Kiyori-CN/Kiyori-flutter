@@ -167,9 +167,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byType(TextField));
       await tester.enterText(find.byType(TextField), 'fixture-only');
-      await tester.ensureVisible(find.text('从 Kiyori 浏览器获取并登录'));
+      await tester.ensureVisible(find.text('从 Kiyori Flutter 浏览器获取并登录'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('从 Kiyori 浏览器获取并登录'));
+      await tester.tap(find.text('从 Kiyori Flutter 浏览器获取并登录'));
       await tester.pumpAndSettle();
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,

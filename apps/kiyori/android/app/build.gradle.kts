@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.kiyori"
+    namespace = "com.kiyori.flutter"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
     ndkVersion = "30.0.16248370"
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.kiyori"
+        applicationId = "com.kiyori.flutter"
         minSdk = 24
         targetSdk = 37
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION

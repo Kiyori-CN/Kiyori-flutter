@@ -122,7 +122,7 @@ class _PermissionsPage extends StatelessWidget {
               const _PreviewRow(
                 'install',
                 '安装应用',
-                '允许 Kiyori 发起 APK 安装，仍需在系统界面确认',
+                '允许 Kiyori Flutter 发起 APK 安装，仍需在系统界面确认',
                 false,
                 null,
               ),

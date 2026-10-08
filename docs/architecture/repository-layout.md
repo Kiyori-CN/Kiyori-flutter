@@ -26,7 +26,7 @@ Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存
 有四个成员，Cargo workspace 有五个成员；成员清单以根 manifest 为准。
 
 ```text
-Kiyori/
+Kiyori-flutter/
 ├── apps/kiyori/                 # Flutter 产品入口
 │   ├── lib/app/                 # 启动、装配、路由与 diagnostics
 │   ├── lib/features/            # 用户功能的界面与交互

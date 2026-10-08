@@ -40,7 +40,7 @@ class _OpenDefaultsState extends State<_OpenDefaults> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '应用于文件管理、下载和系统交给 Kiyori 的文件。不会改变 Android 对其他应用的默认设置。',
+              '应用于文件管理、下载和系统交给 Kiyori Flutter 的文件。不会改变 Android 对其他应用的默认设置。',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             TextField(

@@ -43,9 +43,9 @@ class LanAutomationPresentation {
 
   // 旧 Android 协议的展示文字；不是新应用已注册的广播接口。
   static const intentOverview =
-      'HTTP 与 Intent 参数语义一致，仅入口不同。\n\n请求 Action：com.kiyori.android.EXTERNAL_CHAT\n默认回传 Action：com.kiyori.android.EXTERNAL_CHAT_RESULT\n\n常用 extras：message、request_id、group、create_new_chat、chat_id、create_if_none、show_floating、return_tool_status、initial_mode、auto_exit_after_ms、stop_after、reply_action、reply_package\n\n处理完成后会通过广播回传 success、chat_id、ai_response、error；如果只希望回传给指定 App，请设置 reply_package。';
+      'HTTP 与 Intent 参数语义一致，仅入口不同。\n\n请求 Action：com.kiyori.flutter.EXTERNAL_CHAT\n默认回传 Action：com.kiyori.flutter.EXTERNAL_CHAT_RESULT\n\n常用 extras：message、request_id、group、create_new_chat、chat_id、create_if_none、show_floating、return_tool_status、initial_mode、auto_exit_after_ms、stop_after、reply_action、reply_package\n\n处理完成后会通过广播回传 success、chat_id、ai_response、error；如果只希望回传给指定 App，请设置 reply_package。';
   static const intentExample = r'''adb shell am broadcast \
-  -a com.kiyori.android.EXTERNAL_CHAT \
+  -a com.kiyori.flutter.EXTERNAL_CHAT \
   --es request_id "req-001" \
   --es message "你好" \
   --ez show_floating true \

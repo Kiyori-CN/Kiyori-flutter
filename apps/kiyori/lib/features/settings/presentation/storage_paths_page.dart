@@ -4,9 +4,9 @@ import 'package:kiyori_ui/kiyori_ui.dart';
 /// 只描述旧 Android 默认画面，不能用这些字符串访问宿主文件系统。
 abstract final class StoragePathPresentation {
   static const android =
-      '/storage/emulated/0/Download/Kiyori-Android/workspace';
+      '/storage/emulated/0/Download/Kiyori-flutter/workspace';
   static const linux = '/workspace';
-  static const exports = '/storage/emulated/0/Download/Kiyori-Android/exports';
+  static const exports = '/storage/emulated/0/Download/Kiyori-flutter/exports';
 }
 
 enum StorageSettingsSection { files, downloads, player, backup, artifacts }
@@ -77,7 +77,7 @@ class StoragePathsPage extends StatelessWidget {
             checked: false,
           ),
           const _PathNote(
-            '日志保存位置：/storage/emulated/0/Download/Kiyori-Android/logs/packages',
+            '日志保存位置：/storage/emulated/0/Download/Kiyori-flutter/logs/packages',
           ),
           const SettingsDivider(),
           const SettingsRow(
@@ -86,7 +86,7 @@ class StoragePathsPage extends StatelessWidget {
             checked: false,
           ),
           const _PathNote(
-            '数据库备份位置：/storage/emulated/0/Download/Kiyori-Android/backup/room_db',
+            '数据库备份位置：/storage/emulated/0/Download/Kiyori-flutter/backup/room_db',
           ),
           const SettingsDivider(),
           _PathRow(

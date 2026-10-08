@@ -33,7 +33,7 @@ macOS 复用现有 flutter_secure_storage，保持独立 accountName、不同步
 
 ## 架构与构建不变量
 
-- Flutter 产品行为仍完全参考旧 Kiyori-Android；runner 只装配系统能力，不复制业务数据库或改变 UI。
+- Flutter 产品行为仍完全参考原生 Kiyori；runner 只装配系统能力，不复制业务数据库或改变 UI。
 - Dart 界面依赖类型化端口，Rust Runtime 是业务事实唯一所有者；平台可用性不授予权限，编译成功不证明能力就绪。
 - 平台 Dart 工厂和系统存储实现分开；推理、脚本、审计按真实职责组织，不预建空平台 package。
 - inference/scripts 复用 build_support/cmake.rs 的工具查找、NDK/ABI 配置与输入追踪。Windows 未接入的架构直接拒绝，不能误链接 x64。

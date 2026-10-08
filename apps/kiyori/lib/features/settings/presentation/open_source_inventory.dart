@@ -494,7 +494,7 @@ const openSourceEntries = [
     "Kiyori 应用源码与产品层",
     "Kiyori 应用源码与产品层",
     "GPL-3.0-or-later",
-    "https://github.com/Kiyori-CN/Kiyori-Android",
+    "https://github.com/Kiyori-CN/Kiyori",
     "https://www.gnu.org/licenses/gpl-3.0.html",
     "开发工具",
   ),

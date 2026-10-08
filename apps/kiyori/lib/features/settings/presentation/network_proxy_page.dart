@@ -338,7 +338,8 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
                           ),
                           SettingsOption(
                             '直连',
-                            description: '绕过 Kiyori 内嵌 Mihomo；仍受系统 VPN 影响',
+                            description:
+                                '绕过 Kiyori Flutter 内嵌 Mihomo；仍受系统 VPN 影响',
                             selected: script.mode == '直连',
                           ),
                           SettingsOption(
@@ -405,7 +406,7 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
   List<Widget> _overview() => [
     SettingsGroup(
       title: '应用内代理',
-      description: '只影响 Kiyori 进程内已接入模块；不会改变其他应用的网络。',
+      description: '只影响 Kiyori Flutter 进程内已接入模块；不会改变其他应用的网络。',
       children: [
         SettingsRow(
           title: '启用应用内代理',
@@ -427,7 +428,7 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
         Padding(
           padding: EdgeInsets.fromLTRB(18, 4, 18, 0),
           child: Text(
-            '规则按域名细分；全局让 Kiyori 请求统一进入当前策略组；直连不经过内嵌 Mihomo。',
+            '规则按域名细分；全局让 Kiyori Flutter 请求统一进入当前策略组；直连不经过内嵌 Mihomo。',
             style: TextStyle(
               fontSize: 12,
               height: 17 / 12,
@@ -525,7 +526,7 @@ class _NetworkProxyPageState extends State<NetworkProxyPage> {
         ),
         const SettingsDivider(),
         const NetworkProxyNote(
-          '当系统 VPN 实际作用于 Kiyori，或 Android 配置 HTTP/PAC 代理时，应用会自动暂停内嵌代理并使用系统路由；所有外部路由关闭后自动恢复。按应用分流且排除 Kiyori 的 VPN 不会触发暂停。',
+          '当系统 VPN 实际作用于 Kiyori Flutter，或 Android 配置 HTTP/PAC 代理时，应用会自动暂停内嵌代理并使用系统路由；所有外部路由关闭后自动恢复。按应用分流且排除 Kiyori Flutter 的 VPN 不会触发暂停。',
           small: true,
         ),
         const SettingsDivider(),

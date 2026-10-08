@@ -4,10 +4,10 @@
 
 | 对象 | 规范 |
 | --- | --- |
-| 产品、仓库、本地目录 | `Kiyori`；本机为 `D:\10_Project\Kiyori` |
+| 产品、仓库、本地目录 | `Kiyori Flutter`、`Kiyori-flutter`；本机为 `D:\10_Project\Kiyori-flutter` |
 | Dart package / Rust crate | `kiyori` 前缀，`lower_snake_case`，如 `kiyori_core` |
 | Dart / Rust 文件与模块 | `lower_snake_case`；类/结构体用 `UpperCamelCase` |
-| Kotlin 包 | `com.kiyori` 起，按领域分层；类文件遵循 Kotlin 约定 |
+| Kotlin 包 | 自有 Android runner 为 `com.kiyori.flutter`；类文件遵循 Kotlin 约定 |
 | Swift / C++ | 类型按各自生态；自有 C ABI 符号以 `kiyori_` 前缀 |
 | 文档与开发脚本文件 | `lower-kebab-case`；生态固定入口如 README、Cargo.toml 保持标准拼写 |
 | TypeScript package | 规划 `@kiyori/sdk`；本地 private package，不代表已拥有 npm scope |
@@ -27,22 +27,36 @@
 
 ## 新旧应用并存
 
-M1 已在 Android APK 中验证 `com.kiyori`，并生成 Windows `Kiyori.exe`；iOS/macOS runner 已配置 bundle ID，Linux 已配置 GTK application ID；三者尚未在目标环境构建或注册。其余未实现能力仍为设计预留。身份检查不能替代新旧应用的设备并存验收。
+2026-10-08 原生恢复唯一 Kiyori 主项目，本工程暂停功能开发并迁移外部身份。
+M1 历史 APK `com.kiyori` 和 `Kiyori.exe` 仍是其观察日期的事实；本轮构建证据见
+[当前状态](../status.md)。Apple/Linux 尚未在目标环境构建或注册，身份检查不能替代设备并存。
 
 | 对象 | 新项目标识与约束 |
 | --- | --- |
-| Android applicationId / namespace | `com.kiyori`；旧应用独立为 `com.kiyori.android` |
+| Android applicationId / namespace | `com.kiyori.flutter`；原生主项目为 `com.kiyori` |
 | Android Provider authority | 从 `${applicationId}` 派生，例如 `${applicationId}.files`，不写死旧包名 |
 | Android 自定义权限与 Binder | `${applicationId}.permission.*`；导出接口按调用者和权限校验 |
-| iOS / macOS bundle identifier | `com.kiyori`，Apple 账号与签名可用时确认是否可注册 |
-| macOS 应用 / Linux 程序 | `Kiyori.app` / `kiyori`；Linux GTK application ID 为 `com.kiyori` |
-| Windows 可执行文件 | `Kiyori.exe`；MSIX identity 预留 `Kiyori`，Publisher 由真实证书决定 |
-| 协议链接 | 预留 `kiyori://`；注册前审计旧应用是否占用，避免同时注册产生歧义 |
-| 用户数据 | OS 应用私有目录下 `Kiyori`；不可硬编码同一跨应用 home |
+| iOS / macOS bundle identifier | `com.kiyori.flutter`；测试为 `.RunnerTests`，实际注册/签名待 Apple 环境 |
+| macOS 应用 / Linux 程序 | `Kiyori Flutter.app` / `kiyori-flutter`；Linux GTK application ID 为 `com.kiyori.flutter` |
+| Windows 可执行文件 | `KiyoriFlutter.exe`，ProductName 为 `Kiyori Flutter`；MSIX 尚未实现 |
+| 协议链接 | 预留 `kiyori-flutter://`，当前未注册；不为改名新增协议实现 |
+| 用户数据 | path_provider 的独立 OS support 根；Windows 由 CompanyName/ProductName 派生，Apple/Android/Linux 取产品身份 |
 | 终端 | 新应用私有 home、tmp、socket 和环境变量；不共用旧 terminal 服务 |
 | 本地服务 | 默认不监听；必要时 loopback + 动态端口 + 每会话凭据，不占用固定公共端口 |
 | 分享/下载目录 | 默认系统选择器授权目标；共享公共文件需用户显式选择 |
 
-Android 安装包使用 `com.kiyori` 不意味着持有 `kiyori.com` 域名。对外域名、商店名称与 npm scope 需在实际使用时验证所有权。
+Android 安装包使用 `com.kiyori.flutter` 不意味着持有 `kiyori.com` 域名。对外域名、商店名称与 npm scope 需在实际使用时验证所有权。
 
 旧项目历史与数据不自动搬入新应用。日后迁移采用用户触发的版本化导出/导入包，不直接读取另一应用私有数据。第三方代码如确需使用必须保留许可和归属，不为了统一品牌删除法律信息。
+
+## 存储与保留标识
+
+Android 安全存储 namespace 为 `kiyori_flutter_secrets_v1`，Apple account/service 为
+`com.kiyori.flutter.secrets.v1`，不设置共享 access group；Linux 插件按 APPLICATION_ID
+设置系统 keyring account；Windows DPAPI 文件取独立 support 根。
+旧数据与凭据保留在原作用域，不自动读入或删除。未来恢复需要用户明确选择受支持的导出/导入，
+并保证数据库与密钥匹配；本次不实现跨框架转换。
+
+Dart package、Rust crate、FFI `kiyori_`、平台通道、内部 secret key 和私有子目录保持稳定，
+其隔离由进程/安装身份/OS support 根持有，机械添加后缀没有额外隔离收益。
+原生参考目录是 `D:\10_Project\Kiyori`，没有向 Flutter 添加 terminal 子模块。

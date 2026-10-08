@@ -250,7 +250,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
           icon: Icons.person,
           tone: IconTone.account,
           description:
-              '当前共有 ${snapshot.characterCount} 个角色卡。导出的文件会保存在「下载/Kiyori」文件夹中。',
+              '当前共有 ${snapshot.characterCount} 个角色卡。导出的文件会保存在「下载/Kiyori-flutter」文件夹中。',
           operation: snapshot.characterOperation,
         ),
         5 => _management(
@@ -368,7 +368,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 children: [
                   Text('📁 备份文件统计', style: TextStyle(fontSize: 22)),
                   SizedBox(height: 4),
-                  BackupText('Kiyori 导出目录中的备份文件'),
+                  BackupText('Kiyori Flutter 导出目录中的备份文件'),
                 ],
               ),
             ),
@@ -441,7 +441,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             borderRadius: BorderRadius.circular(14),
           ),
           child: const BackupText(
-            '💡 提示：备份文件保存在 Download/Kiyori 文件夹',
+            '💡 提示：备份文件保存在 Download/Kiyori-flutter 文件夹',
             small: true,
           ),
         ),
@@ -497,7 +497,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       _FaqItem('为什么要备份数据？', '备份聊天记录可以防止应用卸载或数据丢失时，您的重要内容丢失。定期备份是个好习惯！'),
       _FaqItem(
         '导出的文件保存在哪里？',
-        '导出的备份文件会保存在您手机的「下载/Kiyori」文件夹中，文件名包含导出的数据类型、日期和时间。',
+        '导出的备份文件会保存在您手机的「下载/Kiyori-flutter」文件夹中，文件名包含导出的数据类型、日期和时间。',
       ),
       _FaqItem(
         '导入后会出现重复的数据吗？',
@@ -542,7 +542,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
         ],
       ),
       const BackupText(
-        '保存位置：/storage/emulated/0/Download/Kiyori-Android/backup/room_db\n不随主动导出目录改变。关闭自动备份不删除已有文件，仍可手动备份。备份可能包含对话内容，分享前请检查。',
+        '保存位置：/storage/emulated/0/Download/Kiyori-flutter/backup/room_db\n不随主动导出目录改变。关闭自动备份不删除已有文件，仍可手动备份。备份可能包含对话内容，分享前请检查。',
         small: true,
       ),
       if (snapshot.dailyBackupError != null)

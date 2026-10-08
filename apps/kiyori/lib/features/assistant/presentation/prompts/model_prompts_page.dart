@@ -1017,12 +1017,12 @@ class _ExportModeDialog extends StatelessWidget {
           for (final entry in [
             (
               '酒馆 JSON',
-              '导出为 .json 并保存到 Download/Kiyori-Android/exports',
+              '导出为 .json 并保存到 Download/Kiyori-flutter/exports',
               Icons.data_object,
             ),
             (
               '酒馆 PNG',
-              '导出为可导入酒馆的图片，并保存到 Download/Kiyori-Android/exports',
+              '导出为可导入酒馆的图片，并保存到 Download/Kiyori-flutter/exports',
               Icons.image,
             ),
             ('多维码', '进入多维码预览，可选颜色数并保存', Icons.qr_code_2),

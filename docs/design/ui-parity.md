@@ -1,5 +1,8 @@
 # UI 复刻契约
 
+2026-10-08 身份调整后，原生参考入口为 `D:\10_Project\Kiyori`，本工程位于
+`D:\10_Project\Kiyori-flutter` 并暂停功能开发。下文旧路径与 revision 是历史记录，保持原观察事实。
+
 本文保存旧源几何、资源与交互合同；业务接线以[运行契约](../architecture/runtime-contracts.md)和[当前状态](../status.md)为准。底部 2026-10-02 初始批次保留历史计划与结果，不是当前 Git 状态或授权。
 
 <!-- doc-toc:start -->

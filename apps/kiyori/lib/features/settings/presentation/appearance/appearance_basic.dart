@@ -68,7 +68,7 @@ class _AppearanceBasicState extends State<AppearanceBasic> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Kiyori 固定配色',
+                      'Kiyori Flutter 固定配色',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,

@@ -53,7 +53,7 @@ class RuntimeDiagnosticsPage extends StatelessWidget {
         const Text('应用信息与运行状态'),
         const SizedBox(height: 28),
         _Section(
-          title: '关于 Kiyori',
+          title: '关于 Kiyori Flutter',
           children: [
             Text('开发版本 ${controller.info?.coreVersion ?? '—'}'),
             const SizedBox(height: 16),

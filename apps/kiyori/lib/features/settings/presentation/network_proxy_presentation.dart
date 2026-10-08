@@ -58,8 +58,8 @@ class NetworkProxyPresentation {
   String get runtimeDescription {
     if (!readable) return '加密配置不可读取，可在本页重置';
     if (!canEnable) return '请先导入并选择有效订阅，才能启用应用内代理';
-    if (!enabled) return '已关闭；Kiyori 使用 Android 系统网络与系统代理';
-    if (!hasProxyRoute) return '已开启；Kiyori 代理模块均直连，仍遵循 Android 系统路由';
+    if (!enabled) return '已关闭；Kiyori Flutter 使用 Android 系统网络与系统代理';
+    if (!hasProxyRoute) return '已开启；Kiyori Flutter 代理模块均直连，仍遵循 Android 系统路由';
     if (vpn || httpProxy) {
       final label = vpn && httpProxy
           ? '系统 VPN 与 HTTP/PAC 代理'

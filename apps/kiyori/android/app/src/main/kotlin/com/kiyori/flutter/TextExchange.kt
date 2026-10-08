@@ -1,4 +1,4 @@
-package com.kiyori
+package com.kiyori.flutter
 
 import android.app.Activity
 import android.content.Intent

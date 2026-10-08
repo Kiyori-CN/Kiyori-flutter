@@ -60,7 +60,7 @@ class _OpenSourcePageState extends State<OpenSourcePage> {
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
-                    'Kiyori 开源组成',
+                    'Kiyori Flutter 开源组成',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
