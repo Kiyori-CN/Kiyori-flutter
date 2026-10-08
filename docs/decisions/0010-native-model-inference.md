@@ -7,7 +7,7 @@
 LlamaSession 与对应 CMake。保留设置 UI、计算类型、线程与 llama 上下文等字段；
 Rust Runtime / ChatRun / SQLite 仍唯一管理请求、历史、总结和取消。
 
-平台实现放在 `packages/kiyori_platform/native`，为有独立 C++ 链接和测试需求的 Rust
+平台实现放在 `packages/kiyori_platform/inference`，为有独立 C++ 链接和测试需求的 Rust
 adapter crate。依赖 core 的窄推理端口，由 FFI 装配；core 不依赖平台实现或 Flutter。
 选择静态 C++ adapter，避免 Dart 再建执行器、网络服务或模型数据库。模型实例归单个
 worker，完成、失败或取消后 RAII 卸载。此阶段不保留跨请求 KV/模型缓存，避免陈旧

@@ -4,6 +4,11 @@
 
 ## 分层与所有权
 
+平台工程分为共享产品入口、类型化能力端口和实际宿主实现。五个平台复用同一业务核心，
+runner 存在不代表平台能力已接入；当前 Android/Windows 是构建验收目标，其余源集和
+系统适配按[平台矩阵](../design/platforms.md)维护。具体工程取舍见
+[ADR 0019](../decisions/0019-five-platform-foundation.md)。
+
 ```mermaid
 flowchart TD
     UI[Flutter 功能界面与交互状态] --> FFI[类型化命令与事件桥]

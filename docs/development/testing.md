@@ -45,6 +45,12 @@ UI 关注响应式布局、键盘/鼠标/触摸、大字体、可访问性和生
 
 ## 设备矩阵
 
+本轮工程已准备 iOS/macOS/Linux runner，实际构建仍限 Android/Windows。macOS/Linux
+分别在对应宿主使用 `tools/build.ps1 -Platform macos` / `-Platform linux`；错误宿主在
+SDK 检查前拒绝。平台能力、依赖和后续运行清单以[平台矩阵](../design/platforms.md)为准。
+`test-tooling.ps1` 额外覆盖 15 组宿主/目标组合；Rust build_support 回归验证 ABI 映射和
+未接入架构拒绝，系统存储 mock 覆盖 Apple/Linux 参数、已有密钥不覆盖及 UTF-8 字节限额。
+
 首轮 Android arm64 真机、Windows x64；Android x64 模拟器在需要时添加。iOS 没有 Mac/iPhone，明确保留待验证，后续先模拟器再真机。旧应用和新应用并存需查安装包标识、Provider、数据目录、终端 home/socket/端口，再测试同时启动。
 
 ## CI 与发布

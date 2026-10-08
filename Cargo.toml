@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/kiyori_core", "crates/kiyori_ffi", "packages/kiyori_platform/native", "packages/kiyori_platform/scripts", "packages/kiyori_platform/audit"]
+members = ["crates/kiyori_core", "crates/kiyori_ffi", "packages/kiyori_platform/inference", "packages/kiyori_platform/scripts", "packages/kiyori_platform/audit"]
 resolver = "3"
 
 [workspace.package]

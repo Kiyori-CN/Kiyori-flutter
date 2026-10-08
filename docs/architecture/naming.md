@@ -22,18 +22,20 @@
 - Rust 小领域使用 `storage.rs` 等同名文件，大领域再拆目录；文件大小不是必须改名或拆层的理由。
 - ADR 使用四位连续新增编号与主题名，既有编号不重排；历史证据用明确日期或月份，不使用“最终版”。
 - 改名先核对大小写碰撞、导入、part/include、构建脚本、生成器和文档引用，同次修改闭合；生态入口、第三方协议和生成路径保留标准拼写。
+- 平台包按能力命名：`inference/`、`scripts/`、`audit/`；共享构建源码归 `build_support/`，不新增发布 crate。系统钥匙环适配名为 `SystemSecretStore`，平台工厂留在 `secret_store.dart`。
 - `Persistent*` 表示持久业务宿主，纯展示页面保留可注入快照；名称不能掩盖空实现或把草稿称为已保存。
 
 ## 新旧应用并存
 
-M1 已在 Android APK 中验证 `com.kiyori`，并生成 Windows `Kiyori.exe`；iOS runner 已配置 bundle ID，但尚未在 Apple 环境编译或注册。其余未实现能力仍为设计预留。身份检查不能替代新旧应用的设备并存验收。
+M1 已在 Android APK 中验证 `com.kiyori`，并生成 Windows `Kiyori.exe`；iOS/macOS runner 已配置 bundle ID，Linux 已配置 GTK application ID；三者尚未在目标环境构建或注册。其余未实现能力仍为设计预留。身份检查不能替代新旧应用的设备并存验收。
 
 | 对象 | 新项目标识与约束 |
 | --- | --- |
 | Android applicationId / namespace | `com.kiyori`；旧应用独立为 `com.kiyori.android` |
 | Android Provider authority | 从 `${applicationId}` 派生，例如 `${applicationId}.files`，不写死旧包名 |
 | Android 自定义权限与 Binder | `${applicationId}.permission.*`；导出接口按调用者和权限校验 |
-| iOS bundle identifier | 预留 `com.kiyori`，Apple 账号与签名可用时确认是否可注册 |
+| iOS / macOS bundle identifier | `com.kiyori`，Apple 账号与签名可用时确认是否可注册 |
+| macOS 应用 / Linux 程序 | `Kiyori.app` / `kiyori`；Linux GTK application ID 为 `com.kiyori` |
 | Windows 可执行文件 | `Kiyori.exe`；MSIX identity 预留 `Kiyori`，Publisher 由真实证书决定 |
 | 协议链接 | 预留 `kiyori://`；注册前审计旧应用是否占用，避免同时注册产生歧义 |
 | 用户数据 | OS 应用私有目录下 `Kiyori`；不可硬编码同一跨应用 home |

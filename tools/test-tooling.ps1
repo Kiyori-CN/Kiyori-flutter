@@ -5,6 +5,27 @@ param()
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'bridge-output.ps1')
 . (Join-Path $PSScriptRoot 'foundation-content.ps1')
+. (Join-Path $PSScriptRoot 'platform-build.ps1')
+$routingCases = 0
+foreach ($hostName in @('windows', 'macos', 'linux')) {
+  foreach ($platformName in @('android', 'windows', 'ios', 'macos', 'linux')) {
+    $allowed = $platformName -eq 'android' -or $platformName -eq $hostName -or ($platformName -eq 'ios' -and $hostName -eq 'macos')
+    $failed = $false
+    try { $actual = @(Get-KiyoriBuildArguments -Platform $platformName -HostPlatform $hostName -Mode profile -NoPub) }
+    catch { $failed = $true }
+    if ($failed -eq $allowed) { throw "Invalid build host routing: $hostName -> $platformName" }
+    if ($allowed) {
+      $target = if ($platformName -eq 'android') { 'apk' } else { $platformName }
+      $expected = @('build', $target, '--profile')
+      if ($platformName -eq 'android') { $expected += @('--target-platform', 'android-arm64') }
+      if ($platformName -eq 'ios') { $expected += '--no-codesign' }
+      $expected += '--no-pub'
+      if (($actual -join '|') -ne ($expected -join '|')) { throw "Invalid build arguments: $hostName -> $platformName" }
+    }
+    $routingCases++
+  }
+}
+Write-Host "PASS: $routingCases build host/target routing cases."
 $contentCases = @(
   @{ Name = 'valid JSON'; Path = 'nested/config.json'; Text = "{`"name`":`"Kiyori`",`"enabled`":true}`n"; Error = '' },
   @{ Name = 'JSON scalar'; Path = 'value.json'; Text = "null`n"; Error = '' },

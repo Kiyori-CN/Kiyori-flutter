@@ -11,7 +11,8 @@
   "rust": {
     "version": "1.99.0",
     "edition": "2024",
-    "targets": ["x86_64-pc-windows-msvc", "aarch64-linux-android", "x86_64-linux-android", "aarch64-apple-ios", "aarch64-apple-ios-sim"]
+    "targets": ["x86_64-pc-windows-msvc", "aarch64-linux-android", "x86_64-linux-android", "aarch64-apple-ios", "aarch64-apple-ios-sim", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"],
+    "targetPolicy": "Native Assets requires explicit targets in rust-toolchain.toml. Rustup may install these standard libraries; this does not supply platform SDKs or prove build support."
   },
   "flutterRustBridge": {
     "version": "2.13.0",
@@ -47,6 +48,14 @@
     "swiftObserved": "6.4",
     "sdkObserved": "27",
     "status": "verification_pending_no_apple_host"
+  },
+  "macos": {
+    "minimumOsCandidate": "12.0",
+    "status": "source_ready_verification_pending_no_apple_host"
+  },
+  "linux": {
+    "initialTarget": "x86_64-unknown-linux-gnu",
+    "status": "source_ready_verification_pending_no_linux_desktop_host"
   },
   "extensions": {
     "nodeLtsObserved": "24.21.0",

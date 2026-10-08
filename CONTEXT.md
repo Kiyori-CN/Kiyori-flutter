@@ -40,7 +40,7 @@
 3. 本地资源不等于绝对路径，平台能力不等于授权，任务取消不等于已经撤销外部副作用。
 4. 默认使用本地工作空间；凭据由系统安全存储持有。日志不记录密钥、完整私密提示词、浏览 Cookie 或令牌。
 5. 不共享新旧应用的数据目录、签名外的身份、Provider authority、终端 home 或无鉴权服务端口。
-6. iOS 未在 Mac 上编译的部分保持 `verification_pending`；共享测试通过不能替代平台测试。
+6. 五平台共享 Dart/Rust 契约；当前实际构建验收目标为 Android/Windows。iOS/macOS/Linux 未在对应宿主构建的部分保持 `verification_pending`，共享测试不能替代平台测试。
 7. 页面预热只准备 UI，不启动领域 I/O；每帧偏移与输入只更新对应展示子树。性能证据必须注明设备、模式与刷新率。
 8. 产品 UI、布局、配色、文案、功能逻辑、交互、跳转、回退和弹层完全以 `D:\10_Project\Kiyori-Android` 为复刻基线。内部重构不授权重新设计产品。
 9. 原文与审计事实保持完整；摘要、分页、列表摘录和检索索引均为投影，不能覆盖正文。
@@ -53,3 +53,4 @@
 - [运行契约](docs/architecture/runtime-contracts.md)：取消、事务、持久化及 UI 生命周期细节。
 - [命名与应用身份](docs/architecture/naming.md)、[数据与权限](docs/design/data-and-security.md)。
 - [文档中心](docs/README.md)：设计、ADR、开发、测试与历史证据。
+- [平台矩阵](docs/design/platforms.md)：五平台宿主、实际接线、unsupported 与验证边界。

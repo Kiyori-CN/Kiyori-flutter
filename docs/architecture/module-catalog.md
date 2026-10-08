@@ -10,7 +10,7 @@
 | `apps/kiyori/lib/features` | 16 个已有领域的 UI 与交互状态 | 实际目录；数量不等于完成页面数 |
 | `kiyori_core` | 会话、模型、知识、定义目录、资源、扩展及统一存储 | `src/lib.rs` 与私有 `storage.rs` |
 | `kiyori_ffi` / `kiyori_bridge` | 句柄、DTO、生成协议与 Dart 外观 | Cargo / Pub workspace |
-| `kiyori_platform` | 凭据、文件交换、推理、脚本及审计适配 | Dart 包与 native/scripts/audit 三个 Rust 成员 |
+| `kiyori_platform` | 凭据、文件交换、推理、脚本及审计适配 | Dart 包与 inference/scripts/audit 三个 Rust 成员 |
 | `kiyori_ui` | 语义颜色、排版及无业务 UI 原语 | 包公共导出入口 |
 
 具体接线见[模块实现](module-implementation.md)，生命周期见[运行契约](runtime-contracts.md)。Rust 小领域保留 `models.rs`、`storage.rs` 等文件，大模块使用 `chat/`、`extensions/`；不为匹配目标图而移动实际代码。

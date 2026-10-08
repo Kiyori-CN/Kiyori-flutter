@@ -1,5 +1,13 @@
-#[cfg(windows)]
 use super::*;
+
+#[test]
+fn unsupported_backend_never_exposes_plaintext_or_fabricates_signatures() {
+    let crypto = UnsupportedAuditCrypto;
+    assert!(!crypto.persistent());
+    assert!(crypto.protect(b"private").is_err());
+    assert!(crypto.unprotect(b"private").is_err());
+    assert!(crypto.sign(b"hash").is_err());
+}
 
 #[cfg(windows)]
 #[test]

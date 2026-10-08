@@ -40,7 +40,7 @@ Transfer，`core/local_models`编译公共市场/仓库清单。Dart的Persisten
 投影这些事实及生命周期，不拥有下载HTTP或文件数据库。schema16/17、Range及校验见ADR0009。
 
 `core/chat/native`为本地推理建立资源租约和blocking worker契约；平台Rust/C++ adapter
-在`packages/kiyori_platform/native`，由FFI装配，复用ChatRun事件及SQLite会话。
+在`packages/kiyori_platform/inference`，由FFI装配，复用ChatRun事件及SQLite会话。
 具体引擎、参数与平台验收状态见status及ADR0010；配置字段不等于GPU/媒体已接入。
 
 下文描述现有接线与展示边界。`core`指`crates/kiyori_core/src`；

@@ -16,7 +16,7 @@
 
 | 工具 | 本轮基线/观察 | 用途与限制 |
 | --- | --- | --- |
-| Flutter / Dart | 3.47.6 / 3.13.5，stable | 官方 Windows archive + SHA-256；三端 UI |
+| Flutter / Dart | 3.47.6 / 3.13.5，stable | 官方 Windows archive + SHA-256；五平台 UI |
 | Rust | 1.99.0，edition 2024 | side-by-side 安装，项目 pin；全局 stable 不切换 |
 | flutter_rust_bridge | 2.13.0 稳定版 | M1 已接入 Dart/Rust/生成器/hooks 同版组合；Native Assets 实际打包 |
 | AGP / Gradle | 9.4.1 / 9.8.0 | 正式 Google Maven 补丁 + Wrapper；不依赖全局 gradle |
@@ -60,13 +60,17 @@ test-ui/build/verify 的版本检查会拒绝不匹配SDK。不要在排错时�
 
 1. 安装 Git 与 PowerShell 7，按官方 archive 获取锁定 Flutter 稳定版并校验平台对应摘要。将 SDK 放版本化目录，缓存独立于源码。
 2. Windows 安装 Visual Studio 的 Desktop development with C++，含受支持 MSVC、CMake 与 Windows SDK。Android 安装 JDK、SDK Platform、Build Tools、NDK 和已验收的命令行工具；按本机规则处理许可证。
-3. 安装 rustup，再在仓库执行 `rustup show`，按 `rust-toolchain.toml` 安装指定 compiler/components/targets。不要求将它设为全局默认。
+3. 安装 rustup，再在仓库执行 `rustup show`，按 `rust-toolchain.toml` 安装指定 compiler/components/targets；标准库不包含平台 SDK。不要求将它设为全局默认。
 4. 设置所需 SDK/JDK 路径与缓存，运行 `flutter doctor -v`。没有受管理环境可手动配置；项目脚本会明确报缺少 policy，不偷偷猜其它 SDK。
 5. 在无业务依赖的最小工程验证 Flutter Windows/Android 与 Rust 两平台链接；实际应用接入 FFI 和原生插件后必须再构建。
 
 Apple 主机按[平台设计](../design/platforms.md)准备，不能在 Windows 安装一个 Swift 工具就视为有 iOS 工具链。
 
 ## 可复现与升级
+
+Rust pin 固定编译器、rustfmt/clippy 与五平台 target 清单；Native Assets 依赖要求显式列出
+当前目标。rustup 可能安装对应标准库，但不提供其它平台 linker 或 SDK，不表示构建验收。
+根 pin、crate-local pin 与 `toolchains.json` 保持一致。macOS/Linux 构建入口与环境见[五平台矩阵](../design/platforms.md)。
 
 正式工程提交 Wrapper（含 `distributionSha256Sum`）、Cargo.lock、Pub workspace lock。FRB 各部分版本一致；`tools/generate-bridge.ps1` 生成桥接，`-Check` 核对再生成，`tools/build.ps1` 构建，`tools/verify.ps1` 执行相关静态与行为检查。编译器与原生依赖版本不能只记录在开发机 PATH。
 
@@ -99,7 +103,7 @@ Cargo dep-info 自动记录源码，但不能代替这些配置输入；产物 h
 生成后仅对生成 Rust 文件使用 pin 中的 edition 执行 rustfmt，不顺带格式化人工源码。
 检查会实际再生成；若失败，保留并审阅生成差异，不自动覆盖恢复。
 
-新增依赖时先确认三端支持、维护状态、许可证与稳定版本，再通过最小切片验证。每次升级在版本基线注明观察日期和实际证据，保留旧 side-by-side 工具以便恢复。未用到的播放器 SDK、脚本引擎、MCP server runtime 与大型 Android 模拟器不预装。
+新增依赖时先确认五平台支持、维护状态、许可证与稳定版本，再通过最小切片验证。每次升级在版本基线注明观察日期和实际证据，保留旧 side-by-side 工具以便恢复。未用到的播放器 SDK、脚本引擎、MCP server runtime 与大型 Android 模拟器不预装。
 
 ## 本轮检查边界
 

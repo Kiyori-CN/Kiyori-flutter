@@ -22,7 +22,7 @@ Navigator；`home_shell.dart` 管一级目的地、返回来源、pager和缓存
 
 ## 当前目录
 
-以下按 `138f42e` 的实际目录整理，仅省略同类文件，不列尚未建立的目标目录。Pub workspace
+以下按当前源码的实际目录整理，仅省略同类文件，不列尚未建立的目标目录。Pub workspace
 有四个成员，Cargo workspace 有五个成员；成员清单以根 manifest 为准。
 
 ```text
@@ -33,6 +33,8 @@ Kiyori/
 │   ├── android/                 # Android runner 与平台通道
 │   ├── windows/                 # Windows runner
 │   ├── ios/                     # iOS 源集，Apple 构建待验证
+│   ├── macos/                   # macOS runner，Apple 构建待验证
+│   ├── linux/                   # Linux runner，Linux 构建待验证
 │   ├── assets/                  # 品牌、旧源素材及许可证
 │   ├── test/                    # 组件与行为测试，support/ 为共享夹具
 │   ├── integration_test/        # 引擎集成与性能场景
@@ -44,7 +46,8 @@ Kiyori/
 │       ├── lib/                 # 平台能力的 Dart 接口
 │       ├── test/                # 平台通道与接口测试
 │       ├── assets/              # 平台能力使用的静态资源
-│       ├── native/              # 本地推理 Rust/C++ adapter
+│       ├── inference/           # 本地推理 Rust/C++ adapter
+│       ├── build_support/       # 原生 adapter 共用 CMake 查找与目标配置
 │       ├── scripts/             # QuickJS-NG Rust/C++ adapter
 │       └── audit/               # 审计保护 Rust/原生 adapter
 ├── crates/
@@ -93,7 +96,7 @@ Rust 小模块从领域同名 `.rs` 文件开始，出现内聚子模块时再�
 - `kiyori_ui` 不依赖业务核心或平台系统服务。
 - `kiyori_bridge` → `kiyori_ffi` 的生成协议；不依赖应用 feature。
 - `kiyori_ffi` → `kiyori_core`；核心不依赖 Flutter、Dart 或 UI 包。
-- `kiyori_platform/native` 的 Rust/C++ 推理adapter依赖core窄端口，FFI装配并静态链接；
+- `kiyori_platform/inference` 的 Rust/C++ 推理adapter依赖core窄端口，FFI装配并静态链接；
   core不反向依赖adapter。源archive和编译缓存不进入发布树。
 - `kiyori_platform/scripts` 的Rust/C++受限执行器同样依赖core/scripts窄端口，
   仅静态链接qjs；源码archive与target/native-scripts缓存不提交。

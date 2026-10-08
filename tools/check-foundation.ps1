@@ -59,6 +59,14 @@ foreach ($file in Get-ChildItem (Join-Path $repositoryRoot 'packages/kiyori_ui/l
 $baseline = Get-Content -LiteralPath (Join-Path $repositoryRoot 'toolchains.json') -Raw | ConvertFrom-Json
 $rustPin = Get-Content -LiteralPath (Join-Path $repositoryRoot 'rust-toolchain.toml') -Raw
 if ($rustPin -notmatch ('(?m)^channel = "' + [regex]::Escape($baseline.rust.version) + '"$')) { $failures.Add('Rust version differs between toolchains.json and rust-toolchain.toml') }
+$targetMatch = [regex]::Match($rustPin, '(?m)^targets = (\[[^\r\n]+\])$')
+if (-not $targetMatch.Success) { $failures.Add('Native Assets requires explicit Rust targets') }
+else {
+  $targets = @($targetMatch.Groups[1].Value | ConvertFrom-Json)
+  if (@(Compare-Object $targets @($baseline.rust.targets)).Count -ne 0) {
+    $failures.Add('Rust targets differ between toolchains.json and rust-toolchain.toml')
+  }
+}
 $ffiPin = Get-Content -LiteralPath (Join-Path $repositoryRoot 'crates/kiyori_ffi/rust-toolchain.toml') -Raw
 if (($ffiPin -replace '(?m)^#.*\r?\n', '').Trim() -ne $rustPin.Trim()) { $failures.Add('Native Assets crate-local Rust pin differs from the root pin') }
 

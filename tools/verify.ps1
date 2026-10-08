@@ -3,6 +3,7 @@ param([switch]$WindowsIntegration)
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+if ($WindowsIntegration -and -not $IsWindows) { throw 'Windows engine integration requires a Windows host.' }
 function Invoke-Checked {
   param([string]$Command, [string[]]$Arguments)
   & $Command @Arguments

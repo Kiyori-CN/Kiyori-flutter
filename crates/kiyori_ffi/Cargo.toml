@@ -10,7 +10,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [dependencies]
 serde_json.workspace = true
 kiyori_core = { path = "../kiyori_core" }
-kiyori_inference = { path = "../../packages/kiyori_platform/native" }
+kiyori_inference = { path = "../../packages/kiyori_platform/inference" }
 kiyori_scripts = { path = "../../packages/kiyori_platform/scripts" }
 kiyori_audit_crypto = { path = "../../packages/kiyori_platform/audit" }
 flutter_rust_bridge.workspace = true

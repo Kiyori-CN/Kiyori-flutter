@@ -1,6 +1,6 @@
 # Kiyori
 
-Kiyori 是开发中的跨平台 AI 工作台，面向 Android、Windows 与 iOS，计划连接 AI 助手、网页浏览、文件与下载、音视频和可授权的扩展工具。项目尚未正式发布。
+Kiyori 是开发中的跨平台 AI 工作台，面向 Android、Windows、iOS、macOS 与 Linux，计划连接 AI 助手、网页浏览、文件与下载、音视频和可授权的扩展工具。项目尚未正式发布。
 
 **产品完整复刻旧 Kiyori Android；跨平台重构改变内部实现，不重新设计 UI 与交互。** 旧项目为 `D:\10_Project\Kiyori-Android`，新旧应用独立安装、独立保存数据。
 
@@ -12,7 +12,7 @@ Kiyori 是开发中的跨平台 AI 工作台，面向 Android、Windows 与 iOS�
 | 本地与扩展模型 | 托管模型下载、GGUF 导入、CPU 推理、TOOLPKG 提供方安装与调用 | GPU、媒体及完整旧包宿主能力尚未接入 |
 | 本机数据 | 记忆/知识/日记/关系、工作流定义、基础会话审计与导出 | 工作流执行、全量备份恢复与云嵌入尚未接入 |
 | 产品界面 | 三页首页、五图标底栏、设置及 AI 抽屉等旧源界面 | 部分页面仅展示与草稿，空点击不代表业务可用 |
-| 平台 | Android 与 Windows 本机构建已有历史证据；维护 iOS 源集 | Apple 编译、设备体验与 Profile 验收另行记录 |
+| 平台 | Android/Windows 为当前构建验收目标；五平台 runner 已建立 | iOS/macOS/Linux 仅工程准备，原生缺口和实机构建见平台矩阵 |
 
 首次使用：在“设置 → AI 助手 → 模型与 API”配置端点、协议、模型和密钥，保存后测试模型，再回到 AI 对话选择模型并发送。配置、会话与原文由本机 Rust 存储持有；网络请求仅在相应操作触发。详细操作、凭据导出风险与功能限制见[当前能力指南](docs/user-guide/current-capabilities.md)。
 
@@ -59,6 +59,10 @@ manifest/lock 未变化时，`tools/test-ui.ps1` 与 `tools/build.ps1` 可追加
 解析依赖；首次运行或依赖变化后仍使用默认入口。
 
 修改 Rust 公共 API 后运行 `tools/generate-bridge.ps1`。生成器安装、真实桥接测试和 iOS 限制见 [M1 开发指南](docs/development/m1-foundation.md)。
+
+iOS、macOS、Linux 工程已准备，对应宿主分别使用 `tools/build.ps1 -Platform ios`、
+`-Platform macos`、`-Platform linux`。当前未在这些宿主构建；文件选择、推理、脚本与审计等
+原生能力仍有缺口，环境和真实接线以[五平台矩阵](docs/design/platforms.md)为准。
 
 开发时可在 `apps/kiyori` 执行 `flutter run -d windows --dart-define=KIYORI_DIAGNOSTICS=true` 进入独立运行检查。正常启动保持复刻界面，设置按钮不跳转到开发诊断页。UI 的源码依据和验证范围见 [UI 复刻契约](docs/design/ui-parity.md)。
 

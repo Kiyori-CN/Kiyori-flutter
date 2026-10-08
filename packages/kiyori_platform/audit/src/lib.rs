@@ -46,9 +46,9 @@ fn mark_initialized(directory: &Path) -> Result<(), CoreError> {
         Err(_) => Err(failure()),
     }
 }
-#[cfg(not(any(windows, target_os = "android")))]
+#[cfg(any(test, not(any(windows, target_os = "android"))))]
 struct UnsupportedAuditCrypto;
-#[cfg(not(any(windows, target_os = "android")))]
+#[cfg(any(test, not(any(windows, target_os = "android"))))]
 impl AuditCrypto for UnsupportedAuditCrypto {
     fn persistent(&self) -> bool {
         false

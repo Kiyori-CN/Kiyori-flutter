@@ -1,40 +1,62 @@
 # 平台能力与同步开发
 
-本文为平台目标与差异矩阵，不代表表中各能力已实现。版本候选和 Apple 环境描述沿用 2026-10-02 观察；实际安装前需复核官方要求，当前 pin 见[工具链](../development/toolchains.md)，产品证据见[状态](../status.md)。
+本项目以 Android、Windows、iOS、macOS、Linux 为原生平台目标；当前强制构建验收范围为 Android arm64 与 Windows x64。工程源集、插件接线、构建、运行、业务验收和发布是不同证据层级。当前结果以[状态](../status.md)为准，内部边界见 [ADR 0019](../decisions/0019-five-platform-foundation.md)。
 
-## 支持基线
+## 工程与宿主矩阵
 
-设计目标为 Android API 24+、Windows 10/11 x64、iOS 15+，这些是当前 Flutter 的基础候选下限，具体依赖可提高最低版本；首次 runner 和插件选择时必须复核。首轮设备重点 Android arm64 与 Windows x64，Android x64 用于后续模拟器。Windows arm64 与 Android 32 位不是首期交付目标。
-
-没有 Mac 和 iPhone 是当前已确认环境事实。Windows 能维护共享代码和 iOS 源文件，但不能证明 Swift、Xcode 工程、签名、模拟器或真机运行正确。
-
-## 能力差异
-
-| 能力 | Android | Windows | iOS |
+| 目标 | 当前工程 | 构建宿主 | 本轮要求与边界 |
 | --- | --- | --- | --- |
-| Flutter UI / Rust 业务 | 优先实现与构建 | 优先实现与构建 | 同步接口/源集，待 Apple 编译 |
-| 网页引擎 | 系统 WebView | WebView2 | WKWebView |
-| 文件访问 | 沙箱 + SAF/媒体授权 | 用户授权路径与 OS 权限 | 沙箱 + 文件选择器/授权 bookmark |
-| 后台下载 | 工作调度/前台服务等系统机制 | 后台传输或受控应用任务 | background URLSession，受系统调度 |
-| 音视频后台 | 音频焦点与媒体服务 | 窗口/进程和系统媒体控制 | AVAudioSession 与合法后台模式 |
-| 广告规则 | 受 WebView 拦截 API 限制 | 受 WebView2 API 与请求来源限制 | WKContentRuleList 的规则能力 |
-| 应用内代理 | 分别核验 HTTP/WebView/媒体 | 分别核验 HTTP/WebView2/媒体 | 分别核验支持的 API，不承诺全流量 |
-| 系统代理/VPN | 独立 VpnService 及用户许可 | 独立系统权限与恢复设计 | Network Extension 资格与分发条件待评估 |
-| 插件/脚本 | 受限执行器，分发与平台限制 | 受限执行器，可做进程隔离 | 需遵守平台下载代码与分发规则，不能预承诺同等范围 |
-| 本地 MCP stdio / 终端 | 特定随包 runtime 才可能支持 | 用户配置 runtime，受控进程 | 不作为通用可用能力 |
-| 远程 MCP | 受控 HTTP | 受控 HTTP | 受控 HTTP，仍需平台验证 |
+| Android | Flutter runner、Kotlin 通道、Rust Native Assets | Windows/macOS/Linux + JDK/SDK/NDK | 实际构建 arm64 Debug APK；其他宿主和 ABI 未验证 |
+| Windows | Flutter runner、Dart Win32 adapter、Rust Native Assets | Windows + Visual Studio C++ | 实际构建 x64 Debug bundle，运行 Windows 引擎集成 |
+| iOS | Flutter runner、插件注册、Native Assets hook | macOS + Xcode | 源集维护；Swift、链接、模拟器、签名均待验证 |
+| macOS | Flutter runner、插件注册、网络沙箱 entitlement、品牌图标 | macOS + Xcode | 工程准备；Keychain、Native Assets 和窗口运行待验证 |
+| Linux | GTK runner、插件注册、Native Assets bundle 安装规则 | Linux 桌面 + Clang/CMake/Ninja/GTK | 工程准备；依赖、钥匙环、动态链接及运行待验证 |
 
-## 同步开发的具体含义
+源集来自锁定 Flutter 模板，并使用项目自己的应用身份、图标与同一 Dart 入口。Android API 24、iOS 15、macOS 12.0 是当前配置值，实际插件、SDK 与部署环境可能提高下限，首次平台构建必须核验。Linux 首先以 x64 GNU/Linux 桌面为验收目标；arm64 和 Windows arm64 不因存在 Rust target 就成为已支持的发布目标。Web 不在本轮范围，当前使用 dart:io、FFI 与原生句柄。
 
-每个跨平台 feature 在设计时给出 iOS 输入输出、权限、资源生命周期和 unsupported 表达；共享 Rust/Dart 不硬编码 Android 路径。新增接口包含可用于三端的夹具，iOS 适配在对应任务里维护，禁止长期只留没有错误契约的空函数。
+## 已接入能力与明确缺口
 
-没有 Mac 时，iOS 代码状态最多为 `source_ready / verification_pending`（仅在真正写过源代码时才可标 source_ready）。M1 已生成并维护 iOS runner，配置 `com.kiyori` 和 iOS 15 下限；共享 Rust/Dart 与 Native Assets hook 已存在，Apple targets 已安装，但 Xcode 编译、链接、签名与运行均未验证。业务原生适配仍只有设计。拿到 Mac 后第一件事是完整构建与模拟器验证，而不是直接增加业务。
+| 能力 | Android | Windows | iOS | macOS | Linux |
+| --- | --- | --- | --- | --- | --- |
+| 共享 UI、SQLite、网络模型协议 | 已接线 | 已接线 | 共享源码，待验证 | 共享源码，待验证 | 共享源码，待验证 |
+| 凭据 | SystemSecretStore → Android 安全存储 | WindowsSecretStore → 已有 DPAPI 格式 | SystemSecretStore → Keychain，待验证 | SystemSecretStore → Keychain，待验证 | SystemSecretStore → libsecret，待验证 |
+| 文本/模型/扩展文件选择与导出 | runner 平台通道 | Win32 adapter | unsupported | unsupported | unsupported |
+| 本地 CPU 推理 | MNN/llama.cpp adapter | MNN/llama.cpp adapter | unsupported | unsupported | unsupported |
+| TOOLPKG 脚本执行 | QuickJS-NG adapter | QuickJS-NG adapter | unsupported | unsupported | unsupported |
+| 审计正文保护与签名 | Keystore | DPAPI 保护密钥 | unsupported | unsupported | unsupported |
+| Android 系统 Toast | 原生通道 | unsupported | unsupported | unsupported | unsupported |
+| 文本手柄触觉 | 原生通道 | unsupported | Flutter iOS 调用，待验证 | unsupported | unsupported |
 
-## Apple 环境补齐清单
+“已接线”不代表全功能或设备验收。系统凭据适配与审计保护是两个端口：Keychain 接入不代表 P-256 签名或历史审计迁移完成。缺失审计后端不能保存明文、伪造签名或删除旧密文，相关操作必须保留失败；首次启动、建会话和迁移仍需目标平台实测。系统文件通道缺失返回 typed unsupported，不能把未实现当作用户取消。
 
-1. 获取可运行所选稳定 Xcode 的 Mac；核验 [Apple 系统要求](https://developer.apple.com/xcode/system-requirements/)。本次观察为 Xcode 27、Swift 6.4、iOS SDK 27，需要 macOS Tahoe 26.6+。
-2. 安装 Flutter 同版本、Rust 同版本、Xcode 命令行工具和模拟器；Rust 加 `aarch64-apple-ios` 与 `aarch64-apple-ios-sim`（Intel Mac 按需加 x86_64 模拟器）。
-3. 跑共享测试、iOS 无签名构建与模拟器；涉及插件的依赖管理按实际 Swift Package Manager/CocoaPods 要求配置。
-4. 真机与分发需要 Apple 身份、证书、Bundle ID 和设备条件；申请/购买/上传需另行授权。没有真机时后台、音频、文件提供器和权限 UX 保留待验收。
+macOS 复用现有 flutter_secure_storage，保持独立 accountName、不同步凭据，并显式使用非共享 Keychain；不为本应用增加 Keychain Sharing/provisioning 要求。Debug/Profile 和 Release 均声明出站网络，入站调试 entitlement 仅留在 Debug/Profile。Linux 需要 libsecret 开发/运行依赖、D-Bus 用户会话及可用钥匙环服务；锁定或缺失钥匙环必须报错，不自动清空或落盘明文。当前测试只能核对 Dart 参数和错误契约。
 
-Apple 平台能力须在实际分发策略确定时复核其审核要求；官方对下载执行代码和网页引擎有明确规则及例外条件，不能以桌面行为直接外推。[Apple 官方审核指南](https://developer.apple.com/cn/app-store/review/guidelines/)
+## 架构与构建不变量
+
+- Flutter 产品行为仍完全参考旧 Kiyori-Android；runner 只装配系统能力，不复制业务数据库或改变 UI。
+- Dart 界面依赖类型化端口，Rust Runtime 是业务事实唯一所有者；平台可用性不授予权限，编译成功不证明能力就绪。
+- 平台 Dart 工厂和系统存储实现分开；推理、脚本、审计按真实职责组织，不预建空平台 package。
+- inference/scripts 复用 build_support/cmake.rs 的工具查找、NDK/ABI 配置与输入追踪。Windows 未接入的架构直接拒绝，不能误链接 x64。
+- root/crate-local Rust pin 的 targets 与 toolchains.json 同步；锁定的 Native Assets 依赖强制要求此清单。rustup 可能安装列出的标准库，它们不提供 Xcode/系统 SDK 或 linker，也不等于验收。
+- Native Assets hook 登记共用构建源码和重命名后的输入；Cargo dep-info 与显式配置输入共同保证增量失效。
+- 当前保留原生缓存名 native-scripts；推理迁移到 target/inference，避免 CMake 复用指向旧源码路径的 cache。环境变量指定的自定义缓存也必须与源码位置匹配。
+
+## 在目标宿主继续验证
+
+所有命令从仓库根执行，使用 toolchains.json 锁定版本及 PowerShell 7。安装工具、申请账号、签名和发布分别按实际授权执行；本轮没有安装或远端操作。
+
+| 目标 | 需要的环境与 target | 构建入口 |
+| --- | --- | --- |
+| Android | JDK/SDK/NDK；aarch64-linux-android | tools/build.ps1 -Platform android |
+| Windows | Visual Studio C++；x86_64-pc-windows-msvc | tools/build.ps1 -Platform windows |
+| iOS | Xcode；aarch64-apple-ios，模拟器另加 aarch64-apple-ios-sim | tools/build.ps1 -Platform ios（无签名） |
+| macOS | Xcode；匹配主机的 aarch64-apple-darwin 或 x86_64-apple-darwin | tools/build.ps1 -Platform macos |
+| Linux | Clang、CMake、Ninja、pkg-config、GTK3、libsecret；x86_64-unknown-linux-gnu | tools/build.ps1 -Platform linux |
+
+在对应宿主先执行 tools/verify.ps1，再构建和运行普通入口；首次真实构建可能暴露未发现的 SDK/插件问题。Apple 插件依赖管理按锁定 Flutter 与插件要求配置。Android/Windows 完整本机命令见[验证策略](../development/testing.md)。
+
+未来浏览器、后台传输、媒体、终端与 MCP 仍复用各自唯一会话/任务所有者。平台底层分别评估 WebView/WebView2/WKWebView/Linux 引擎、SAF/路径/bookmark/portal、后台调度和进程权限；不能把 Android 生命周期直接移植到桌面，也不能提前承诺 iOS 的任意执行能力。
+
+## 官方依据与证据边界
+
+2026-10-07 核对 [Flutter 桌面支持](https://docs.flutter.dev/platform-integration/desktop)、[Linux 构建说明](https://docs.flutter.dev/platform-integration/linux/building)及 [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)；实现参数同时核对本机锁定 11.2.0 源码。官方支持列表不代替本项目验证，实际 Apple 环境要求应在准备时查 [Xcode 系统要求](https://developer.apple.com/xcode/system-requirements/)。商店审核、签名、公证和下载代码规则在发布任务中另行核验。

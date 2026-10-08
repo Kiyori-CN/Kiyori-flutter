@@ -31,6 +31,8 @@
 
 ## 架构
 
+- [ADR 0019：五平台工程基础](decisions/0019-five-platform-foundation.md)：宿主构建、系统凭据、原生构建边界与验收分层。
+
 - [整体架构](architecture/overview.md)：层次、状态所有权、依赖与调用流。
 - [仓库布局](architecture/repository-layout.md)：真实目录、规划分区、模块拆分门槛和工作区规则。
 - [运行契约](architecture/runtime-contracts.md)：事务、取消、凭据、会话与界面状态边界。
