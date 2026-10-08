@@ -2,7 +2,8 @@
 
 ## 当前任务：主次身份迁移与功能开发暂停
 
-2026-10-08（Asia/Shanghai）：in_progress。用户明确暂停 Flutter 功能开发，恢复原生
+2026-10-08（Asia/Shanghai）：本仓迁移、构建与 Git 交付已完成，设备及 Apple/Linux 为
+verification_pending。用户明确暂停 Flutter 功能开发，恢复原生
 Android 为唯一 Kiyori 主项目；本工程目标路径 `D:\10_Project\Kiyori-flutter`，GitHub
 `Kiyori-CN/Kiyori-flutter`（数字 ID `1400228299`），产品名 Kiyori Flutter，Android
 安装身份 `com.kiyori.flutter`。保持已有实现、历史、锁文件、空动作边界与未来恢复条件。
@@ -11,14 +12,17 @@ Android 为唯一 Kiyori 主项目；本工程目标路径 `D:\10_Project\Kiyori
 起点 `main / dd90fb4ee8e9652a30a481354d69d7d4ed2cfe9b`，工作区干净、远端一致。
 三个仓库历史与本地必要配置已在仓库外备份。新会话恢复时旧目录占用已释放，未结束未知进程；
 本地目录已改至最终路径，原生位于 `D:\10_Project\Kiyori`，当前源码、五平台配置、JNI、
-凭据作用域和活动文档已迁移。GitHub 尚待产物验收后切换。
+凭据作用域和活动文档已迁移。GitHub 已按数字 ID `1400228299` 更名为
+`Kiyori-CN/Kiyori-flutter`，origin 已更新；private、非 fork、未 archived、main 均保持。
 
 `check-foundation.ps1` 84 文件通过，`generate-bridge.ps1 -Check` 5 文件保持一致；旧 CMake/
 Flutter 派生缓存已移至仓库外备份并在新路径重建，依赖锁未升级。首轮完整验证发现长产品名的
 布局与测试时序问题；修正后 20 项定向测试通过。完整 `verify.ps1 -WindowsIntegration` 已退出 0：
 Rust 236 通过/3 忽略，应用 692 通过/17 跳过，平台 18 通过，桥接 22 通过/1 跳过，Windows
 引擎 5 通过；fmt/Clippy/analyze 通过。普通 Android 构建退出 0（317.6s）；普通 Windows
-构建退出 0（18.2s）。最终 APK、Windows bundle 与入口审计通过，Git 交付尚在进行。
+构建退出 0（18.2s）。最终 APK、Windows bundle 与入口审计通过；迁移提交
+`51447fba9853acbc72d96891d3472f8b03e0b449` 已正常推送，HEAD/origin/main/远端一致、0/0、clean。
+本次交付记录以其后续普通文档提交为最终 main，不改写迁移提交。
 
 | 本轮身份迁移产物 | 已验证结果 |
 | --- | --- |
@@ -35,7 +39,9 @@ Rust 236 通过/3 忽略，应用 692 通过/17 跳过，平台 18 通过，桥�
 两 APK actual/merged manifest 的组件与注册一致，Provider authority、自定义 permission 无冲突；
 本应用没有原生 Kiyori 的 scheme/action 注册，不接管另一应用数据。Windows 独立 support 根
 为 `C:\Users\admin\AppData\Roaming\Kiyori\Kiyori Flutter`。依赖锁、内部 Dart/Rust/FFI/channel
-保持稳定，完整实现保留；GitHub 更名与 main 同步完成后再回填交付证据。
+保持稳定，完整实现保留。候选的新鲜克隆（非本地对象复用）foundation 84 文件通过且 clean。
+原生父项目的迁移推送暂被既有 PAT 缺少 workflow 权限阻挡，本仓与 terminal 已正常交付；
+该跨仓阻塞不能解释为本仓功能恢复或允许改动认证、Actions 和历史。
 
 验收顺序：五平台配置及存储/JNI边界 → foundation/verify + Windows 引擎 → Android/Windows
 普通构建与产物审计 → 候选提交 → 核验仓库 ID 后更名与正常推送。
